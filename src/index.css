@@ -44,6 +44,13 @@
     @apply bg-canvas text-text-base font-sans;
     margin: 0;
     font-size: 14px;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  #root {
+    height: 100%;
+    overflow: hidden;
   }
 
   .dark {
@@ -75,6 +82,8 @@
 
   html {
     @apply font-sans;
+    height: 100%;
+    overflow: hidden;
   }
 }
 
