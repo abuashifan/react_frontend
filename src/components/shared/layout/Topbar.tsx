@@ -76,7 +76,7 @@ export function Topbar() {
             type="button"
             onClick={() => handleModuleClick(mod.id, mod.path)}
             className={cn(
-              'flex-shrink-0 px-4 text-[14px] font-medium transition-colors whitespace-nowrap',
+              'flex-shrink-0 px-3 text-[12px] font-medium transition-colors whitespace-nowrap',
               'border-b-2 h-[52px] flex items-center',
               activeModule === mod.id
                 ? 'text-white border-[#e39774]'

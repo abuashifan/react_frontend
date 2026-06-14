@@ -33,6 +33,43 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     ribbonItems: [],
   },
   {
+    id: 'master-data',
+    label: 'Master Data',
+    path: '/master-data',
+    ribbonItems: [
+      { id: 'chart-of-accounts', label: 'Akun (COA)', icon: Landmark, path: '/master-data/chart-of-accounts', permission: 'master-data.view' },
+      { id: 'contacts', label: 'Kontak', icon: Users, path: '/master-data/contacts', permission: 'master-data.view' },
+      { id: 'products', label: 'Produk', icon: Package, path: '/master-data/products', permission: 'master-data.view' },
+      { id: 'units', label: 'Satuan', icon: Ruler, path: '/master-data/units', permission: 'master-data.view' },
+      { id: 'warehouses', label: 'Gudang', icon: Warehouse, path: '/master-data/warehouses', permission: 'master-data.view' },
+      { id: 'payment-terms', label: 'Syarat Bayar', icon: CalendarClock, path: '/master-data/payment-terms', permission: 'master-data.view' },
+      { id: 'departments', label: 'Departemen', icon: Building2, path: '/master-data/departments', permission: 'master-data.view' },
+      { id: 'projects', label: 'Proyek', icon: FolderKanban, path: '/master-data/projects', permission: 'master-data.view' },
+      { id: 'account-mappings', label: 'Pemetaan Akun', icon: Map, path: '/master-data/account-mappings', permission: 'master-data.view' },
+    ],
+  },
+  {
+    id: 'accounting',
+    label: 'Buku Besar',
+    path: '/accounting',
+    ribbonItems: [
+      { id: 'journals', label: 'Jurnal Umum', icon: BookOpen, path: '/accounting/journals', permission: 'journal.view' },
+      { id: 'period-locks', label: 'Periode Akuntansi', icon: Calendar, path: '/accounting/period-locks', permission: 'accounting.period-locks.manage' },
+      { id: 'fiscal-years', label: 'Tahun Fiskal', icon: CalendarDays, path: '/accounting/fiscal-years', permission: 'accounting.fiscal-years.manage' },
+    ],
+  },
+  {
+    id: 'cash-bank',
+    label: 'Kas & Bank',
+    path: '/cash-bank',
+    ribbonItems: [
+      { id: 'cash-receipts', label: 'Penerimaan Kas', icon: TrendingUp, path: '/cash-bank/cash-receipts', permission: 'cash_bank.view' },
+      { id: 'cash-payments', label: 'Pengeluaran Kas', icon: TrendingDown, path: '/cash-bank/cash-payments', permission: 'cash_bank.view' },
+      { id: 'transfers', label: 'Transfer', icon: ArrowLeftRight, path: '/cash-bank/transfers', permission: 'cash_bank.view' },
+      { id: 'reconciliations', label: 'Rekonsiliasi', icon: CheckSquare, path: '/cash-bank/reconciliations', permission: 'cash_bank.view' },
+    ],
+  },
+  {
     id: 'sales',
     label: 'Penjualan',
     path: '/sales',
@@ -73,29 +110,14 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     ],
   },
   {
-    id: 'accounting',
-    label: 'Akuntansi',
-    path: '/accounting',
-    ribbonItems: [
-      { id: 'journals', label: 'Jurnal Umum', icon: BookOpen, path: '/accounting/journals', permission: 'journal.view' },
-      { id: 'period-locks', label: 'Periode Akuntansi', icon: Calendar, path: '/accounting/period-locks', permission: 'accounting.period-locks.manage' },
-      { id: 'fiscal-years', label: 'Tahun Fiskal', icon: CalendarDays, path: '/accounting/fiscal-years', permission: 'accounting.fiscal-years.manage' },
-    ],
-  },
-  {
-    id: 'cash-bank',
-    label: 'Kas & Bank',
-    path: '/cash-bank',
-    ribbonItems: [
-      { id: 'cash-receipts', label: 'Penerimaan Kas', icon: TrendingUp, path: '/cash-bank/cash-receipts', permission: 'cash_bank.view' },
-      { id: 'cash-payments', label: 'Pengeluaran Kas', icon: TrendingDown, path: '/cash-bank/cash-payments', permission: 'cash_bank.view' },
-      { id: 'transfers', label: 'Transfer', icon: ArrowLeftRight, path: '/cash-bank/transfers', permission: 'cash_bank.view' },
-      { id: 'reconciliations', label: 'Rekonsiliasi', icon: CheckSquare, path: '/cash-bank/reconciliations', permission: 'cash_bank.view' },
-    ],
+    id: 'fixed-assets',
+    label: 'Aktiva Tetap',
+    path: '/fixed-assets',
+    ribbonItems: [],
   },
   {
     id: 'reports',
-    label: 'Laporan',
+    label: 'Daftar Laporan',
     path: '/reports',
     ribbonItems: [
       { id: 'general-ledger', label: 'Buku Besar', icon: BookMarked, path: '/reports/general-ledger', permission: 'reports.view' },
@@ -108,20 +130,10 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     ],
   },
   {
-    id: 'master-data',
-    label: 'Master Data',
-    path: '/master-data',
-    ribbonItems: [
-      { id: 'chart-of-accounts', label: 'Akun (COA)', icon: Landmark, path: '/master-data/chart-of-accounts', permission: 'master-data.view' },
-      { id: 'contacts', label: 'Kontak', icon: Users, path: '/master-data/contacts', permission: 'master-data.view' },
-      { id: 'products', label: 'Produk', icon: Package, path: '/master-data/products', permission: 'master-data.view' },
-      { id: 'units', label: 'Satuan', icon: Ruler, path: '/master-data/units', permission: 'master-data.view' },
-      { id: 'warehouses', label: 'Gudang', icon: Warehouse, path: '/master-data/warehouses', permission: 'master-data.view' },
-      { id: 'payment-terms', label: 'Syarat Bayar', icon: CalendarClock, path: '/master-data/payment-terms', permission: 'master-data.view' },
-      { id: 'departments', label: 'Departemen', icon: Building2, path: '/master-data/departments', permission: 'master-data.view' },
-      { id: 'projects', label: 'Proyek', icon: FolderKanban, path: '/master-data/projects', permission: 'master-data.view' },
-      { id: 'account-mappings', label: 'Pemetaan Akun', icon: Map, path: '/master-data/account-mappings', permission: 'master-data.view' },
-    ],
+    id: 'settings',
+    label: 'Pengaturan',
+    path: '/settings',
+    ribbonItems: [],
   },
 ]
 
