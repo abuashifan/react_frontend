@@ -138,11 +138,11 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-dvh">
       {/* Left — Branding */}
-      <div className="hidden md:flex md:w-1/2 flex-col justify-between p-10 bg-[#326273]">
+      <div className="hidden md:flex md:w-1/2 flex-col justify-between p-10 [@media(max-height:620px)]:py-4 [@media(max-height:620px)]:px-8 bg-[#326273]">
         <div>
-          <div className="flex items-center gap-3 mb-12">
+          <div className="flex items-center gap-3 mb-12 [@media(max-height:620px)]:mb-4">
             <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center">
               <span className="text-white font-bold text-lg">S</span>
             </div>
@@ -153,14 +153,14 @@ export function LoginPage() {
             src={loginIllustration}
             alt=""
             aria-hidden="true"
-            className="w-full max-w-[280px] max-h-[200px] object-contain mx-auto mb-8 opacity-90"
+            className="w-full max-w-[280px] max-h-[200px] object-contain mx-auto mb-8 opacity-90 [@media(max-height:620px)]:hidden"
           />
 
-          <ul className="space-y-4">
+          <ul className="space-y-4 [@media(max-height:620px)]:space-y-3">
             {FEATURES.map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-md bg-white/15 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Icon className="w-3.5 h-3.5 text-white/90" />
+                <div className="w-7 h-7 [@media(max-height:620px)]:w-5 [@media(max-height:620px)]:h-5 rounded-md bg-white/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Icon className="w-3.5 h-3.5 [@media(max-height:620px)]:w-3 [@media(max-height:620px)]:h-3 text-white/90" />
                 </div>
                 <span className="text-white/85 text-[13px] leading-relaxed">{text}</span>
               </li>
@@ -183,11 +183,11 @@ export function LoginPage() {
           <span className="text-[#24323a] font-semibold">{APP_NAME}</span>
         </div>
 
-        <div className="flex-1 flex items-center justify-center p-6 md:p-10">
+        <div className="flex-1 flex items-center justify-center p-6 md:p-10 [@media(max-height:620px)]:p-4">
           {/* Form Card */}
-          <div className="w-full max-w-[400px] bg-white rounded-xl py-9 px-10 shadow-[0_4px_24px_rgba(0,0,0,0.08),0_1px_4px_rgba(0,0,0,0.04)]">
-            <h2 className="text-[22px] font-semibold text-[#24323a] mb-1.5">Selamat datang kembali</h2>
-            <p className="text-sm text-[#64748b] mb-7">Masuk ke akun Anda untuk melanjutkan.</p>
+          <div className="w-full max-w-[400px] bg-white rounded-xl py-9 px-10 [@media(max-height:620px)]:py-5 [@media(max-height:620px)]:px-6 shadow-[0_4px_24px_rgba(0,0,0,0.08),0_1px_4px_rgba(0,0,0,0.04)]">
+            <h2 className="text-[22px] [@media(max-height:620px)]:text-[18px] font-semibold text-[#24323a] mb-1.5 [@media(max-height:620px)]:mb-1">Selamat datang kembali</h2>
+            <p className="text-sm text-[#64748b] mb-7 [@media(max-height:620px)]:mb-4">Masuk ke akun Anda untuk melanjutkan.</p>
 
             {isSessionExpired && (
               <div className="mb-5 p-3 bg-amber-50 border border-amber-200 rounded-md text-xs text-amber-700">
@@ -196,7 +196,7 @@ export function LoginPage() {
             )}
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 [@media(max-height:620px)]:space-y-3">
                 <FormField
                   control={form.control}
                   name="email"
@@ -271,14 +271,14 @@ export function LoginPage() {
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full h-9 bg-[#e39774] hover:bg-[#d4845e] text-white font-medium text-[13px] mt-2"
+                  className="w-full h-9 bg-[#e39774] hover:bg-[#d4845e] text-white font-medium text-[13px] mt-2 [@media(max-height:620px)]:mt-1"
                 >
                   {isLoading ? 'Memproses...' : 'Masuk'}
                 </Button>
               </form>
             </Form>
 
-            <p className="text-[10px] text-[#d9e2e5] mt-6 text-center">
+            <p className="text-[10px] text-[#d9e2e5] mt-6 [@media(max-height:620px)]:mt-3 text-center">
               Lupa password? Hubungi administrator sistem Anda.
             </p>
           </div>
