@@ -9,7 +9,7 @@ interface ErrorPageProps {
 
 export function ErrorPage({ code, message, actions }: ErrorPageProps) {
   return (
-    <div className="min-h-screen bg-[#EFEFED] flex items-center justify-center p-6">
+    <div className="min-h-dvh bg-[#EFEFED] flex items-center justify-center p-6">
       <div className="text-center max-w-sm">
         <div className="text-[80px] font-bold text-[#d9e2e5] leading-none mb-4 tabular-nums select-none">
           {code}

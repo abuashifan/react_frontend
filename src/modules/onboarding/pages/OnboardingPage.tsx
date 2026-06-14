@@ -85,7 +85,7 @@ export function OnboardingPage() {
   const selectedTemplateDef = COA_TEMPLATES.find((t) => t.id === state.selectedTemplate)
 
   return (
-    <div className="min-h-screen bg-[#EFEFED] flex flex-col">
+    <div className="min-h-dvh bg-[#EFEFED] flex flex-col">
       {/* Wizard header */}
       <header className="h-[52px] bg-[#326273] flex items-center px-6 shrink-0">
         <span className="text-white font-semibold text-[15px]">🌊 Seaside Escape ERP — Setup Perusahaan Baru</span>

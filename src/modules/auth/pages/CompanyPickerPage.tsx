@@ -44,15 +44,15 @@ function CompanyCard({ company, onClick, isLoading }: CompanyCardProps) {
       onClick={onClick}
       disabled={isLoading}
       className={cn(
-        'bg-white border border-[#d9e2e5] rounded-lg p-5',
+        'bg-white border border-[#d9e2e5] rounded-lg p-5 [@media(max-height:620px)]:p-3',
         'cursor-pointer transition-all duration-150 text-left w-full',
         'hover:border-[#5c9ead] hover:shadow-md',
-        'flex flex-col items-center text-center gap-3',
+        'flex flex-col items-center text-center gap-3 [@media(max-height:620px)]:gap-2',
         'disabled:opacity-60 disabled:cursor-not-allowed',
       )}
     >
-      <div className="w-12 h-12 rounded-lg bg-[#EFF9FB] flex items-center justify-center">
-        <Building2 className="w-6 h-6 text-[#5c9ead]" />
+      <div className="w-12 h-12 [@media(max-height:620px)]:w-9 [@media(max-height:620px)]:h-9 rounded-lg bg-[#EFF9FB] flex items-center justify-center">
+        <Building2 className="w-6 h-6 [@media(max-height:620px)]:w-5 [@media(max-height:620px)]:h-5 text-[#5c9ead]" />
       </div>
       <div>
         <p className="font-semibold text-[#24323a] text-sm leading-snug">{company.name}</p>
@@ -105,24 +105,26 @@ export function CompanyPickerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#EFEFED] flex flex-col">
-      <header className="bg-[#326273] px-6 py-4 flex items-center gap-3">
-        <div className="w-7 h-7 rounded-md bg-white/20 flex items-center justify-center">
-          <span className="text-white font-bold text-sm">S</span>
+    <div className="min-h-dvh bg-[#EFEFED] flex flex-col">
+      <header className="bg-[#326273] px-6 py-4 [@media(max-height:620px)]:py-2 flex items-center gap-3 flex-shrink-0">
+        <div className="w-6 h-6 rounded-[6px] bg-[#5c9ead] flex items-center justify-center flex-shrink-0">
+          <div className="w-[9px] h-[9px] rounded-[2px] bg-white/90" />
         </div>
         <span className="text-white font-semibold text-sm">{APP_NAME}</span>
       </header>
 
-      <div className="flex-1 flex flex-col items-center justify-center p-6">
+      <div className="flex-1 flex flex-col items-center justify-center p-6 [@media(max-height:620px)]:p-4 [@media(max-height:620px)]:justify-start [@media(max-height:620px)]:pt-6">
         <div className="w-full max-w-2xl">
-          <div className="mb-8 text-center">
-            <h1 className="text-xl font-semibold text-[#24323a] mb-1">Pilih Perusahaan</h1>
+          <div className="mb-8 [@media(max-height:620px)]:mb-4 text-center">
+            <h1 className="text-xl [@media(max-height:620px)]:text-base font-semibold text-[#24323a] mb-1">
+              Pilih Perusahaan
+            </h1>
             <p className="text-[13px] text-[#64748b]">
               Masuk sebagai: <span className="font-medium text-[#24323a]">{user?.email}</span>
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 [@media(max-height:620px)]:gap-2 mb-8 [@media(max-height:620px)]:mb-4 [@media(max-height:620px)]:max-h-[260px] [@media(max-height:620px)]:overflow-y-auto">
             {sorted.map((company) => (
               <CompanyCard
                 key={company.id}
