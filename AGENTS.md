@@ -57,10 +57,11 @@ docs/praproduction_docs/spec-03-folder-structure.md         ← konvensi folder 
 docs/praproduction_docs/spec-23-tablet-first-layout-rules.md ← WAJIB untuk semua halaman:
                                               height model (dvh vs vh), scroll model,
                                               compact rules viewport pendek (≤620px dvh)
+                                              
 docs/praproduction_docs/spec-25-viewport-list.md -> WAJIB data tambahan untuk
                                               height model (dvh vs vh), scroll model,
                                               compact rules viewport
-                                              
+
 docs/struktur_frontend.md                  ← peta file project saat ini
 ```
 
@@ -130,7 +131,7 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 |---|---|---|---|
 | 1A — Project Setup | `prompt-phase-1A-project-setup.md` | ✅ Done | — |
 | 1B — Auth Pages | `prompt-phase-1B-auth-pages.md` | ✅ Done | — |
-| 1C — App Shell & Layout | `prompt-phase-1C-app-shell-layout.md` | ❓ Belum terkonfirmasi | Perlu verifikasi |
+| 1C — App Shell & Layout | `prompt-phase-1C-app-shell-layout.md` | ✅ Done | — |
 | 1D — Shared Components | `prompt-phase-1D-shared-components.md` | ⚠️ Error | `DataTable.tsx` build error |
 | 1E — Error Pages & Onboarding | `prompt-phase-1E-error-onboarding.md` | ⚠️ Error | `Step4MasterData.tsx` + `onboardingApi.ts` build error |
 | 2 — Master Data | `prompt-phase-2-master-data.md` | ⏳ Belum dimulai | Tunggu Phase 1 bersih |
