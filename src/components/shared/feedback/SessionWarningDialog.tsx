@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import {
   Dialog,
@@ -26,20 +27,32 @@ export function SessionWarningDialog({
   onContinue,
   onLogout,
 }: SessionWarningDialogProps) {
+  const continueButtonRef = useRef<HTMLButtonElement | null>(null)
+
   return (
     <Dialog open={open}>
-      <DialogContent className="max-w-sm text-center" onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent
+        className="max-w-sm text-center [&>button]:hidden"
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onOpenAutoFocus={(e) => {
+          e.preventDefault()
+          continueButtonRef.current?.focus()
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center justify-center gap-2">
             <AlertTriangle className="w-5 h-5 text-amber-500" />
-            Sesi Akan Berakhir
+            Sesi hampir berakhir
           </DialogTitle>
         </DialogHeader>
 
         <div className="py-4">
           <p className="text-[13px] text-[#64748b] mb-3">
-            Anda tidak aktif selama beberapa saat.
-            Sesi akan otomatis berakhir dalam:
+            Karena tidak ada aktivitas, Anda akan keluar otomatis demi keamanan.
+          </p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[#64748b]">
+            Waktu tersisa
           </p>
           <div className="text-3xl font-bold tabular-nums text-[#24323a]">
             {formatCountdown(secondsRemaining)}
@@ -55,13 +68,14 @@ export function SessionWarningDialog({
             onClick={onLogout}
             className="flex-1 text-[13px]"
           >
-            Logout Sekarang
+            Keluar
           </Button>
           <Button
+            ref={continueButtonRef}
             onClick={onContinue}
             className="flex-1 text-[13px] bg-[#5c9ead] hover:bg-[#4a8a9a] text-white"
           >
-            Lanjutkan Sesi
+            Tetap Masuk
           </Button>
         </div>
       </DialogContent>

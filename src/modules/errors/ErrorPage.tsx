@@ -30,7 +30,7 @@ export function ForbiddenPage() {
       actions={
         <>
           <Button variant="outline" onClick={() => navigate(-1)}>Kembali</Button>
-          <Button className="bg-[#e39774] hover:bg-[#d4845e]" onClick={() => navigate('/dashboard')}>Ke Dashboard</Button>
+          <Button className="bg-[#e39774] hover:bg-[#d4845e]" onClick={() => navigate('/')}>Ke Dashboard</Button>
         </>
       }
     />
@@ -46,7 +46,7 @@ export function NotFoundPage() {
       actions={
         <>
           <Button variant="outline" onClick={() => navigate(-1)}>Kembali</Button>
-          <Button className="bg-[#e39774] hover:bg-[#d4845e]" onClick={() => navigate('/dashboard')}>Ke Dashboard</Button>
+          <Button className="bg-[#e39774] hover:bg-[#d4845e]" onClick={() => navigate('/')}>Ke Dashboard</Button>
         </>
       }
     />
@@ -62,7 +62,7 @@ export function ServerErrorPage() {
       actions={
         <>
           <Button variant="outline" onClick={() => window.location.reload()}>Coba Lagi</Button>
-          <Button className="bg-[#e39774] hover:bg-[#d4845e]" onClick={() => navigate('/dashboard')}>Ke Dashboard</Button>
+          <Button className="bg-[#e39774] hover:bg-[#d4845e]" onClick={() => navigate('/')}>Ke Dashboard</Button>
         </>
       }
     />

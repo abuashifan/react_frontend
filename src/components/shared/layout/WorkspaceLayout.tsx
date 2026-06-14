@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
-import { useUIStore } from '@/stores/useUIStore'
+import { useTabStore } from '@/stores/useTabStore'
 import { cn } from '@/lib/utils'
 import type { BreadcrumbItem } from '@/types/common.types'
 
@@ -45,11 +45,11 @@ export function WorkspaceLayout({
   sidebar,
   children,
 }: WorkspaceLayoutProps) {
-  const { isSidebarCollapsed, toggleSidebar } = useUIStore()
+  const { isSidebarCollapsed, toggleSidebar } = useTabStore()
   const hasSidebar = !!sidebar
 
   return (
-    <div className="flex min-h-0">
+    <div className="flex h-full min-h-0 overflow-hidden">
       {/* Filter Sidebar */}
       {hasSidebar && (
         <aside
@@ -58,14 +58,14 @@ export function WorkspaceLayout({
             isSidebarCollapsed ? 'w-0' : 'w-[220px]',
           )}
         >
-          <div className="w-[220px] p-3">{sidebar}</div>
+          <div className="h-full w-[220px] overflow-y-auto p-3">{sidebar}</div>
         </aside>
       )}
 
       {/* Main content */}
-      <div className="flex-1 min-w-0">
+      <div className="flex min-h-0 flex-1 min-w-0 flex-col overflow-hidden">
         {/* Page header */}
-        <div className="flex items-center justify-between px-4 lg:px-6 py-3 bg-white border-b border-[#d9e2e5]">
+        <div className="flex flex-shrink-0 items-center justify-between px-4 lg:px-6 py-3 bg-white border-b border-[#d9e2e5]">
           <div className="flex items-center gap-2 min-w-0">
             {hasSidebar && (
               <button
@@ -92,7 +92,7 @@ export function WorkspaceLayout({
         </div>
 
         {/* Table / content */}
-        <div className="p-3 md:p-4 lg:p-6">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-3 md:p-4 lg:p-6">{children}</div>
       </div>
     </div>
   )

@@ -6,18 +6,26 @@ import { useCompanyStore } from '@/stores/useCompanyStore'
 const WARNING_MINUTES = 5
 const WARNING_SECONDS = WARNING_MINUTES * 60
 
+function getWarningSeconds(timeoutMinutes: number): number {
+  return Math.min(WARNING_SECONDS, Math.max(1, timeoutMinutes * 60))
+}
+
 export function useSessionTimeout() {
   const navigate = useNavigate()
   const { logout, token } = useAuthStore()
   const { settings } = useCompanyStore()
   const timeoutMinutes = settings?.session_timeout_minutes ?? 30
+  const warningSeconds = getWarningSeconds(timeoutMinutes)
 
   const [isWarningOpen, setIsWarningOpen] = useState(false)
-  const [secondsRemaining, setSecondsRemaining] = useState(WARNING_SECONDS)
+  const [secondsRemaining, setSecondsRemaining] = useState(warningSeconds)
 
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const warningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const warningOpenRef = useRef(false)
+  const logoutDeadlineRef = useRef<number | null>(null)
+  const hasLoggedOutRef = useRef(false)
 
   const clearAllTimers = useCallback(() => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
@@ -26,62 +34,79 @@ export function useSessionTimeout() {
   }, [])
 
   const doLogout = useCallback(() => {
+    if (hasLoggedOutRef.current) return
+    hasLoggedOutRef.current = true
     clearAllTimers()
+    warningOpenRef.current = false
+    setIsWarningOpen(false)
     logout()
-    navigate('/login', { state: { reason: 'session_expired' } })
+    navigate('/login', { state: { reason: 'session_expired' }, replace: true })
   }, [clearAllTimers, logout, navigate])
 
-  // Called from event listeners (async callbacks) — setState is allowed here
-  const resetTimer = useCallback(() => {
+  const startCountdown = useCallback(() => {
+    if (countdownRef.current) clearInterval(countdownRef.current)
+
+    const tick = () => {
+      const deadline = logoutDeadlineRef.current
+      if (!deadline) return
+
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
+      setSecondsRemaining(remaining)
+
+      if (remaining === 0) {
+        doLogout()
+      }
+    }
+
+    tick()
+    countdownRef.current = setInterval(tick, 1000)
+  }, [doLogout])
+
+  const openWarning = useCallback(() => {
+    warningOpenRef.current = true
+    setIsWarningOpen(true)
+    startCountdown()
+  }, [startCountdown])
+
+  const scheduleTimers = useCallback(() => {
     clearAllTimers()
+    hasLoggedOutRef.current = false
+    warningOpenRef.current = false
     setIsWarningOpen(false)
-    setSecondsRemaining(WARNING_SECONDS)
+    setSecondsRemaining(warningSeconds)
 
     if (!token) return
 
-    const warningMs = (timeoutMinutes - WARNING_MINUTES) * 60 * 1000
-    const logoutMs = timeoutMinutes * 60 * 1000
+    const timeoutSeconds = Math.max(1, timeoutMinutes * 60)
+    const warningDelaySeconds = Math.max(0, timeoutSeconds - warningSeconds)
+    logoutDeadlineRef.current = Date.now() + timeoutSeconds * 1000
 
-    warningTimerRef.current = setTimeout(() => {
-      setIsWarningOpen(true)
-      setSecondsRemaining(WARNING_SECONDS)
-      countdownRef.current = setInterval(() => {
-        setSecondsRemaining((prev) => Math.max(0, prev - 1))
-      }, 1000)
-    }, warningMs)
+    warningTimerRef.current = setTimeout(openWarning, warningDelaySeconds * 1000)
+    idleTimerRef.current = setTimeout(doLogout, timeoutSeconds * 1000)
+  }, [clearAllTimers, doLogout, openWarning, timeoutMinutes, token, warningSeconds])
 
-    idleTimerRef.current = setTimeout(doLogout, logoutMs)
-  }, [token, timeoutMinutes, clearAllTimers, doLogout])
+  const handleActivity = useCallback(() => {
+    if (warningOpenRef.current) return
+    scheduleTimers()
+  }, [scheduleTimers])
 
   const handleContinue = useCallback(() => {
-    resetTimer()
-  }, [resetTimer])
+    scheduleTimers()
+  }, [scheduleTimers])
 
   useEffect(() => {
     if (!token) return
 
     const EVENTS = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove'] as const
-    EVENTS.forEach((e) => window.addEventListener(e, resetTimer, { passive: true }))
-
-    // Initialize timers — only scheduling, no setState called synchronously here
-    const warningMs = (timeoutMinutes - WARNING_MINUTES) * 60 * 1000
-    const logoutMs = timeoutMinutes * 60 * 1000
-
-    warningTimerRef.current = setTimeout(() => {
-      setIsWarningOpen(true)
-      setSecondsRemaining(WARNING_SECONDS)
-      countdownRef.current = setInterval(() => {
-        setSecondsRemaining((prev) => Math.max(0, prev - 1))
-      }, 1000)
-    }, warningMs)
-
-    idleTimerRef.current = setTimeout(doLogout, logoutMs)
+    EVENTS.forEach((e) => window.addEventListener(e, handleActivity, { passive: true }))
+    const initialTimer = window.setTimeout(scheduleTimers, 0)
 
     return () => {
-      EVENTS.forEach((e) => window.removeEventListener(e, resetTimer))
+      window.clearTimeout(initialTimer)
+      EVENTS.forEach((e) => window.removeEventListener(e, handleActivity))
       clearAllTimers()
     }
-  }, [token, timeoutMinutes, resetTimer, clearAllTimers, doLogout])
+  }, [token, handleActivity, scheduleTimers, clearAllTimers])
 
   return { isWarningOpen, secondsRemaining, handleContinue, doLogout }
 }

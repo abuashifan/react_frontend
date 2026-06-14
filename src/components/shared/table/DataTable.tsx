@@ -2,8 +2,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/shared/feedback/EmptyState'
-import { BulkActionBar, BulkAction } from './BulkActionBar'
-import { TablePagination, PaginationState } from './TablePagination'
+import { BulkActionBar } from './BulkActionBar'
+import type { BulkAction } from './BulkActionBar'
+import { TablePagination } from './TablePagination'
+import type { PaginationState } from './TablePagination'
 
 // Re-export so consumers import from one place
 export type { PaginationState, BulkAction }
@@ -42,12 +44,12 @@ const SKELETON_ROWS = 5
 
 function stickyStyle(meta?: ColumnMeta): React.CSSProperties | undefined {
   if (!meta?.sticky) return undefined
-  return { position: 'sticky', left: meta.stickyLeft ?? 0, zIndex: 10 }
+  return { position: 'sticky', left: meta.stickyLeft ?? 0, zIndex: 25 }
 }
 
 function headerStickyStyle(meta?: ColumnMeta): React.CSSProperties | undefined {
   if (!meta?.sticky) return undefined
-  return { position: 'sticky', left: meta.stickyLeft ?? 0, zIndex: 20 }
+  return { position: 'sticky', left: meta.stickyLeft ?? 0, zIndex: 30 }
 }
 
 export function DataTable<T extends { id: number | string }>({
@@ -110,28 +112,30 @@ export function DataTable<T extends { id: number | string }>({
   const renderedColumns: ColumnDef<T>[] = onRowSelect ? [checkboxCol, ...columns] : columns
 
   return (
-    <div className="flex flex-col border border-[#d9e2e5] rounded-lg overflow-hidden bg-white">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-[#d9e2e5] bg-white">
       {/* Bulk action bar */}
       {showBulkBar && (
-        <BulkActionBar
-          selectedCount={selectedRows.length}
-          selectedIds={selectedRows}
-          actions={bulkActions!}
-          onClearSelection={() => onRowSelect?.([])}
-        />
+        <div className="flex-shrink-0 px-2 pt-2">
+          <BulkActionBar
+            selectedCount={selectedRows.length}
+            selectedIds={selectedRows}
+            actions={bulkActions!}
+            onClearSelection={() => onRowSelect?.([])}
+          />
+        </div>
       )}
 
       {/* Table scroll container */}
-      <div className="overflow-x-auto no-scrollbar">
+      <div className="min-h-0 flex-1 overflow-auto">
         <table className="w-full text-[13px] border-collapse min-w-max">
           {/* Header */}
           <thead>
-            <tr className="border-b border-[#d9e2e5] bg-[#f8fafc]">
+            <tr className="border-b border-[#d9e2e5] bg-[#eeeeee]">
               {renderedColumns.map((col) => (
                 <th
                   key={col.id}
                   className={cn(
-                    'text-left font-semibold text-[#24323a] px-3 py-2.5 whitespace-nowrap bg-[#f8fafc]',
+                    'sticky top-0 h-9 bg-[#eeeeee] px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b] whitespace-nowrap',
                     col.meta?.headerClassName,
                   )}
                   style={{
@@ -150,11 +154,11 @@ export function DataTable<T extends { id: number | string }>({
             {isLoading ? (
               /* Skeleton rows */
               Array.from({ length: SKELETON_ROWS }).map((_, rowIdx) => (
-                <tr key={rowIdx} className="border-b border-[#f1f5f9]">
+                <tr key={rowIdx} className="h-9 border-b border-[#f1f5f9]">
                   {renderedColumns.map((col) => (
                     <td
                       key={col.id}
-                      className={cn('px-3 py-2.5 bg-white', col.meta?.className)}
+                      className={cn('bg-white px-3 py-2', col.meta?.className)}
                       style={stickyStyle(col.meta)}
                     >
                       <Skeleton className="h-4 w-full max-w-[140px] rounded" />
@@ -177,8 +181,8 @@ export function DataTable<T extends { id: number | string }>({
                   <tr
                     key={id}
                     className={cn(
-                      'border-b border-[#f1f5f9] transition-colors hover:bg-[#f8fafc]',
-                      isSelected && 'bg-[#e8f4f6]',
+                      'h-9 border-b border-[#f1f5f9] transition-colors hover:bg-[#f8fbfc]',
+                      isSelected && 'bg-[#EFF9FB]',
                       isFetching && 'opacity-60',
                     )}
                   >
@@ -186,10 +190,10 @@ export function DataTable<T extends { id: number | string }>({
                       <td
                         key={col.id}
                         className={cn(
-                          'px-3 py-2.5',
+                          'px-3 py-2 text-[13px]',
                           col.meta?.sticky
                             ? isSelected
-                              ? 'bg-[#e8f4f6]'
+                              ? 'bg-[#EFF9FB]'
                               : 'bg-white'
                             : '',
                           col.meta?.className,

@@ -29,7 +29,7 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
   {
     id: 'dashboard',
     label: 'Dashboard',
-    path: '/dashboard',
+    path: '/',
     ribbonItems: [],
   },
   {
@@ -139,14 +139,13 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
 
 export const MODULE_MAP = Object.fromEntries(MODULE_CONFIGS.map((m) => [m.id, m]))
 
-export const TOP_MODULES: ModuleConfig[] = MODULE_CONFIGS
+export const TOP_MODULES: ModuleConfig[] = MODULE_CONFIGS.filter((module) => module.id !== 'dashboard')
 
 /** Detect active module from pathname */
 export function detectModuleFromPath(pathname: string): string | null {
-  if (pathname.startsWith('/dashboard')) return 'dashboard'
+  if (pathname === '/') return null
   const match = MODULE_CONFIGS.find(
     (m) => m.id !== 'dashboard' && pathname.startsWith(`/${m.id}`),
   )
   return match?.id ?? null
 }
-

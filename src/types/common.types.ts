@@ -23,6 +23,7 @@ export interface BreadcrumbItem {
 export interface SelectOption<T = string> {
   label: string
   value: T
+  sublabel?: string
 }
 
 export interface DateRange {

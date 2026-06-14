@@ -1,23 +1,25 @@
 import { Inbox } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
 interface EmptyStateProps {
   title: string
   description?: string
   action?: React.ReactNode
+  icon?: LucideIcon
 }
 
 /** Generic empty state for DataTable and standalone use */
-export function EmptyState({ title, description, action }: EmptyStateProps) {
+export function EmptyState({ title, description, action, icon: Icon = Inbox }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-      <div className="w-12 h-12 rounded-full bg-[#f1f5f9] flex items-center justify-center mb-4">
-        <Inbox className="w-6 h-6 text-[#94a3b8]" />
+    <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
+      <div className="mb-1 flex h-12 w-12 items-center justify-center rounded-xl bg-[#f1f5f9]">
+        <Icon className="h-6 w-6 text-[#94a3b8]" />
       </div>
-      <p className="text-[13px] font-medium text-[#24323a] mb-1">{title}</p>
+      <p className="text-[14px] font-semibold text-[#24323a]">{title}</p>
       {description && (
-        <p className="text-[12px] text-[#64748b] max-w-xs">{description}</p>
+        <p className="max-w-[260px] text-[13px] text-[#64748b]">{description}</p>
       )}
-      {action && <div className="mt-4">{action}</div>}
+      {action && <div className="mt-1">{action}</div>}
     </div>
   )
 }

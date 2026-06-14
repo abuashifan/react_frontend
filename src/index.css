@@ -6,6 +6,16 @@
 
 @layer base {
   :root {
+    --shell-topbar-h: 52px;
+    --shell-ribbon-h: 64px;
+    --shell-ribbon-z: 60;
+    --shell-primary-tabs-h: 36px;
+    --shell-secondary-tabs-h: 32px;
+    --shell-bottom-bar-h: 56px;
+    --shell-content-gap: 16px;
+    --shell-content-gap-compact: 12px;
+    --shell-content-gap-current: var(--shell-content-gap);
+    --shell-safe-bottom: env(safe-area-inset-bottom, 0px);
     --background: 60 6% 93%;
     --foreground: 200 23% 18%;
     --card: 0 0% 100%;
@@ -84,6 +94,12 @@
     @apply font-sans;
     height: 100%;
     overflow: hidden;
+  }
+
+  @media (max-height: 768px) {
+    :root {
+      --shell-content-gap-current: var(--shell-content-gap-compact);
+    }
   }
 }
 

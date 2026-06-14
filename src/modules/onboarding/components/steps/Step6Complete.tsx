@@ -39,7 +39,7 @@ export function Step6Complete({ summary, onBack }: Props) {
         setSettings({ ...activeCompany.settings, onboarding_completed: true })
       }
       toast.success('Setup perusahaan selesai! Selamat datang di Seaside Escape ERP.')
-      navigate('/dashboard')
+      navigate('/')
     } catch {
       toast.error('Gagal menyelesaikan setup. Coba lagi.')
       setIsFinishing(false)

@@ -17,13 +17,13 @@ export const onboardingApi = {
     fiscal_year_start: string
     currency: string
   }) =>
-    http.patch<ApiResponse<Company>>(`/companies/${companyId}`, data),
+    http.patch<unknown, ApiResponse<Company>>(`/companies/${companyId}`, data),
 
   applyCoaTemplate: (companyId: number, template: string) =>
-    http.post<ApiResponse<void>>(`/companies/${companyId}/coa-template`, { template }),
+    http.post<unknown, ApiResponse<void>>(`/companies/${companyId}/coa-template`, { template }),
 
   searchAccounts: async (query: string): Promise<SelectOption<number>[]> => {
-    const res = await http.get<PaginatedResponse<AccountSearchResult>>(
+    const res = await http.get<unknown, PaginatedResponse<AccountSearchResult>>(
       '/master-data/chart-of-accounts',
       { params: { search: query, per_page: 10 } },
     )
@@ -31,20 +31,20 @@ export const onboardingApi = {
   },
 
   updateAccountMapping: (key: string, accountId: number) =>
-    http.patch<ApiResponse<void>>(`/master-data/account-mappings/${key}`, { account_id: accountId }),
+    http.patch<unknown, ApiResponse<void>>(`/master-data/account-mappings/${key}`, { account_id: accountId }),
 
   createWarehouse: (data: { name: string; address?: string }) =>
-    http.post<ApiResponse<{ id: number; name: string }>>('/master-data/warehouses', data),
+    http.post<unknown, ApiResponse<{ id: number; name: string }>>('/master-data/warehouses', data),
 
   createUnit: (data: { name: string; symbol: string }) =>
-    http.post<ApiResponse<{ id: number; name: string }>>('/master-data/units', data),
+    http.post<unknown, ApiResponse<{ id: number; name: string }>>('/master-data/units', data),
 
   createPaymentTerm: (data: { name: string; days: number }) =>
-    http.post<ApiResponse<{ id: number; name: string }>>('/master-data/payment-terms', data),
+    http.post<unknown, ApiResponse<{ id: number; name: string }>>('/master-data/payment-terms', data),
 
   saveOpeningBalance: (data: { opening_date: string; entries: Array<{ account_id: number; debit: number; credit: number }> }) =>
-    http.post<ApiResponse<void>>('/accounting/opening-balances', data),
+    http.post<unknown, ApiResponse<void>>('/accounting/opening-balances', data),
 
   completeOnboarding: (companyId: number) =>
-    http.patch<ApiResponse<void>>(`/companies/${companyId}/complete-onboarding`),
+    http.patch<unknown, ApiResponse<void>>(`/companies/${companyId}/complete-onboarding`),
 }

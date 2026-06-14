@@ -101,7 +101,7 @@ export function LoginPage() {
     const permissionsResponse = await authApi.permissions()
     setPermissions(permissionsResponse.data.permissions)
 
-    navigate('/dashboard', { replace: true })
+    navigate('/', { replace: true })
   }
 
   async function onSubmit(values: LoginFormValues) {

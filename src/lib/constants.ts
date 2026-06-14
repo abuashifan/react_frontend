@@ -21,3 +21,19 @@ export const MODULES = {
 } as const
 
 export type ModuleKey = (typeof MODULES)[keyof typeof MODULES]
+
+export const STATUS_LABELS = {
+  draft: 'Draft',
+  submitted: 'Submitted',
+  approved: 'Approved',
+  confirmed: 'Confirmed',
+  posted: 'Posted',
+  partially_paid: 'Partially Paid',
+  paid: 'Paid',
+  void: 'Void',
+  cancelled: 'Cancelled',
+  rejected: 'Rejected',
+  delivered: 'Delivered',
+  received: 'Received',
+  converted: 'Converted',
+} as const

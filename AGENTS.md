@@ -137,7 +137,7 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 | 1A — Project Setup | `prompt-phase-1A-project-setup.md` | ✅ Done | — |
 | 1B — Auth Pages | `prompt-phase-1B-auth-pages.md` | ✅ Done | — |
 | 1C — App Shell & Layout | `prompt-phase-1C-app-shell-layout.md` | ✅ Done | — |
-| 1D — Shared Components | `prompt-phase-1D-shared-components.md` | ⚠️ Error | `DataTable.tsx` build error |
+| 1D — Shared Components | `prompt-phase-1D-shared-components.md` | ✅ Done | — |
 | 1E — Error Pages & Onboarding | `prompt-phase-1E-error-onboarding.md` | ⚠️ Error | `Step4MasterData.tsx` + `onboardingApi.ts` build error |
 | 2 — Master Data | `prompt-phase-2-master-data.md` | ⏳ Belum dimulai | Tunggu Phase 1 bersih |
 | 3 — Sales | `prompt-phase-3-sales.md` | ⏳ Belum dimulai | Tunggu Phase 2 |
@@ -149,10 +149,9 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 ### Yang Harus Diselesaikan Sekarang (Blocker)
 
 ```
-1. Fix DataTable.tsx          → src/components/shared/table/DataTable.tsx
-2. Fix Step4MasterData.tsx    → src/modules/onboarding/components/steps/Step4MasterData.tsx
-3. Fix onboardingApi.ts       → src/modules/onboarding/services/onboardingApi.ts
-4. Jalankan: npm run build    → harus 0 error sebelum lanjut ke Phase 2
+1. Fix Step4MasterData.tsx    → src/modules/onboarding/components/steps/Step4MasterData.tsx
+2. Fix onboardingApi.ts       → src/modules/onboarding/services/onboardingApi.ts
+3. Jalankan: npm run build    → harus 0 error sebelum lanjut ke Phase 2
 ```
 
 ---

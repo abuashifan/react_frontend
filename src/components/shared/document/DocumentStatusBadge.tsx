@@ -1,25 +1,10 @@
 import { cn } from '@/lib/utils'
+import { STATUS_LABELS } from '@/lib/constants'
 import type { DocumentStatus } from '@/types/common.types'
 
 interface DocumentStatusBadgeProps {
   status: DocumentStatus
-  size?: 'sm' | 'md'
-}
-
-const STATUS_LABELS: Record<DocumentStatus, string> = {
-  draft: 'Draft',
-  submitted: 'Submitted',
-  approved: 'Approved',
-  confirmed: 'Confirmed',
-  posted: 'Posted',
-  partially_paid: 'Sebagian Dibayar',
-  paid: 'Lunas',
-  void: 'Void',
-  cancelled: 'Dibatalkan',
-  rejected: 'Ditolak',
-  delivered: 'Terkirim',
-  received: 'Diterima',
-  converted: 'Dikonversi',
+  size?: 'xs' | 'sm' | 'md'
 }
 
 const STATUS_CLASSES: Record<DocumentStatus, string> = {
@@ -39,16 +24,28 @@ const STATUS_CLASSES: Record<DocumentStatus, string> = {
 }
 
 /** Status badge for all document types. Always use this — never hardcode status styling. */
-export function DocumentStatusBadge({ status, size = 'md' }: DocumentStatusBadgeProps) {
+export function DocumentStatusBadge({ status, size = 'sm' }: DocumentStatusBadgeProps) {
+  const label = STATUS_LABELS[status] ?? status
+
   return (
     <span
+      aria-label={`Document status: ${label}`}
       className={cn(
-        'status-badge',
+        'inline-flex max-w-[120px] items-center gap-1 rounded-full font-semibold leading-none whitespace-nowrap',
         STATUS_CLASSES[status],
-        size === 'sm' && 'text-[10px] px-2 py-0',
+        size === 'xs' && 'h-5 px-1.5 text-[10px]',
+        size === 'sm' && 'h-[22px] px-2 text-[11px]',
+        size === 'md' && 'h-[26px] px-2.5 text-[12px]',
       )}
     >
-      {STATUS_LABELS[status]}
+      <span
+        className={cn(
+          'shrink-0 rounded-full bg-current',
+          size === 'xs' ? 'h-[5px] w-[5px]' : 'h-1.5 w-1.5',
+        )}
+        aria-hidden="true"
+      />
+      <span className="truncate">{label}</span>
     </span>
   )
 }

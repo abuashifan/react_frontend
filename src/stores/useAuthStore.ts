@@ -6,6 +6,7 @@ interface AuthState {
   token: string | null
   user: User | null
   permissions: string[]
+  permissionsLoaded: boolean
   companies: Company[]
   activeCompanyId: number | null
   rememberMe: boolean
@@ -29,6 +30,7 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       user: null,
       permissions: [],
+      permissionsLoaded: false,
       companies: [],
       activeCompanyId: null,
       rememberMe: false,
@@ -38,6 +40,7 @@ export const useAuthStore = create<AuthState>()(
           token,
           user,
           permissions: permissions.length > 0 ? permissions : user.permissions ?? [],
+          permissionsLoaded: permissions.length > 0 || Array.isArray(user.permissions),
           companies,
           rememberMe,
         })
@@ -48,7 +51,7 @@ export const useAuthStore = create<AuthState>()(
 
       setCompanies: (companies) => set({ companies }),
 
-      setPermissions: (permissions) => set({ permissions }),
+      setPermissions: (permissions) => set({ permissions, permissionsLoaded: true }),
 
       setActiveCompany: (companyId) => set({ activeCompanyId: companyId }),
 
@@ -58,6 +61,7 @@ export const useAuthStore = create<AuthState>()(
           token: null,
           user: null,
           permissions: [],
+          permissionsLoaded: false,
           companies: [],
           activeCompanyId: null,
           rememberMe: false,
@@ -71,6 +75,7 @@ export const useAuthStore = create<AuthState>()(
         token: state.token,
         user: state.user,
         permissions: state.permissions,
+        permissionsLoaded: state.permissionsLoaded,
         companies: state.companies,
         activeCompanyId: state.activeCompanyId,
         rememberMe: state.rememberMe,

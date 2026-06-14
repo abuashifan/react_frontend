@@ -1,5 +1,5 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
-import { ProtectedRoute, OnboardingGuard } from './guards'
+import { createBrowserRouter } from 'react-router-dom'
+import { ProtectedRoute, CompanySelectionGuard, OnboardingGuard } from './guards'
 import { LoginPage } from '@/modules/auth/pages/LoginPage'
 import { CompanyPickerPage } from '@/modules/auth/pages/CompanyPickerPage'
 import { ForbiddenPage, NotFoundPage, ServerErrorPage } from '@/modules/errors/ErrorPage'
@@ -13,9 +13,9 @@ export const router = createBrowserRouter([
   {
     path: '/select-company',
     element: (
-      <ProtectedRoute>
+      <CompanySelectionGuard>
         <CompanyPickerPage />
-      </ProtectedRoute>
+      </CompanySelectionGuard>
     ),
   },
   {
@@ -26,9 +26,8 @@ export const router = createBrowserRouter([
       </OnboardingGuard>
     ),
   },
-  { path: '/', element: <Navigate to="/dashboard" replace /> },
   {
-    path: '/dashboard',
+    path: '/',
     element: (
       <ProtectedRoute requireCompany requireOnboarding>
         <DashboardPlaceholder />

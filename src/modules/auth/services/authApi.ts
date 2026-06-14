@@ -4,18 +4,18 @@ import type { LoginPayload, LoginResponse, PermissionsResponse, User } from '@/t
 
 export const authApi = {
   login(payload: LoginPayload): Promise<ApiResponse<LoginResponse>> {
-    return http.post('/auth/login', payload)
+    return http.post<unknown, ApiResponse<LoginResponse>>('/auth/login', payload)
   },
 
   logout(): Promise<ApiResponse<null>> {
-    return http.post('/auth/logout')
+    return http.post<unknown, ApiResponse<null>>('/auth/logout')
   },
 
   me(): Promise<ApiResponse<{ user: User }>> {
-    return http.get('/auth/me')
+    return http.get<unknown, ApiResponse<{ user: User }>>('/auth/me')
   },
 
   permissions(): Promise<ApiResponse<PermissionsResponse>> {
-    return http.get('/auth/permissions')
+    return http.get<unknown, ApiResponse<PermissionsResponse>>('/auth/permissions')
   },
 }

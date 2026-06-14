@@ -1,8 +1,8 @@
-import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
-import { useUIStore } from '@/stores/useUIStore'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
+import { SystemGeneratedBadge } from '@/components/shared/document/SystemGeneratedBadge'
+import { cn } from '@/lib/utils'
 import type { BreadcrumbItem, DocumentStatus } from '@/types/common.types'
 
 interface FormLayoutProps {
@@ -50,18 +50,10 @@ export function FormLayout({
   bottomBar,
   children,
 }: FormLayoutProps) {
-  const { setFormView } = useUIStore()
-
-  // Signal AppShell that we're in form view — hides ribbon
-  useEffect(() => {
-    setFormView(true)
-    return () => setFormView(false)
-  }, [setFormView])
-
   return (
-    <div className={bottomBar ? 'pb-[56px]' : undefined}>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Document header */}
-      <div className="bg-white border-b border-[#d9e2e5] px-4 lg:px-6 py-3">
+      <div className="flex-shrink-0 bg-white border-b border-[#d9e2e5] px-4 lg:px-6 py-3">
         {breadcrumb && <Breadcrumb items={breadcrumb} />}
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-[15px] lg:text-base font-semibold text-[#24323a]">{title}</h1>
@@ -69,16 +61,19 @@ export function FormLayout({
             <span className="text-[13px] font-medium text-[#64748b]">#{documentNumber}</span>
           )}
           {status && <DocumentStatusBadge status={status} />}
-          {isSystemGenerated && (
-            <span className="inline-flex items-center gap-1 text-[11px] text-[#64748b] bg-[#f1f5f9] px-2 py-0.5 rounded-full">
-              🔧 System Generated
-            </span>
-          )}
+          {isSystemGenerated && <SystemGeneratedBadge />}
         </div>
       </div>
 
       {/* Form content */}
-      <div className="p-4 lg:p-6 max-w-[1200px]">{children}</div>
+      <div
+        className={cn(
+          'min-h-0 flex-1 overflow-y-auto p-4 lg:p-6',
+          bottomBar && 'pb-[calc(56px+var(--shell-safe-bottom)+16px)]',
+        )}
+      >
+        <div className="max-w-[1200px]">{children}</div>
+      </div>
 
       {/* Fixed bottom bar slot */}
       {bottomBar}

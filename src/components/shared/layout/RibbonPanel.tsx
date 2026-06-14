@@ -1,14 +1,9 @@
-import { useNavigate, useLocation } from 'react-router-dom'
-import { ChevronLeft } from 'lucide-react'
-import { useUIStore } from '@/stores/useUIStore'
 import { useTabStore } from '@/stores/useTabStore'
 import { usePermission } from '@/hooks/usePermission'
 import { useToast } from '@/hooks/useToast'
 import { MODULE_MAP } from '@/router/moduleConfig'
 import type { RibbonItem } from '@/router/moduleConfig'
 import { cn } from '@/lib/utils'
-
-const MAX_PRIMARY_TABS = 10
 
 function RibbonItemButton({
   item,
@@ -52,98 +47,65 @@ function RibbonItemButton({
 }
 
 export function RibbonPanel() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { activeModule, activeRibbonItem, isRibbonCollapsed, isFormView, setActiveRibbonItem, toggleRibbon } =
-    useUIStore()
-  const { openPrimaryTab, primaryTabs } = useTabStore()
-  const { can } = usePermission()
+  const {
+    activeModule,
+    activePrimaryTabId,
+    isRibbonOpen,
+    closeRibbon,
+    openPrimaryTab,
+    primaryTabs,
+  } = useTabStore()
+  const { can, permissionsLoaded } = usePermission()
   const { toast } = useToast()
+  const activePrimaryTab = primaryTabs.find((tab) => tab.id === activePrimaryTabId)
 
-  // Ribbon is hidden in form view and on dashboard
-  if (isFormView || !activeModule || activeModule === 'dashboard') return null
+  if (!activeModule) return null
 
-  const moduleConfig = MODULE_MAP[activeModule]
-  if (!moduleConfig || moduleConfig.ribbonItems.length === 0) return null
+  const moduleId = activeModule
+  const moduleConfig = MODULE_MAP[moduleId]
 
-  const visibleItems = moduleConfig.ribbonItems.filter(
-    (item) => !item.permission || can(item.permission),
+  const visibleItems = (moduleConfig?.ribbonItems ?? []).filter(
+    (item) => !permissionsLoaded || !item.permission || can(item.permission),
   )
 
   function handleItemClick(item: RibbonItem) {
-    if (primaryTabs.length >= MAX_PRIMARY_TABS) {
-      toast.warning('Maksimal 10 tab dapat dibuka sekaligus. Tutup tab yang tidak diperlukan.')
-      return
-    }
-    setActiveRibbonItem(item.id)
-    openPrimaryTab({
+    const didOpen = openPrimaryTab({
+      id: `${activeModule}-${item.id}`,
       menuKey: item.id,
       label: item.label,
-      module: activeModule!,
+      module: moduleId,
+      path: item.path,
     })
-    navigate(item.path)
+
+    if (!didOpen) {
+      toast.warning('Maksimal 10 tab dapat dibuka sekaligus. Tutup tab yang tidak diperlukan.')
+    }
+
+    closeRibbon()
   }
 
-  // Detect active ribbon item from URL if not in store
-  const activeId =
-    activeRibbonItem ??
-    visibleItems.find((item) => location.pathname.startsWith(item.path))?.id ??
-    null
+  const activeId = activePrimaryTab?.module === activeModule ? activePrimaryTab.menuKey : null
 
   return (
-    <>
-      {/* Ribbon panel */}
-      <div
-        className={cn(
-          'fixed top-[52px] left-0 right-0 z-40 bg-white border-b border-[#d9e2e5]',
-          'transition-all duration-200 ease-out',
-          isRibbonCollapsed ? 'h-0 overflow-hidden opacity-0 pointer-events-none' : 'h-[64px]',
-        )}
-      >
-        <div className="flex items-stretch h-[64px] overflow-x-auto no-scrollbar pl-1 pr-8">
-          {visibleItems.map((item) => (
-            <RibbonItemButton
-              key={item.id}
-              item={item}
-              isActive={activeId === item.id}
-              onClick={() => handleItemClick(item)}
-            />
-          ))}
-        </div>
-
-        {/* Collapse button — sticky right, fade shadow */}
-        <button
-          type="button"
-          onClick={toggleRibbon}
-          aria-label="Sembunyikan ribbon"
-          className={cn(
-            'absolute right-0 top-0 w-8 h-[64px]',
-            'flex items-center justify-center',
-            'bg-white text-[#64748b] hover:text-[#326273] transition-colors',
-            'shadow-[-8px_0_10px_rgba(255,255,255,0.95)]',
-          )}
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Floating expand button — visible only when ribbon is collapsed */}
-      {isRibbonCollapsed && (
-        <button
-          type="button"
-          onClick={toggleRibbon}
-          aria-label="Tampilkan ribbon"
-          className={cn(
-            'fixed top-[52px] right-2 z-[45]',
-            'flex items-center px-2 py-0.5',
-            'text-[12px] text-[#64748b] hover:text-[#326273] transition-colors',
-            'bg-white border border-[#d9e2e5] rounded-[5px]',
-            'shadow-[0_2px_6px_rgba(0,0,0,0.08)]',
-          )}
-        >
-          » Ribbon
-        </button>
+    <div
+      className={cn(
+        'fixed left-0 right-0 top-[52px] z-[60] h-[64px] overflow-hidden bg-white border-b border-[#d9e2e5]',
+        'transition-all duration-150 ease-out',
+        isRibbonOpen
+          ? 'translate-y-0 opacity-100 pointer-events-auto'
+          : '-translate-y-1 opacity-0 pointer-events-none',
       )}
-    </>
+    >
+      <div className="flex h-[64px] items-stretch overflow-x-auto overflow-y-hidden no-scrollbar px-1">
+        {visibleItems.map((item) => (
+          <RibbonItemButton
+            key={item.id}
+            item={item}
+            isActive={activeId === item.id}
+            onClick={() => handleItemClick(item)}
+          />
+        ))}
+      </div>
+    </div>
   )
 }

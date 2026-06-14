@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { LogOut, User, Building2 } from 'lucide-react'
 import {
-  LayoutDashboard, Database, BookMarked, Banknote,
+  Database, BookMarked, Banknote,
   ShoppingCart, ShoppingBag, Boxes, Building, FileBarChart2, Settings,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -20,14 +20,14 @@ import {
 } from '@/components/ui/tooltip'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useCompanyStore } from '@/stores/useCompanyStore'
-import { useUIStore } from '@/stores/useUIStore'
+import { useTabStore } from '@/stores/useTabStore'
+import type { ModuleKey } from '@/stores/useTabStore'
 import { authApi } from '@/modules/auth/services/authApi'
-import { MODULE_CONFIGS } from '@/router/moduleConfig'
+import { TOP_MODULES } from '@/router/moduleConfig'
 import { cn } from '@/lib/utils'
 import { APP_NAME } from '@/lib/constants'
 
 const MODULE_ICONS: Record<string, LucideIcon> = {
-  dashboard:    LayoutDashboard,
   'master-data': Database,
   accounting:   BookMarked,
   'cash-bank':  Banknote,
@@ -58,7 +58,7 @@ export function Topbar() {
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
   const { activeCompany } = useCompanyStore()
-  const { activeModule, setActiveModule, setActiveRibbonItem } = useUIStore()
+  const { activeModule, isRibbonOpen, setActiveModule, openRibbon, closeRibbon } = useTabStore()
 
   async function handleLogout() {
     try {
@@ -70,10 +70,15 @@ export function Topbar() {
     navigate('/login', { replace: true })
   }
 
-  function handleModuleClick(moduleId: string, path: string) {
-    setActiveModule(moduleId)
-    setActiveRibbonItem(null)
-    navigate(path)
+  function handleModuleClick(moduleId: string) {
+    const moduleKey = moduleId as ModuleKey
+    if (activeModule === moduleKey && isRibbonOpen) {
+      closeRibbon()
+      return
+    }
+
+    setActiveModule(moduleKey)
+    openRibbon()
   }
 
   function handleSwitchCompany() {
@@ -97,8 +102,14 @@ export function Topbar() {
 
       {/* Module tabs — icon only with tooltip */}
       <TooltipProvider delayDuration={300}>
-        <nav className="flex items-stretch flex-1 overflow-x-auto no-scrollbar" aria-label="Modul">
-          {MODULE_CONFIGS.map((mod) => {
+        <nav
+          className="flex items-stretch flex-1 overflow-x-auto no-scrollbar"
+          aria-label="Modul"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeRibbon()
+          }}
+        >
+          {TOP_MODULES.map((mod) => {
             const Icon = MODULE_ICONS[mod.id]
             const isActive = activeModule === mod.id
 
@@ -108,7 +119,10 @@ export function Topbar() {
                   <button
                     type="button"
                     aria-label={mod.label}
-                    onClick={() => handleModuleClick(mod.id, mod.path)}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      handleModuleClick(mod.id)
+                    }}
                     className={cn(
                       'flex-shrink-0 w-10 h-[52px] flex items-end justify-center pb-[10px]',
                       'transition-colors border-b-2 focus-visible:outline-none',
@@ -154,7 +168,7 @@ export function Topbar() {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="w-[180px] border border-[#d9e2e5] shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
+            className="z-[70] w-[180px] border border-[#d9e2e5] shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
           >
             <div className="px-3 py-2">
               <p className="text-[14px] font-medium text-[#24323a] truncate">{user?.name}</p>

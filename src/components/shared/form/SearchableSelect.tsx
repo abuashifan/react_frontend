@@ -1,24 +1,39 @@
-import { useState, useRef, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { Check, ChevronsUpDown, Loader2, X } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import type { SelectOption } from '@/types/common.types'
 
-interface SearchableSelectProps {
-  value: number | null
-  onChange: (value: number | null) => void
+interface SearchableSelectBaseProps {
   onSearch: (query: string) => Promise<SelectOption<number>[]>
   placeholder?: string
   disabled?: boolean
   error?: string
   label?: string
+  size?: 'sm' | 'md'
+  selectedOptions?: SelectOption<number>[]
 }
+
+interface SearchableSelectSingleProps extends SearchableSelectBaseProps {
+  multiple?: false
+  value: number | null
+  onChange: (value: number | null) => void
+}
+
+interface SearchableSelectMultipleProps extends SearchableSelectBaseProps {
+  multiple: true
+  value: number[]
+  onChange: (value: number[]) => void
+}
+
+type SearchableSelectProps = SearchableSelectSingleProps | SearchableSelectMultipleProps
 
 const MIN_CHARS = 2
 const DEBOUNCE_MS = 300
 const MAX_RESULTS = 10
 
 export function SearchableSelect({
+  multiple,
   value,
   onChange,
   onSearch,
@@ -26,27 +41,49 @@ export function SearchableSelect({
   disabled,
   error,
   label,
+  size = 'md',
+  selectedOptions = [],
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [options, setOptions] = useState<SelectOption<number>[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
-  const [selectedLabel, setSelectedLabel] = useState<string | null>(null)
-  // Track previous value to detect external resets without useEffect
-  const [prevValue, setPrevValue] = useState<number | null>(value)
+  const [localSelected, setLocalSelected] = useState<SelectOption<number>[]>(selectedOptions)
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Sync label when parent resets value to null — calling setState during render
-  // is the React-recommended pattern for getDerivedStateFromProps in function components
-  if (prevValue !== value) {
-    setPrevValue(value)
-    if (value === null) setSelectedLabel(null)
-  }
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
 
-  const displayLabel = selectedLabel
+  const selectedValues = useMemo(
+    () => (Array.isArray(value) ? value : value !== null ? [value] : []),
+    [value],
+  )
+
+  const knownSelectedOptions = useMemo(() => {
+    const byValue = new Map<number, SelectOption<number>>()
+    selectedOptions.forEach((option) => byValue.set(option.value, option))
+    localSelected.forEach((option) => byValue.set(option.value, option))
+    return Array.from(byValue.values())
+  }, [localSelected, selectedOptions])
+
+  const displayLabel = useMemo(() => {
+    if (selectedValues.length === 0) return null
+    const labels = selectedValues
+      .map((selectedValue) => knownSelectedOptions.find((opt) => opt.value === selectedValue)?.label)
+      .filter((selectedLabel): selectedLabel is string => Boolean(selectedLabel))
+
+    if (labels.length === 0) {
+      return multiple ? `${selectedValues.length} item dipilih` : placeholder
+    }
+
+    return multiple ? labels.join(', ') : labels[0]
+  }, [knownSelectedOptions, multiple, placeholder, selectedValues])
 
   const search = useCallback(
     (q: string) => {
@@ -83,17 +120,30 @@ export function SearchableSelect({
   }
 
   const handleSelect = (opt: SelectOption<number>) => {
-    setSelectedLabel(opt.label)
-    onChange(opt.value)
-    setOpen(false)
-    setQuery('')
-    setOptions([])
+    setLocalSelected((current) => {
+      const withoutCurrent = current.filter((item) => item.value !== opt.value)
+      return [...withoutCurrent, opt]
+    })
+
+    if (multiple) {
+      const exists = value.includes(opt.value)
+      onChange(exists ? value.filter((item) => item !== opt.value) : [...value, opt.value])
+    } else {
+      onChange(opt.value)
+      setOpen(false)
+      setQuery('')
+      setOptions([])
+    }
   }
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation()
-    setSelectedLabel(null)
-    onChange(null)
+    setLocalSelected([])
+    if (multiple) {
+      onChange([])
+    } else {
+      onChange(null)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -115,6 +165,7 @@ export function SearchableSelect({
 
   const showTip = query.length > 0 && query.length < MIN_CHARS
   const showEmpty = !isSearching && query.length >= MIN_CHARS && options.length === 0
+  const hasValue = selectedValues.length > 0
 
   return (
     <div className="flex flex-col gap-1">
@@ -128,10 +179,11 @@ export function SearchableSelect({
             aria-expanded={open}
             aria-haspopup="listbox"
             className={cn(
-              'flex items-center justify-between w-full h-9 px-3 text-[13px] rounded-md border bg-white',
-              'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5c9ead]',
-              error ? 'border-red-400' : 'border-[#d9e2e5] hover:border-[#5c9ead]',
-              disabled && 'opacity-50 cursor-not-allowed bg-[#f8fafc]',
+              'flex w-full items-center justify-between rounded-md border bg-white px-2.5 text-left',
+              'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5c9ead]/30',
+              size === 'sm' ? 'h-[30px] text-[12px]' : 'h-[34px] lg:h-9 text-[13px] lg:text-sm',
+              error ? 'border-red-400 focus-visible:ring-red-500/20' : 'border-[#d9e2e5] hover:border-[#5c9ead]',
+              disabled && 'cursor-not-allowed bg-[#f8fbfc] text-[#94a3b8] opacity-60',
             )}
             onKeyDown={handleKeyDown}
           >
@@ -139,7 +191,7 @@ export function SearchableSelect({
               {displayLabel ?? placeholder}
             </span>
             <div className="flex items-center gap-1 ml-2 shrink-0">
-              {value !== null && !disabled && (
+              {hasValue && !disabled && (
                 <span onClick={handleClear}>
                   <X className="w-3.5 h-3.5 text-[#94a3b8] hover:text-[#24323a] transition-colors" />
                 </span>
@@ -150,12 +202,13 @@ export function SearchableSelect({
         </PopoverTrigger>
 
         <PopoverContent
-          className="p-0 w-[var(--radix-popover-trigger-width)] shadow-md"
+          className="z-[70] w-[var(--radix-popover-trigger-width)] min-w-[200px] overflow-hidden rounded-lg border-[#d9e2e5] p-0 shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
           align="start"
           sideOffset={4}
+          collisionPadding={12}
         >
           {/* Search input */}
-          <div className="px-2 pt-2 pb-1 border-b border-[#f1f5f9]">
+          <div className="sticky top-0 z-10 border-b border-[#f1f5f9] bg-white px-2 pb-1 pt-2">
             <input
               ref={inputRef}
               value={query}
@@ -165,14 +218,14 @@ export function SearchableSelect({
               }}
               onKeyDown={handleKeyDown}
               placeholder="Ketik minimal 2 karakter..."
-              className="w-full h-7 px-2 text-[12px] border border-[#d9e2e5] rounded outline-none focus:border-[#5c9ead]"
+              className="h-7 w-full rounded border border-[#d9e2e5] px-2 text-[12px] outline-none focus:border-[#5c9ead] focus:shadow-[0_0_0_3px_rgba(92,158,173,0.12)]"
             />
           </div>
 
           {/* Results */}
-          <div role="listbox" className="max-h-[200px] overflow-y-auto py-1">
+          <div role="listbox" className="max-h-[min(280px,calc(100dvh-96px))] overflow-y-auto py-1">
             {isSearching && (
-              <div className="flex items-center gap-2 px-3 py-2 text-[12px] text-[#64748b]">
+              <div className="flex h-10 items-center justify-center gap-2 px-3 text-[13px] text-[#64748b]">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 Mencari...
               </div>
@@ -185,7 +238,9 @@ export function SearchableSelect({
             )}
 
             {showEmpty && (
-              <p className="px-3 py-2 text-[12px] text-[#64748b]">Tidak ada hasil</p>
+              <p className="flex h-10 items-center justify-center px-3 text-[13px] text-[#94a3b8]">
+                Tidak ditemukan
+              </p>
             )}
 
             {options.map((opt, idx) => (
@@ -196,18 +251,23 @@ export function SearchableSelect({
                 aria-selected={opt.value === value}
                 onClick={() => handleSelect(opt)}
                 className={cn(
-                  'flex items-center gap-2 w-full px-3 py-2 text-[12px] text-left',
-                  'hover:bg-[#f1f5f9] transition-colors',
-                  activeIndex === idx && 'bg-[#f1f5f9]',
+                  'flex h-9 w-full items-center justify-between gap-2 px-3 text-left text-[13px]',
+                  'transition-colors hover:bg-[#EFF9FB] hover:text-[#326273]',
+                  activeIndex === idx && 'bg-[#EFF9FB] text-[#326273]',
                 )}
               >
-                <Check
-                  className={cn(
-                    'w-3.5 h-3.5 shrink-0',
-                    opt.value === value ? 'text-[#5c9ead]' : 'invisible',
+                <span className="min-w-0 truncate">{opt.label}</span>
+                <span className="flex shrink-0 items-center gap-2">
+                  {opt.sublabel && (
+                    <span className="text-[11px] tabular-nums text-[#94a3b8]">{opt.sublabel}</span>
                   )}
-                />
-                <span className="truncate">{opt.label}</span>
+                  <Check
+                    className={cn(
+                      'h-3.5 w-3.5 shrink-0',
+                      selectedValues.includes(opt.value) ? 'text-[#5c9ead]' : 'invisible',
+                    )}
+                  />
+                </span>
               </button>
             ))}
           </div>

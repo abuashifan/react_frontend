@@ -1,22 +1,39 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
+export type ModuleKey =
+  | 'dashboard'
+  | 'master-data'
+  | 'accounting'
+  | 'cash-bank'
+  | 'sales'
+  | 'purchase'
+  | 'inventory'
+  | 'fixed-assets'
+  | 'reports'
+  | 'settings'
+
 export interface PrimaryTab {
   id: string
   menuKey: string
   label: string
-  module: string
+  module: ModuleKey
+  path: string
 }
 
 export interface SecondaryTab {
   id: string
   label: string
   type: 'list' | 'form'
-  pinned?: boolean
+  path: string
+  pinned: boolean
   formState?: Record<string, unknown>
 }
 
 interface TabState {
+  activeModule: ModuleKey | null
+  isRibbonOpen: boolean
+  isSidebarCollapsed: boolean
   primaryTabs: PrimaryTab[]
   activePrimaryTabId: string | null
   secondaryTabs: Record<string, SecondaryTab[]>
@@ -24,151 +41,273 @@ interface TabState {
 }
 
 interface TabActions {
-  // Returns new tab id on success, null if at max capacity
-  openPrimaryTab: (tab: Omit<PrimaryTab, 'id'>) => string | null
+  setActiveModule: (module: ModuleKey | null) => void
+  openRibbon: () => void
+  closeRibbon: () => void
+  setSidebarCollapsed: (collapsed: boolean) => void
+  toggleSidebar: () => void
+  openPrimaryTab: (tab: PrimaryTab) => boolean
   closePrimaryTab: (tabId: string) => void
-  activatePrimaryTab: (tabId: string) => void
-  openSecondaryTab: (primaryTabId: string, tab: Omit<SecondaryTab, 'id'>) => void
-  closeSecondaryTab: (primaryTabId: string, tabId: string) => void
-  activateSecondaryTab: (primaryTabId: string, tabId: string) => void
-  updateFormState: (primaryTabId: string, tabId: string, state: Record<string, unknown>) => void
-  getActiveSecondaryTab: (primaryTabId: string) => SecondaryTab | undefined
+  setActivePrimaryTab: (tabId: string) => void
+  openSecondaryTab: (primaryTabId: string, tab: SecondaryTab) => void
+  closeSecondaryTab: (primaryTabId: string, secondaryTabId: string) => void
+  setActiveSecondaryTab: (primaryTabId: string, secondaryTabId: string) => void
+  updateFormState: (
+    primaryTabId: string,
+    secondaryTabId: string,
+    formState: Record<string, unknown>,
+  ) => void
+  clearFormState: (primaryTabId: string, secondaryTabId: string) => void
+  getActivePrimaryTab: () => PrimaryTab | undefined
+  getActiveSecondaryTab: (primaryTabId?: string) => SecondaryTab | undefined
 }
 
 const MAX_PRIMARY_TABS = 10
+export const DASHBOARD_TAB: PrimaryTab = {
+  id: 'dashboard',
+  menuKey: 'dashboard',
+  label: 'Dashboard',
+  module: 'dashboard',
+  path: '/',
+}
 
-function genId() {
-  return `tab-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+function getActiveModuleForTab(tab: PrimaryTab | null): ModuleKey | null {
+  if (!tab || tab.id === DASHBOARD_TAB.id) return null
+  return tab.module
+}
+
+function createListTab(tab: PrimaryTab): SecondaryTab {
+  return {
+    id: 'list',
+    label: 'Daftar',
+    type: 'list',
+    path: tab.path,
+    pinned: true,
+  }
 }
 
 export const useTabStore = create<TabState & TabActions>()(
   persist(
     (set, get) => ({
-      primaryTabs: [],
-      activePrimaryTabId: null,
+      activeModule: null,
+      isRibbonOpen: false,
+      isSidebarCollapsed: false,
+      primaryTabs: [DASHBOARD_TAB],
+      activePrimaryTabId: DASHBOARD_TAB.id,
       secondaryTabs: {},
       activeSecondaryTabId: {},
 
-      openPrimaryTab: (tabData) => {
+      setActiveModule: (module) => set({ activeModule: module }),
+
+      openRibbon: () => set({ isRibbonOpen: true }),
+
+      closeRibbon: () => set({ isRibbonOpen: false }),
+
+      setSidebarCollapsed: (collapsed) => set({ isSidebarCollapsed: collapsed }),
+
+      toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
+
+      openPrimaryTab: (tab) => {
         const { primaryTabs } = get()
+        const existing = primaryTabs.find((primaryTab) => primaryTab.id === tab.id)
 
-        // Reuse existing tab for the same menu
-        const existing = primaryTabs.find((t) => t.menuKey === tabData.menuKey)
         if (existing) {
-          set({ activePrimaryTabId: existing.id })
-          return existing.id
+          set({
+            activeModule: getActiveModuleForTab(existing),
+            isRibbonOpen: false,
+            activePrimaryTabId: existing.id,
+          })
+          return true
         }
 
-        if (primaryTabs.length >= MAX_PRIMARY_TABS) return null
+        if (primaryTabs.length >= MAX_PRIMARY_TABS) return false
 
-        const id = genId()
-        const listTab: SecondaryTab = {
-          id: genId(),
-          label: 'Daftar',
-          type: 'list',
-          pinned: true,
-        }
+        const listTab = createListTab(tab)
 
-        set((s) => ({
-          primaryTabs: [...s.primaryTabs, { ...tabData, id }],
-          activePrimaryTabId: id,
-          secondaryTabs: { ...s.secondaryTabs, [id]: [listTab] },
-          activeSecondaryTabId: { ...s.activeSecondaryTabId, [id]: listTab.id },
+        set((state) => ({
+          activeModule: getActiveModuleForTab(tab),
+          primaryTabs: [...state.primaryTabs, tab],
+          activePrimaryTabId: tab.id,
+          secondaryTabs: {
+            ...state.secondaryTabs,
+            [tab.id]: [listTab],
+          },
+          activeSecondaryTabId: {
+            ...state.activeSecondaryTabId,
+            [tab.id]: listTab.id,
+          },
         }))
-        return id
+        return true
       },
 
       closePrimaryTab: (tabId) => {
-        set((s) => {
-          const filtered = s.primaryTabs.filter((t) => t.id !== tabId)
-          const newSecondaryTabs = { ...s.secondaryTabs }
-          delete newSecondaryTabs[tabId]
-          const newActiveSecondary = { ...s.activeSecondaryTabId }
-          delete newActiveSecondary[tabId]
+        if (tabId === DASHBOARD_TAB.id) return
 
-          const newActivePrimary =
-            s.activePrimaryTabId === tabId
-              ? (filtered[filtered.length - 1]?.id ?? null)
-              : s.activePrimaryTabId
+        set((state) => {
+          const closingIndex = state.primaryTabs.findIndex((tab) => tab.id === tabId)
+          const nextTabs = state.primaryTabs.some((tab) => tab.id === DASHBOARD_TAB.id)
+            ? state.primaryTabs.filter((tab) => tab.id !== tabId)
+            : [DASHBOARD_TAB, ...state.primaryTabs.filter((tab) => tab.id !== tabId)]
+          const nextSecondaryTabs = { ...state.secondaryTabs }
+          const nextActiveSecondary = { ...state.activeSecondaryTabId }
+          delete nextSecondaryTabs[tabId]
+          delete nextActiveSecondary[tabId]
+
+          const fallbackTab =
+            state.activePrimaryTabId === tabId
+              ? (nextTabs[Math.max(closingIndex - 1, 0)] ?? nextTabs[0] ?? null)
+              : (nextTabs.find((tab) => tab.id === state.activePrimaryTabId) ?? null)
 
           return {
-            primaryTabs: filtered,
-            activePrimaryTabId: newActivePrimary,
-            secondaryTabs: newSecondaryTabs,
-            activeSecondaryTabId: newActiveSecondary,
+            activeModule: getActiveModuleForTab(fallbackTab),
+            isRibbonOpen: false,
+            primaryTabs: nextTabs,
+            activePrimaryTabId: fallbackTab?.id ?? DASHBOARD_TAB.id,
+            secondaryTabs: nextSecondaryTabs,
+            activeSecondaryTabId: nextActiveSecondary,
           }
         })
       },
 
-      activatePrimaryTab: (tabId) => set({ activePrimaryTabId: tabId }),
+      setActivePrimaryTab: (tabId) => {
+        const tab = get().primaryTabs.find((primaryTab) => primaryTab.id === tabId)
+        if (!tab) return
+        set({
+          activeModule: getActiveModuleForTab(tab),
+          isRibbonOpen: false,
+          activePrimaryTabId: tabId,
+        })
+      },
 
-      openSecondaryTab: (primaryTabId, tabData) => {
-        const { secondaryTabs } = get()
-        const tabs = secondaryTabs[primaryTabId] ?? []
+      openSecondaryTab: (primaryTabId, tab) => {
+        const tabs = get().secondaryTabs[primaryTabId] ?? []
+        const existing = tabs.find((secondaryTab) => secondaryTab.id === tab.id)
 
-        // Reuse existing tab by label+type
-        const existing = tabs.find((t) => t.label === tabData.label && t.type === tabData.type)
         if (existing) {
-          set((s) => ({
-            activeSecondaryTabId: { ...s.activeSecondaryTabId, [primaryTabId]: existing.id },
+          set((state) => ({
+            activeSecondaryTabId: {
+              ...state.activeSecondaryTabId,
+              [primaryTabId]: existing.id,
+            },
           }))
           return
         }
 
-        const id = genId()
-        set((s) => ({
+        set((state) => ({
           secondaryTabs: {
-            ...s.secondaryTabs,
-            [primaryTabId]: [...(s.secondaryTabs[primaryTabId] ?? []), { ...tabData, id }],
+            ...state.secondaryTabs,
+            [primaryTabId]: [...(state.secondaryTabs[primaryTabId] ?? []), tab],
           },
-          activeSecondaryTabId: { ...s.activeSecondaryTabId, [primaryTabId]: id },
+          activeSecondaryTabId: {
+            ...state.activeSecondaryTabId,
+            [primaryTabId]: tab.id,
+          },
         }))
       },
 
-      closeSecondaryTab: (primaryTabId, tabId) => {
-        set((s) => {
-          const tabs = s.secondaryTabs[primaryTabId] ?? []
-          const filtered = tabs.filter((t) => t.id !== tabId)
-          const listTab = filtered.find((t) => t.pinned)
-          const wasActive = s.activeSecondaryTabId[primaryTabId] === tabId
+      closeSecondaryTab: (primaryTabId, secondaryTabId) => {
+        set((state) => {
+          const tabs = state.secondaryTabs[primaryTabId] ?? []
+          const closingTab = tabs.find((tab) => tab.id === secondaryTabId)
+          if (closingTab?.pinned) return state
+
+          const closingIndex = tabs.findIndex((tab) => tab.id === secondaryTabId)
+          const nextTabs = tabs.filter((tab) => tab.id !== secondaryTabId)
+          const fallbackId =
+            nextTabs[Math.max(closingIndex - 1, 0)]?.id ??
+            nextTabs.find((tab) => tab.pinned)?.id ??
+            'list'
 
           return {
-            secondaryTabs: { ...s.secondaryTabs, [primaryTabId]: filtered },
+            secondaryTabs: { ...state.secondaryTabs, [primaryTabId]: nextTabs },
             activeSecondaryTabId: {
-              ...s.activeSecondaryTabId,
-              [primaryTabId]: wasActive
-                ? (listTab?.id ?? filtered[0]?.id ?? '')
-                : s.activeSecondaryTabId[primaryTabId],
+              ...state.activeSecondaryTabId,
+              [primaryTabId]:
+                state.activeSecondaryTabId[primaryTabId] === secondaryTabId
+                  ? fallbackId
+                  : state.activeSecondaryTabId[primaryTabId],
             },
           }
         })
       },
 
-      activateSecondaryTab: (primaryTabId, tabId) =>
-        set((s) => ({
-          activeSecondaryTabId: { ...s.activeSecondaryTabId, [primaryTabId]: tabId },
+      setActiveSecondaryTab: (primaryTabId, secondaryTabId) =>
+        set((state) => ({
+          activeSecondaryTabId: {
+            ...state.activeSecondaryTabId,
+            [primaryTabId]: secondaryTabId,
+          },
         })),
 
-      updateFormState: (primaryTabId, tabId, formState) =>
-        set((s) => ({
+      updateFormState: (primaryTabId, secondaryTabId, formState) =>
+        set((state) => ({
           secondaryTabs: {
-            ...s.secondaryTabs,
-            [primaryTabId]: (s.secondaryTabs[primaryTabId] ?? []).map((t) =>
-              t.id === tabId ? { ...t, formState } : t,
+            ...state.secondaryTabs,
+            [primaryTabId]: (state.secondaryTabs[primaryTabId] ?? []).map((tab) =>
+              tab.id === secondaryTabId ? { ...tab, formState } : tab,
             ),
           },
         })),
 
+      clearFormState: (primaryTabId, secondaryTabId) =>
+        set((state) => ({
+          secondaryTabs: {
+            ...state.secondaryTabs,
+            [primaryTabId]: (state.secondaryTabs[primaryTabId] ?? []).map((tab) =>
+              tab.id === secondaryTabId ? { ...tab, formState: undefined } : tab,
+            ),
+          },
+        })),
+
+      getActivePrimaryTab: () => {
+        const { primaryTabs, activePrimaryTabId } = get()
+        return primaryTabs.find((tab) => tab.id === activePrimaryTabId)
+      },
+
       getActiveSecondaryTab: (primaryTabId) => {
-        const { secondaryTabs, activeSecondaryTabId } = get()
-        const tabs = secondaryTabs[primaryTabId] ?? []
-        const activeId = activeSecondaryTabId[primaryTabId]
-        return tabs.find((t) => t.id === activeId)
+        const { activePrimaryTabId, secondaryTabs, activeSecondaryTabId } = get()
+        const resolvedPrimaryId = primaryTabId ?? activePrimaryTabId
+        if (!resolvedPrimaryId) return undefined
+        const tabs = secondaryTabs[resolvedPrimaryId] ?? []
+        const activeId = activeSecondaryTabId[resolvedPrimaryId]
+        return tabs.find((tab) => tab.id === activeId)
       },
     }),
     {
       name: 'seaside-erp-tabs',
+      version: 3,
       storage: createJSONStorage(() => sessionStorage),
+      migrate: (persistedState) => {
+        if (!persistedState || typeof persistedState !== 'object') {
+          return {
+            activeModule: null,
+            isRibbonOpen: false,
+            isSidebarCollapsed: false,
+            primaryTabs: [DASHBOARD_TAB],
+            activePrimaryTabId: DASHBOARD_TAB.id,
+            secondaryTabs: {},
+            activeSecondaryTabId: {},
+          }
+        }
+
+        const state = persistedState as Partial<TabState>
+        const tabs = state.primaryTabs ?? []
+        const primaryTabs = tabs.some((tab) => tab.id === DASHBOARD_TAB.id)
+          ? tabs
+          : [DASHBOARD_TAB, ...tabs]
+        const activePrimaryTabId = state.activePrimaryTabId ?? DASHBOARD_TAB.id
+        const activeTab = primaryTabs.find((tab) => tab.id === activePrimaryTabId) ?? DASHBOARD_TAB
+
+        return {
+          ...state,
+          activeModule: getActiveModuleForTab(activeTab),
+          isRibbonOpen: false,
+          primaryTabs,
+          activePrimaryTabId: activeTab.id,
+          secondaryTabs: state.secondaryTabs ?? {},
+          activeSecondaryTabId: state.activeSecondaryTabId ?? {},
+        }
+      },
     },
   ),
 )

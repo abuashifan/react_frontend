@@ -39,6 +39,18 @@ export function ProtectedRoute({
   return <AppShell>{children}</AppShell>
 }
 
+/** Auth-only guard for company selection — requires token but stays outside AppShell */
+export function CompanySelectionGuard({ children }: { children: React.ReactNode }) {
+  const { token } = useAuthStore()
+  const location = useLocation()
+
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  return <>{children}</>
+}
+
 /** Lightweight guard for the onboarding route — requires auth but skips AppShell and onboarding check */
 export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { token, activeCompanyId } = useAuthStore()

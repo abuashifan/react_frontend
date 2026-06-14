@@ -87,7 +87,7 @@ export function CompanyPickerPage() {
       const permissionsResponse = await authApi.permissions()
       setPermissions(permissionsResponse.data.permissions)
 
-      navigate('/dashboard', { replace: true })
+      navigate('/', { replace: true })
     } catch {
       toast.error('Gagal memilih perusahaan. Coba lagi.')
       setLoadingId(null)

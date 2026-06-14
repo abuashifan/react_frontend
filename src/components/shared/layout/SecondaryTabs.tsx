@@ -12,11 +12,13 @@ export function SecondaryTabs({ top }: SecondaryTabsProps) {
     activePrimaryTabId,
     secondaryTabs,
     activeSecondaryTabId,
-    activateSecondaryTab,
+    setActiveSecondaryTab,
     closeSecondaryTab,
   } = useTabStore()
 
-  if (!activePrimaryTabId || primaryTabs.length === 0) return null
+  if (!activePrimaryTabId || activePrimaryTabId === 'dashboard' || primaryTabs.length === 0) {
+    return null
+  }
 
   const tabs = secondaryTabs[activePrimaryTabId] ?? []
   const activeId = activeSecondaryTabId[activePrimaryTabId]
@@ -32,11 +34,18 @@ export function SecondaryTabs({ top }: SecondaryTabsProps) {
           <div
             key={tab.id}
             role="tab"
+            tabIndex={0}
             aria-selected={isActive}
-            onClick={() => activateSecondaryTab(activePrimaryTabId, tab.id)}
+            onClick={() => setActiveSecondaryTab(activePrimaryTabId, tab.id)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                setActiveSecondaryTab(activePrimaryTabId, tab.id)
+              }
+            }}
             className={cn(
               'flex items-center gap-1.5 px-2.5 flex-shrink-0 cursor-pointer select-none',
-              'text-[12px] whitespace-nowrap rounded-t-[5px] transition-colors',
+              'text-[12px] whitespace-nowrap rounded-t-[5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5c9ead]',
               'border border-transparent border-b-0',
               isActive
                 ? 'bg-white text-[#326273] font-medium border-[#d9e2e5]'

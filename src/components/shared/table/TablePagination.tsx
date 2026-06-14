@@ -31,9 +31,9 @@ export function TablePagination({ pagination, totalRows, onChange, isFetching }:
   const goTo = (index: number) => onChange({ ...pagination, pageIndex: index })
 
   return (
-    <div className="flex items-center justify-between px-4 py-2.5 border-t border-[#d9e2e5] bg-white">
-      <div className="flex items-center gap-2">
-        <span className="text-[12px] text-[#64748b]">Baris per halaman</span>
+    <div className="flex h-11 flex-shrink-0 items-center justify-between gap-3 border-t border-[#d9e2e5] bg-white px-3 md:px-4">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="hidden text-[12px] text-[#64748b] sm:inline">Baris per halaman</span>
         <Select
           value={String(pageSize)}
           onValueChange={(v) =>
@@ -54,9 +54,9 @@ export function TablePagination({ pagination, totalRows, onChange, isFetching }:
         </Select>
       </div>
 
-      <div className="flex items-center gap-3">
-        <span className="text-[12px] text-[#64748b]">
-          {from}–{to} dari {totalRows.toLocaleString('id-ID')}
+      <div className="flex items-center gap-2 md:gap-3">
+        <span className="whitespace-nowrap text-[12px] text-[#64748b]">
+          Menampilkan {from}–{to} dari {totalRows.toLocaleString('id-ID')} data
         </span>
 
         <div className="flex items-center gap-1">

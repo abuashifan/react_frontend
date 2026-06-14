@@ -3,6 +3,7 @@ import { ChevronDown, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { useViewMode } from '@/hooks/useViewMode'
 
 // ─── FilterSection ───────────────────────────────────────────────────────────
 
@@ -48,8 +49,12 @@ interface FilterSidebarProps {
 }
 
 export function FilterSidebar({ children, activeCount = 0, onReset }: FilterSidebarProps) {
+  const { isDashboard, isFormView } = useViewMode()
+
+  if (isDashboard || isFormView) return null
+
   return (
-    <aside className="w-[220px] shrink-0 border-r border-[#d9e2e5] bg-white overflow-y-auto">
+    <aside className="h-full w-[220px] shrink-0 overflow-y-auto border-r border-[#d9e2e5] bg-white">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#d9e2e5]">
         <div className="flex items-center gap-2">
