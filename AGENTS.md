@@ -56,11 +56,16 @@ docs/praproduction_docs/spec-02-stack-and-dependencies.md   ← stack & state ma
 docs/praproduction_docs/spec-03-folder-structure.md         ← konvensi folder & naming
 docs/praproduction_docs/spec-23-tablet-first-layout-rules.md ← WAJIB untuk semua halaman:
                                               height model (dvh vs vh), scroll model,
-                                              compact rules viewport pendek (≤620px dvh)
-                                              
-docs/praproduction_docs/spec-25-viewport-list.md -> WAJIB data tambahan untuk
-                                              height model (dvh vs vh), scroll model,
-                                              compact rules viewport
+                                              compact rules viewport pendek (≤620px dvh),
+                                              browser UI tax, realistic test viewports,
+                                              overlay/dialog/dropdown max-height rules
+                                              (data riset dari spec-25 sudah terintegrasi di sini)
+
+docs/praproduction_docs/spec-25-viewport-list.md ← DATA SUMBER riset viewport (2026-06-14):
+                                              browser priority, UI tax per device, safe visible
+                                              estimates, test matrix lengkap.
+                                              Rules aktifnya sudah di spec-23 — baca ini hanya
+                                              jika butuh angka mentah atau konteks riset.
 
 docs/struktur_frontend.md                  ← peta file project saat ini
 ```
@@ -77,21 +82,21 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 
 | Task yang dikerjakan | Baca spec- | Baca design- | Baca audit- |
 |---|---|---|---|
-| Buat komponen UI baru | `spec-04-design-tokens.md` `spec-07-component-library.md` | Sesuai komponen (lihat §5) | — |
-| Buat halaman list/workspace | `spec-09-table-and-list.md` `spec-13-filter-and-search.md` | `design-C1-datatable.md` `design-C2-filter-sidebar.md` | — |
-| Buat form transaksi | `spec-08-form-architecture.md` `spec-10-document-workflow.md` | `design-D1-form-layout.md` `design-D2-line-items-table.md` `design-D3-bottom-action-bar.md` `design-D4-form-summary.md` | `audit-08-business-rules-and-validation-map.md` |
+| Buat komponen UI baru | `spec-04-design-tokens.md` `spec-07-component-library.md` `spec-23-tablet-first-layout-rules.md` §10 | Sesuai komponen (lihat §5) | — |
+| Buat halaman list/workspace | `spec-09-table-and-list.md` `spec-13-filter-and-search.md` `spec-23-tablet-first-layout-rules.md` §5–6,§8.2,§3.3 | `design-C1-datatable.md` `design-C2-filter-sidebar.md` | — |
+| Buat form transaksi | `spec-08-form-architecture.md` `spec-10-document-workflow.md` `spec-23-tablet-first-layout-rules.md` §5.3,§8.3 | `design-D1-form-layout.md` `design-D2-line-items-table.md` `design-D3-bottom-action-bar.md` `design-D4-form-summary.md` | `audit-08-business-rules-and-validation-map.md` |
 | Buat API call | `spec-12-api-integration.md` | — | `audit-frontend-api-contract.md` |
 | Buat permission guard | `spec-11-permission-rules.md` | — | — |
 | Buat modul baru | `spec-03-folder-structure.md` `spec-15-module-patterns.md` | — | — |
-| Buat layout/navigasi | `spec-05-layout-and-navigation.md` `spec-06-responsive-rules.md` | `design-A1-topbar-ribbon.md` | — |
+| Buat layout/navigasi | `spec-05-layout-and-navigation.md` `spec-06-responsive-rules.md` `spec-23-tablet-first-layout-rules.md` §4–6 | `design-A1-topbar-ribbon.md` | — |
 | Buat auth page | `spec-17-auth-and-company.md` `spec-23-tablet-first-layout-rules.md` §7.3–7.4 | `design-B-auth-pages.md` | — |
-| Buat halaman standalone (error, onboarding, auth) | `spec-23-tablet-first-layout-rules.md` §7.4 | — | — |
-| Buat onboarding | `spec-18-onboarding-wizard.md` | `design-F1-onboarding-wizard.md` | — |
-| Buat dashboard | `spec-20-dashboard.md` | `design-H1-dashboard.md` | — |
-| Buat laporan | `spec-16-reports-module.md` | — | `audit-07-accounting-and-reporting-audit.md` |
-| Buat error page | `spec-21-error-pages-and-print-export.md` | — | — |
-| Notification/toast | `spec-14-notification-rules.md` | `design-E2-toast.md` | — |
-| Void dialog | `spec-10-document-workflow.md` | `design-E3-void-dialog.md` | — |
+| Buat halaman standalone (error, onboarding, auth) | `spec-23-tablet-first-layout-rules.md` §7.4,§3.3 | — | — |
+| Buat onboarding | `spec-18-onboarding-wizard.md` `spec-23-tablet-first-layout-rules.md` §7.4 | `design-F1-onboarding-wizard.md` | — |
+| Buat dashboard | `spec-20-dashboard.md` `spec-23-tablet-first-layout-rules.md` §5.4,§8.1,§3.3 | `design-H1-dashboard.md` | — |
+| Buat laporan | `spec-16-reports-module.md` `spec-23-tablet-first-layout-rules.md` §8.4 | — | `audit-07-accounting-and-reporting-audit.md` |
+| Buat error page | `spec-21-error-pages-and-print-export.md` `spec-23-tablet-first-layout-rules.md` §7.4 | — | — |
+| Notification/toast | `spec-14-notification-rules.md` `spec-23-tablet-first-layout-rules.md` §10 | `design-E2-toast.md` | — |
+| Void dialog | `spec-10-document-workflow.md` `spec-23-tablet-first-layout-rules.md` §10 | `design-E3-void-dialog.md` | — |
 | Empty state | — | `design-E4-empty-state.md` | — |
 | Document locked banner | `spec-10-document-workflow.md` | `design-D5-document-locked-banner.md` | — |
 | Cek business rules sales | `spec-10-document-workflow.md` | — | `audit-04-sales-workflow-audit.md` `audit-08-business-rules-and-validation-map.md` |
