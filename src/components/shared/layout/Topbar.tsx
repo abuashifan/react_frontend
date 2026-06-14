@@ -92,12 +92,12 @@ export function Topbar() {
         </span>
       </div>
 
-      {/* Spacer — mendorong nav + profile ke kanan */}
-      <div className="flex-1" />
+      {/* Divider antara logo dan nav */}
+      <div className="w-px h-5 bg-white/20 flex-shrink-0 mx-1" />
 
       {/* Module tabs — icon only with tooltip */}
       <TooltipProvider delayDuration={300}>
-        <nav className="flex items-center" aria-label="Modul">
+        <nav className="flex items-stretch flex-1 overflow-x-auto no-scrollbar" aria-label="Modul">
           {MODULE_CONFIGS.map((mod) => {
             const Icon = MODULE_ICONS[mod.id]
             const isActive = activeModule === mod.id
@@ -110,7 +110,7 @@ export function Topbar() {
                     aria-label={mod.label}
                     onClick={() => handleModuleClick(mod.id, mod.path)}
                     className={cn(
-                      'flex-shrink-0 w-10 h-[52px] flex items-center justify-center',
+                      'flex-shrink-0 w-10 h-[52px] flex items-end justify-center pb-[10px]',
                       'transition-colors border-b-2 focus-visible:outline-none',
                       'focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-inset',
                       isActive
@@ -135,7 +135,7 @@ export function Topbar() {
       </TooltipProvider>
 
       {/* Right: company name + avatar */}
-      <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+      <div className="flex items-center gap-3 ml-2 flex-shrink-0">
         {activeCompany && (
           <span className="text-white/70 text-[13px] hidden md:block max-w-[140px] truncate">
             {activeCompany.name}
