@@ -1,23 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import { LogOut, User, Building2 } from 'lucide-react'
 import {
-  LayoutDashboard, Database, BookMarked, Banknote,
-  ShoppingCart, ShoppingBag, Boxes, Building, FileBarChart2, Settings,
-} from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useCompanyStore } from '@/stores/useCompanyStore'
 import { useUIStore } from '@/stores/useUIStore'
@@ -25,19 +14,6 @@ import { authApi } from '@/modules/auth/services/authApi'
 import { MODULE_CONFIGS } from '@/router/moduleConfig'
 import { cn } from '@/lib/utils'
 import { APP_NAME } from '@/lib/constants'
-
-const MODULE_ICONS: Record<string, LucideIcon> = {
-  dashboard:    LayoutDashboard,
-  'master-data': Database,
-  accounting:   BookMarked,
-  'cash-bank':  Banknote,
-  sales:        ShoppingCart,
-  purchase:     ShoppingBag,
-  inventory:    Boxes,
-  'fixed-assets': Building,
-  reports:      FileBarChart2,
-  settings:     Settings,
-}
 
 function UserAvatar({ name }: { name: string }) {
   const initials = name
@@ -92,44 +68,25 @@ export function Topbar() {
         </span>
       </div>
 
-      {/* Module tabs — icon only with tooltip */}
-      <TooltipProvider delayDuration={300}>
-        <nav className="flex items-center flex-1 overflow-x-auto no-scrollbar" aria-label="Modul">
-          {MODULE_CONFIGS.map((mod) => {
-            const Icon = MODULE_ICONS[mod.id]
-            const isActive = activeModule === mod.id
-
-            return (
-              <Tooltip key={mod.id}>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={mod.label}
-                    onClick={() => handleModuleClick(mod.id, mod.path)}
-                    className={cn(
-                      'flex-shrink-0 w-10 h-[52px] flex items-center justify-center',
-                      'transition-colors border-b-2 focus-visible:outline-none',
-                      'focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-inset',
-                      isActive
-                        ? 'text-white border-[#e39774] bg-white/[0.08]'
-                        : 'text-white/70 border-transparent hover:text-white hover:bg-white/[0.08]',
-                    )}
-                  >
-                    {Icon && <Icon className="w-[18px] h-[18px]" strokeWidth={isActive ? 2.5 : 1.75} />}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="bottom"
-                  sideOffset={4}
-                  className="text-[12px] px-2 py-1 bg-[#1e3a44] text-white border-none shadow-md"
-                >
-                  {mod.label}
-                </TooltipContent>
-              </Tooltip>
-            )
-          })}
-        </nav>
-      </TooltipProvider>
+      {/* Module tabs */}
+      <nav className="flex items-center flex-1 overflow-x-auto no-scrollbar" aria-label="Modul">
+        {MODULE_CONFIGS.map((mod) => (
+          <button
+            key={mod.id}
+            type="button"
+            onClick={() => handleModuleClick(mod.id, mod.path)}
+            className={cn(
+              'flex-shrink-0 px-3 text-[12px] font-medium transition-colors whitespace-nowrap',
+              'border-b-2 h-[52px] flex items-center',
+              activeModule === mod.id
+                ? 'text-white border-[#e39774]'
+                : 'text-white/70 border-transparent hover:text-white hover:bg-white/[0.08]',
+            )}
+          >
+            {mod.label}
+          </button>
+        ))}
+      </nav>
 
       {/* Right: company name + avatar */}
       <div className="flex items-center gap-3 ml-2 flex-shrink-0">
