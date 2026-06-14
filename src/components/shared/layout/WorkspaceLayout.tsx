@@ -49,7 +49,7 @@ export function WorkspaceLayout({
   const hasSidebar = !!sidebar
 
   return (
-    <div className="flex min-h-[calc(100vh-116px)]">
+    <div className="flex min-h-0">
       {/* Filter Sidebar */}
       {hasSidebar && (
         <aside

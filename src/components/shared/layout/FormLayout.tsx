@@ -59,7 +59,7 @@ export function FormLayout({
   }, [setFormView])
 
   return (
-    <div className={bottomBar ? 'pb-[60px]' : undefined}>
+    <div className={bottomBar ? 'pb-[56px]' : undefined}>
       {/* Document header */}
       <div className="bg-white border-b border-[#d9e2e5] px-4 lg:px-6 py-3">
         {breadcrumb && <Breadcrumb items={breadcrumb} />}

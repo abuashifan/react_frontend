@@ -11,7 +11,7 @@ export function FixedBottomBar({ left, children, className }: FixedBottomBarProp
   return (
     <div
       className={cn(
-        'fixed bottom-0 left-0 right-0 z-40 h-[60px]',
+        'fixed bottom-0 left-0 right-0 z-40 h-[56px]',
         'bg-white border-t border-[#d9e2e5]',
         'flex items-center justify-between px-4 lg:px-6',
         className,
