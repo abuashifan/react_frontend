@@ -343,6 +343,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____vendorPaymentSchema.ts
 | | | |____services/
 | | | | |____apApi.ts
+| | | | |____fixedAssetCategoryApi.ts
 | | | | |____goodsReceiptApi.ts
 | | | | |____purchaseOrderApi.ts
 | | | | |____purchaseRequestApi.ts

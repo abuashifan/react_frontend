@@ -19,11 +19,15 @@ import { useVendorBill, useVendorBillMutations } from '../hooks/useVendorBillLis
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
+import { fixedAssetCategoryApi } from '../services/fixedAssetCategoryApi'
 import { vendorBillSchema, type VendorBillFormValues } from '../schemas/vendorBillSchema'
 import type { DocumentStatus } from '@/types/common.types'
+import type { VendorBillLineClassification } from '../types/vendorBill.types'
 
 interface EditableLine {
   product_id: number | null
+  line_classification: VendorBillLineClassification
+  fixed_asset_category_id: number | null
   description: string
   quantity: number
   unit_price: number
@@ -31,7 +35,7 @@ interface EditableLine {
   tax_percent: number
 }
 
-const DEFAULT_LINE: EditableLine = { product_id: null, description: '', quantity: 1, unit_price: 0, discount_percent: 0, tax_percent: 0 }
+const DEFAULT_LINE: EditableLine = { product_id: null, line_classification: 'inventory', fixed_asset_category_id: null, description: '', quantity: 1, unit_price: 0, discount_percent: 0, tax_percent: 0 }
 
 function lineBase(l: EditableLine) {
   return l.quantity * l.unit_price * (1 - l.discount_percent / 100)
@@ -67,18 +71,28 @@ export default function VendorBillFormPage() {
   useEffect(() => {
     if (bill) {
       reset({ vendor_id: bill.vendor_id, date: bill.date, due_date: bill.due_date ?? '', payment_term_id: bill.payment_term_id, notes: bill.notes ?? '' })
-      setLines(bill.lines.map((l) => ({ product_id: l.product_id, description: l.description, quantity: l.quantity, unit_price: l.unit_price, discount_percent: l.discount_percent, tax_percent: l.tax_percent })))
+      setLines(bill.lines.map((l) => ({ product_id: l.product_id, line_classification: l.line_classification ?? 'inventory', fixed_asset_category_id: l.fixed_asset_category_id ?? null, description: l.description, quantity: l.quantity, unit_price: l.unit_price, discount_percent: l.discount_percent, tax_percent: l.tax_percent })))
     }
   }, [bill, reset])
 
   const handleSave = handleSubmit(async (values) => {
+    const linePayloads = lines.map((l) => ({
+      product_id: l.line_classification === 'fixed_asset' ? null : l.product_id,
+      line_classification: l.line_classification,
+      fixed_asset_category_id: l.line_classification === 'fixed_asset' ? l.fixed_asset_category_id : null,
+      description: l.description,
+      quantity: l.quantity,
+      unit_price: l.unit_price,
+      discount_percent: l.discount_percent,
+      tax_percent: l.tax_percent,
+    }))
     try {
       if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines })
+        const res = await create.mutateAsync({ ...values, lines: linePayloads })
         toast.success('Tagihan vendor berhasil dibuat.')
         navigate(`/purchase/bills/${res.data.id}`)
       } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
+        await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads } })
         toast.success('Tagihan vendor berhasil diperbarui.')
       }
     } catch { toast.error('Gagal menyimpan tagihan vendor.') }
@@ -109,8 +123,50 @@ export default function VendorBillFormPage() {
   }
 
   const columns: LineItemColumn<EditableLine>[] = [
-    { id: 'product', header: 'Produk', width: 180, render: ({ item, isReadOnly, onUpdate }) => <SearchableSelect value={item.product_id} onChange={(v) => onUpdate('product_id', v)} onSearch={produkApi.search} placeholder="Pilih produk..." disabled={isReadOnly} size="sm" /> },
-    { id: 'description', header: 'Deskripsi', width: 160, render: ({ item, isReadOnly, onUpdate }) => <Input value={item.description} onChange={(e) => onUpdate('description', e.target.value)} disabled={isReadOnly} placeholder="Deskripsi..." className="h-8 text-[12px]" /> },
+    {
+      id: 'line_classification', header: 'Tipe', width: 110,
+      render: ({ item, isReadOnly, onUpdate }) => (
+        <div className="flex gap-1">
+          <button
+            type="button"
+            disabled={isReadOnly}
+            onClick={() => {
+              onUpdate('line_classification', 'inventory')
+              onUpdate('fixed_asset_category_id', null)
+            }}
+            className={`h-7 rounded px-2 text-[11px] font-medium transition-colors ${item.line_classification === 'inventory' ? 'bg-[#5c9ead] text-white' : 'bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]'} disabled:cursor-not-allowed disabled:opacity-50`}
+          >
+            Inventori
+          </button>
+          <button
+            type="button"
+            disabled={isReadOnly}
+            onClick={() => onUpdate('line_classification', 'fixed_asset')}
+            className={`h-7 rounded px-2 text-[11px] font-medium transition-colors ${item.line_classification === 'fixed_asset' ? 'bg-[#f59e0b] text-white' : 'bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]'} disabled:cursor-not-allowed disabled:opacity-50`}
+          >
+            Aset
+          </button>
+        </div>
+      ),
+    },
+    {
+      id: 'product', header: 'Produk / Kategori Aset', width: 200,
+      render: ({ item, isReadOnly, onUpdate }) =>
+        item.line_classification === 'fixed_asset' ? (
+          <SearchableSelect
+            value={item.fixed_asset_category_id}
+            onChange={(v) => onUpdate('fixed_asset_category_id', v)}
+            onSearch={fixedAssetCategoryApi.search}
+            placeholder="Pilih kategori aset..."
+            disabled={isReadOnly}
+            size="sm"
+            selectedOptions={[]}
+          />
+        ) : (
+          <SearchableSelect value={item.product_id} onChange={(v) => onUpdate('product_id', v)} onSearch={produkApi.search} placeholder="Pilih produk..." disabled={isReadOnly} size="sm" />
+        ),
+    },
+    { id: 'description', header: 'Deskripsi', width: 150, render: ({ item, isReadOnly, onUpdate }) => <Input value={item.description} onChange={(e) => onUpdate('description', e.target.value)} disabled={isReadOnly} placeholder="Deskripsi..." className="h-8 text-[12px]" /> },
     { id: 'quantity', header: 'Qty', width: 70, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <Input type="number" value={item.quantity} onChange={(e) => onUpdate('quantity', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} /> },
     { id: 'unit_price', header: 'Harga', width: 110, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <Input type="number" value={item.unit_price} onChange={(e) => onUpdate('unit_price', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} /> },
     { id: 'discount', header: 'Dis%', width: 65, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <Input type="number" value={item.discount_percent} onChange={(e) => onUpdate('discount_percent', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} max={100} /> },

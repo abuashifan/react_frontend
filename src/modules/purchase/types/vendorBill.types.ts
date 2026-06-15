@@ -1,9 +1,14 @@
 export type VendorBillStatus = 'draft' | 'approved' | 'posted' | 'partially_paid' | 'paid' | 'void'
 
+export type VendorBillLineClassification = 'inventory' | 'fixed_asset'
+
 export interface VendorBillLine {
   id: number
   product_id: number | null
   product?: { id: number; code: string; name: string } | null
+  line_classification: VendorBillLineClassification
+  fixed_asset_category_id: number | null
+  fixed_asset_category?: { id: number; name: string; code: string } | null
   description: string
   quantity: number
   unit_price: number
@@ -53,6 +58,8 @@ export interface VendorBillListParams {
 
 export interface VendorBillLinePayload {
   product_id?: number | null
+  line_classification?: VendorBillLineClassification
+  fixed_asset_category_id?: number | null
   description: string
   quantity: number
   unit_price: number
