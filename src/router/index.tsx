@@ -7,6 +7,7 @@ import { NetworkErrorPage } from '@/modules/errors/NetworkErrorPage'
 import { MaintenancePage } from '@/modules/errors/MaintenancePage'
 import { OnboardingPage } from '@/modules/onboarding/pages/OnboardingPage'
 import { DashboardPlaceholder } from './placeholders'
+import { masterDataRoutes } from '@/modules/master-data/routes'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  ...masterDataRoutes,
   { path: '/403', element: <ForbiddenPage /> },
   { path: '/500', element: <ServerErrorPage /> },
   { path: '/network-error', element: <NetworkErrorPage /> },
