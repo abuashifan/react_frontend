@@ -30,6 +30,7 @@ const STATUS_CLASSES: Record<DocumentStatus, string> = {
   received: 'status-received',
   converted: 'status-converted',
   closed: 'status-cancelled',
+  partially_billed: 'status-partially-paid',
 }
 
 /** Status badge for all document types. Always use this — never hardcode status styling. */

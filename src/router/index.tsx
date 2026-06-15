@@ -9,6 +9,7 @@ import { OnboardingPage } from '@/modules/onboarding/pages/OnboardingPage'
 import { DashboardPlaceholder } from './placeholders'
 import { masterDataRoutes } from '@/modules/master-data/routes'
 import { salesRoutes } from '@/modules/sales/routes'
+import { purchaseRoutes } from '@/modules/purchase/routes'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
   },
   ...masterDataRoutes,
   ...salesRoutes,
+  ...purchaseRoutes,
   { path: '/403', element: <ForbiddenPage /> },
   { path: '/500', element: <ServerErrorPage /> },
   { path: '/network-error', element: <NetworkErrorPage /> },

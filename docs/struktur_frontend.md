@@ -303,12 +303,62 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____services/
 | | | | |____onboardingApi.ts
 | | |____purchase/
-| | | |____components/
 | | | |____hooks/
+| | | | |____useApData.ts
+| | | | |____useGoodsReceiptList.ts
+| | | | |____usePurchaseOrderList.ts
+| | | | |____usePurchaseRequestList.ts
+| | | | |____usePurchaseReturnList.ts
+| | | | |____useVendorBillList.ts
+| | | | |____useVendorDepositList.ts
+| | | | |____useVendorPaymentList.ts
 | | | |____pages/
+| | | | |____ApAgingPage.tsx
+| | | | |____ApReconciliationPage.tsx
+| | | | |____ApSummaryPage.tsx
+| | | | |____BillLedgerPage.tsx
+| | | | |____GoodsReceiptFormPage.tsx
+| | | | |____GoodsReceiptListPage.tsx
+| | | | |____PurchaseOrderFormPage.tsx
+| | | | |____PurchaseOrderListPage.tsx
+| | | | |____PurchaseRequestFormPage.tsx
+| | | | |____PurchaseRequestListPage.tsx
+| | | | |____PurchaseReturnFormPage.tsx
+| | | | |____PurchaseReturnListPage.tsx
+| | | | |____VendorBillFormPage.tsx
+| | | | |____VendorBillListPage.tsx
+| | | | |____VendorDepositFormPage.tsx
+| | | | |____VendorDepositListPage.tsx
+| | | | |____VendorLedgerPage.tsx
+| | | | |____VendorPaymentFormPage.tsx
+| | | | |____VendorPaymentListPage.tsx
+| | | |____routes.tsx
 | | | |____schemas/
+| | | | |____goodsReceiptSchema.ts
+| | | | |____purchaseOrderSchema.ts
+| | | | |____purchaseRequestSchema.ts
+| | | | |____purchaseReturnSchema.ts
+| | | | |____vendorBillSchema.ts
+| | | | |____vendorDepositSchema.ts
+| | | | |____vendorPaymentSchema.ts
 | | | |____services/
+| | | | |____apApi.ts
+| | | | |____goodsReceiptApi.ts
+| | | | |____purchaseOrderApi.ts
+| | | | |____purchaseRequestApi.ts
+| | | | |____purchaseReturnApi.ts
+| | | | |____vendorBillApi.ts
+| | | | |____vendorDepositApi.ts
+| | | | |____vendorPaymentApi.ts
 | | | |____types/
+| | | | |____ap.types.ts
+| | | | |____goodsReceipt.types.ts
+| | | | |____purchaseOrder.types.ts
+| | | | |____purchaseRequest.types.ts
+| | | | |____purchaseReturn.types.ts
+| | | | |____vendorBill.types.ts
+| | | | |____vendorDeposit.types.ts
+| | | | |____vendorPayment.types.ts
 | | |____reports/
 | | | |____components/
 | | | |____hooks/

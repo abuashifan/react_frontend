@@ -45,4 +45,5 @@ export const STATUS_LABELS = {
   received: 'Diterima',
   converted: 'Dikonversi',
   closed: 'Ditutup',
+  partially_billed: 'Sebagian Ditagih',
 } as const

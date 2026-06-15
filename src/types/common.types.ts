@@ -21,6 +21,7 @@ export type DocumentStatus =
   | 'received'
   | 'converted'
   | 'closed'
+  | 'partially_billed'
 
 export type SortDirection = 'asc' | 'desc'
 
