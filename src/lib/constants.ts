@@ -46,4 +46,6 @@ export const STATUS_LABELS = {
   converted: 'Dikonversi',
   closed: 'Ditutup',
   partially_billed: 'Sebagian Ditagih',
+  counted: 'Selesai Dihitung',
+  finalized: 'Difinalisasi',
 } as const
