@@ -190,3 +190,47 @@
     display: none;
   }
 }
+
+@media print {
+  /* Hide all shell chrome when printing — only report content shows */
+  header,
+  nav,
+  aside,
+  [data-topbar],
+  [data-ribbon],
+  [data-sidebar],
+  [data-action-bar],
+  [data-filter-sidebar],
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+    font-size: 11pt;
+  }
+
+  main,
+  [data-print-content] {
+    display: block !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  th, td {
+    border: 1px solid #ddd;
+    padding: 4px 8px;
+  }
+
+  @page {
+    margin: 1.5cm;
+    size: A4;
+  }
+}

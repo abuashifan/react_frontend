@@ -11,6 +11,9 @@ import { masterDataRoutes } from '@/modules/master-data/routes'
 import { salesRoutes } from '@/modules/sales/routes'
 import { purchaseRoutes } from '@/modules/purchase/routes'
 import { inventoryRoutes } from '@/modules/inventory/routes'
+import { accountingRoutes } from '@/modules/accounting/routes'
+import { cashBankRoutes } from '@/modules/cash-bank/routes'
+import { reportsRoutes } from '@/modules/reports/routes'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -42,6 +45,9 @@ export const router = createBrowserRouter([
   ...salesRoutes,
   ...purchaseRoutes,
   ...inventoryRoutes,
+  ...accountingRoutes,
+  ...cashBankRoutes,
+  ...reportsRoutes,
   { path: '/403', element: <ForbiddenPage /> },
   { path: '/500', element: <ServerErrorPage /> },
   { path: '/network-error', element: <NetworkErrorPage /> },

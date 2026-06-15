@@ -197,12 +197,24 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | |____main.tsx
 | |____modules/
 | | |____accounting/
-| | | |____components/
 | | | |____hooks/
+| | | | |____useFiscalYear.ts
+| | | | |____useJournalEntryList.ts
 | | | |____pages/
+| | | | |____FiscalYearPage.tsx
+| | | | |____JournalFormPage.tsx
+| | | | |____JournalListPage.tsx
+| | | | |____PeriodLockPage.tsx
+| | | |____routes.tsx
 | | | |____schemas/
+| | | | |____journalEntrySchema.ts
 | | | |____services/
+| | | | |____fiscalYearApi.ts
+| | | | |____journalEntryApi.ts
+| | | | |____periodLockApi.ts
 | | | |____types/
+| | | | |____fiscalYear.types.ts
+| | | | |____journalEntry.types.ts
 | | |____auth/
 | | | |____pages/
 | | | | |____CompanyPickerPage.tsx
@@ -213,12 +225,24 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____authApi.ts
 | | | | |____companyApi.ts
 | | |____cash-bank/
-| | | |____components/
 | | | |____hooks/
+| | | | |____useCashBankList.ts
 | | | |____pages/
+| | | | |____BankReconciliationFormPage.tsx
+| | | | |____BankReconciliationListPage.tsx
+| | | | |____BankTransferFormPage.tsx
+| | | | |____BankTransferListPage.tsx
+| | | | |____CashPaymentFormPage.tsx
+| | | | |____CashPaymentListPage.tsx
+| | | | |____CashReceiptFormPage.tsx
+| | | | |____CashReceiptListPage.tsx
+| | | |____routes.tsx
 | | | |____schemas/
+| | | | |____cashBankSchemas.ts
 | | | |____services/
+| | | | |____cashBankApi.ts
 | | | |____types/
+| | | | |____cashBank.types.ts
 | | |____errors/
 | | | |____ErrorPage.tsx
 | | | |____MaintenancePage.tsx
@@ -226,10 +250,34 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____inventory/
 | | | |____components/
 | | | |____hooks/
+| | | | |____useStockAdjustmentList.ts
+| | | | |____useStockBalanceList.ts
+| | | | |____useStockMovementList.ts
+| | | | |____useStockOpnameList.ts
 | | | |____pages/
+| | | | |____StockAdjustmentFormPage.tsx
+| | | | |____StockAdjustmentListPage.tsx
+| | | | |____StockBalanceDetailPage.tsx
+| | | | |____StockBalanceListPage.tsx
+| | | | |____StockMovementFormPage.tsx
+| | | | |____StockMovementListPage.tsx
+| | | | |____StockOpnameFormPage.tsx
+| | | | |____StockOpnameListPage.tsx
+| | | |____routes.tsx
 | | | |____schemas/
+| | | | |____stockAdjustmentSchema.ts
+| | | | |____stockMovementSchema.ts
+| | | | |____stockOpnameSchema.ts
 | | | |____services/
+| | | | |____stockAdjustmentApi.ts
+| | | | |____stockBalanceApi.ts
+| | | | |____stockMovementApi.ts
+| | | | |____stockOpnameApi.ts
 | | | |____types/
+| | | | |____stockAdjustment.types.ts
+| | | | |____stockBalance.types.ts
+| | | | |____stockMovement.types.ts
+| | | | |____stockOpname.types.ts
 | | |____master-data/
 | | | |____hooks/
 | | | | |____useAccountMappings.ts
@@ -362,11 +410,29 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____vendorPayment.types.ts
 | | |____reports/
 | | | |____components/
+| | | | |____ReportCompactBar.tsx
+| | | | |____ReportFilterParameter.tsx
 | | | |____hooks/
+| | | | |____useReportExport.ts
 | | | |____pages/
-| | | |____schemas/
+| | | | |____ApAgingReportPage.tsx
+| | | | |____ArAgingReportPage.tsx
+| | | | |____BalanceSheetPage.tsx
+| | | | |____CashFlowPage.tsx
+| | | | |____FinancialSummaryPage.tsx
+| | | | |____GeneralLedgerPage.tsx
+| | | | |____InventoryAnalysisPage.tsx
+| | | | |____ProfitLossPage.tsx
+| | | | |____ReconciliationPage.tsx
+| | | | |____ReportIndexPage.tsx
+| | | | |____StockReportPage.tsx
+| | | | |____TransactionListPage.tsx
+| | | | |____TrialBalancePage.tsx
+| | | |____routes.tsx
 | | | |____services/
+| | | | |____reportsApi.ts
 | | | |____types/
+| | | | |____reports.types.ts
 | | |____sales/
 | | | |____components/
 | | | | |____SourceDocumentPicker.tsx
