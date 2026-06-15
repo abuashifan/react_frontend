@@ -2,6 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useCompanyStore } from '@/stores/useCompanyStore'
 import { AppShell } from '@/components/shared/layout/AppShell'
+import { hasPermission } from '@/hooks/usePermission'
 
 interface ProtectedRouteProps {
   permission?: string
@@ -32,7 +33,7 @@ export function ProtectedRoute({
     return <Navigate to="/onboarding" replace />
   }
 
-  if (permission && !permissions.includes(permission)) {
+  if (permission && !hasPermission(permissions, permission)) {
     return <Navigate to="/403" replace />
   }
 
