@@ -159,6 +159,26 @@
   .status-converted {
     @apply bg-[#F3E8FF] text-[#6B21A8];
   }
+
+  .status-sent {
+    @apply bg-[#EFF6FF] text-[#1D4ED8];
+  }
+
+  .status-accepted {
+    @apply bg-[#D1FAE5] text-[#065F46];
+  }
+
+  .status-issued {
+    @apply bg-[#EFF6FF] text-[#1D4ED8];
+  }
+
+  .status-ready {
+    @apply bg-[#FEF3C7] text-[#92400E];
+  }
+
+  .status-shipped {
+    @apply bg-[#DBEAFE] text-[#1E40AF];
+  }
 }
 
 @layer utilities {

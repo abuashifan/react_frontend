@@ -10,17 +10,26 @@ interface DocumentStatusBadgeProps {
 const STATUS_CLASSES: Record<DocumentStatus, string> = {
   draft: 'status-draft',
   submitted: 'status-submitted',
+  sent: 'status-sent',
   approved: 'status-approved',
+  accepted: 'status-accepted',
+  issued: 'status-issued',
   confirmed: 'status-confirmed',
+  ready: 'status-ready',
+  shipped: 'status-shipped',
   posted: 'status-posted',
   partially_paid: 'status-partially-paid',
   paid: 'status-paid',
+  partially_allocated: 'status-partially-paid',
+  fully_allocated: 'status-paid',
+  refunded: 'status-void',
   void: 'status-void',
   cancelled: 'status-cancelled',
   rejected: 'status-rejected',
   delivered: 'status-delivered',
   received: 'status-received',
   converted: 'status-converted',
+  closed: 'status-cancelled',
 }
 
 /** Status badge for all document types. Always use this — never hardcode status styling. */
