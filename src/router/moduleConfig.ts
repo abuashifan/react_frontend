@@ -37,7 +37,7 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     label: 'Master Data',
     path: '/master-data',
     ribbonItems: [
-      { id: 'chart-of-accounts', label: 'Akun (COA)', icon: Landmark, path: '/master-data/chart-of-accounts', permission: 'master-data.view' },
+      { id: 'chart-of-accounts', label: 'Akun (COA)', icon: Landmark, path: '/master-data/coa', permission: 'master-data.view' },
       { id: 'contacts', label: 'Kontak', icon: Users, path: '/master-data/contacts', permission: 'master-data.view' },
       { id: 'products', label: 'Produk', icon: Package, path: '/master-data/products', permission: 'master-data.view' },
       { id: 'units', label: 'Satuan', icon: Ruler, path: '/master-data/units', permission: 'master-data.view' },
@@ -65,8 +65,8 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     ribbonItems: [
       { id: 'cash-receipts', label: 'Penerimaan Kas', icon: TrendingUp, path: '/cash-bank/cash-receipts', permission: 'cash_bank.view' },
       { id: 'cash-payments', label: 'Pengeluaran Kas', icon: TrendingDown, path: '/cash-bank/cash-payments', permission: 'cash_bank.view' },
-      { id: 'transfers', label: 'Transfer', icon: ArrowLeftRight, path: '/cash-bank/transfers', permission: 'cash_bank.view' },
-      { id: 'reconciliations', label: 'Rekonsiliasi', icon: CheckSquare, path: '/cash-bank/reconciliations', permission: 'cash_bank.view' },
+      { id: 'transfers', label: 'Transfer', icon: ArrowLeftRight, path: '/cash-bank/bank-transfers', permission: 'cash_bank.view' },
+      { id: 'reconciliations', label: 'Rekonsiliasi', icon: CheckSquare, path: '/cash-bank/bank-reconciliations', permission: 'cash_bank.view' },
     ],
   },
   {

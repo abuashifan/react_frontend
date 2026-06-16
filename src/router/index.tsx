@@ -1,4 +1,4 @@
-import { createMemoryRouter } from 'react-router-dom'
+import { createMemoryRouter, Navigate } from 'react-router-dom'
 import { ProtectedRoute, CompanySelectionGuard, OnboardingGuard } from './guards'
 import { LoginPage } from '@/modules/auth/pages/LoginPage'
 import { CompanyPickerPage } from '@/modules/auth/pages/CompanyPickerPage'
@@ -50,7 +50,9 @@ export const router = createMemoryRouter([
   },
   ...masterDataRoutes,
   ...salesRoutes,
+  { path: '/sales/ar', element: <Navigate to="/sales/ar/summary" replace /> },
   ...purchaseRoutes,
+  { path: '/purchase/ap', element: <Navigate to="/purchase/ap/summary" replace /> },
   ...inventoryRoutes,
   ...accountingRoutes,
   ...cashBankRoutes,

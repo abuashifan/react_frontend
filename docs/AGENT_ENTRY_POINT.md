@@ -57,6 +57,28 @@ Jika dokumen lama bertentangan dengan Audit-11, source code aktual, atau Laravel
 
 ---
 
+## 2b. Status Phase 1–7 (Sudah Done)
+
+Phase berikut sudah selesai diimplementasi dan build pass. Tidak perlu diimplementasi ulang.
+
+| Phase | Cakupan | Status |
+|---|---|---|
+| Phase 1A | Project setup, Vite, TypeScript, routing dasar | ✅ Done |
+| Phase 1B | Auth pages (Login, ForgotPassword) | ✅ Done |
+| Phase 1C | AppShell, Topbar, RibbonPanel, PrimaryTabs, SecondaryTabs | ✅ Done |
+| Phase 1D | Shared components: DataTable, SearchableSelect, FormLayout, WorkspaceLayout, dll. | ✅ Done |
+| Phase 1E | Error pages, OnboardingWizard, SessionWarningDialog | ✅ Done |
+| Phase 2 | Master Data: COA, Kontak, Produk, Satuan, Gudang, PaymentTerms, Departemen, Proyek, AccountMapping | ✅ Done |
+| Phase 3 | Sales: Quotation, Order, Delivery, Proforma, Invoice, Receipt, Deposit, Return, AR Summary | ✅ Done |
+| Phase 4 | Purchase: Request, Order, GoodsReceipt, VendorBill, Payment, Deposit, Return, AP Summary | ✅ Done |
+| Phase 5 | Inventory: StockBalance, Movement, Adjustment, StockOpname | ✅ Done |
+| Phase 6 | Accounting & Reports: Journal, FiscalYear, PeriodLock, CashBank, semua halaman report | ✅ Done |
+| Phase 7 | Dashboard, Settings (Company, Transaction, AccountMapping, Users, Roles, Preferences) | ✅ Done |
+
+Catatan: Phase 1–7 done secara implementasi, **tetapi** banyak yang masih punya contract mismatch (DTO, permission key, HTTP method) — ini yang dicatat di A11-01 s/d A11-18. Done = halaman ada dan build pass, bukan berarti sudah 100% sesuai backend.
+
+---
+
 ## 3. Urutan Baca Minimum Setiap Sesi
 
 ```text
