@@ -16,6 +16,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 |____CLAUDE.md
 |____README.md
 |____components.json
+|____praproductions-docs/
+| |____frontend-backend-gap-audit-2026-06-15.md
 |____docs/
 | |____AGENT_ENTRY_POINT.md
 | |____audit-design-spec-2026-06-14.md
@@ -243,6 +245,21 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____cashBankApi.ts
 | | | |____types/
 | | | | |____cashBank.types.ts
+| | |____dashboard/
+| | | |____components/
+| | | | |____CashFlowChart.tsx
+| | | | |____KpiCards.tsx
+| | | | |____PendingDocumentAlerts.tsx
+| | | | |____RecentActivity.tsx
+| | | | |____SalesPurchaseChart.tsx
+| | | |____hooks/
+| | | | |____useDashboardData.ts
+| | | |____pages/
+| | | | |____DashboardPage.tsx
+| | | |____services/
+| | | | |____dashboardApi.ts
+| | | |____types/
+| | | | |____dashboard.types.ts
 | | |____errors/
 | | | |____ErrorPage.tsx
 | | | |____MaintenancePage.tsx
@@ -499,6 +516,22 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____salesOrder.types.ts
 | | | | |____salesReceipt.types.ts
 | | | | |____salesReturn.types.ts
+| | |____settings/
+| | | |____hooks/
+| | | | |____useSettings.ts
+| | | |____pages/
+| | | | |____AccountingPeriodPage.tsx
+| | | | |____AccountMappingSettingsPage.tsx
+| | | | |____CompanySettingsPage.tsx
+| | | | |____MyPreferencesPage.tsx
+| | | | |____RolesPage.tsx
+| | | | |____TransactionSettingsPage.tsx
+| | | | |____UsersPage.tsx
+| | | |____routes.tsx
+| | | |____services/
+| | | | |____settingsApi.ts
+| | | |____types/
+| | | | |____settings.types.ts
 | |____router/
 | | |____guards.tsx
 | | |____index.tsx

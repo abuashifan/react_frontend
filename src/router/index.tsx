@@ -6,7 +6,7 @@ import { ForbiddenPage, NotFoundPage, ServerErrorPage } from '@/modules/errors/E
 import { NetworkErrorPage } from '@/modules/errors/NetworkErrorPage'
 import { MaintenancePage } from '@/modules/errors/MaintenancePage'
 import { OnboardingPage } from '@/modules/onboarding/pages/OnboardingPage'
-import { DashboardPlaceholder } from './placeholders'
+import DashboardPage from '@/modules/dashboard/pages/DashboardPage'
 import { masterDataRoutes } from '@/modules/master-data/routes'
 import { salesRoutes } from '@/modules/sales/routes'
 import { purchaseRoutes } from '@/modules/purchase/routes'
@@ -14,6 +14,7 @@ import { inventoryRoutes } from '@/modules/inventory/routes'
 import { accountingRoutes } from '@/modules/accounting/routes'
 import { cashBankRoutes } from '@/modules/cash-bank/routes'
 import { reportsRoutes } from '@/modules/reports/routes'
+import { settingsRoutes } from '@/modules/settings/routes'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -37,7 +38,7 @@ export const router = createBrowserRouter([
     path: '/',
     element: (
       <ProtectedRoute requireCompany requireOnboarding>
-        <DashboardPlaceholder />
+        <DashboardPage />
       </ProtectedRoute>
     ),
   },
@@ -48,6 +49,7 @@ export const router = createBrowserRouter([
   ...accountingRoutes,
   ...cashBankRoutes,
   ...reportsRoutes,
+  ...settingsRoutes,
   { path: '/403', element: <ForbiddenPage /> },
   { path: '/500', element: <ServerErrorPage /> },
   { path: '/network-error', element: <NetworkErrorPage /> },

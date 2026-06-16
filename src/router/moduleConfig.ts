@@ -6,7 +6,7 @@ import {
   ClipboardCheck, Calendar, CalendarDays, TrendingUp, TrendingDown,
   CheckSquare, BookMarked, Scale, LayoutGrid, Droplets, Clock,
   Landmark, Users, Ruler, Warehouse, CalendarClock, Building2,
-  FolderKanban, Map,
+  FolderKanban, Map, Building, RefreshCcw, UserCog, ShieldCheck, Star,
 } from 'lucide-react'
 
 export interface RibbonItem {
@@ -133,7 +133,15 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     id: 'settings',
     label: 'Pengaturan',
     path: '/settings',
-    ribbonItems: [],
+    ribbonItems: [
+      { id: 'company', label: 'Perusahaan', icon: Building, path: '/settings/company', permission: 'settings.view' },
+      { id: 'transactions', label: 'Transaksi', icon: RefreshCcw, path: '/settings/transactions', permission: 'settings.view' },
+      { id: 'account-mapping', label: 'Pemetaan Akun', icon: Map, path: '/settings/account-mapping', permission: 'settings.view' },
+      { id: 'accounting-period', label: 'Periode Akuntansi', icon: CalendarDays, path: '/settings/accounting-period', permission: 'settings.view' },
+      { id: 'users', label: 'Pengguna', icon: UserCog, path: '/settings/users', permission: 'settings.users.manage' },
+      { id: 'roles', label: 'Peran', icon: ShieldCheck, path: '/settings/roles', permission: 'settings.roles.manage' },
+      { id: 'preferences', label: 'Preferensi Saya', icon: Star, path: '/settings/preferences' },
+    ],
   },
 ]
 
