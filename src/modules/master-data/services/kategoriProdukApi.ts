@@ -13,8 +13,11 @@ export const kategoriProdukApi = {
   update: (id: number, payload: UpdateKategoriProdukPayload) =>
     http.patch<unknown, ApiResponse<KategoriProduk>>(`/master-data/product-categories/${id}`, payload),
 
-  delete: (id: number) =>
-    http.delete<unknown, ApiResponse<void>>(`/master-data/product-categories/${id}`),
+  activate: (id: number) =>
+    http.patch<unknown, ApiResponse<void>>(`/master-data/product-categories/${id}/activate`),
+
+  deactivate: (id: number) =>
+    http.patch<unknown, ApiResponse<void>>(`/master-data/product-categories/${id}/deactivate`),
 
   search: async (query: string): Promise<SelectOption<number>[]> => {
     const res = await http.get<unknown, PaginatedResponse<KategoriProduk>>(

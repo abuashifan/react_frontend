@@ -29,8 +29,8 @@ export const produkApi = {
     )
     return res.data.map((p) => ({
       value: p.id,
-      label: p.name,
-      sublabel: p.code,
+      label: p.product_name,
+      sublabel: p.product_code ?? undefined,
     }))
   },
 }

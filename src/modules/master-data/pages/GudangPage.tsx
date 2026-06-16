@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, PowerOff } from 'lucide-react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -25,7 +25,7 @@ export default function GudangPage() {
   const [editingItem, setEditingItem] = useState<Gudang | null>(null)
 
   const { data, isLoading, isFetching } = useGudangList()
-  const { create, update, remove } = useGudangMutations()
+  const { create, update, deactivate } = useGudangMutations()
 
   const {
     register,
@@ -40,13 +40,13 @@ export default function GudangPage() {
 
   const openCreate = () => {
     setEditingItem(null)
-    reset({ name: '', address: '', is_active: true })
+    reset({ code: '', name: '', address: '', is_active: true })
     setDialogOpen(true)
   }
 
   const openEdit = (item: Gudang) => {
     setEditingItem(item)
-    reset({ name: item.name, address: item.address ?? '', is_active: item.is_active })
+    reset({ code: item.code, name: item.name, address: item.address ?? '', is_active: item.is_active })
     setDialogOpen(true)
   }
 
@@ -65,22 +65,28 @@ export default function GudangPage() {
     }
   }
 
-  const handleDelete = async (item: Gudang) => {
-    if (!confirm(`Hapus gudang "${item.name}"?`)) return
+  const handleDeactivate = async (item: Gudang) => {
+    if (!confirm(`Nonaktifkan gudang "${item.name}"? Data historis tidak akan dihapus.`)) return
     try {
-      await remove.mutateAsync(item.id)
-      toast.success('Gudang berhasil dihapus.')
+      await deactivate.mutateAsync(item.id)
+      toast.success('Gudang berhasil dinonaktifkan.')
     } catch {
-      toast.error('Gagal menghapus gudang.')
+      toast.error('Gagal menonaktifkan gudang.')
     }
   }
 
   const columns: ColumnDef<Gudang>[] = [
     {
+      id: 'code',
+      header: 'Kode',
+      size: 100,
+      meta: { sticky: true, stickyLeft: 0, className: 'font-medium text-[#5c9ead]' },
+      cell: ({ original }) => original.code,
+    },
+    {
       id: 'name',
       header: 'Nama Gudang',
       size: 200,
-      meta: { sticky: true, stickyLeft: 0 },
       cell: ({ original }) => <span className="font-medium text-[#24323a]">{original.name}</span>,
     },
     {
@@ -105,14 +111,14 @@ export default function GudangPage() {
       size: 100,
       cell: ({ original }) => (
         <div className="flex items-center gap-1">
-          <PermissionGuard permission="master-data.warehouses.edit">
+          <PermissionGuard permission="warehouses.edit">
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-[#326273]" onClick={() => openEdit(original)}>
               <Pencil className="w-3.5 h-3.5" />
             </Button>
           </PermissionGuard>
-          <PermissionGuard permission="master-data.warehouses.delete">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-red-500" onClick={() => handleDelete(original)}>
-              <Trash2 className="w-3.5 h-3.5" />
+          <PermissionGuard permission="warehouses.deactivate">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-amber-600" onClick={() => handleDeactivate(original)}>
+              <PowerOff className="w-3.5 h-3.5" />
             </Button>
           </PermissionGuard>
         </div>
@@ -125,7 +131,7 @@ export default function GudangPage() {
       title="Gudang"
       breadcrumb={[{ label: 'Master Data' }, { label: 'Gudang' }]}
       action={
-        <PermissionGuard permission="master-data.warehouses.create">
+        <PermissionGuard permission="warehouses.create">
           <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={openCreate}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Gudang
           </Button>
@@ -150,6 +156,13 @@ export default function GudangPage() {
             <DialogTitle className="text-[15px]">{editingItem ? 'Edit Gudang' : 'Tambah Gudang'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 pt-1">
+            <div className="flex flex-col gap-1">
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
+                Kode <span className="text-red-500">*</span>
+              </Label>
+              <Input {...register('code')} placeholder="GDG-01" className="h-9 text-[13px]" />
+              {errors.code && <p className="text-[11px] text-red-500">{errors.code.message}</p>}
+            </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Nama <span className="text-red-500">*</span>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, PowerOff } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -21,7 +21,7 @@ export default function SatuanPage() {
   const [editingItem, setEditingItem] = useState<Satuan | null>(null)
 
   const { data, isLoading, isFetching } = useSatuanList()
-  const { create, update, remove } = useSatuanMutations()
+  const { create, update, deactivate } = useSatuanMutations()
 
   const {
     register,
@@ -30,18 +30,18 @@ export default function SatuanPage() {
     formState: { errors, isSubmitting },
   } = useForm<SatuanFormValues>({
     resolver: zodResolver(satuanSchema),
-    defaultValues: { decimal_places: 0 as number },
+    defaultValues: { precision: 0 as number },
   })
 
   const openCreate = () => {
     setEditingItem(null)
-    reset({ name: '', symbol: '', decimal_places: 0 })
+    reset({ name: '', code: '', precision: 0 })
     setDialogOpen(true)
   }
 
   const openEdit = (item: Satuan) => {
     setEditingItem(item)
-    reset({ name: item.name, symbol: item.symbol, decimal_places: item.decimal_places })
+    reset({ name: item.name, code: item.code, precision: item.precision })
     setDialogOpen(true)
   }
 
@@ -60,13 +60,13 @@ export default function SatuanPage() {
     }
   }
 
-  const handleDelete = async (item: Satuan) => {
-    if (!confirm(`Hapus satuan "${item.name}"?`)) return
+  const handleDeactivate = async (item: Satuan) => {
+    if (!confirm(`Nonaktifkan satuan "${item.name}"? Data historis tidak akan dihapus.`)) return
     try {
-      await remove.mutateAsync(item.id)
-      toast.success('Satuan berhasil dihapus.')
+      await deactivate.mutateAsync(item.id)
+      toast.success('Satuan berhasil dinonaktifkan.')
     } catch {
-      toast.error('Gagal menghapus satuan.')
+      toast.error('Gagal menonaktifkan satuan.')
     }
   }
 
@@ -79,17 +79,17 @@ export default function SatuanPage() {
       cell: ({ original }) => <span className="font-medium text-[#24323a]">{original.name}</span>,
     },
     {
-      id: 'symbol',
-      header: 'Simbol',
+      id: 'code',
+      header: 'Kode',
       size: 100,
-      cell: ({ original }) => original.symbol,
+      cell: ({ original }) => original.code,
     },
     {
-      id: 'decimal_places',
-      header: 'Desimal',
+      id: 'precision',
+      header: 'Presisi',
       size: 90,
       meta: { className: 'tabular-nums text-right' },
-      cell: ({ original }) => original.decimal_places,
+      cell: ({ original }) => original.precision,
     },
     {
       id: 'actions',
@@ -97,14 +97,14 @@ export default function SatuanPage() {
       size: 100,
       cell: ({ original }) => (
         <div className="flex items-center gap-1">
-          <PermissionGuard permission="master-data.units.edit">
+          <PermissionGuard permission="units.edit">
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-[#326273]" onClick={() => openEdit(original)}>
               <Pencil className="w-3.5 h-3.5" />
             </Button>
           </PermissionGuard>
-          <PermissionGuard permission="master-data.units.delete">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-red-500" onClick={() => handleDelete(original)}>
-              <Trash2 className="w-3.5 h-3.5" />
+          <PermissionGuard permission="units.deactivate">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-amber-600" onClick={() => handleDeactivate(original)}>
+              <PowerOff className="w-3.5 h-3.5" />
             </Button>
           </PermissionGuard>
         </div>
@@ -117,7 +117,7 @@ export default function SatuanPage() {
       title="Satuan"
       breadcrumb={[{ label: 'Master Data' }, { label: 'Satuan' }]}
       action={
-        <PermissionGuard permission="master-data.units.create">
+        <PermissionGuard permission="units.create">
           <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={openCreate}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Satuan
           </Button>
@@ -151,15 +151,15 @@ export default function SatuanPage() {
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
-                Simbol <span className="text-red-500">*</span>
+                Kode <span className="text-red-500">*</span>
               </Label>
-              <Input {...register('symbol')} placeholder="kg" className="h-9 text-[13px]" />
-              {errors.symbol && <p className="text-[11px] text-red-500">{errors.symbol.message}</p>}
+              <Input {...register('code')} placeholder="kg" className="h-9 text-[13px]" />
+              {errors.code && <p className="text-[11px] text-red-500">{errors.code.message}</p>}
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Presisi Desimal</Label>
-              <Input {...register('decimal_places', { valueAsNumber: true })} type="number" min="0" max="8" className="h-9 text-[13px] tabular-nums" />
-              {errors.decimal_places && <p className="text-[11px] text-red-500">{errors.decimal_places.message}</p>}
+              <Input {...register('precision', { valueAsNumber: true })} type="number" min="0" max="8" className="h-9 text-[13px] tabular-nums" />
+              {errors.precision && <p className="text-[11px] text-red-500">{errors.precision.message}</p>}
             </div>
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" className="h-8 text-[13px]" onClick={() => setDialogOpen(false)}>Batal</Button>

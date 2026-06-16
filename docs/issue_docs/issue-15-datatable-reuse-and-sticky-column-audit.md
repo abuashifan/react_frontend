@@ -3,7 +3,7 @@
 **Tipe**: Shared component consistency + responsive table  
 **Severity**: Medium  
 **Sumber**: Audit-11 A11-18, design-C1, design-C4  
-**Status**: Belum selesai
+**Status**: Selesai parsial — Phase 17 consistency guard
 
 ---
 
@@ -60,3 +60,10 @@ docs/praproduction_docs/spec-23-tablet-first-layout-rules.md
 - Pagination, empty state, loading state, dan error state konsisten.
 - Checkbox selection tidak muncul tanpa bulk action.
 - Build sukses setelah implementasi.
+
+## Catatan Implementasi Phase 17
+
+- `DataTable` hanya menyuntikkan checkbox selection jika `onRowSelect` disertai `bulkActions`.
+- `KontakListPage` dan `ProdukListPage` tidak lagi memasang selection state tanpa bulk action.
+- Sticky offset identitas di dua list tersebut dikembalikan ke `left: 0`.
+- `CoaListPage` masih custom table karena menampilkan hierarchy akun; migrasi ke DataTable perlu desain tree/table terpisah agar struktur parent-child tidak hilang.

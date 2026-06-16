@@ -16,7 +16,10 @@ export interface SalesOrderLine {
 
 export interface SalesOrder {
   id: number
+  /** UI canonical document number, dipetakan dari `order_number` di service adapter. */
   number: string
+  /** Field asli backend; primary number Sales Order. */
+  order_number?: string
   date: string
   customer_id: number
   customer?: { id: number; code: string; name: string }

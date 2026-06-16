@@ -45,6 +45,9 @@ export const bankTransferApi = {
     http.patch<unknown, ApiResponse<BankTransfer>>(`/cash-bank/bank-transfers/${id}/void`, { reason }),
 }
 
+// Backend hanya menyediakan: index, store, show, PATCH update, POST refresh-lines,
+// POST mark-lines. Tidak ada finalize/void/post — rekonsiliasi selalu berstatus draft.
+// (Lihat app/Modules/CashBank/Routes/api.php — A11-12 / issue-04.)
 export const bankReconciliationApi = {
   list: (params: Omit<CashBankListParams, 'status'> & { status?: string }) =>
     http.get<unknown, PaginatedResponse<BankReconciliation>>('/cash-bank/bank-reconciliations', { params }),
@@ -52,12 +55,10 @@ export const bankReconciliationApi = {
     http.get<unknown, ApiResponse<BankReconciliation>>(`/cash-bank/bank-reconciliations/${id}`),
   create: (payload: CreateBankReconciliationPayload) =>
     http.post<unknown, ApiResponse<BankReconciliation>>('/cash-bank/bank-reconciliations', payload),
+  update: (id: number, payload: Partial<CreateBankReconciliationPayload>) =>
+    http.patch<unknown, ApiResponse<BankReconciliation>>(`/cash-bank/bank-reconciliations/${id}`, payload),
   refreshLines: (id: number) =>
-    http.patch<unknown, ApiResponse<BankReconciliation>>(`/cash-bank/bank-reconciliations/${id}/refresh-lines`),
+    http.post<unknown, ApiResponse<BankReconciliation>>(`/cash-bank/bank-reconciliations/${id}/refresh-lines`),
   markLines: (id: number, lineIds: number[], cleared: boolean, clearedDate?: string) =>
-    http.patch<unknown, ApiResponse<BankReconciliation>>(`/cash-bank/bank-reconciliations/${id}/mark-lines`, { line_ids: lineIds, cleared, cleared_date: clearedDate }),
-  finalize: (id: number) =>
-    http.patch<unknown, ApiResponse<BankReconciliation>>(`/cash-bank/bank-reconciliations/${id}/finalize`),
-  void: (id: number, reason: string) =>
-    http.patch<unknown, ApiResponse<BankReconciliation>>(`/cash-bank/bank-reconciliations/${id}/void`, { reason }),
+    http.post<unknown, ApiResponse<BankReconciliation>>(`/cash-bank/bank-reconciliations/${id}/mark-lines`, { line_ids: lineIds, cleared, cleared_date: clearedDate }),
 }

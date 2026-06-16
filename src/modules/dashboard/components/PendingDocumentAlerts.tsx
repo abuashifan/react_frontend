@@ -35,14 +35,22 @@ function AlertCard({ icon: Icon, label, count, href, variant }: AlertCardProps) 
   )
 }
 
-interface Props { pending?: DashboardPending; isLoading?: boolean }
+interface Props { pending?: DashboardPending; isLoading?: boolean; isUnavailable?: boolean }
 
-export function PendingDocumentAlerts({ pending, isLoading }: Props) {
+export function PendingDocumentAlerts({ pending, isLoading, isUnavailable }: Props) {
   if (isLoading) return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
       {[1, 2].map((i) => <div key={i} className="h-12 animate-pulse rounded-lg bg-[#f1f5f9]" />)}
     </div>
   )
+
+  if (isUnavailable) {
+    return (
+      <div className="rounded-lg border border-dashed border-[#d9e2e5] bg-white px-4 py-3 text-[12px] text-[#64748b]">
+        Ringkasan dokumen tertunda belum tersedia dari backend.
+      </div>
+    )
+  }
 
   const hasAlerts = pending && (pending.pending_invoices > 0 || pending.pending_bills > 0 || pending.low_stock_count > 0 || (pending.fiscal_year_days_remaining ?? 999) <= 30)
   if (!hasAlerts) return null

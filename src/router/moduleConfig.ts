@@ -7,6 +7,7 @@ import {
   CheckSquare, BookMarked, Scale, LayoutGrid, Droplets, Clock,
   Landmark, Users, Ruler, Warehouse, CalendarClock, Building2,
   FolderKanban, Map, Building, RefreshCcw, UserCog, ShieldCheck, Star,
+  Mail, Shield, Archive,
 } from 'lucide-react'
 
 export interface RibbonItem {
@@ -54,7 +55,9 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     path: '/accounting',
     ribbonItems: [
       { id: 'journals', label: 'Jurnal Umum', icon: BookOpen, path: '/accounting/journals', permission: 'journal.view' },
+      { id: 'opening-balance', label: 'Saldo Awal', icon: Archive, path: '/opening-balance', permission: 'opening_balance.view' },
       { id: 'period-locks', label: 'Periode Akuntansi', icon: Calendar, path: '/accounting/period-locks', permission: 'accounting.period-locks.manage' },
+      { id: 'period-end', label: 'Akhir Periode', icon: CheckSquare, path: '/accounting/period-end', permission: 'period_end.view' },
       { id: 'fiscal-years', label: 'Tahun Fiskal', icon: CalendarDays, path: '/accounting/fiscal-years', permission: 'accounting.fiscal-years.manage' },
     ],
   },
@@ -113,7 +116,14 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     id: 'fixed-assets',
     label: 'Aktiva Tetap',
     path: '/fixed-assets',
-    ribbonItems: [],
+    ribbonItems: [
+      { id: 'assets', label: 'Daftar Aktiva', icon: Building2, path: '/fixed-assets', permission: 'fixed_assets.view' },
+      { id: 'categories', label: 'Kategori', icon: Archive, path: '/fixed-assets/categories', permission: 'fixed_assets.settings.view' },
+      { id: 'register-report', label: 'Register', icon: FileText, path: '/fixed-assets/reports/register', permission: 'fixed_assets.reports.view' },
+      { id: 'depreciation-report', label: 'Depresiasi', icon: TrendingDown, path: '/fixed-assets/reports/depreciation', permission: 'fixed_assets.reports.view' },
+      { id: 'disposals-report', label: 'Disposal', icon: RotateCcw, path: '/fixed-assets/reports/disposals', permission: 'fixed_assets.reports.view' },
+      { id: 'reconciliation-report', label: 'Rekonsiliasi', icon: CheckSquare, path: '/fixed-assets/reports/reconciliation', permission: 'fixed_assets.reports.view' },
+    ],
   },
   {
     id: 'reports',
@@ -134,12 +144,14 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     label: 'Pengaturan',
     path: '/settings',
     ribbonItems: [
-      { id: 'company', label: 'Perusahaan', icon: Building, path: '/settings/company', permission: 'settings.view' },
-      { id: 'transactions', label: 'Transaksi', icon: RefreshCcw, path: '/settings/transactions', permission: 'settings.view' },
-      { id: 'account-mapping', label: 'Pemetaan Akun', icon: Map, path: '/settings/account-mapping', permission: 'settings.view' },
-      { id: 'accounting-period', label: 'Periode Akuntansi', icon: CalendarDays, path: '/settings/accounting-period', permission: 'settings.view' },
-      { id: 'users', label: 'Pengguna', icon: UserCog, path: '/settings/users', permission: 'settings.users.manage' },
-      { id: 'roles', label: 'Peran', icon: ShieldCheck, path: '/settings/roles', permission: 'settings.roles.manage' },
+      { id: 'company', label: 'Perusahaan', icon: Building, path: '/settings/company', permission: 'settings.company.view' },
+      { id: 'transactions', label: 'Transaksi', icon: RefreshCcw, path: '/settings/transactions', permission: 'settings.company.view' },
+      { id: 'account-mapping', label: 'Pemetaan Akun', icon: Map, path: '/settings/account-mapping', permission: 'settings.company.view' },
+      { id: 'accounting-period', label: 'Periode Akuntansi', icon: CalendarDays, path: '/settings/accounting-period', permission: 'settings.company.view' },
+      { id: 'users', label: 'Pengguna', icon: UserCog, path: '/settings/users', permission: 'access.users.view' },
+      { id: 'roles', label: 'Peran', icon: ShieldCheck, path: '/settings/roles', permission: 'access.roles.view' },
+      { id: 'invitations', label: 'Undangan', icon: Mail, path: '/settings/invitations', permission: 'access.invitations.view' },
+      { id: 'access-audit', label: 'Audit Akses', icon: Shield, path: '/settings/audit', permission: 'access.audit.view' },
       { id: 'preferences', label: 'Preferensi Saya', icon: Star, path: '/settings/preferences' },
     ],
   },

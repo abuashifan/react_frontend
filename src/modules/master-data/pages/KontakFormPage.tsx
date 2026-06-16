@@ -36,18 +36,18 @@ export default function KontakFormPage() {
     formState: { errors, isSubmitting },
   } = useForm<KontakFormValues>({
     resolver: zodResolver(kontakSchema),
-    defaultValues: { type: 'customer' },
+    defaultValues: { contact_type: 'customer' },
   })
 
   useEffect(() => {
     if (kontak) {
       reset({
         name: kontak.name,
-        type: kontak.type,
+        contact_type: kontak.contact_type,
         phone: kontak.phone ?? '',
         email: kontak.email ?? '',
         address: kontak.address ?? '',
-        npwp: kontak.npwp ?? '',
+        tax_number: kontak.tax_number ?? '',
         payment_term_id: kontak.payment_term_id,
       })
     }
@@ -91,7 +91,7 @@ export default function KontakFormPage() {
       ]}
       bottomBar={
         <FixedBottomBar
-          left={<span className="text-[13px] text-[#64748b]">{isCreate ? 'Kontak baru' : kontak?.code}</span>}
+          left={<span className="text-[13px] text-[#64748b]">{isCreate ? 'Kontak baru' : kontak?.contact_code}</span>}
         >
           <Button variant="outline" className="h-8 text-[13px]" onClick={() => navigate('/master-data/contacts')}>
             Batal
@@ -120,7 +120,7 @@ export default function KontakFormPage() {
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
               Tipe <span className="text-red-500">*</span>
             </Label>
-            <Select value={watch('type')} onValueChange={(v) => setValue('type', v as KontakFormValues['type'])}>
+            <Select value={watch('contact_type')} onValueChange={(v) => setValue('contact_type', v as KontakFormValues['contact_type'])}>
               <SelectTrigger className="h-9 text-[13px]">
                 <SelectValue placeholder="Pilih tipe..." />
               </SelectTrigger>
@@ -130,7 +130,7 @@ export default function KontakFormPage() {
                 <SelectItem value="both">Keduanya</SelectItem>
               </SelectContent>
             </Select>
-            {errors.type && <p className="text-[11px] text-red-500">{errors.type.message}</p>}
+            {errors.contact_type && <p className="text-[11px] text-red-500">{errors.contact_type.message}</p>}
           </div>
 
           <div className="flex flex-col gap-1">
@@ -145,8 +145,8 @@ export default function KontakFormPage() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">NPWP</Label>
-            <Input {...register('npwp')} placeholder="00.000.000.0-000.000" className="h-9 text-[13px]" />
+            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">NPWP / Tax Number</Label>
+            <Input {...register('tax_number')} placeholder="00.000.000.0-000.000" className="h-9 text-[13px]" />
           </div>
 
           <div className="flex flex-col gap-1">

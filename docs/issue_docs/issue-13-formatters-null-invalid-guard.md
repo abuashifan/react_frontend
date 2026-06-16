@@ -3,7 +3,7 @@
 **Tipe**: Shared utility hardening  
 **Severity**: Medium  
 **Sumber**: Audit-11 A11-16  
-**Status**: Belum selesai
+**Status**: Selesai — Phase 17
 
 ---
 
@@ -47,3 +47,8 @@ src/modules/**/pages/*FormPage.tsx
 - Field kosong tampil sebagai `-` atau empty state yang konsisten.
 - Formatter tidak melempar runtime error untuk input invalid.
 - Product price issue tetap diselesaikan di `issue-08`, bukan hanya ditutup dengan formatter.
+
+## Catatan Implementasi Phase 17
+
+- `formatCurrency`, `formatNumber`, dan `formatDate` memakai guard nilai kosong/invalid dan tetap menganggap `0` valid.
+- `RecentActivity` menjaga tanggal aktivitas invalid agar tidak tampil sebagai nilai waktu yang salah.

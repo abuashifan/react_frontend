@@ -1,5 +1,6 @@
 import { TrendingUp, TrendingDown, Wallet, BarChart2 } from 'lucide-react'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
+import { EmptyState } from '@/components/shared/feedback/EmptyState'
 import { formatCurrency } from '@/lib/utils'
 import type { DashboardSummary } from '../types/dashboard.types'
 
@@ -38,9 +39,21 @@ function KpiCard({ title, value, trend, icon: Icon, iconBg, iconColor, isLoading
   )
 }
 
-interface Props { summary?: DashboardSummary; isLoading?: boolean }
+interface Props { summary?: DashboardSummary; isLoading?: boolean; isUnavailable?: boolean }
 
-export function KpiCards({ summary, isLoading }: Props) {
+export function KpiCards({ summary, isLoading, isUnavailable }: Props) {
+  if (isUnavailable) {
+    return (
+      <div className="rounded-lg border border-[#d9e2e5] bg-white">
+        <EmptyState
+          icon={BarChart2}
+          title="Ringkasan dashboard belum tersedia"
+          description="Backend belum menyediakan endpoint ringkasan dashboard."
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <PermissionGuard permission="sales.ar.view" fallback={null}>

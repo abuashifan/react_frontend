@@ -19,7 +19,7 @@ import { useVendorBill, useVendorBillMutations } from '../hooks/useVendorBillLis
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
-import { fixedAssetCategoryApi } from '../services/fixedAssetCategoryApi'
+import { fixedAssetCategoryApi } from '@/modules/fixed-assets/services/fixedAssetCategoryApi'
 import { vendorBillSchema, type VendorBillFormValues } from '../schemas/vendorBillSchema'
 import type { DocumentStatus } from '@/types/common.types'
 import type { VendorBillLineClassification } from '../types/vendorBill.types'

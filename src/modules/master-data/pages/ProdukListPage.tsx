@@ -17,17 +17,23 @@ import { cn } from '@/lib/utils'
 
 const columns: ColumnDef<Produk>[] = [
   {
-    id: 'code',
+    id: 'product_code',
     header: 'Kode',
     size: 100,
-    meta: { sticky: true, stickyLeft: 32, className: 'font-medium text-[#5c9ead]' },
-    cell: ({ original }) => original.code,
+    meta: { sticky: true, stickyLeft: 0, className: 'font-medium text-[#5c9ead]' },
+    cell: ({ original }) => original.product_code ?? '-',
   },
   {
-    id: 'name',
+    id: 'product_name',
     header: 'Nama Produk',
     size: 200,
-    cell: ({ original }) => original.name,
+    cell: ({ original }) => original.product_name,
+  },
+  {
+    id: 'product_type',
+    header: 'Tipe',
+    size: 110,
+    cell: ({ original }) => original.product_type,
   },
   {
     id: 'category',
@@ -39,15 +45,7 @@ const columns: ColumnDef<Produk>[] = [
     id: 'unit',
     header: 'Satuan',
     size: 90,
-    cell: ({ original }) => original.unit?.symbol ?? '-',
-  },
-  {
-    id: 'sell_price',
-    header: 'Harga Jual',
-    size: 130,
-    meta: { className: 'text-right tabular-nums' },
-    cell: ({ original }) =>
-      Number(original.sell_price).toLocaleString('id-ID', { minimumFractionDigits: 0 }),
+    cell: ({ original }) => original.unit?.code ?? '-',
   },
   {
     id: 'is_active',
@@ -74,12 +72,10 @@ export default function ProdukListPage() {
   const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
   const [filterCategoryId, setFilterCategoryId] = useState<number | null>(null)
   const [filterActive, setFilterActive] = useState<boolean | undefined>()
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
-
   const { data, isLoading, isFetching } = useProdukList({
     page,
     per_page: perPage,
-    category_id: filterCategoryId ?? undefined,
+    product_category_id: filterCategoryId ?? undefined,
     is_active: filterActive,
   })
 
@@ -142,8 +138,6 @@ export default function ProdukListPage() {
         isFetching={isFetching}
         pagination={{ pageIndex: page - 1, pageSize: perPage }}
         onPaginationChange={(s) => { setPage(s.pageIndex + 1); setPerPage(s.pageSize) }}
-        selectedRows={selectedIds}
-        onRowSelect={setSelectedIds}
         emptyTitle="Belum ada produk"
         emptyDescription="Tambahkan produk pertama untuk memulai."
       />

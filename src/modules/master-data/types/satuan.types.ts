@@ -1,16 +1,17 @@
 export interface Satuan {
   id: number
   name: string
-  symbol: string
-  decimal_places: number
+  code: string
+  precision: number
+  is_active: boolean
   created_at: string
   updated_at: string
 }
 
 export interface CreateSatuanPayload {
   name: string
-  symbol: string
-  decimal_places?: number
+  code: string
+  precision?: number
 }
 
 export type UpdateSatuanPayload = Partial<CreateSatuanPayload>

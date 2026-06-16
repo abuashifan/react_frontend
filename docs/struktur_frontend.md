@@ -40,6 +40,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____audit-gap-completion-tracker.md
 | | |____audit-tech-stack.md
 | | |____audit-11-frontend-global-contract-map-16-06-26.md
+| | |____audit-12-frontend-ux-workflow-audit-16-06-26.md
 | |____design_docs/
 | | |____design-A1-topbar-ribbon.md
 | | |____design-A2-ribbon-overflow-tablet.md
@@ -245,6 +246,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____useViewMode.ts
 | |____index.css
 | |____lib/
+| | |____apiError.ts
 | | |____constants.ts
 | | |____utils.ts
 | |____main.tsx
@@ -253,10 +255,12 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____hooks/
 | | | | |____useFiscalYear.ts
 | | | | |____useJournalEntryList.ts
+| | | | |____usePeriodEnd.ts
 | | | |____pages/
 | | | | |____FiscalYearPage.tsx
 | | | | |____JournalFormPage.tsx
 | | | | |____JournalListPage.tsx
+| | | | |____PeriodEndPage.tsx
 | | | | |____PeriodLockPage.tsx
 | | | |____routes.tsx
 | | | |____schemas/
@@ -264,6 +268,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____services/
 | | | | |____fiscalYearApi.ts
 | | | | |____journalEntryApi.ts
+| | | | |____periodEndApi.ts
 | | | | |____periodLockApi.ts
 | | | |____types/
 | | | | |____fiscalYear.types.ts
@@ -315,6 +320,29 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____ErrorPage.tsx
 | | | |____MaintenancePage.tsx
 | | | |____NetworkErrorPage.tsx
+| | |____fixed-assets/
+| | | |____hooks/
+| | | | |____useFixedAssetCategories.ts
+| | | | |____useFixedAssetList.ts
+| | | | |____useFixedAssetMutations.ts
+| | | |____pages/
+| | | | |____FixedAssetCategoryPage.tsx
+| | | | |____FixedAssetFormPage.tsx
+| | | | |____FixedAssetListPage.tsx
+| | | | |____reports/
+| | | | | |____FixedAssetDepreciationReportPage.tsx
+| | | | | |____FixedAssetDisposalsReportPage.tsx
+| | | | | |____FixedAssetReconciliationReportPage.tsx
+| | | | | |____FixedAssetRegisterReportPage.tsx
+| | | | | |____FixedAssetReportTable.tsx
+| | | |____routes.tsx
+| | | |____schemas/
+| | | | |____fixedAssetSchema.ts
+| | | |____services/
+| | | | |____fixedAssetApi.ts
+| | | | |____fixedAssetCategoryApi.ts
+| | | |____types/
+| | | | |____fixedAsset.types.ts
 | | |____inventory/
 | | | |____components/
 | | | |____hooks/
@@ -418,6 +446,17 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____companyInfoSchema.ts
 | | | |____services/
 | | | | |____onboardingApi.ts
+| | |____opening-balance/
+| | | |____hooks/
+| | | | |____useOpeningBalance.ts
+| | | |____pages/
+| | | | |____OpeningBalanceBatchPage.tsx
+| | | | |____OpeningBalanceStatusPage.tsx
+| | | |____routes.tsx
+| | | |____services/
+| | | | |____openingBalanceApi.ts
+| | | |____types/
+| | | | |____openingBalance.types.ts
 | | |____purchase/
 | | | |____hooks/
 | | | | |____useApData.ts
@@ -459,7 +498,6 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____vendorPaymentSchema.ts
 | | | |____services/
 | | | | |____apApi.ts
-| | | | |____fixedAssetCategoryApi.ts
 | | | | |____goodsReceiptApi.ts
 | | | | |____purchaseOrderApi.ts
 | | | | |____purchaseRequestApi.ts
@@ -569,19 +607,24 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____salesReturn.types.ts
 | | |____settings/
 | | | |____hooks/
-| | | | |____useSettings.ts
+| | | | |____useAccessManagement.ts
+| | | | |____useCompanySettings.ts
 | | | |____pages/
+| | | | |____AccessAuditPage.tsx
 | | | | |____AccountingPeriodPage.tsx
 | | | | |____AccountMappingSettingsPage.tsx
 | | | | |____CompanySettingsPage.tsx
+| | | | |____InvitationsPage.tsx
 | | | | |____MyPreferencesPage.tsx
 | | | | |____RolesPage.tsx
 | | | | |____TransactionSettingsPage.tsx
 | | | | |____UsersPage.tsx
 | | | |____routes.tsx
 | | | |____services/
-| | | | |____settingsApi.ts
+| | | | |____accessApi.ts
+| | | | |____companySettingsApi.ts
 | | | |____types/
+| | | | |____access.types.ts
 | | | | |____settings.types.ts
 | |____router/
 | | |____guards.tsx

@@ -34,12 +34,12 @@ export function useKategoriProdukMutations() {
       kategoriProdukApi.update(id, payload),
     onSuccess: invalidate,
   })
-  const remove = useMutation({
-    mutationFn: (id: number) => kategoriProdukApi.delete(id),
+  const deactivate = useMutation({
+    mutationFn: (id: number) => kategoriProdukApi.deactivate(id),
     onSuccess: invalidate,
   })
 
-  return { create, update, remove }
+  return { create, update, deactivate }
 }
 
 // ── Satuan ────────────────────────────────────────────────────────────────────
@@ -64,12 +64,12 @@ export function useSatuanMutations() {
       satuanApi.update(id, payload),
     onSuccess: invalidate,
   })
-  const remove = useMutation({
-    mutationFn: (id: number) => satuanApi.delete(id),
+  const deactivate = useMutation({
+    mutationFn: (id: number) => satuanApi.deactivate(id),
     onSuccess: invalidate,
   })
 
-  return { create, update, remove }
+  return { create, update, deactivate }
 }
 
 // ── Gudang ────────────────────────────────────────────────────────────────────
@@ -94,12 +94,12 @@ export function useGudangMutations() {
       gudangApi.update(id, payload),
     onSuccess: invalidate,
   })
-  const remove = useMutation({
-    mutationFn: (id: number) => gudangApi.delete(id),
+  const deactivate = useMutation({
+    mutationFn: (id: number) => gudangApi.deactivate(id),
     onSuccess: invalidate,
   })
 
-  return { create, update, remove }
+  return { create, update, deactivate }
 }
 
 // ── PaymentTerms ──────────────────────────────────────────────────────────────
@@ -124,12 +124,12 @@ export function usePaymentTermsMutations() {
       paymentTermsApi.update(id, payload),
     onSuccess: invalidate,
   })
-  const remove = useMutation({
-    mutationFn: (id: number) => paymentTermsApi.delete(id),
+  const deactivate = useMutation({
+    mutationFn: (id: number) => paymentTermsApi.deactivate(id),
     onSuccess: invalidate,
   })
 
-  return { create, update, remove }
+  return { create, update, deactivate }
 }
 
 // ── Departemen ────────────────────────────────────────────────────────────────
@@ -154,12 +154,12 @@ export function useDepartemenMutations() {
       departemenApi.update(id, payload),
     onSuccess: invalidate,
   })
-  const remove = useMutation({
-    mutationFn: (id: number) => departemenApi.delete(id),
+  const deactivate = useMutation({
+    mutationFn: (id: number) => departemenApi.deactivate(id),
     onSuccess: invalidate,
   })
 
-  return { create, update, remove }
+  return { create, update, deactivate }
 }
 
 // ── Proyek ────────────────────────────────────────────────────────────────────
@@ -184,10 +184,10 @@ export function useProyekMutations() {
       proyekApi.update(id, payload),
     onSuccess: invalidate,
   })
-  const remove = useMutation({
-    mutationFn: (id: number) => proyekApi.delete(id),
+  const deactivate = useMutation({
+    mutationFn: (id: number) => proyekApi.deactivate(id),
     onSuccess: invalidate,
   })
 
-  return { create, update, remove }
+  return { create, update, deactivate }
 }

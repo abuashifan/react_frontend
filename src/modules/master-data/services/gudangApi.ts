@@ -13,8 +13,11 @@ export const gudangApi = {
   update: (id: number, payload: UpdateGudangPayload) =>
     http.patch<unknown, ApiResponse<Gudang>>(`/master-data/warehouses/${id}`, payload),
 
-  delete: (id: number) =>
-    http.delete<unknown, ApiResponse<void>>(`/master-data/warehouses/${id}`),
+  activate: (id: number) =>
+    http.patch<unknown, ApiResponse<void>>(`/master-data/warehouses/${id}/activate`),
+
+  deactivate: (id: number) =>
+    http.patch<unknown, ApiResponse<void>>(`/master-data/warehouses/${id}/deactivate`),
 
   search: async (query: string): Promise<SelectOption<number>[]> => {
     const res = await http.get<unknown, PaginatedResponse<Gudang>>(

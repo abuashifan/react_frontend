@@ -67,6 +67,7 @@ export function DataTable<T extends { id: number | string }>({
   emptyDescription,
 }: DataTableProps<T>) {
   const rows = Array.isArray(data) ? data : []
+  const isSelectable = !!onRowSelect && !!bulkActions?.length
   const allIds = rows.map((row) => String(row.id))
   const isAllSelected = allIds.length > 0 && allIds.every((id) => selectedRows.includes(id))
   const isIndeterminate = selectedRows.length > 0 && !isAllSelected
@@ -86,7 +87,7 @@ export function DataTable<T extends { id: number | string }>({
   }
 
   const isEmpty = !isLoading && rows.length === 0
-  const showBulkBar = !!onRowSelect && selectedRows.length > 0 && !!bulkActions?.length
+  const showBulkBar = isSelectable && selectedRows.length > 0
 
   // Checkbox column injected when row selection is enabled
   const checkboxCol: ColumnDef<T> = {
@@ -110,7 +111,7 @@ export function DataTable<T extends { id: number | string }>({
     meta: { sticky: true, stickyLeft: 0, className: 'w-8 px-2', headerClassName: 'w-8 px-2' },
   }
 
-  const renderedColumns: ColumnDef<T>[] = onRowSelect ? [checkboxCol, ...columns] : columns
+  const renderedColumns: ColumnDef<T>[] = isSelectable ? [checkboxCol, ...columns] : columns
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-[#d9e2e5] bg-white">

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { FileText, ShoppingCart, Package, CreditCard, ArrowLeftRight } from 'lucide-react'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
+import { EmptyState } from '@/components/shared/feedback/EmptyState'
 import { formatCurrency } from '@/lib/utils'
 import type { DashboardActivity } from '../types/dashboard.types'
 import type { DocumentStatus } from '@/types/common.types'
@@ -14,7 +15,9 @@ function getActivityIcon(sourceType: string) {
 }
 
 function formatTimeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime()
+  const timestamp = new Date(dateStr).getTime()
+  if (Number.isNaN(timestamp)) return '-'
+  const diff = Date.now() - timestamp
   const mins = Math.floor(diff / 60_000)
   if (mins < 1) return 'baru saja'
   if (mins < 60) return `${mins} menit lalu`
@@ -30,9 +33,9 @@ const ICON_BG: Record<string, string> = {
   default: 'bg-[#f1f5f9]',
 }
 
-interface Props { activities?: DashboardActivity[]; isLoading?: boolean }
+interface Props { activities?: DashboardActivity[]; isLoading?: boolean; isUnavailable?: boolean }
 
-export function RecentActivity({ activities, isLoading }: Props) {
+export function RecentActivity({ activities, isLoading, isUnavailable }: Props) {
   return (
     <div className="rounded-lg border border-[#d9e2e5] bg-white">
       <div className="flex items-center justify-between border-b border-[#d9e2e5] px-4 py-3">
@@ -40,7 +43,12 @@ export function RecentActivity({ activities, isLoading }: Props) {
         <span className="text-[11px] text-[#64748b]">10 transaksi terakhir</span>
       </div>
       <div className="divide-y divide-[#f1f5f9]">
-        {isLoading
+        {isUnavailable ? (
+          <EmptyState
+            title="Aktivitas belum tersedia"
+            description="Backend belum menyediakan endpoint aktivitas dashboard."
+          />
+        ) : isLoading
           ? Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex items-center gap-3 px-4 py-3">
               <div className="h-8 w-8 shrink-0 animate-pulse rounded-md bg-[#f1f5f9]" />

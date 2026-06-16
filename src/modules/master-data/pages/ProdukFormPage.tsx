@@ -10,12 +10,20 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
 import { useProduk, useProdukMutations } from '../hooks/useProdukList'
 import { coaApi } from '../services/coaApi'
 import { satuanApi } from '../services/satuanApi'
 import { kategoriProdukApi } from '../services/kategoriProdukApi'
 import { produkSchema, type ProdukFormValues } from '../schemas/produkSchema'
+
+const PRODUCT_TYPE_OPTIONS = [
+  { value: 'goods', label: 'Barang' },
+  { value: 'service', label: 'Jasa' },
+  { value: 'non_inventory', label: 'Non-Inventory' },
+  { value: 'fixed_asset', label: 'Aktiva Tetap' },
+]
 
 export default function ProdukFormPage() {
   const navigate = useNavigate()
@@ -33,27 +41,32 @@ export default function ProdukFormPage() {
     handleSubmit,
     control,
     watch,
+    setValue,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<ProdukFormValues>({
     resolver: zodResolver(produkSchema),
-    defaultValues: { is_stock_item: true as boolean },
+    defaultValues: { is_stock_item: true as boolean, product_type: 'goods' },
   })
 
   const isStockItem = watch('is_stock_item')
+  const productType = watch('product_type')
+  const canBeStockItem = productType === 'goods' || productType === 'non_inventory'
 
   useEffect(() => {
     if (produk) {
       reset({
-        name: produk.name,
-        category_id: produk.category_id,
+        product_code: produk.product_code ?? '',
+        product_name: produk.product_name,
+        product_type: produk.product_type,
+        product_category_id: produk.product_category_id,
         unit_id: produk.unit_id,
         is_stock_item: produk.is_stock_item,
-        sell_price: produk.sell_price ? Number(produk.sell_price) : undefined,
-        buy_price: produk.buy_price ? Number(produk.buy_price) : undefined,
-        coa_sales_id: produk.coa_sales_id,
-        coa_purchase_id: produk.coa_purchase_id,
-        coa_inventory_id: produk.coa_inventory_id,
+        description: produk.description ?? '',
+        sales_account_id: produk.sales_account_id,
+        purchase_account_id: produk.purchase_account_id,
+        inventory_account_id: produk.inventory_account_id,
+        cogs_account_id: produk.cogs_account_id,
       })
     }
   }, [produk, reset])
@@ -87,11 +100,11 @@ export default function ProdukFormPage() {
       breadcrumb={[
         { label: 'Master Data' },
         { label: 'Produk', path: '/master-data/products' },
-        { label: isCreate ? 'Tambah Produk' : (produk?.name ?? '') },
+        { label: isCreate ? 'Tambah Produk' : (produk?.product_name ?? '') },
       ]}
       bottomBar={
         <FixedBottomBar
-          left={<span className="text-[13px] text-[#64748b]">{isCreate ? 'Produk baru' : produk?.code}</span>}
+          left={<span className="text-[13px] text-[#64748b]">{isCreate ? 'Produk baru' : produk?.product_code}</span>}
         >
           <Button variant="outline" className="h-8 text-[13px]" onClick={() => navigate('/master-data/products')}>
             Batal
@@ -108,18 +121,37 @@ export default function ProdukFormPage() {
     >
       <div className="space-y-3">
         <FormSection title="Informasi Produk">
-          <div className="flex flex-col gap-1 md:col-span-2">
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kode Produk</Label>
+            <Input {...register('product_code')} placeholder="PRD-001" className="h-9 text-[13px]" />
+          </div>
+
+          <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
               Nama Produk <span className="text-red-500">*</span>
             </Label>
-            <Input {...register('name')} placeholder="Nama produk" className="h-9 text-[13px]" />
-            {errors.name && <p className="text-[11px] text-red-500">{errors.name.message}</p>}
+            <Input {...register('product_name')} placeholder="Nama produk" className="h-9 text-[13px]" />
+            {errors.product_name && <p className="text-[11px] text-red-500">{errors.product_name.message}</p>}
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tipe Produk</Label>
+            <Select value={watch('product_type')} onValueChange={(v) => setValue('product_type', v as ProdukFormValues['product_type'])}>
+              <SelectTrigger className="h-9 text-[13px]">
+                <SelectValue placeholder="Pilih tipe..." />
+              </SelectTrigger>
+              <SelectContent>
+                {PRODUCT_TYPE_OPTIONS.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kategori</Label>
             <Controller
-              name="category_id"
+              name="product_category_id"
               control={control}
               render={({ field }) => (
                 <SearchableSelect
@@ -144,57 +176,34 @@ export default function ProdukFormPage() {
                   onChange={field.onChange}
                   onSearch={satuanApi.search}
                   placeholder="Pilih satuan..."
-                  selectedOptions={produk?.unit ? [{ value: produk.unit.id, label: produk.unit.name, sublabel: produk.unit.symbol }] : []}
+                  selectedOptions={produk?.unit ? [{ value: produk.unit.id, label: produk.unit.name, sublabel: produk.unit.code }] : []}
                 />
               )}
             />
           </div>
 
-          <div className="flex items-center gap-3">
-            <Controller
-              name="is_stock_item"
-              control={control}
-              render={({ field }) => (
-                <Switch checked={field.value} onCheckedChange={field.onChange} />
-              )}
-            />
-            <div>
-              <p className="text-[13px] font-medium text-[#24323a]">Item Stok</p>
-              <p className="text-[11px] text-[#64748b]">Lacak stok di gudang</p>
+          {canBeStockItem && (
+            <div className="flex items-center gap-3">
+              <Controller
+                name="is_stock_item"
+                control={control}
+                render={({ field }) => (
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                )}
+              />
+              <div>
+                <p className="text-[13px] font-medium text-[#24323a]">Item Stok</p>
+                <p className="text-[11px] text-[#64748b]">Lacak stok di gudang</p>
+              </div>
             </div>
-          </div>
-        </FormSection>
-
-        <FormSection title="Harga">
-          <div className="flex flex-col gap-1">
-            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Harga Jual</Label>
-            <Input
-              {...register('sell_price', { valueAsNumber: true })}
-              type="number"
-              min="0"
-              step="1"
-              placeholder="0"
-              className="h-9 text-[13px] tabular-nums"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Harga Beli</Label>
-            <Input
-              {...register('buy_price', { valueAsNumber: true })}
-              type="number"
-              min="0"
-              step="1"
-              placeholder="0"
-              className="h-9 text-[13px] tabular-nums"
-            />
-          </div>
+          )}
         </FormSection>
 
         <FormSection title="Akun Akuntansi">
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Penjualan</Label>
             <Controller
-              name="coa_sales_id"
+              name="sales_account_id"
               control={control}
               render={({ field }) => (
                 <SearchableSelect
@@ -202,7 +211,7 @@ export default function ProdukFormPage() {
                   onChange={field.onChange}
                   onSearch={coaApi.search}
                   placeholder="Pilih akun penjualan..."
-                  selectedOptions={produk?.coa_sales ? [{ value: produk.coa_sales.id, label: produk.coa_sales.name, sublabel: produk.coa_sales.code }] : []}
+                  selectedOptions={produk?.sales_account ? [{ value: produk.sales_account.id, label: produk.sales_account.account_name, sublabel: produk.sales_account.account_code }] : []}
                 />
               )}
             />
@@ -211,7 +220,7 @@ export default function ProdukFormPage() {
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Pembelian</Label>
             <Controller
-              name="coa_purchase_id"
+              name="purchase_account_id"
               control={control}
               render={({ field }) => (
                 <SearchableSelect
@@ -219,17 +228,17 @@ export default function ProdukFormPage() {
                   onChange={field.onChange}
                   onSearch={coaApi.search}
                   placeholder="Pilih akun pembelian..."
-                  selectedOptions={produk?.coa_purchase ? [{ value: produk.coa_purchase.id, label: produk.coa_purchase.name, sublabel: produk.coa_purchase.code }] : []}
+                  selectedOptions={produk?.purchase_account ? [{ value: produk.purchase_account.id, label: produk.purchase_account.account_name, sublabel: produk.purchase_account.account_code }] : []}
                 />
               )}
             />
           </div>
 
-          {isStockItem && (
+          {isStockItem && canBeStockItem && (
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Inventory</Label>
               <Controller
-                name="coa_inventory_id"
+                name="inventory_account_id"
                 control={control}
                 render={({ field }) => (
                   <SearchableSelect
@@ -237,12 +246,29 @@ export default function ProdukFormPage() {
                     onChange={field.onChange}
                     onSearch={coaApi.search}
                     placeholder="Pilih akun inventory..."
-                    selectedOptions={produk?.coa_inventory ? [{ value: produk.coa_inventory.id, label: produk.coa_inventory.name, sublabel: produk.coa_inventory.code }] : []}
+                    selectedOptions={produk?.inventory_account ? [{ value: produk.inventory_account.id, label: produk.inventory_account.account_name, sublabel: produk.inventory_account.account_code }] : []}
                   />
                 )}
               />
             </div>
           )}
+
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun HPP</Label>
+            <Controller
+              name="cogs_account_id"
+              control={control}
+              render={({ field }) => (
+                <SearchableSelect
+                  value={field.value ?? null}
+                  onChange={field.onChange}
+                  onSearch={coaApi.search}
+                  placeholder="Pilih akun HPP..."
+                  selectedOptions={produk?.cogs_account ? [{ value: produk.cogs_account.id, label: produk.cogs_account.account_name, sublabel: produk.cogs_account.account_code }] : []}
+                />
+              )}
+            />
+          </div>
         </FormSection>
       </div>
     </FormLayout>

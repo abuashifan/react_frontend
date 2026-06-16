@@ -44,16 +44,16 @@ export default function CoaFormPage() {
     formState: { errors, isSubmitting },
   } = useForm<CoaFormValues>({
     resolver: zodResolver(coaSchema),
-    defaultValues: { type: 'asset', parent_id: null },
+    defaultValues: { account_type: 'asset', parent_account_id: null },
   })
 
   useEffect(() => {
     if (coa) {
       reset({
-        code: coa.code,
-        name: coa.name,
-        type: coa.type,
-        parent_id: coa.parent_id,
+        account_code: coa.account_code,
+        account_name: coa.account_name,
+        account_type: coa.account_type,
+        parent_account_id: coa.parent_account_id,
         description: coa.description ?? '',
       })
     }
@@ -88,11 +88,11 @@ export default function CoaFormPage() {
       breadcrumb={[
         { label: 'Master Data' },
         { label: 'COA', path: '/master-data/coa' },
-        { label: isCreate ? 'Tambah Akun' : (coa?.code ?? '') },
+        { label: isCreate ? 'Tambah Akun' : (coa?.account_code ?? '') },
       ]}
       bottomBar={
         <FixedBottomBar
-          left={<span className="text-[13px] text-[#64748b]">{isCreate ? 'Akun baru' : coa?.name}</span>}
+          left={<span className="text-[13px] text-[#64748b]">{isCreate ? 'Akun baru' : coa?.account_name}</span>}
         >
           <Button variant="outline" className="h-8 text-[13px]" onClick={() => navigate('/master-data/coa')}>
             Batal
@@ -113,23 +113,23 @@ export default function CoaFormPage() {
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
               Kode Akun <span className="text-red-500">*</span>
             </Label>
-            <Input {...register('code')} placeholder="1-1100" className="h-9 text-[13px]" />
-            {errors.code && <p className="text-[11px] text-red-500">{errors.code.message}</p>}
+            <Input {...register('account_code')} placeholder="1-1100" className="h-9 text-[13px]" />
+            {errors.account_code && <p className="text-[11px] text-red-500">{errors.account_code.message}</p>}
           </div>
 
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
               Nama Akun <span className="text-red-500">*</span>
             </Label>
-            <Input {...register('name')} placeholder="Kas" className="h-9 text-[13px]" />
-            {errors.name && <p className="text-[11px] text-red-500">{errors.name.message}</p>}
+            <Input {...register('account_name')} placeholder="Kas" className="h-9 text-[13px]" />
+            {errors.account_name && <p className="text-[11px] text-red-500">{errors.account_name.message}</p>}
           </div>
 
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
               Tipe Akun <span className="text-red-500">*</span>
             </Label>
-            <Select value={watch('type')} onValueChange={(v) => setValue('type', v as CoaFormValues['type'])}>
+            <Select value={watch('account_type')} onValueChange={(v) => setValue('account_type', v as CoaFormValues['account_type'])}>
               <SelectTrigger className="h-9 text-[13px]">
                 <SelectValue placeholder="Pilih tipe..." />
               </SelectTrigger>
@@ -139,7 +139,7 @@ export default function CoaFormPage() {
                 ))}
               </SelectContent>
             </Select>
-            {errors.type && <p className="text-[11px] text-red-500">{errors.type.message}</p>}
+            {errors.account_type && <p className="text-[11px] text-red-500">{errors.account_type.message}</p>}
           </div>
 
           <div className="flex flex-col gap-1">
@@ -147,11 +147,11 @@ export default function CoaFormPage() {
               Akun Induk
             </Label>
             <SearchableSelect
-              value={watch('parent_id') ?? null}
-              onChange={(v) => setValue('parent_id', v)}
+              value={watch('parent_account_id') ?? null}
+              onChange={(v) => setValue('parent_account_id', v)}
               onSearch={coaApi.search}
               placeholder="Pilih akun induk..."
-              selectedOptions={coa?.parent ? [{ value: coa.parent.id, label: coa.parent.name, sublabel: coa.parent.code }] : []}
+              selectedOptions={coa?.parent ? [{ value: coa.parent.id, label: coa.parent.account_name, sublabel: coa.parent.account_code }] : []}
             />
           </div>
 

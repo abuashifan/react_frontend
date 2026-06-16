@@ -2,8 +2,7 @@ import { useState } from 'react'
 import { CheckCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { onboardingApi } from '../../services/onboardingApi'
-import { useAuthStore } from '@/stores/useAuthStore'
+import { setupApi } from '../../services/onboardingApi'
 import { useCompanyStore } from '@/stores/useCompanyStore'
 import { useToast } from '@/hooks/useToast'
 
@@ -23,17 +22,16 @@ interface Props {
 
 export function Step6Complete({ summary, onBack }: Props) {
   const navigate = useNavigate()
-  const { activeCompanyId } = useAuthStore()
   const setSettings = useCompanyStore((s) => s.setSettings)
   const activeCompany = useCompanyStore((s) => s.activeCompany)
   const { toast } = useToast()
   const [isFinishing, setIsFinishing] = useState(false)
 
   const handleFinish = async () => {
-    if (!activeCompanyId) return
     setIsFinishing(true)
     try {
-      await onboardingApi.completeOnboarding(activeCompanyId)
+      // `finalize` melakukan validateAll secara internal; lempar 422 jika setup belum valid.
+      await setupApi.finalize()
       // Update local store so the guard doesn't redirect back to /onboarding
       if (activeCompany) {
         setSettings({ ...activeCompany.settings, onboarding_completed: true })
@@ -41,7 +39,7 @@ export function Step6Complete({ summary, onBack }: Props) {
       toast.success('Setup perusahaan selesai! Selamat datang di Seaside Escape ERP.')
       navigate('/')
     } catch {
-      toast.error('Gagal menyelesaikan setup. Coba lagi.')
+      toast.error('Setup belum dapat diselesaikan. Pastikan semua langkah wajib sudah valid.')
       setIsFinishing(false)
     }
   }

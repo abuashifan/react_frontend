@@ -32,7 +32,7 @@ export function Step4MasterData({ onComplete, onBack }: Props) {
   }
 
   const handleAddUnit = async (data: Record<string, string | number>): Promise<QuickAddItem> => {
-    const res = await onboardingApi.createUnit({ name: String(data.name), symbol: String(data.symbol) })
+    const res = await onboardingApi.createUnit({ name: String(data.name), code: String(data.code) })
     const item = res.data
     setUnits((prev) => [...prev, item])
     toast.success(`Satuan "${item.name}" berhasil ditambahkan.`)
@@ -72,7 +72,7 @@ export function Step4MasterData({ onComplete, onBack }: Props) {
         addLabel="Tambah Satuan"
         fields={[
           { name: 'name', label: 'Nama Satuan', placeholder: 'Kilogram' },
-          { name: 'symbol', label: 'Simbol', placeholder: 'kg' },
+          { name: 'code', label: 'Kode', placeholder: 'kg' },
         ]}
         items={units}
         onAdd={handleAddUnit}

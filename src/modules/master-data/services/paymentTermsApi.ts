@@ -13,8 +13,11 @@ export const paymentTermsApi = {
   update: (id: number, payload: UpdatePaymentTermsPayload) =>
     http.patch<unknown, ApiResponse<PaymentTerms>>(`/master-data/payment-terms/${id}`, payload),
 
-  delete: (id: number) =>
-    http.delete<unknown, ApiResponse<void>>(`/master-data/payment-terms/${id}`),
+  activate: (id: number) =>
+    http.patch<unknown, ApiResponse<void>>(`/master-data/payment-terms/${id}/activate`),
+
+  deactivate: (id: number) =>
+    http.patch<unknown, ApiResponse<void>>(`/master-data/payment-terms/${id}/deactivate`),
 
   search: async (query: string): Promise<SelectOption<number>[]> => {
     const res = await http.get<unknown, PaginatedResponse<PaymentTerms>>(

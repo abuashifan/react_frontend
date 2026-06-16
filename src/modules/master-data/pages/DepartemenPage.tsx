@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, PowerOff } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -23,7 +23,7 @@ export default function DepartemenPage() {
   const [editingItem, setEditingItem] = useState<Departemen | null>(null)
 
   const { data, isLoading, isFetching } = useDepartemenList()
-  const { create, update, remove } = useDepartemenMutations()
+  const { create, update, deactivate } = useDepartemenMutations()
 
   const {
     register,
@@ -59,13 +59,13 @@ export default function DepartemenPage() {
     }
   }
 
-  const handleDelete = async (item: Departemen) => {
-    if (!confirm(`Hapus departemen "${item.name}"?`)) return
+  const handleDeactivate = async (item: Departemen) => {
+    if (!confirm(`Nonaktifkan departemen "${item.name}"? Data historis tidak akan dihapus.`)) return
     try {
-      await remove.mutateAsync(item.id)
-      toast.success('Departemen berhasil dihapus.')
+      await deactivate.mutateAsync(item.id)
+      toast.success('Departemen berhasil dinonaktifkan.')
     } catch {
-      toast.error('Gagal menghapus departemen.')
+      toast.error('Gagal menonaktifkan departemen.')
     }
   }
 
@@ -99,14 +99,14 @@ export default function DepartemenPage() {
       size: 100,
       cell: ({ original }) => (
         <div className="flex items-center gap-1">
-          <PermissionGuard permission="master-data.departments.edit">
+          <PermissionGuard permission="departments.edit">
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-[#326273]" onClick={() => openEdit(original)}>
               <Pencil className="w-3.5 h-3.5" />
             </Button>
           </PermissionGuard>
-          <PermissionGuard permission="master-data.departments.delete">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-red-500" onClick={() => handleDelete(original)}>
-              <Trash2 className="w-3.5 h-3.5" />
+          <PermissionGuard permission="departments.deactivate">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-amber-600" onClick={() => handleDeactivate(original)}>
+              <PowerOff className="w-3.5 h-3.5" />
             </Button>
           </PermissionGuard>
         </div>
@@ -119,7 +119,7 @@ export default function DepartemenPage() {
       title="Departemen"
       breadcrumb={[{ label: 'Master Data' }, { label: 'Departemen' }]}
       action={
-        <PermissionGuard permission="master-data.departments.create">
+        <PermissionGuard permission="departments.create">
           <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={openCreate}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Departemen
           </Button>

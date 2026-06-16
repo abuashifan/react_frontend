@@ -29,8 +29,8 @@ function buildTree(flat: Coa[]): Coa[] {
 
   flat.forEach((item) => {
     const node = map.get(item.id)!
-    if (item.parent_id && map.has(item.parent_id)) {
-      map.get(item.parent_id)!.children!.push(node)
+    if (item.parent_account_id && map.has(item.parent_account_id)) {
+      map.get(item.parent_account_id)!.children!.push(node)
     } else {
       roots.push(node)
     }
@@ -85,14 +85,14 @@ function CoaRow({ node, level, selectedIds, onSelect, onNavigate, onToggleActive
             ) : (
               <span className="w-3.5 flex-shrink-0" />
             )}
-            <span onClick={() => onNavigate(node.id)}>{node.code}</span>
+            <span onClick={() => onNavigate(node.id)}>{node.account_code}</span>
           </div>
         </td>
         <td className="px-3 py-2 text-[13px] text-[#24323a] cursor-pointer" onClick={() => onNavigate(node.id)}>
-          {node.name}
+          {node.account_name}
         </td>
         <td className="px-3 py-2 text-[13px] text-[#64748b]">
-          {COA_TYPE_LABELS[node.type]}
+          {COA_TYPE_LABELS[node.account_type]}
         </td>
         <td className="px-3 py-2">
           <Badge
@@ -151,7 +151,7 @@ export default function CoaListPage() {
   const { data, isLoading } = useCoaList({
     page: 1,
     per_page: 100,
-    type: filterType,
+    account_type: filterType,
     is_active: filterActive,
   })
 
@@ -171,10 +171,10 @@ export default function CoaListPage() {
     try {
       if (node.is_active) {
         await deactivate.mutateAsync(node.id)
-        toast.success(`Akun "${node.name}" dinonaktifkan.`)
+        toast.success(`Akun "${node.account_name}" dinonaktifkan.`)
       } else {
         await activate.mutateAsync(node.id)
-        toast.success(`Akun "${node.name}" diaktifkan.`)
+        toast.success(`Akun "${node.account_name}" diaktifkan.`)
       }
     } catch {
       toast.error('Gagal mengubah status akun.')

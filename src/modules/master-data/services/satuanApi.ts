@@ -13,8 +13,11 @@ export const satuanApi = {
   update: (id: number, payload: UpdateSatuanPayload) =>
     http.patch<unknown, ApiResponse<Satuan>>(`/master-data/units/${id}`, payload),
 
-  delete: (id: number) =>
-    http.delete<unknown, ApiResponse<void>>(`/master-data/units/${id}`),
+  activate: (id: number) =>
+    http.patch<unknown, ApiResponse<void>>(`/master-data/units/${id}/activate`),
+
+  deactivate: (id: number) =>
+    http.patch<unknown, ApiResponse<void>>(`/master-data/units/${id}/deactivate`),
 
   search: async (query: string): Promise<SelectOption<number>[]> => {
     const res = await http.get<unknown, PaginatedResponse<Satuan>>(
@@ -24,7 +27,7 @@ export const satuanApi = {
     return res.data.map((s) => ({
       value: s.id,
       label: s.name,
-      sublabel: s.symbol,
+      sublabel: s.code,
     }))
   },
 }

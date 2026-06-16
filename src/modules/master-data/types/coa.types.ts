@@ -2,12 +2,14 @@ export type CoaType = 'asset' | 'liability' | 'equity' | 'revenue' | 'expense'
 
 export interface Coa {
   id: number
-  code: string
-  name: string
-  type: CoaType
-  parent_id: number | null
-  parent?: { id: number; code: string; name: string }
+  account_code: string
+  account_name: string
+  account_type: CoaType
+  parent_account_id: number | null
+  parent?: { id: number; account_code: string; account_name: string }
   description: string | null
+  normal_balance?: 'debit' | 'credit' | null
+  is_cash_bank?: boolean
   is_active: boolean
   level: number
   children?: Coa[]
@@ -19,16 +21,18 @@ export interface CoaListParams {
   page: number
   per_page: 25 | 50 | 100
   search?: string
-  type?: CoaType
+  account_type?: CoaType
   is_active?: boolean
 }
 
 export interface CreateCoaPayload {
-  code: string
-  name: string
-  type: CoaType
-  parent_id?: number | null
+  account_code: string
+  account_name: string
+  account_type: CoaType
+  parent_account_id?: number | null
   description?: string
+  normal_balance?: 'debit' | 'credit'
+  is_cash_bank?: boolean
 }
 
 export type UpdateCoaPayload = Partial<CreateCoaPayload>

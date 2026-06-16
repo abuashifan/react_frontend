@@ -3,7 +3,7 @@
 **Tipe**: Error handling UX + validation mapping  
 **Severity**: Medium  
 **Sumber**: Audit-11 A11-17  
-**Status**: Belum selesai
+**Status**: Selesai parsial — Phase 17 shared helper
 
 ---
 
@@ -49,3 +49,9 @@ src/modules/**/services/*Api.ts
 - Error 401/403/404/500 punya pesan yang jelas dan tidak menyesatkan.
 - Tidak ada catch kosong yang membuang error tanpa alasan.
 - Build sukses setelah implementasi.
+
+## Catatan Implementasi Phase 17
+
+- Ditambahkan `src/lib/apiError.ts` untuk menjaga `message`, `errors`, deteksi 404, dan mapping Laravel validation errors ke React Hook Form.
+- `JournalFormPage` memakai helper ini untuk save/action error.
+- Migrasi semua form lama ke helper yang sama masih bisa dilakukan bertahap saat modul-modul tersebut disentuh kembali.

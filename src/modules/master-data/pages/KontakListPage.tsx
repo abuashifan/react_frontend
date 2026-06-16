@@ -21,11 +21,11 @@ const KONTAK_TYPE_LABELS: Record<KontakType, string> = {
 
 const columns: ColumnDef<Kontak>[] = [
   {
-    id: 'code',
+    id: 'contact_code',
     header: 'Kode',
     size: 100,
-    meta: { sticky: true, stickyLeft: 32, className: 'font-medium text-[#5c9ead]' },
-    cell: ({ original }) => original.code,
+    meta: { sticky: true, stickyLeft: 0, className: 'font-medium text-[#5c9ead]' },
+    cell: ({ original }) => original.contact_code ?? '-',
   },
   {
     id: 'name',
@@ -34,12 +34,12 @@ const columns: ColumnDef<Kontak>[] = [
     cell: ({ original }) => original.name,
   },
   {
-    id: 'type',
+    id: 'contact_type',
     header: 'Tipe',
     size: 110,
     cell: ({ original }) => (
       <Badge className="text-[11px] bg-[#EFF9FB] text-[#326273] hover:bg-[#EFF9FB]">
-        {KONTAK_TYPE_LABELS[original.type]}
+        {KONTAK_TYPE_LABELS[original.contact_type]}
       </Badge>
     ),
   },
@@ -80,12 +80,10 @@ export default function KontakListPage() {
   const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
   const [filterType, setFilterType] = useState<KontakType | undefined>()
   const [filterActive, setFilterActive] = useState<boolean | undefined>()
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
-
   const { data, isLoading, isFetching } = useKontakList({
     page,
     per_page: perPage,
-    type: filterType,
+    contact_type: filterType,
     is_active: filterActive,
   })
 
@@ -150,8 +148,6 @@ export default function KontakListPage() {
         isFetching={isFetching}
         pagination={{ pageIndex: page - 1, pageSize: perPage }}
         onPaginationChange={(s) => { setPage(s.pageIndex + 1); setPerPage(s.pageSize) }}
-        selectedRows={selectedIds}
-        onRowSelect={setSelectedIds}
         emptyTitle="Belum ada kontak"
         emptyDescription="Tambahkan customer atau supplier pertama untuk memulai."
       />

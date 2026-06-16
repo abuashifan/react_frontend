@@ -1,82 +1,59 @@
-// Company settings
-export interface CompanySettingsData {
-  name: string
-  legal_name?: string | null
-  address?: string | null
-  phone?: string | null
-  email?: string | null
-  npwp?: string | null
-  currency: string
-  fiscal_year_start: number
-  logo?: string | null
+// Company settings — mengikuti backend aktual (CompanySettingService + request rules).
+// Phase 9 — spec-27 / gap-02. User/Role/Invitation types pindah ke access.types.ts.
+
+export type RoundingMethod = 'half_up' | 'half_down' | 'bankers' | 'floor' | 'ceil'
+export type WorkflowMode = 'simple_auto_post' | 'draft_then_post' | 'draft_approve_post'
+export type UserPermissionMode = 'role_template' | 'manual_per_user'
+
+export interface CompanyAccountingSettings {
+  base_currency?: string
+  default_payment_term_id?: number | null
+  amount_precision?: number
+  quantity_precision?: number
+  rounding_method?: RoundingMethod
+  transaction_workflow_mode?: WorkflowMode
+  auto_post_transactions?: boolean
+  allow_edit_transactions?: boolean
+  allow_edit_posted_transactions?: boolean
+  allow_void_transactions?: boolean
+  hide_voided_transactions?: boolean
+  require_void_reason?: boolean
+  approval_enabled?: boolean
+  tax_enabled?: boolean
+  user_permission_mode?: UserPermissionMode
+  block_outside_current_fiscal_year?: boolean
+  date_warning_enabled?: boolean
+  allow_backdated_transactions?: boolean
+  max_backdate_days?: number
+  allow_future_transactions?: boolean
+  max_future_days?: number
 }
 
-// Transaction settings
-export interface ApprovalRequired {
-  sales_quotation: boolean
-  sales_order: boolean
-  sales_invoice: boolean
-  purchase_request: boolean
-  purchase_order: boolean
-  vendor_bill: boolean
-  stock_adjustment: boolean
-  manual_journal: boolean
+export interface CompanyModuleSettings {
+  sales_enabled?: boolean
+  purchase_enabled?: boolean
+  cash_bank_enabled?: boolean
+  inventory_enabled?: boolean
+  warehouse_enabled?: boolean
+  fixed_asset_enabled?: boolean
+  approval_enabled?: boolean
+  tax_enabled?: boolean
+  reports_enabled?: boolean
 }
 
-export interface NumberFormat {
-  sales_invoice: string
-  sales_order: string
-  delivery_order: string
-  purchase_order: string
-  vendor_bill: string
-  goods_receipt: string
-  manual_journal: string
+export interface CompanyTransactionDefaults {
+  default_payment_term_id?: number | null
 }
 
-export interface TransactionSettings {
-  auto_post_enabled: boolean
-  approval_required: ApprovalRequired
-  number_formats: NumberFormat
-  session_timeout_minutes: number
+export interface CompanySettingsResponse {
+  accounting: CompanyAccountingSettings
+  transaction_defaults: CompanyTransactionDefaults
+  modules: CompanyModuleSettings
 }
 
-// Users
-export interface SettingsUser {
-  id: number
-  name: string
-  email: string
-  role?: string | null
-  is_active: boolean
-  last_login_at?: string | null
-  created_at: string
-}
-
-export interface CreateUserPayload {
-  name: string
-  email: string
-  role_id?: number | null
-  password: string
-}
-
-export interface UpdateUserPayload {
-  name?: string
-  email?: string
-  role_id?: number | null
-  password?: string
-}
-
-// Roles
-export interface SettingsRole {
-  id: number
-  name: string
-  description?: string | null
-  permissions_count?: number
-  permissions?: string[]
-}
-
-// Preferences
-export interface UserPreferences {
-  language: 'id' | 'en'
-  date_format: 'DD/MM/YYYY' | 'MM/DD/YYYY' | 'YYYY-MM-DD'
-  number_format: '1.000,00' | '1,000.00'
+export interface CompanyWorkflowSettings {
+  transaction_workflow_mode: WorkflowMode
+  auto_post_transactions: boolean
+  approval_enabled: boolean
+  allow_void_transactions: boolean
 }

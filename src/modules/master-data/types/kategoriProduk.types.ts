@@ -1,15 +1,15 @@
 export interface KategoriProduk {
   id: number
   name: string
-  description: string | null
-  product_count: number
+  parent_category_id: number | null
+  is_active: boolean
   created_at: string
   updated_at: string
 }
 
 export interface CreateKategoriProdukPayload {
   name: string
-  description?: string
+  parent_category_id?: number | null
 }
 
 export type UpdateKategoriProdukPayload = Partial<CreateKategoriProdukPayload>

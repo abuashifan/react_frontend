@@ -29,8 +29,8 @@ export const coaApi = {
     )
     return res.data.map((a) => ({
       value: a.id,
-      label: a.name,
-      sublabel: a.code,
+      label: a.account_name,
+      sublabel: a.account_code,
     }))
   },
 }

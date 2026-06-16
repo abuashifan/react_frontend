@@ -3,7 +3,7 @@ export type JournalEntryStatus = 'draft' | 'approved' | 'posted' | 'void'
 export interface JournalEntryLine {
   id: number
   account_id: number
-  account?: { id: number; code: string; name: string }
+  account?: { id: number; account_code: string; account_name: string }
   department_id?: number | null
   department?: { id: number; name: string } | null
   project_id?: number | null

@@ -17,7 +17,8 @@ interface SearchableSelectBaseProps {
 interface SearchableSelectSingleProps extends SearchableSelectBaseProps {
   multiple?: false
   value: number | null
-  onChange: (value: number | null) => void
+  /** `option` tersedia saat user memilih dari hasil pencarian (berguna untuk preload label). */
+  onChange: (value: number | null, option?: SelectOption<number>) => void
 }
 
 interface SearchableSelectMultipleProps extends SearchableSelectBaseProps {
@@ -79,11 +80,11 @@ export function SearchableSelect({
       .filter((selectedLabel): selectedLabel is string => Boolean(selectedLabel))
 
     if (labels.length === 0) {
-      return multiple ? `${selectedValues.length} item dipilih` : placeholder
+      return multiple ? `${selectedValues.length} item dipilih` : `ID ${selectedValues[0]}`
     }
 
     return multiple ? labels.join(', ') : labels[0]
-  }, [knownSelectedOptions, multiple, placeholder, selectedValues])
+  }, [knownSelectedOptions, multiple, selectedValues])
 
   const search = useCallback(
     (q: string) => {
@@ -129,7 +130,7 @@ export function SearchableSelect({
       const exists = value.includes(opt.value)
       onChange(exists ? value.filter((item) => item !== opt.value) : [...value, opt.value])
     } else {
-      onChange(opt.value)
+      onChange(opt.value, opt)
       setOpen(false)
       setQuery('')
       setOptions([])

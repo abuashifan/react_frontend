@@ -8,12 +8,26 @@ import type {
   UpdateSalesOrderPayload,
 } from '../types/salesOrder.types'
 
-export const salesOrderApi = {
-  list: (params: SalesOrderListParams) =>
-    http.get<unknown, PaginatedResponse<SalesOrder>>('/sales/orders', { params }),
+/**
+ * Petakan `order_number` backend ke UI `number`.
+ * Sales Order punya `order_number` DAN `quotation_number`; alias global di
+ * `http.ts` bisa salah memilih `quotation_number`, jadi di sini kita override
+ * eksplisit dengan `order_number` (spec-33 / GAP-08).
+ */
+function toSalesOrder(row: SalesOrder): SalesOrder {
+  return row.order_number ? { ...row, number: row.order_number } : row
+}
 
-  get: (id: number) =>
-    http.get<unknown, ApiResponse<SalesOrder>>(`/sales/orders/${id}`),
+export const salesOrderApi = {
+  list: async (params: SalesOrderListParams) => {
+    const res = await http.get<unknown, PaginatedResponse<SalesOrder>>('/sales/orders', { params })
+    return { ...res, data: res.data.map(toSalesOrder) }
+  },
+
+  get: async (id: number) => {
+    const res = await http.get<unknown, ApiResponse<SalesOrder>>(`/sales/orders/${id}`)
+    return { ...res, data: toSalesOrder(res.data) }
+  },
 
   create: (payload: CreateSalesOrderPayload) =>
     http.post<unknown, ApiResponse<SalesOrder>>('/sales/orders', payload),
@@ -40,6 +54,6 @@ export const salesOrderApi = {
     const res = await http.get<unknown, PaginatedResponse<SalesOrder>>('/sales/orders', {
       params: { search: query, per_page: 10, status: 'confirmed' },
     })
-    return res.data.map((so) => ({ value: so.id, label: so.number, sublabel: so.customer?.name }))
+    return res.data.map((so) => ({ value: so.id, label: so.order_number ?? so.number, sublabel: so.customer?.name }))
   },
 }

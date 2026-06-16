@@ -12,8 +12,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
-import { onboardingApi } from '../../services/onboardingApi'
-import { useAuthStore } from '@/stores/useAuthStore'
+import { setupApi } from '../../services/onboardingApi'
 import { useToast } from '@/hooks/useToast'
 import { COA_TEMPLATES } from '../../constants'
 
@@ -34,7 +33,6 @@ interface Props {
 }
 
 export function Step2TemplateCOA({ currentTemplate, mappingCompleted, onComplete, onBack }: Props) {
-  const { activeCompanyId } = useAuthStore()
   const { toast } = useToast()
   const [selected, setSelected] = useState<string | null>(currentTemplate)
   const [previewOpen, setPreviewOpen] = useState<string | null>(null)
@@ -64,14 +62,16 @@ export function Step2TemplateCOA({ currentTemplate, mappingCompleted, onComplete
   }
 
   const handleContinue = async () => {
-    if (!selected || !activeCompanyId) return
+    if (!selected) return
     setIsSubmitting(true)
     try {
-      await onboardingApi.applyCoaTemplate(activeCompanyId, selected)
+      // Catatan: backend tidak mengekspos endpoint penerapan template COA via wizard.
+      // Chart of accounts dikelola di Master Data; di sini hanya validasi progres step.
+      try { await setupApi.validateStep('chart_of_accounts') } catch { /* progres non-blocking */ }
       const tpl = COA_TEMPLATES.find((t) => t.id === selected)!
       onComplete(selected, tpl.label)
     } catch {
-      toast.error('Gagal menerapkan template COA. Coba lagi.')
+      toast.error('Gagal melanjutkan. Coba lagi.')
     } finally {
       setIsSubmitting(false)
     }

@@ -16,6 +16,21 @@ import type { JournalEntry, JournalEntryStatus } from '../types/journalEntry.typ
 
 const STATUSES: JournalEntryStatus[] = ['draft', 'approved', 'posted', 'void']
 
+/**
+ * Total debit/kredit jurnal untuk tampilan list.
+ * Prioritas: aggregate dari backend → hitung dari lines bila ada → undefined.
+ * Backend list saat ini tidak mengirim aggregate maupun lines, sehingga
+ * formatter akan menampilkan `-` (bukan `Rp 0` palsu) sesuai spec-33.
+ */
+function journalTotal(entry: JournalEntry, side: 'debit' | 'credit'): number | undefined {
+  const aggregate = side === 'debit' ? entry.total_debit : entry.total_credit
+  if (aggregate !== undefined && aggregate !== null) return aggregate
+  if (Array.isArray(entry.lines) && entry.lines.length > 0) {
+    return entry.lines.reduce((sum, line) => sum + (line[side] || 0), 0)
+  }
+  return undefined
+}
+
 export default function JournalListPage() {
   const navigate = useNavigate()
   const [page, setPage] = useState(0)
@@ -51,14 +66,14 @@ export default function JournalListPage() {
       header: 'Total Debit',
       size: 140,
       meta: { className: 'tabular-nums text-right' },
-      cell: ({ original }) => formatCurrency(original.total_debit ?? 0),
+      cell: ({ original }) => formatCurrency(journalTotal(original, 'debit')),
     },
     {
       id: 'credit',
       header: 'Total Kredit',
       size: 140,
       meta: { className: 'tabular-nums text-right' },
-      cell: ({ original }) => formatCurrency(original.total_credit ?? 0),
+      cell: ({ original }) => formatCurrency(journalTotal(original, 'credit')),
     },
     { id: 'status', header: 'Status', size: 110, cell: ({ original }) => <DocumentStatusBadge status={original.status} /> },
   ]

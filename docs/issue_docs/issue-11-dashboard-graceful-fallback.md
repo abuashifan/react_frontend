@@ -3,7 +3,7 @@
 **Tipe**: Missing backend endpoint + UX fallback  
 **Severity**: Medium  
 **Sumber**: Audit-11 A11-07, GAP-05  
-**Status**: Belum selesai
+**Status**: Selesai — Phase 17
 
 ---
 
@@ -48,3 +48,9 @@ src/modules/dashboard/components/*
 - User melihat state kosong atau not-yet-available yang rapi.
 - Query retry tidak membanjiri backend untuk endpoint yang memang belum ada.
 - Jika nanti backend dashboard tersedia, service bisa diaktifkan tanpa refactor besar.
+
+## Catatan Implementasi Phase 17
+
+- `useDashboardData` menonaktifkan retry untuk error 404 dashboard dan membatasi retry error lain.
+- `DashboardPage` memisahkan state endpoint belum tersedia dari data kosong.
+- KPI, pending alert, chart, dan recent activity menampilkan fallback eksplisit tanpa mock data.

@@ -3,7 +3,7 @@
 **Tipe**: Shared component usage bug  
 **Severity**: Medium  
 **Sumber**: Audit-11 A11-15, design-C3  
-**Status**: Belum selesai
+**Status**: Selesai — Phase 17 hardening
 
 ---
 
@@ -58,3 +58,9 @@ src/components/shared/form/SearchableSelect.tsx
 - Tidak ada selected select yang tampak kosong padahal field value ada.
 - Search async tetap bekerja setelah selected option diberikan.
 - Build sukses setelah implementasi.
+
+## Catatan Implementasi Phase 17
+
+- `SearchableSelect` menyimpan option yang baru dipilih dan tetap menerima `selectedOptions` dari relation backend.
+- Jika value ID sudah ada tetapi label relation belum tersedia, komponen menampilkan fallback `ID {value}` agar field tidak tampak kosong.
+- `JournalFormPage` membentuk selected option akun dari relation `lines.account`.

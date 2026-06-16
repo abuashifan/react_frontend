@@ -11,6 +11,18 @@ function asNumber(value: unknown, fallback: number): number {
   return typeof value === 'number' ? value : fallback
 }
 
+/**
+ * FALLBACK SEMENTARA (spec-33 / GAP-08).
+ *
+ * Alias global ini membentuk `number` canonical dari field nomor dokumen
+ * spesifik backend agar workspace list lama tetap menampilkan nomor.
+ *
+ * Status: documented fallback. JANGAN ditambah sebagai solusi utama.
+ * Bila sebuah resource punya >1 field di daftar ini sekaligus (mis. Sales Order
+ * punya `order_number` + `quotation_number`), urutan di sini bisa salah pilih —
+ * resource seperti itu WAJIB override eksplisit lewat adapter di service-nya
+ * (lihat `salesOrderApi.toSalesOrder`).
+ */
 const DOCUMENT_NUMBER_FIELDS = [
   'journal_number',
   'quotation_number',

@@ -6,7 +6,6 @@ import { RefreshCw } from 'lucide-react'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
-import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -30,14 +29,14 @@ export default function BankReconciliationFormPage() {
   const { can } = usePermission()
   const { data, isLoading } = useBankReconciliation(id ? Number(id) : undefined)
   const reconciliation = data?.data
-  const { create, refreshLines, markLines, finalize, void: voidRecon } = useBankReconciliationMutations()
-  const [isVoidOpen, setVoidOpen] = useState(false)
+  const { create, update, refreshLines, markLines } = useBankReconciliationMutations()
   const [selectedLineIds, setSelectedLineIds] = useState<Set<number>>(new Set())
   const [clearedDate, setClearedDate] = useState(new Date().toISOString().slice(0, 10))
   const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<BankReconciliationFormValues>({ resolver: zodResolver(bankReconciliationSchema), defaultValues: { statement_start_date: new Date().toISOString().slice(0, 10), statement_end_date: new Date().toISOString().slice(0, 10) } })
   const status = (reconciliation?.status ?? 'draft') as DocumentStatus
-  const isEditable = isCreate
-  const isDraft = reconciliation?.status === 'draft'
+  // Rekonsiliasi bank selalu berstatus draft di backend (tidak ada finalize/void).
+  const isDraft = isCreate || reconciliation?.status === 'draft'
+  const isEditable = isDraft
 
   useEffect(() => {
     if (reconciliation) {
@@ -47,9 +46,14 @@ export default function BankReconciliationFormPage() {
 
   const handleSave = handleSubmit(async (values) => {
     try {
-      const res = await create.mutateAsync(values)
-      toast.success('Rekonsiliasi bank berhasil dibuat.')
-      navigate(`/cash-bank/bank-reconciliations/${res.data.id}`)
+      if (isCreate) {
+        const res = await create.mutateAsync(values)
+        toast.success('Rekonsiliasi bank berhasil dibuat.')
+        navigate(`/cash-bank/bank-reconciliations/${res.data.id}`)
+      } else {
+        await update.mutateAsync({ id: Number(id), payload: values })
+        toast.success('Rekonsiliasi bank berhasil diperbarui.')
+      }
     } catch { toast.error('Gagal menyimpan rekonsiliasi bank.') }
   })
 
@@ -67,15 +71,6 @@ export default function BankReconciliationFormPage() {
     } catch { toast.error('Gagal menandai transaksi.') }
   }
 
-  const handleFinalize = async () => {
-    try { await finalize.mutateAsync(Number(id)); toast.success('Rekonsiliasi difinalisasi.') }
-    catch { toast.error('Gagal finalisasi.') }
-  }
-
-  const handleVoid = async (reason: string) => {
-    await voidRecon.mutateAsync({ id: Number(id), reason }); toast.success('Berhasil di-void.'); setVoidOpen(false)
-  }
-
   const toggleLine = (lineId: number) => {
     setSelectedLineIds((prev) => {
       const next = new Set(prev)
@@ -89,9 +84,8 @@ export default function BankReconciliationFormPage() {
   const clearedTotal = clearedLines.reduce((sum, l) => sum + (l.direction === 'in' ? l.amount : -l.amount), 0)
 
   const actions: DocumentActionButton[] = []
-  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
-  if (!isCreate && isDraft && can('cash_bank.post')) actions.push({ id: 'finalize', label: 'Finalisasi', variant: 'primary', onClick: () => void handleFinalize(), isLoading: finalize.isPending })
-  if (!isCreate && reconciliation?.status !== 'void' && can('cash_bank.void')) actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
+  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan', variant: 'primary', onClick: () => void handleSave(), isLoading: isSubmitting })
+  if (!isCreate && isDraft && can('cash_bank.edit')) actions.push({ id: 'update', label: 'Simpan Perubahan', variant: 'primary', onClick: () => void handleSave(), isLoading: isSubmitting || update.isPending })
 
   if (!isCreate && isLoading) return <FormLayout title="Rekonsiliasi Bank" breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Rekonsiliasi Bank', path: '/cash-bank/bank-reconciliations' }, { label: 'Memuat...' }]}><div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat...</div></FormLayout>
 
@@ -168,7 +162,6 @@ export default function BankReconciliationFormPage() {
           )}
         </div>
       </FormLayout>
-      <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={reconciliation?.number ?? ''} isLoading={voidRecon.isPending} />
     </>
   )
 }

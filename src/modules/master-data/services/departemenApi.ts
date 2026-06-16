@@ -13,8 +13,11 @@ export const departemenApi = {
   update: (id: number, payload: UpdateDepartemenPayload) =>
     http.patch<unknown, ApiResponse<Departemen>>(`/master-data/departments/${id}`, payload),
 
-  delete: (id: number) =>
-    http.delete<unknown, ApiResponse<void>>(`/master-data/departments/${id}`),
+  activate: (id: number) =>
+    http.patch<unknown, ApiResponse<void>>(`/master-data/departments/${id}/activate`),
+
+  deactivate: (id: number) =>
+    http.patch<unknown, ApiResponse<void>>(`/master-data/departments/${id}/deactivate`),
 
   search: async (query: string): Promise<SelectOption<number>[]> => {
     const res = await http.get<unknown, PaginatedResponse<Departemen>>(

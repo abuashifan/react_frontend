@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, PowerOff } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -40,7 +40,7 @@ export default function ProyekPage() {
   const [formStatus, setFormStatus] = useState<ProyekStatus>('active')
 
   const { data, isLoading, isFetching } = useProyekList(undefined, filterStatus)
-  const { create, update, remove } = useProyekMutations()
+  const { create, update, deactivate } = useProyekMutations()
 
   const {
     register,
@@ -87,13 +87,13 @@ export default function ProyekPage() {
     }
   }
 
-  const handleDelete = async (item: Proyek) => {
-    if (!confirm(`Hapus proyek "${item.name}"?`)) return
+  const handleDeactivate = async (item: Proyek) => {
+    if (!confirm(`Nonaktifkan proyek "${item.name}"? Data historis tidak akan dihapus.`)) return
     try {
-      await remove.mutateAsync(item.id)
-      toast.success('Proyek berhasil dihapus.')
+      await deactivate.mutateAsync(item.id)
+      toast.success('Proyek berhasil dinonaktifkan.')
     } catch {
-      toast.error('Gagal menghapus proyek.')
+      toast.error('Gagal menonaktifkan proyek.')
     }
   }
 
@@ -143,14 +143,14 @@ export default function ProyekPage() {
       size: 100,
       cell: ({ original }) => (
         <div className="flex items-center gap-1">
-          <PermissionGuard permission="master-data.projects.edit">
+          <PermissionGuard permission="projects.edit">
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-[#326273]" onClick={() => openEdit(original)}>
               <Pencil className="w-3.5 h-3.5" />
             </Button>
           </PermissionGuard>
-          <PermissionGuard permission="master-data.projects.delete">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-red-500" onClick={() => handleDelete(original)}>
-              <Trash2 className="w-3.5 h-3.5" />
+          <PermissionGuard permission="projects.deactivate">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-amber-600" onClick={() => handleDeactivate(original)}>
+              <PowerOff className="w-3.5 h-3.5" />
             </Button>
           </PermissionGuard>
         </div>
@@ -183,7 +183,7 @@ export default function ProyekPage() {
       breadcrumb={[{ label: 'Master Data' }, { label: 'Proyek' }]}
       sidebar={sidebar}
       action={
-        <PermissionGuard permission="master-data.projects.create">
+        <PermissionGuard permission="projects.create">
           <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={openCreate}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Proyek
           </Button>

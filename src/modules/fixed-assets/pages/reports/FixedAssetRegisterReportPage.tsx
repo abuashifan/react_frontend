@@ -1,0 +1,31 @@
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { fixedAssetApi } from '../../services/fixedAssetApi'
+import { FixedAssetReportTable } from './FixedAssetReportTable'
+
+export default function FixedAssetRegisterReportPage() {
+  const [asOfPeriod, setAsOfPeriod] = useState(new Date().toISOString().slice(0, 7))
+  const query = useQuery({
+    queryKey: ['fixed-assets', 'reports', 'register', asOfPeriod],
+    queryFn: () => fixedAssetApi.reports.register({ as_of_period: asOfPeriod }),
+    enabled: Boolean(asOfPeriod),
+  })
+
+  return (
+    <WorkspaceLayout
+      title="Laporan Register Aktiva"
+      breadcrumb={[{ label: 'Aktiva Tetap' }, { label: 'Laporan Register' }]}
+      action={
+        <div className="flex items-center gap-2">
+          <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Periode</Label>
+          <Input type="month" value={asOfPeriod} onChange={(event) => setAsOfPeriod(event.target.value)} className="h-8 w-[145px] text-[13px] tabular-nums" />
+        </div>
+      }
+    >
+      <FixedAssetReportTable data={query.data?.data} isLoading={query.isLoading} />
+    </WorkspaceLayout>
+  )
+}

@@ -19,8 +19,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { companyInfoSchema, type CompanyInfoValues } from '../../schemas/companyInfoSchema'
-import { onboardingApi } from '../../services/onboardingApi'
-import { useAuthStore } from '@/stores/useAuthStore'
+import { setupApi } from '../../services/onboardingApi'
+import { companySettingsApi } from '@/modules/settings/services/companySettingsApi'
 import { useToast } from '@/hooks/useToast'
 
 const FISCAL_MONTH_OPTIONS = [
@@ -36,7 +36,6 @@ interface Props {
 }
 
 export function Step1CompanyInfo({ defaultValues, onComplete }: Props) {
-  const { activeCompanyId } = useAuthStore()
   const { toast } = useToast()
 
   const form = useForm<CompanyInfoValues>({
@@ -52,9 +51,13 @@ export function Step1CompanyInfo({ defaultValues, onComplete }: Props) {
   })
 
   const onSubmit = async (values: CompanyInfoValues) => {
-    if (!activeCompanyId) return
     try {
-      await onboardingApi.updateCompanyInfo(activeCompanyId, values)
+      // Mata uang dasar disimpan via company accounting settings (endpoint nyata).
+      // Catatan: backend belum mengekspos update profil (nama/NPWP/alamat) & fiscal_year_start
+      // lewat setup wizard; field tersebut hanya dipakai untuk ringkasan wizard.
+      await companySettingsApi.updateAccounting({ base_currency: values.currency })
+      // Tandai progres step di backend (best-effort).
+      try { await setupApi.validateStep('company_profile') } catch { /* progres non-blocking */ }
       onComplete(values)
     } catch {
       toast.error('Gagal menyimpan informasi perusahaan. Coba lagi.')

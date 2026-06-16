@@ -13,20 +13,23 @@ import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { formatCurrency } from '@/lib/utils'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { useJournalEntry, useJournalEntryMutations } from '../hooks/useJournalEntryList'
 import { journalEntrySchema, type JournalEntryFormValues } from '../schemas/journalEntrySchema'
-import type { DocumentStatus } from '@/types/common.types'
+import type { DocumentStatus, SelectOption } from '@/types/common.types'
 
 interface EditableLine {
   account_id: number | null
+  /** Preloaded option agar SearchableSelect bisa menampilkan label akun existing. */
+  account_option: SelectOption<number> | null
   description: string
   debit: number
   credit: number
 }
 
-const DEFAULT_LINE: EditableLine = { account_id: null, description: '', debit: 0, credit: 0 }
+const DEFAULT_LINE: EditableLine = { account_id: null, account_option: null, description: '', debit: 0, credit: 0 }
 
 export default function JournalFormPage() {
   const navigate = useNavigate()
@@ -39,7 +42,7 @@ export default function JournalFormPage() {
   const journal = data?.data
   const { create, update, approve, post, void: voidJournal } = useJournalEntryMutations()
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<JournalEntryFormValues>({
+  const { register, handleSubmit, reset, setError, formState: { errors, isSubmitting } } = useForm<JournalEntryFormValues>({
     resolver: zodResolver(journalEntrySchema),
     defaultValues: { journal_date: new Date().toISOString().slice(0, 10) },
   })
@@ -57,7 +60,17 @@ export default function JournalFormPage() {
   useEffect(() => {
     if (journal) {
       reset({ journal_date: journal.journal_date, description: journal.description ?? '' })
-      setLines(journal.lines.map((l) => ({ account_id: l.account_id, description: l.description ?? '', debit: l.debit ?? 0, credit: l.credit ?? 0 })))
+      // Detail load is the source of truth for editable line state.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLines(journal.lines.map((l) => ({
+        account_id: l.account_id,
+        account_option: l.account
+          ? { value: l.account.id, label: `${l.account.account_code} - ${l.account.account_name}`, sublabel: l.account.account_code }
+          : { value: l.account_id, label: `Akun #${l.account_id}` },
+        description: l.description ?? '',
+        debit: l.debit ?? 0,
+        credit: l.credit ?? 0,
+      })))
     }
   }, [journal, reset])
 
@@ -72,25 +85,32 @@ export default function JournalFormPage() {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads } })
         toast.success('Jurnal berhasil diperbarui.')
       }
-    } catch { toast.error('Gagal menyimpan jurnal.') }
+    } catch (error) {
+      applyApiValidationErrors(error, setError)
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan jurnal.'))
+    }
   })
 
-  const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); toast.success('Jurnal di-approve.') } catch { toast.error('Gagal approve.') } }
+  const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); toast.success('Jurnal di-approve.') } catch (error) { toast.error(getApiErrorMessage(error, 'Gagal approve.')) } }
   const handlePost = async () => {
     if (!isBalanced) { toast.error('Total debit harus sama dengan total kredit.'); return }
-    try { await post.mutateAsync(Number(id)); toast.success('Jurnal berhasil diposting.') } catch { toast.error('Gagal posting jurnal.') }
+    try { await post.mutateAsync(Number(id)); toast.success('Jurnal berhasil diposting.') } catch (error) { toast.error(getApiErrorMessage(error, 'Gagal posting jurnal.')) }
   }
   const handleVoid = async (reason: string) => {
-    await voidJournal.mutateAsync({ id: Number(id), reason })
-    toast.success('Jurnal berhasil di-void.')
-    setVoidOpen(false)
+    try {
+      await voidJournal.mutateAsync({ id: Number(id), reason })
+      toast.success('Jurnal berhasil di-void.')
+      setVoidOpen(false)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal void jurnal.'))
+    }
   }
 
   const columns: LineItemColumn<EditableLine>[] = [
     {
       id: 'account', header: 'Akun', width: 220,
       render: ({ item, isReadOnly, onUpdate }) => (
-        <SearchableSelect value={item.account_id} onChange={(v) => onUpdate('account_id', v)} onSearch={coaApi.search} placeholder="Pilih akun..." disabled={isReadOnly} size="sm" />
+        <SearchableSelect value={item.account_id} onChange={(v) => onUpdate('account_id', v)} onSearch={coaApi.search} placeholder="Pilih akun..." disabled={isReadOnly} size="sm" selectedOptions={item.account_option ? [item.account_option] : []} />
       ),
     },
     { id: 'description', header: 'Keterangan', width: 180, render: ({ item, isReadOnly, onUpdate }) => <Input value={item.description} onChange={(e) => onUpdate('description', e.target.value)} disabled={isReadOnly} placeholder="Keterangan..." className="h-8 text-[12px]" /> },

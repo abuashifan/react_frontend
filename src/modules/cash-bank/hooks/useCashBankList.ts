@@ -68,13 +68,15 @@ export function useBankReconciliationMutations() {
   }
   return {
     create: useMutation({ mutationFn: (p: CreateBankReconciliationPayload) => bankReconciliationApi.create(p), onSuccess: () => inv() }),
+    update: useMutation({
+      mutationFn: ({ id, payload }: { id: number; payload: Partial<CreateBankReconciliationPayload> }) => bankReconciliationApi.update(id, payload),
+      onSuccess: (_, { id }) => inv(id),
+    }),
     refreshLines: useMutation({ mutationFn: (id: number) => bankReconciliationApi.refreshLines(id), onSuccess: (_, id) => inv(id) }),
     markLines: useMutation({
       mutationFn: ({ id, lineIds, cleared, clearedDate }: { id: number; lineIds: number[]; cleared: boolean; clearedDate?: string }) =>
         bankReconciliationApi.markLines(id, lineIds, cleared, clearedDate),
       onSuccess: (_, { id }) => inv(id),
     }),
-    finalize: useMutation({ mutationFn: (id: number) => bankReconciliationApi.finalize(id), onSuccess: (_, id) => inv(id) }),
-    void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => bankReconciliationApi.void(id, reason), onSuccess: () => inv() }),
   }
 }

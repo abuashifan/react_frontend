@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, PowerOff } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -8,13 +8,14 @@ import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/useToast'
 import { useKategoriProdukList, useKategoriProdukMutations } from '../hooks/useSimpleLists'
 import { kategoriProdukSchema, type KategoriProdukFormValues } from '../schemas/kategoriProdukSchema'
 import type { KategoriProduk } from '../types/kategoriProduk.types'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
+import { cn } from '@/lib/utils'
 
 export default function KategoriProdukPage() {
   const { toast } = useToast()
@@ -23,7 +24,7 @@ export default function KategoriProdukPage() {
   const [page, setPage] = useState(1)
 
   const { data, isLoading, isFetching } = useKategoriProdukList()
-  const { create, update, remove } = useKategoriProdukMutations()
+  const { create, update, deactivate } = useKategoriProdukMutations()
 
   const {
     register,
@@ -36,13 +37,13 @@ export default function KategoriProdukPage() {
 
   const openCreate = () => {
     setEditingItem(null)
-    reset({ name: '', description: '' })
+    reset({ name: '' })
     setDialogOpen(true)
   }
 
   const openEdit = (item: KategoriProduk) => {
     setEditingItem(item)
-    reset({ name: item.name, description: item.description ?? '' })
+    reset({ name: item.name })
     setDialogOpen(true)
   }
 
@@ -61,13 +62,13 @@ export default function KategoriProdukPage() {
     }
   }
 
-  const handleDelete = async (item: KategoriProduk) => {
-    if (!confirm(`Hapus kategori "${item.name}"?`)) return
+  const handleDeactivate = async (item: KategoriProduk) => {
+    if (!confirm(`Nonaktifkan kategori "${item.name}"? Data historis tidak akan dihapus.`)) return
     try {
-      await remove.mutateAsync(item.id)
-      toast.success('Kategori berhasil dihapus.')
+      await deactivate.mutateAsync(item.id)
+      toast.success('Kategori berhasil dinonaktifkan.')
     } catch {
-      toast.error('Gagal menghapus kategori.')
+      toast.error('Gagal menonaktifkan kategori.')
     }
   }
 
@@ -80,32 +81,29 @@ export default function KategoriProdukPage() {
       cell: ({ original }) => <span className="font-medium text-[#24323a]">{original.name}</span>,
     },
     {
-      id: 'description',
-      header: 'Deskripsi',
-      size: 280,
-      cell: ({ original }) => original.description ?? '-',
-    },
-    {
-      id: 'product_count',
-      header: 'Jumlah Produk',
-      size: 130,
-      meta: { className: 'tabular-nums text-right' },
-      cell: ({ original }) => original.product_count,
+      id: 'is_active',
+      header: 'Status',
+      size: 100,
+      cell: ({ original }) => (
+        <Badge className={cn('text-[11px] px-2 py-0.5 rounded-full', original.is_active ? 'bg-[#D1FAE5] text-[#065F46] hover:bg-[#D1FAE5]' : 'bg-[#F1F5F9] text-[#64748b] hover:bg-[#F1F5F9]')}>
+          {original.is_active ? 'Aktif' : 'Nonaktif'}
+        </Badge>
+      ),
     },
     {
       id: 'actions',
       header: '',
-      size: 100,
+      size: 120,
       cell: ({ original }) => (
         <div className="flex items-center gap-1">
-          <PermissionGuard permission="master-data.product-categories.edit">
+          <PermissionGuard permission="products.edit">
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-[#326273]" onClick={() => openEdit(original)}>
               <Pencil className="w-3.5 h-3.5" />
             </Button>
           </PermissionGuard>
-          <PermissionGuard permission="master-data.product-categories.delete">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-red-500" onClick={() => handleDelete(original)}>
-              <Trash2 className="w-3.5 h-3.5" />
+          <PermissionGuard permission="products.deactivate">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-amber-600" onClick={() => handleDeactivate(original)}>
+              <PowerOff className="w-3.5 h-3.5" />
             </Button>
           </PermissionGuard>
         </div>
@@ -118,7 +116,7 @@ export default function KategoriProdukPage() {
       title="Kategori Produk"
       breadcrumb={[{ label: 'Master Data' }, { label: 'Kategori Produk' }]}
       action={
-        <PermissionGuard permission="master-data.product-categories.create">
+        <PermissionGuard permission="products.create">
           <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={openCreate}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Kategori
           </Button>
@@ -149,10 +147,6 @@ export default function KategoriProdukPage() {
               </Label>
               <Input {...register('name')} placeholder="Elektronik" className="h-9 text-[13px]" />
               {errors.name && <p className="text-[11px] text-red-500">{errors.name.message}</p>}
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Deskripsi</Label>
-              <Textarea {...register('description')} placeholder="Keterangan (opsional)" className="text-[13px] resize-none" rows={2} />
             </div>
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" className="h-8 text-[13px]" onClick={() => setDialogOpen(false)}>Batal</Button>
