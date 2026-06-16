@@ -21,11 +21,11 @@ export const journalEntryApi = {
     http.patch<unknown, ApiResponse<JournalEntry>>(`/journals/${id}`, payload),
 
   approve: (id: number) =>
-    http.patch<unknown, ApiResponse<JournalEntry>>(`/journals/${id}/approve`),
+    http.post<unknown, ApiResponse<JournalEntry>>(`/journals/${id}/approve`),
 
   post: (id: number) =>
-    http.patch<unknown, ApiResponse<JournalEntry>>(`/journals/${id}/post`),
+    http.post<unknown, ApiResponse<JournalEntry>>(`/journals/${id}/post`),
 
   void: (id: number, reason: string) =>
-    http.patch<unknown, ApiResponse<JournalEntry>>(`/journals/${id}/void`, { reason }),
+    http.post<unknown, ApiResponse<JournalEntry>>(`/journals/${id}/void`, { reason }),
 }

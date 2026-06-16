@@ -157,3 +157,16 @@ export function detectModuleFromPath(pathname: string): string | null {
   )
   return match?.id ?? null
 }
+
+export function findRibbonItemByPath(pathname: string): { module: ModuleConfig; item: RibbonItem } | null {
+  const matches = MODULE_CONFIGS
+    .filter((module) => module.id !== 'dashboard')
+    .flatMap((module) =>
+      module.ribbonItems
+        .filter((item) => pathname === item.path || pathname.startsWith(`${item.path}/`))
+        .map((item) => ({ module, item })),
+    )
+    .sort((a, b) => b.item.path.length - a.item.path.length)
+
+  return matches[0] ?? null
+}

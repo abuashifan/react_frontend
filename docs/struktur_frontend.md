@@ -39,6 +39,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____audit-frontend-api-contract.md
 | | |____audit-gap-completion-tracker.md
 | | |____audit-tech-stack.md
+| | |____audit-11-frontend-global-contract-map-16-06-26.md
 | |____design_docs/
 | | |____design-A1-topbar-ribbon.md
 | | |____design-A2-ribbon-overflow-tablet.md
@@ -69,6 +70,32 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____design-K-mobile-bottom-navigation.md
 | | |____design-L-error-pages.md
 | | |____design-M-print-export.md
+| |____gap_docs/
+| | |____gap-00-master-index.md
+| | |____gap-01-p0-contract-fixes.md
+| | |____gap-02-settings-access-mismatch.md
+| | |____gap-03-missing-modules.md
+| | |____gap-04-setup-wizard-refactor.md
+| | |____gap-05-dashboard-no-backend.md
+| | |____gap-06-report-gaps.md
+| | |____gap-07-master-data-dto-contract.md
+| | |____gap-08-transaction-dto-number-contract.md
+| |____issue_docs/
+| | |____issue-01-permission-keys.md
+| | |____issue-02-ribbon-paths.md
+| | |____issue-03-fiscal-year-http-methods.md
+| | |____issue-04-bank-recon-methods.md
+| | |____issue-05-settings-endpoints.md
+| | |____issue-06-report-endpoint-fixes.md
+| | |____issue-07-route-ribbon-canonical-map.md
+| | |____issue-08-product-dto-and-table.md
+| | |____issue-09-master-data-delete-actions.md
+| | |____issue-10-journal-list-totals-and-account-labels.md
+| | |____issue-11-dashboard-graceful-fallback.md
+| | |____issue-12-searchable-select-selected-options-audit.md
+| | |____issue-13-formatters-null-invalid-guard.md
+| | |____issue-14-api-error-display-and-form-errors.md
+| | |____issue-15-datatable-reuse-and-sticky-column-audit.md
 | |____praproduction_docs/
 | | |____CLAUDE.md
 | | |____spec-01-project-context.md
@@ -96,8 +123,19 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____spec-23-tablet-first-layout-rules.md
 | | |____spec-24-auth-session-contract-clarifications.md
 | | |____spec-25-viewport-list.md
+| | |____spec-26-p0-contract-fixes.md
+| | |____spec-27-settings-access-refactor.md
+| | |____spec-28-fixed-assets-module.md
+| | |____spec-29-opening-balance-module.md
+| | |____spec-30-setup-wizard-refactor.md
+| | |____spec-31-period-end-module.md
+| | |____spec-32-master-data-dto-contract-fixes.md
+| | |____spec-33-transaction-dto-number-contract.md
+| | |____spec-34-route-ribbon-canonical-map.md
+| | |____spec-35-shared-runtime-hardening.md
 | |____prompt/
 | | |____prompt-00-master-index.md
+| | |____prompt-guardrails-audit-11-implementation.md
 | | |____prompt-phase-1A-project-setup.md
 | | |____prompt-phase-1B-auth-pages.md
 | | |____prompt-phase-1C-app-shell-layout.md
@@ -110,6 +148,19 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____prompt-phase-5-inventory.md
 | | |____prompt-phase-6-accounting-reports.md
 | | |____prompt-phase-7-dashboard-settings.md
+| | |____prompt-phase-8-p0-contract-fixes.md
+| | |____prompt-phase-9-settings-access-refactor.md
+| | |____prompt-phase-10-fixed-assets.md
+| | |____prompt-phase-11-opening-balance.md
+| | |____prompt-phase-12-setup-wizard.md
+| | |____prompt-phase-13-period-end.md
+| | |____prompt-phase-14-master-data-dto-contract-fixes.md
+| | |____prompt-phase-15-transaction-dto-number-contract.md
+| | |____prompt-phase-16-route-ribbon-canonical-map.md
+| | |____prompt-phase-17-shared-runtime-hardening.md
+| |____tracking/
+| | |____2026-06-16-route-tabs-datatable-fixes.md
+| | |____2026-06-16-workspace-document-number-alias-fix.md
 | |____struktur_frontend.md
 |____eslint.config.js
 |____index.html

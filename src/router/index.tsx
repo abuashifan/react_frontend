@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createMemoryRouter } from 'react-router-dom'
 import { ProtectedRoute, CompanySelectionGuard, OnboardingGuard } from './guards'
 import { LoginPage } from '@/modules/auth/pages/LoginPage'
 import { CompanyPickerPage } from '@/modules/auth/pages/CompanyPickerPage'
@@ -16,7 +16,13 @@ import { cashBankRoutes } from '@/modules/cash-bank/routes'
 import { reportsRoutes } from '@/modules/reports/routes'
 import { settingsRoutes } from '@/modules/settings/routes'
 
-export const router = createBrowserRouter([
+const initialEntry = `${window.location.pathname}${window.location.search}${window.location.hash}`
+
+if (window.location.pathname !== '/') {
+  window.history.replaceState(window.history.state, '', '/')
+}
+
+export const router = createMemoryRouter([
   { path: '/login', element: <LoginPage /> },
   {
     path: '/select-company',
@@ -55,4 +61,6 @@ export const router = createBrowserRouter([
   { path: '/network-error', element: <NetworkErrorPage /> },
   { path: '/maintenance', element: <MaintenancePage /> },
   { path: '*', element: <NotFoundPage /> },
-])
+], {
+  initialEntries: [initialEntry],
+})

@@ -66,7 +66,8 @@ export function DataTable<T extends { id: number | string }>({
   emptyTitle = 'Tidak ada data',
   emptyDescription,
 }: DataTableProps<T>) {
-  const allIds = data.map((row) => String(row.id))
+  const rows = Array.isArray(data) ? data : []
+  const allIds = rows.map((row) => String(row.id))
   const isAllSelected = allIds.length > 0 && allIds.every((id) => selectedRows.includes(id))
   const isIndeterminate = selectedRows.length > 0 && !isAllSelected
 
@@ -84,7 +85,7 @@ export function DataTable<T extends { id: number | string }>({
     )
   }
 
-  const isEmpty = !isLoading && data.length === 0
+  const isEmpty = !isLoading && rows.length === 0
   const showBulkBar = !!onRowSelect && selectedRows.length > 0 && !!bulkActions?.length
 
   // Checkbox column injected when row selection is enabled
@@ -95,7 +96,7 @@ export function DataTable<T extends { id: number | string }>({
         checked={isIndeterminate ? 'indeterminate' : isAllSelected}
         onCheckedChange={toggleAll}
         aria-label="Pilih semua baris"
-        disabled={isLoading || data.length === 0}
+        disabled={isLoading || rows.length === 0}
       />
     ),
     cell: ({ id }) => (
@@ -173,7 +174,7 @@ export function DataTable<T extends { id: number | string }>({
                 </td>
               </tr>
             ) : (
-              data.map((row) => {
+              rows.map((row) => {
                 const id = String(row.id)
                 const isSelected = selectedRows.includes(id)
 

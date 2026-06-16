@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useTabStore } from '@/stores/useTabStore'
 import type { ModuleKey } from '@/stores/useTabStore'
 import { useSessionTimeout } from '@/hooks/useSessionTimeout'
@@ -8,7 +8,7 @@ import { Topbar } from './Topbar'
 import { RibbonPanel } from './RibbonPanel'
 import { PrimaryTabs } from './PrimaryTabs'
 import { SecondaryTabs } from './SecondaryTabs'
-import { detectModuleFromPath } from '@/router/moduleConfig'
+import { detectModuleFromPath, findRibbonItemByPath } from '@/router/moduleConfig'
 
 interface AppShellProps {
   children: React.ReactNode
@@ -16,28 +16,108 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const location = useLocation()
+  const navigate = useNavigate()
   const {
     activeModule,
     isRibbonOpen,
     primaryTabs,
     activePrimaryTabId,
+    secondaryTabs,
+    activeSecondaryTabId,
     setActiveModule,
     setActivePrimaryTab,
     closeRibbon,
+    openPrimaryTab,
+    openSecondaryTab,
+    setActiveSecondaryTab,
   } = useTabStore()
   const { isWarningOpen, secondsRemaining, handleContinue, doLogout } = useSessionTimeout()
 
   useEffect(() => {
-    if (location.pathname === '/') {
+    if (location.pathname !== '/') return
+
+    if (!activePrimaryTabId || activePrimaryTabId === 'dashboard') {
       setActivePrimaryTab('dashboard')
+      return
     }
-  }, [location.pathname, setActivePrimaryTab])
+
+    const activePrimaryTab = primaryTabs.find((tab) => tab.id === activePrimaryTabId)
+    const activeSecondaryId = activeSecondaryTabId[activePrimaryTabId]
+    const activeSecondaryTab = (secondaryTabs[activePrimaryTabId] ?? []).find(
+      (tab) => tab.id === activeSecondaryId,
+    )
+    const activePath = activeSecondaryTab?.path ?? activePrimaryTab?.path
+
+    if (activePath && activePath !== '/') {
+      navigate(activePath, { replace: true })
+    }
+  }, [
+    activePrimaryTabId,
+    activeSecondaryTabId,
+    location.pathname,
+    navigate,
+    primaryTabs,
+    secondaryTabs,
+    setActivePrimaryTab,
+  ])
 
   useEffect(() => {
     if (location.pathname === '/') return
     const detected = detectModuleFromPath(location.pathname)
     if (!activeModule && detected) setActiveModule(detected as ModuleKey)
   }, [activeModule, location.pathname, setActiveModule])
+
+  useEffect(() => {
+    if (location.pathname === '/') return
+
+    const match = findRibbonItemByPath(location.pathname)
+    if (!match) return
+
+    const moduleId = match.module.id as ModuleKey
+    const primaryTabId = `${moduleId}-${match.item.id}`
+    const primaryDidOpen = openPrimaryTab({
+      id: primaryTabId,
+      menuKey: match.item.id,
+      label: match.item.label,
+      module: moduleId,
+      path: match.item.path,
+    })
+
+    if (!primaryDidOpen) return
+
+    const pathWithSearch = `${location.pathname}${location.search}`
+    const isListPath = location.pathname === match.item.path
+
+    if (isListPath) {
+      openSecondaryTab(primaryTabId, {
+        id: 'list',
+        label: 'Daftar',
+        type: 'list',
+        path: match.item.path,
+        pinned: true,
+      })
+      setActiveSecondaryTab(primaryTabId, 'list')
+      return
+    }
+
+    const lastSegment = location.pathname.split('/').filter(Boolean).at(-1)
+    const isCreatePath = lastSegment === 'create'
+    const secondaryId = isCreatePath ? 'new' : `form:${location.pathname}`
+
+    openSecondaryTab(primaryTabId, {
+      id: secondaryId,
+      label: isCreatePath ? 'Baru' : (lastSegment ?? 'Detail'),
+      type: 'form',
+      path: pathWithSearch,
+      pinned: false,
+    })
+  }, [
+    location.pathname,
+    location.search,
+    openPrimaryTab,
+    openSecondaryTab,
+    setActiveSecondaryTab,
+  ])
 
   const showPrimaryTabs = primaryTabs.length > 0
   const isDashboard = activePrimaryTabId === 'dashboard'

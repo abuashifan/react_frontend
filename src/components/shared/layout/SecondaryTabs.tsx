@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { useTabStore } from '@/stores/useTabStore'
 import { cn } from '@/lib/utils'
@@ -7,6 +8,7 @@ interface SecondaryTabsProps {
 }
 
 export function SecondaryTabs({ top }: SecondaryTabsProps) {
+  const navigate = useNavigate()
   const {
     primaryTabs,
     activePrimaryTabId,
@@ -20,8 +22,30 @@ export function SecondaryTabs({ top }: SecondaryTabsProps) {
     return null
   }
 
-  const tabs = secondaryTabs[activePrimaryTabId] ?? []
-  const activeId = activeSecondaryTabId[activePrimaryTabId]
+  const primaryTabId = activePrimaryTabId
+  const tabs = secondaryTabs[primaryTabId] ?? []
+  const activeId = activeSecondaryTabId[primaryTabId]
+
+  function activateTab(tabId: string, path: string) {
+    setActiveSecondaryTab(primaryTabId, tabId)
+    navigate(path)
+  }
+
+  function closeTab(tabId: string) {
+    const closingIndex = tabs.findIndex((tab) => tab.id === tabId)
+    const nextTabs = tabs.filter((tab) => tab.id !== tabId)
+    const fallbackTab =
+      nextTabs[Math.max(closingIndex - 1, 0)] ??
+      nextTabs.find((tab) => tab.pinned) ??
+      nextTabs[0]
+    const shouldNavigate = activeId === tabId
+
+    closeSecondaryTab(primaryTabId, tabId)
+
+    if (shouldNavigate && fallbackTab) {
+      navigate(fallbackTab.path)
+    }
+  }
 
   return (
     <div
@@ -36,11 +60,11 @@ export function SecondaryTabs({ top }: SecondaryTabsProps) {
             role="tab"
             tabIndex={0}
             aria-selected={isActive}
-            onClick={() => setActiveSecondaryTab(activePrimaryTabId, tab.id)}
+            onClick={() => activateTab(tab.id, tab.path)}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault()
-                setActiveSecondaryTab(activePrimaryTabId, tab.id)
+                activateTab(tab.id, tab.path)
               }
             }}
             className={cn(
@@ -60,7 +84,7 @@ export function SecondaryTabs({ top }: SecondaryTabsProps) {
                 aria-label={`Tutup ${tab.label}`}
                 onClick={(e) => {
                   e.stopPropagation()
-                  closeSecondaryTab(activePrimaryTabId, tab.id)
+                  closeTab(tab.id)
                 }}
                 className="w-3.5 h-3.5 rounded-[2px] flex items-center justify-center text-[#94a3b8] hover:bg-[#fee2e2] hover:text-[#991B1B] transition-colors flex-shrink-0"
               >

@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { useTabStore } from '@/stores/useTabStore'
 import { usePermission } from '@/hooks/usePermission'
 import { useToast } from '@/hooks/useToast'
@@ -47,6 +48,7 @@ function RibbonItemButton({
 }
 
 export function RibbonPanel() {
+  const navigate = useNavigate()
   const {
     activeModule,
     activePrimaryTabId,
@@ -79,8 +81,11 @@ export function RibbonPanel() {
 
     if (!didOpen) {
       toast.warning('Maksimal 10 tab dapat dibuka sekaligus. Tutup tab yang tidak diperlukan.')
+      closeRibbon()
+      return
     }
 
+    navigate(item.path)
     closeRibbon()
   }
 

@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { useTabStore } from '@/stores/useTabStore'
 import { cn } from '@/lib/utils'
@@ -7,9 +8,47 @@ interface PrimaryTabsProps {
 }
 
 export function PrimaryTabs({ top }: PrimaryTabsProps) {
-  const { primaryTabs, activePrimaryTabId, setActivePrimaryTab, closePrimaryTab } = useTabStore()
+  const navigate = useNavigate()
+  const {
+    primaryTabs,
+    activePrimaryTabId,
+    secondaryTabs,
+    activeSecondaryTabId,
+    setActivePrimaryTab,
+    closePrimaryTab,
+  } = useTabStore()
 
   if (primaryTabs.length === 0) return null
+
+  function pathForPrimaryTab(tabId: string): string {
+    if (tabId === 'dashboard') return '/'
+
+    const tab = primaryTabs.find((primaryTab) => primaryTab.id === tabId)
+    const activeSecondaryId = activeSecondaryTabId[tabId]
+    const activeSecondary = (secondaryTabs[tabId] ?? []).find(
+      (secondaryTab) => secondaryTab.id === activeSecondaryId,
+    )
+
+    return activeSecondary?.path ?? tab?.path ?? '/'
+  }
+
+  function activateTab(tabId: string) {
+    setActivePrimaryTab(tabId)
+    navigate(pathForPrimaryTab(tabId))
+  }
+
+  function closeTab(tabId: string) {
+    const closingIndex = primaryTabs.findIndex((tab) => tab.id === tabId)
+    const nextTabs = primaryTabs.filter((tab) => tab.id !== tabId)
+    const fallbackTab = nextTabs[Math.max(closingIndex - 1, 0)] ?? nextTabs[0]
+    const shouldNavigate = activePrimaryTabId === tabId
+
+    closePrimaryTab(tabId)
+
+    if (shouldNavigate) {
+      navigate(fallbackTab ? pathForPrimaryTab(fallbackTab.id) : '/')
+    }
+  }
 
   return (
     <div
@@ -25,11 +64,11 @@ export function PrimaryTabs({ top }: PrimaryTabsProps) {
             role="tab"
             tabIndex={0}
             aria-selected={isActive}
-            onClick={() => setActivePrimaryTab(tab.id)}
+            onClick={() => activateTab(tab.id)}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault()
-                setActivePrimaryTab(tab.id)
+                activateTab(tab.id)
               }
             }}
             className={cn(
@@ -47,7 +86,7 @@ export function PrimaryTabs({ top }: PrimaryTabsProps) {
                 aria-label={`Tutup tab ${tab.label}`}
                 onClick={(e) => {
                   e.stopPropagation()
-                  closePrimaryTab(tab.id)
+                  closeTab(tab.id)
                 }}
                 className="w-4 h-4 rounded-[3px] flex items-center justify-center text-[#94a3b8] hover:bg-[#fee2e2] hover:text-[#991B1B] transition-colors flex-shrink-0"
               >
