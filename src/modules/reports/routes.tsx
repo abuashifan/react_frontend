@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- route config modules export static route arrays, not React components. */
 import { lazy, type ReactElement } from 'react'
 import { ProtectedRoute } from '@/router/guards'
 import type { RouteObject } from 'react-router-dom'
@@ -14,7 +15,6 @@ const ApAgingReportPage = lazy(() => import('./pages/ApAgingReportPage'))
 const ReconciliationPage = lazy(() => import('./pages/ReconciliationPage'))
 const StockReportPage = lazy(() => import('./pages/StockReportPage'))
 const InventoryAnalysisPage = lazy(() => import('./pages/InventoryAnalysisPage'))
-const TransactionListPage = lazy(() => import('./pages/TransactionListPage'))
 
 const wrap = (element: ReactElement) => (
   <ProtectedRoute permission="reports.view">{element}</ProtectedRoute>
@@ -33,5 +33,5 @@ export const reportsRoutes: RouteObject[] = [
   { path: '/reports/reconciliation', element: wrap(<ReconciliationPage />) },
   { path: '/reports/stock', element: wrap(<StockReportPage />) },
   { path: '/reports/inventory-analysis', element: wrap(<InventoryAnalysisPage />) },
-  { path: '/reports/transactions', element: wrap(<TransactionListPage />) },
+  // /reports/transactions dihapus — tidak ada route backend (Audit-12 A12-15).
 ]

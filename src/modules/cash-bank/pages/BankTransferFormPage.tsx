@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
@@ -12,10 +12,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { useBankTransfer, useBankTransferMutations } from '../hooks/useCashBankList'
 import { bankTransferSchema, type BankTransferFormValues } from '../schemas/cashBankSchemas'
 import type { DocumentStatus } from '@/types/common.types'
+import { toDateInputValue } from '@/lib/utils'
 
 export default function BankTransferFormPage() {
   const navigate = useNavigate()
@@ -27,29 +29,47 @@ export default function BankTransferFormPage() {
   const transfer = data?.data
   const { create, post, void: voidTransfer } = useBankTransferMutations()
   const [isVoidOpen, setVoidOpen] = useState(false)
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<BankTransferFormValues>({ resolver: zodResolver(bankTransferSchema), defaultValues: { transfer_date: new Date().toISOString().slice(0, 10) } })
+  const { control, getValues, register, handleSubmit, setValue, reset, formState: { errors, isSubmitting } } = useForm<BankTransferFormValues>({ resolver: zodResolver(bankTransferSchema), defaultValues: { transfer_date: new Date().toISOString().slice(0, 10) } })
+  const fromAccountId = useWatch({ control, name: 'from_cash_bank_account_id' })
+  const toAccountId = useWatch({ control, name: 'to_cash_bank_account_id' })
   const status = (transfer?.status ?? 'draft') as DocumentStatus
   const isEditable = isCreate
 
   useEffect(() => {
     if (transfer) {
-      reset({ transfer_date: transfer.transfer_date, from_cash_bank_account_id: transfer.from_cash_bank_account_id, to_cash_bank_account_id: transfer.to_cash_bank_account_id, amount: transfer.amount, notes: transfer.notes ?? '' })
+      reset({ transfer_date: toDateInputValue(transfer.transfer_date), from_cash_bank_account_id: transfer.from_cash_bank_account_id, to_cash_bank_account_id: transfer.to_cash_bank_account_id, amount: transfer.amount, notes: transfer.notes ?? '' })
     }
   }, [transfer, reset])
+
+  const formDraft = usePersistentFormDraft<BankTransferFormValues>({
+    draftKey: `cash-bank.bank-transfer.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    enabled: isEditable,
+  })
+
+  const handleDiscardDraft = () => {
+    reset({ transfer_date: new Date().toISOString().slice(0, 10) })
+    formDraft.discardDraft()
+    toast.success('Draft lokal dibuang.')
+  }
 
   const handleSave = handleSubmit(async (values) => {
     try {
       const res = await create.mutateAsync(values)
+      formDraft.clearDraft()
       toast.success('Transfer bank berhasil dibuat.')
       navigate(`/cash-bank/bank-transfers/${res.data.id}`)
     } catch { toast.error('Gagal menyimpan transfer bank.') }
   })
 
-  const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Diposting.') } catch { toast.error('Gagal posting.') } }
-  const handleVoid = async (reason: string) => { await voidTransfer.mutateAsync({ id: Number(id), reason }); toast.success('Berhasil di-void.'); setVoidOpen(false) }
+  const handlePost = async () => { try { await post.mutateAsync(Number(id)); formDraft.clearDraft(); toast.success('Diposting.') } catch { toast.error('Gagal posting.') } }
+  const handleVoid = async (reason: string) => { await voidTransfer.mutateAsync({ id: Number(id), reason }); formDraft.clearDraft(); toast.success('Berhasil di-void.'); setVoidOpen(false) }
 
   const actions: DocumentActionButton[] = []
   if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+  if (isEditable && formDraft.isRestored) actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: handleDiscardDraft })
   if (!isCreate && transfer?.status === 'draft' && can('cash_bank.post')) actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
   if (!isCreate && transfer?.status === 'posted' && can('cash_bank.void')) actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
 
@@ -57,13 +77,13 @@ export default function BankTransferFormPage() {
 
   return (
     <>
-      <FormLayout title={isCreate ? 'Buat Transfer Bank' : 'Transfer Bank'} documentNumber={transfer?.number} status={status}
+      <FormLayout title={isCreate ? 'Buat Transfer Bank' : 'Transfer Bank'} documentNumber={transfer?.number} status={status} readOnly={!isEditable}
         breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Transfer Bank', path: '/cash-bank/bank-transfers' }, { label: isCreate ? 'Buat' : (transfer?.number ?? '') }]}
         bottomBar={<DocumentActionBar documentStatus={status} documentNumber={transfer?.number} actions={actions} />}>
         <FormSection title="Header">
           <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label><Input {...register('transfer_date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />{errors.transfer_date && <p className="text-[11px] text-red-500">{errors.transfer_date.message}</p>}</div>
-          <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Dari Akun <span className="text-red-500">*</span></Label><SearchableSelect value={watch('from_cash_bank_account_id') ?? null} onChange={(v) => setValue('from_cash_bank_account_id', v as number)} onSearch={coaApi.search} placeholder="Pilih akun asal..." disabled={!isEditable} error={errors.from_cash_bank_account_id?.message} selectedOptions={transfer?.from_cash_bank_account ? [{ value: transfer.from_cash_bank_account.id, label: transfer.from_cash_bank_account.name }] : []} /></div>
-          <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Ke Akun <span className="text-red-500">*</span></Label><SearchableSelect value={watch('to_cash_bank_account_id') ?? null} onChange={(v) => setValue('to_cash_bank_account_id', v as number)} onSearch={coaApi.search} placeholder="Pilih akun tujuan..." disabled={!isEditable} error={errors.to_cash_bank_account_id?.message} selectedOptions={transfer?.to_cash_bank_account ? [{ value: transfer.to_cash_bank_account.id, label: transfer.to_cash_bank_account.name }] : []} /></div>
+          <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Dari Akun <span className="text-red-500">*</span></Label><SearchableSelect value={fromAccountId ?? null} onChange={(v) => setValue('from_cash_bank_account_id', v as number)} onSearch={coaApi.search} placeholder="Pilih akun asal..." disabled={!isEditable} error={errors.from_cash_bank_account_id?.message} selectedOptions={transfer?.from_cash_bank_account ? [{ value: transfer.from_cash_bank_account.id, label: transfer.from_cash_bank_account.name }] : []} /></div>
+          <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Ke Akun <span className="text-red-500">*</span></Label><SearchableSelect value={toAccountId ?? null} onChange={(v) => setValue('to_cash_bank_account_id', v as number)} onSearch={coaApi.search} placeholder="Pilih akun tujuan..." disabled={!isEditable} error={errors.to_cash_bank_account_id?.message} selectedOptions={transfer?.to_cash_bank_account ? [{ value: transfer.to_cash_bank_account.id, label: transfer.to_cash_bank_account.name }] : []} /></div>
           <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jumlah <span className="text-red-500">*</span></Label><Input {...register('amount', { valueAsNumber: true })} type="number" disabled={!isEditable} className="h-9 text-[13px] text-right tabular-nums" min={0} />{errors.amount && <p className="text-[11px] text-red-500">{errors.amount.message}</p>}</div>
           <div className="flex flex-col gap-1 md:col-span-2"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label><Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} /></div>
         </FormSection>

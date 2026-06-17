@@ -47,8 +47,11 @@ export default function TransactionSettingsPage() {
 
   useEffect(() => {
     if (data?.data) {
-      setAcc(data.data.accounting ?? {})
-      setPaymentTermId(data.data.transaction_defaults?.default_payment_term_id ?? null)
+      const timer = window.setTimeout(() => {
+        setAcc(data.data.accounting ?? {})
+        setPaymentTermId(data.data.transaction_defaults?.default_payment_term_id ?? null)
+      }, 0)
+      return () => window.clearTimeout(timer)
     }
   }, [data])
 

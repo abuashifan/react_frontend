@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- route config modules export static route arrays, not React components. */
 import React, { lazy } from 'react'
 import { ProtectedRoute } from '@/router/guards'
 

@@ -29,7 +29,6 @@ interface SearchableSelectMultipleProps extends SearchableSelectBaseProps {
 
 type SearchableSelectProps = SearchableSelectSingleProps | SearchableSelectMultipleProps
 
-const MIN_CHARS = 2
 const DEBOUNCE_MS = 300
 const MAX_RESULTS = 10
 
@@ -49,6 +48,7 @@ export function SearchableSelect({
   const [query, setQuery] = useState('')
   const [options, setOptions] = useState<SelectOption<number>[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [hasSearched, setHasSearched] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const [localSelected, setLocalSelected] = useState<SelectOption<number>[]>(selectedOptions)
 
@@ -89,15 +89,11 @@ export function SearchableSelect({
   const search = useCallback(
     (q: string) => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
-      if (q.length < MIN_CHARS) {
-        setOptions([])
-        setIsSearching(false)
-        return
-      }
 
       setIsSearching(true)
       debounceRef.current = setTimeout(async () => {
         try {
+          // Query kosong = preload opsi awal (service mengembalikan top aktif).
           const results = await onSearch(q)
           setOptions(results.slice(0, MAX_RESULTS))
           setActiveIndex(-1)
@@ -105,6 +101,7 @@ export function SearchableSelect({
           setOptions([])
         } finally {
           setIsSearching(false)
+          setHasSearched(true)
         }
       }, DEBOUNCE_MS)
     },
@@ -116,6 +113,9 @@ export function SearchableSelect({
     if (next) {
       setQuery('')
       setOptions([])
+      setHasSearched(false)
+      // Preload opsi awal begitu dropdown dibuka agar langsung usable.
+      search('')
       setTimeout(() => inputRef.current?.focus(), 0)
     }
   }
@@ -164,8 +164,7 @@ export function SearchableSelect({
     }
   }
 
-  const showTip = query.length > 0 && query.length < MIN_CHARS
-  const showEmpty = !isSearching && query.length >= MIN_CHARS && options.length === 0
+  const showEmpty = !isSearching && hasSearched && options.length === 0
   const hasValue = selectedValues.length > 0
 
   return (
@@ -218,7 +217,7 @@ export function SearchableSelect({
                 search(e.target.value)
               }}
               onKeyDown={handleKeyDown}
-              placeholder="Ketik minimal 2 karakter..."
+              placeholder="Ketik untuk mencari..."
               className="h-7 w-full rounded border border-[#d9e2e5] px-2 text-[12px] outline-none focus:border-[#5c9ead] focus:shadow-[0_0_0_3px_rgba(92,158,173,0.12)]"
             />
           </div>
@@ -230,12 +229,6 @@ export function SearchableSelect({
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 Mencari...
               </div>
-            )}
-
-            {showTip && (
-              <p className="px-3 py-2 text-[12px] text-[#94a3b8]">
-                Ketik {MIN_CHARS - query.length} karakter lagi untuk mencari
-              </p>
             )}
 
             {showEmpty && (

@@ -19,7 +19,14 @@ export default function StockBalanceDetailPage() {
 
   if (isLoading) {
     return (
-      <FormLayout title="Detail Saldo Stok" breadcrumb={[{ label: 'Inventori' }, { label: 'Saldo Stok', path: '/inventory/stock-balances' }, { label: 'Memuat...' }]}>
+      <FormLayout
+        title="Detail Saldo Stok"
+        breadcrumb={[
+          { label: 'Inventori' },
+          { label: 'Saldo Stok', path: '/inventory/stock-balances' },
+          { label: 'Memuat...' },
+        ]}
+      >
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
       </FormLayout>
     )
@@ -27,7 +34,14 @@ export default function StockBalanceDetailPage() {
 
   if (!balance) {
     return (
-      <FormLayout title="Detail Saldo Stok" breadcrumb={[{ label: 'Inventori' }, { label: 'Saldo Stok', path: '/inventory/stock-balances' }, { label: 'Tidak ditemukan' }]}>
+      <FormLayout
+        title="Detail Saldo Stok"
+        breadcrumb={[
+          { label: 'Inventori' },
+          { label: 'Saldo Stok', path: '/inventory/stock-balances' },
+          { label: 'Tidak ditemukan' },
+        ]}
+      >
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Data tidak ditemukan.</div>
       </FormLayout>
     )
@@ -57,8 +71,16 @@ export default function StockBalanceDetailPage() {
             <span className="text-[13px] text-[#334155]">{balance.product?.code ?? '-'}</span>
           </div>
           <div className="flex flex-col gap-0.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Deskripsi</span>
+            <span className="text-[13px] text-[#334155]">{balance.product?.description ?? '-'}</span>
+          </div>
+          <div className="flex flex-col gap-0.5">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Gudang</span>
             <span className="text-[13px] text-[#334155]">{balance.warehouse?.name ?? '-'}</span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kode Gudang</span>
+            <span className="text-[13px] text-[#334155]">{balance.warehouse?.code ?? '-'}</span>
           </div>
           <div className="flex flex-col gap-0.5">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pergerakan Terakhir</span>

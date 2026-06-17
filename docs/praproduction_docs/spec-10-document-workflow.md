@@ -277,3 +277,30 @@ Tampilkan progress tracking di form (informational only, tidak bisa diedit):
   <span className="text-[#991B1B] font-medium">Sisa: {formatCurrency(invoice.balance_due)}</span>
 </div>
 ```
+
+---
+
+## Edit / Read-Only Mode Policy (Audit-12 A12-10)
+
+Policy konsisten antar modul untuk form dokumen transaksi:
+
+- **Create** → selalu edit mode.
+- **Draft** → edit mode (tetap cek permission update sebelum render tombol aksi).
+- **Posted / approved / paid / void / cancelled / closed / finalized** → read-only.
+- Saat read-only, form **wajib** menampilkan alasan yang jelas (bukan sekadar field disabled).
+
+### Implementasi
+
+- `isEditable` dihitung per form (umumnya `isCreate || status === 'draft'`) karena
+  aturan editable spesifik per dokumen mengikuti backend.
+- `FormLayout` menerima prop `readOnly` (+ opsional `readOnlyReason`). Saat
+  `readOnly` true, FormLayout merender banner read-only di atas konten form.
+- Teks alasan default diturunkan dari `status` lewat
+  `documentReadOnlyReason(status)` di
+  `src/components/shared/document/documentEditPolicy.ts`. Form dengan semantik
+  non-draft (mis. Fixed Asset disposed/depreciated) memberikan `readOnlyReason`
+  eksplisit.
+- Pola adopsi per form: tambahkan `readOnly={!isEditable}` ke `<FormLayout>`
+  dokumen (bukan FormLayout state loading).
+- Tombol aksi tetap melalui `DocumentActionBar` yang permission-guarded; banner
+  locked dependency tetap via `DocumentLockedBanner`.

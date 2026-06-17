@@ -50,6 +50,35 @@ export function formatDate(date: string | Date | null | undefined, format: 'shor
   }).format(d)
 }
 
+/**
+ * Normalisasi tanggal apapun menjadi `YYYY-MM-DD` untuk `<input type="date">`.
+ *
+ * Backend bisa mengirim `YYYY-MM-DD`, datetime ISO (`2026-06-16T00:00:00Z`),
+ * atau display string. `<input type="date">` HANYA menerima `YYYY-MM-DD`;
+ * value lain membuat input kosong/salah. Gunakan helper ini untuk semua
+ * `reset()`/default value tanggal di form — JANGAN pakai `formatDate()`
+ * (itu khusus display, output localized id-ID).
+ *
+ * Mengembalikan `''` untuk nilai kosong/invalid (RHF menampilkannya sebagai
+ * input kosong, bukan `Invalid Date`).
+ */
+export function toDateInputValue(value: string | Date | null | undefined): string {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (trimmed === '') return ''
+    // Sudah `YYYY-MM-DD` (opsional diikuti waktu) → ambil bagian tanggalnya.
+    const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})/)
+    if (match) return match[1]
+  }
+  const d = typeof value === 'string' ? new Date(value) : value
+  if (Number.isNaN(d.getTime())) return ''
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export function formatNumber(value: number | string | null | undefined, decimals = 0): string {
   const n = toFiniteNumber(value)
   if (n === null) return EMPTY_VALUE

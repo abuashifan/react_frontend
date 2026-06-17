@@ -18,6 +18,7 @@ import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { useCashReceipt, useCashReceiptMutations } from '../hooks/useCashBankList'
 import { cashReceiptSchema, type CashReceiptFormValues } from '../schemas/cashBankSchemas'
 import type { DocumentStatus } from '@/types/common.types'
+import { toDateInputValue } from '@/lib/utils'
 
 interface EditableLine { account_id: number | null; amount: number; description: string }
 const DEFAULT_LINE: EditableLine = { account_id: null, amount: 0, description: '' }
@@ -39,7 +40,7 @@ export default function CashReceiptFormPage() {
 
   useEffect(() => {
     if (receipt) {
-      reset({ receipt_date: receipt.receipt_date, cash_bank_account_id: receipt.cash_bank_account_id, contact_id: receipt.contact_id, amount: receipt.amount, notes: receipt.notes ?? '' })
+      reset({ receipt_date: toDateInputValue(receipt.receipt_date), cash_bank_account_id: receipt.cash_bank_account_id, contact_id: receipt.contact_id, amount: receipt.amount, notes: receipt.notes ?? '' })
       setLines(receipt.lines.map((l) => ({ account_id: l.account_id, amount: l.amount, description: l.description ?? '' })))
     }
   }, [receipt, reset])
@@ -71,7 +72,7 @@ export default function CashReceiptFormPage() {
 
   return (
     <>
-      <FormLayout title={isCreate ? 'Buat Penerimaan Kas' : 'Penerimaan Kas'} documentNumber={receipt?.number} status={status}
+      <FormLayout title={isCreate ? 'Buat Penerimaan Kas' : 'Penerimaan Kas'} documentNumber={receipt?.number} status={status} readOnly={!isEditable}
         breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Penerimaan Kas', path: '/cash-bank/cash-receipts' }, { label: isCreate ? 'Buat' : (receipt?.number ?? '') }]}
         bottomBar={<DocumentActionBar documentStatus={status} documentNumber={receipt?.number} actions={actions} />}>
         <div className="space-y-3">

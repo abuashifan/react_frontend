@@ -31,6 +31,12 @@ const DEFAULT_LINE: EditableLine = { product_id: null, description: '', quantity
 
 function lineSubtotal() { return 0 }
 
+function toGoodsReceiptLine(line: EditableLine): Omit<EditableLine, 'billed_quantity'> {
+  const { billed_quantity, ...editable } = line
+  void billed_quantity
+  return editable
+}
+
 export default function GoodsReceiptFormPage() {
   const navigate = useNavigate()
   const { id } = useParams()
@@ -62,7 +68,7 @@ export default function GoodsReceiptFormPage() {
 
   const handleSave = handleSubmit(async (values) => {
     try {
-      const res = await create.mutateAsync({ ...values, lines: lines.map(({ billed_quantity: _b, ...l }) => l) })
+      const res = await create.mutateAsync({ ...values, lines: lines.map(toGoodsReceiptLine) })
       toast.success('Penerimaan barang berhasil dibuat.')
       navigate(`/purchase/goods-receipts/${res.data.id}`)
     } catch { toast.error('Gagal menyimpan penerimaan barang.') }

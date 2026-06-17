@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
@@ -14,12 +14,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { useStockAdjustment, useStockAdjustmentMutations } from '../hooks/useStockAdjustmentList'
 import { stockAdjustmentSchema, type StockAdjustmentFormValues } from '../schemas/stockAdjustmentSchema'
 import type { DocumentStatus } from '@/types/common.types'
 import type { StockAdjustmentLineType } from '../types/stockAdjustment.types'
+import { toDateInputValue } from '@/lib/utils'
 
 interface EditableLine {
   product_id: number | null
@@ -43,10 +45,11 @@ export default function StockAdjustmentFormPage() {
   const adj = data?.data
   const { create, update, approve, post, void: voidAdj } = useStockAdjustmentMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<StockAdjustmentFormValues>({
+  const { control, getValues, register, handleSubmit, setValue, reset, formState: { errors, isSubmitting } } = useForm<StockAdjustmentFormValues>({
     resolver: zodResolver(stockAdjustmentSchema),
     defaultValues: { adjustment_date: new Date().toISOString().slice(0, 10) },
   })
+  const warehouseId = useWatch({ control, name: 'warehouse_id' })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
   const [isVoidOpen, setVoidOpen] = useState(false)
@@ -57,6 +60,38 @@ export default function StockAdjustmentFormPage() {
   useEffect(() => {
     if (adj) {
       reset({ adjustment_date: adj.adjustment_date, reason: adj.reason ?? '', notes: adj.notes ?? '', warehouse_id: adj.warehouse_id ?? null })
+      const timer = window.setTimeout(() => {
+        setLines(adj.lines.map((l) => ({
+          product_id: l.product_id,
+          warehouse_id: l.warehouse_id,
+          adjustment_type: l.adjustment_type,
+          quantity: l.quantity,
+          unit_cost: l.unit_cost ?? 0,
+          reason: l.reason ?? '',
+        })))
+      }, 0)
+      return () => window.clearTimeout(timer)
+    }
+  }, [adj, reset])
+
+  const formDraft = usePersistentFormDraft<StockAdjustmentFormValues, EditableLine[]>({
+    draftKey: `inventory.stock-adjustment.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [{ ...DEFAULT_LINE }]),
+    enabled: isEditable,
+  })
+
+  const handleDiscardDraft = () => {
+    if (adj) {
+      reset({
+        adjustment_date: toDateInputValue(adj.adjustment_date),
+        reason: adj.reason ?? '',
+        notes: adj.notes ?? '',
+        warehouse_id: adj.warehouse_id ?? null,
+      })
       setLines(adj.lines.map((l) => ({
         product_id: l.product_id,
         warehouse_id: l.warehouse_id,
@@ -65,8 +100,13 @@ export default function StockAdjustmentFormPage() {
         unit_cost: l.unit_cost ?? 0,
         reason: l.reason ?? '',
       })))
+    } else {
+      reset({ adjustment_date: new Date().toISOString().slice(0, 10) })
+      setLines([{ ...DEFAULT_LINE }])
     }
-  }, [adj, reset])
+    formDraft.discardDraft()
+    toast.success('Draft lokal dibuang.')
+  }
 
   const handleSave = handleSubmit(async (values) => {
     const linePayloads = lines.map((l) => ({
@@ -80,19 +120,22 @@ export default function StockAdjustmentFormPage() {
     try {
       if (isCreate) {
         const res = await create.mutateAsync({ ...values, lines: linePayloads })
+        formDraft.clearDraft()
         toast.success('Penyesuaian berhasil dibuat.')
         navigate(`/inventory/adjustments/${res.data.id}`)
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads } })
+        formDraft.clearDraft()
         toast.success('Penyesuaian berhasil diperbarui.')
       }
     } catch { toast.error('Gagal menyimpan penyesuaian.') }
   })
 
-  const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); toast.success('Penyesuaian di-approve.') } catch { toast.error('Gagal approve.') } }
-  const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Penyesuaian berhasil diposting.') } catch { toast.error('Gagal posting.') } }
+  const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); formDraft.clearDraft(); toast.success('Penyesuaian di-approve.') } catch { toast.error('Gagal approve.') } }
+  const handlePost = async () => { try { await post.mutateAsync(Number(id)); formDraft.clearDraft(); toast.success('Penyesuaian berhasil diposting.') } catch { toast.error('Gagal posting.') } }
   const handleVoid = async (reason: string) => {
     await voidAdj.mutateAsync({ id: Number(id), reason })
+    formDraft.clearDraft()
     toast.success('Penyesuaian berhasil di-void.')
     setVoidOpen(false)
   }
@@ -121,6 +164,9 @@ export default function StockAdjustmentFormPage() {
   if (isEditable && can('inventory.adjustments.create')) {
     actions.push({ id: 'save', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
   }
+  if (isEditable && formDraft.isRestored) {
+    actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: handleDiscardDraft })
+  }
   if (!isCreate) {
     if (adj?.status === 'draft' && can('inventory.adjustments.approve')) {
       actions.push({ id: 'approve', label: 'Approve', variant: 'primary', onClick: () => void handleApprove(), isLoading: approve.isPending })
@@ -147,6 +193,7 @@ export default function StockAdjustmentFormPage() {
         title={isCreate ? 'Buat Penyesuaian Stok' : 'Penyesuaian Stok'}
         documentNumber={adj?.number}
         status={status}
+        readOnly={!isEditable}
         breadcrumb={[{ label: 'Inventori' }, { label: 'Penyesuaian', path: '/inventory/adjustments' }, { label: isCreate ? 'Buat Penyesuaian' : (adj?.number ?? '') }]}
         bottomBar={<DocumentActionBar documentStatus={status} documentNumber={adj?.number} actions={actions} />}
       >
@@ -159,7 +206,7 @@ export default function StockAdjustmentFormPage() {
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Gudang Default</Label>
-              <SearchableSelect value={watch('warehouse_id') ?? null} onChange={(v) => setValue('warehouse_id', v)} onSearch={gudangApi.search} placeholder="Pilih gudang..." disabled={!isEditable} />
+              <SearchableSelect value={warehouseId ?? null} onChange={(v) => setValue('warehouse_id', v)} onSearch={gudangApi.search} placeholder="Pilih gudang..." disabled={!isEditable} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Alasan</Label>

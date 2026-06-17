@@ -15,7 +15,7 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { coaApi } from '@/modules/master-data/services/coaApi'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, toDateInputValue } from '@/lib/utils'
 import { useBankReconciliation, useBankReconciliationMutations } from '../hooks/useCashBankList'
 import { bankReconciliationSchema, type BankReconciliationFormValues } from '../schemas/cashBankSchemas'
 import type { DocumentStatus } from '@/types/common.types'
@@ -40,7 +40,7 @@ export default function BankReconciliationFormPage() {
 
   useEffect(() => {
     if (reconciliation) {
-      reset({ cash_bank_account_id: reconciliation.cash_bank_account_id, statement_start_date: reconciliation.statement_start_date, statement_end_date: reconciliation.statement_end_date, statement_ending_balance: reconciliation.statement_ending_balance, notes: reconciliation.notes ?? '' })
+      reset({ cash_bank_account_id: reconciliation.cash_bank_account_id, statement_start_date: toDateInputValue(reconciliation.statement_start_date), statement_end_date: toDateInputValue(reconciliation.statement_end_date), statement_ending_balance: reconciliation.statement_ending_balance, notes: reconciliation.notes ?? '' })
     }
   }, [reconciliation, reset])
 
@@ -91,7 +91,7 @@ export default function BankReconciliationFormPage() {
 
   return (
     <>
-      <FormLayout title={isCreate ? 'Buat Rekonsiliasi Bank' : 'Rekonsiliasi Bank'} documentNumber={reconciliation?.number} status={status}
+      <FormLayout title={isCreate ? 'Buat Rekonsiliasi Bank' : 'Rekonsiliasi Bank'} documentNumber={reconciliation?.number} status={status} readOnly={!isEditable}
         breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Rekonsiliasi Bank', path: '/cash-bank/bank-reconciliations' }, { label: isCreate ? 'Buat' : (reconciliation?.number ?? '') }]}
         bottomBar={<DocumentActionBar documentStatus={status} documentNumber={reconciliation?.number} actions={actions} />}>
         <div className="space-y-4">

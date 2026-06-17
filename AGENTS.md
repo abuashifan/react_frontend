@@ -131,7 +131,7 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 ## 6. TRACKING PROGRESS
 
 > **WAJIB diupdate** setiap kali phase atau audit selesai — lihat instruksi lengkap di §10C.  
-> Context global terbaru: `docs/audit_docs/audit-12-frontend-ux-workflow-audit-16-06-26.md`
+> Context global terbaru: `docs/audit_docs/audit-12-frontend-ux-workflow-audit-16-06-26.md` + `docs/gap_docs/gap-09-audit-12-ux-workflow-fixes.md`.
 
 ---
 
@@ -162,6 +162,12 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 | 15 | Transaction DTO & Journal Display | ✅ Done | `prompt-phase-15-transaction-dto-number-contract.md` | A11-05/14 — formatter guards, journal totals/labels, SO number adapter |
 | 16 | Route/Ribbon/Virtual Tab Canonical | ✅ Done | `prompt-phase-16-route-ribbon-canonical-map.md` | A11-01 — COA, bank-transfers, bank-recon, AR/AP redirects |
 | 17 | Shared Runtime Hardening | ✅ Done | `prompt-phase-17-shared-runtime-hardening.md` | A11-07/15/16/17/18 — dashboard fallback, formatter/select/error/DataTable guards |
+| 18 | Reports Contract Hardening | ✅ Done | `prompt-phase-18-reports-contract-hardening.md` | A12-12/15 — adapter boundary TB/PL/BS/CF/FinSummary, runtime guard, hapus export PDF/Excel & transaction list (endpoint fiktif) |
+| 19 | Stock Balance Contract Fixes | ✅ Done | `prompt-phase-19-stock-balance-contract-fixes.md` | A12-05/13/14 — product DTO, detail route, unsupported filters |
+| 20 | Filter & Table Bulk Workflow | ✅ Done | `prompt-phase-20-filter-and-table-bulk-workflow.md` | A12-01/02/06/07 — multi-select, date range, row checkbox, bulk void |
+| 21 | Persistent Form Drafts | ✅ Done | `prompt-phase-21-persistent-form-drafts.md` | A12-08 — localStorage draft hook + rollout awal Sales Invoice, Vendor Bill, Stock Adjustment, Bank Transfer |
+| 22 | Select, Date & Edit Mode UX | ✅ Done | `prompt-phase-22-select-date-edit-mode-ux.md` | A12-09/10/11 — SearchableSelect preload, `toDateInputValue` di 12 form, edit/read-only policy (`documentEditPolicy` + `FormLayout.readOnly`) |
+| 23 | Tabs, Ribbon & Lint Cleanup | ✅ Done | `prompt-phase-23-tabs-ribbon-lint-cleanup.md` | A12-03/04/16 — close-all tabs, ribbon empty diagnostic, lint debt cleanup |
 
 ---
 
@@ -178,26 +184,31 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 ### 6C. Build Status
 
 ```
-Terakhir dicek  : 2026-06-16 (Phase 13 + 10 — Period-End + Fixed Assets)
+Terakhir dicek  : 2026-06-16 (Phase 23 — Tabs, Ribbon & Lint Cleanup)
 npm run build   : ✅ 0 error
+npm run lint    : ✅ 0 error; warnings tersisa pada RHF watch/useMemo legacy
+                  di file-file non-Phase-23
 ```
 
 ---
 
-### 6D. Next Action (Urutan Audit-11 — ikuti ini, BUKAN nomor phase)
+### 6D. Next Action (Urutan Audit-12 — ikuti ini, BUKAN nomor phase)
 
 > ⚠️ Nomor phase bukan urutan prioritas. Ikuti urutan di bawah ini.
 
-| Urutan | Phase | Nama | A11 | Severity |
+| Urutan | Phase | Nama | A12 | Severity |
 |---|---|---|---|---|
-| 1 | Phase 16 | Route/Ribbon Canonical Map | A11-01 | ✅ Done |
-| 2 | Phase 14 | Master Data DTO & Action Fixes | A11-02/03/04 | ✅ Done |
-| 3 | Phase 15 | Transaction DTO & Journal Display | A11-05/14 | ✅ Done |
-| 4 | Phase 8 | Cash Bank Recon Methods | A11-12 | ✅ Done |
-| 5 | Phase 9 | Settings & Access Refactor | A11-06 | ✅ Done |
-| 6 | Phase 12 + 11 | Setup Wizard + Opening Balance | A11-08/09 | ✅ Done |
-| 7 | Phase 17 | Shared Runtime Hardening | A11-07/15/16/17/18 | ✅ Done |
-| 8 | Phase 13 + 10 | Period-End + Fixed Assets | A11-10/11 | ✅ Done |
+| 1 | Phase 18 | ~~Reports Contract Hardening~~ ✅ Done | A12-12/15 | Critical |
+| 2 | Phase 19 | ~~Stock Balance Contract Fixes~~ ✅ Done | A12-05/13/14 | High |
+| 3 | Phase 20 | ~~Multi-select Filter + Date Range~~ ✅ Done | A12-01/02 | High |
+| 4 | Phase 20 | ~~Row Checkbox + Bulk Void~~ ✅ Done | A12-06/07 | High |
+| 5 | Phase 21 | ~~Persistent Unsaved Form Draft~~ ✅ Done | A12-08 | Critical |
+| 6 | Phase 22 | ~~SearchableSelect Preload/Labels~~ ✅ Done | A12-09 | High |
+| 7 | Phase 22 | ~~Date Input Normalization~~ ✅ Done | A12-11 | High |
+| 8 | Phase 23 | ~~Close All Primary Tabs~~ ✅ Done | A12-03 | Medium |
+| 9 | Phase 23 | ~~Fixed Assets Ribbon Empty Diagnostic~~ ✅ Done | A12-04 | Medium |
+| 10 | Phase 22 | ~~Document Edit/View Mode Policy~~ ✅ Done | A12-10 | Medium |
+| 11 | Phase 23 | ~~Lint Debt Cleanup~~ ✅ Done | A12-16 | Medium |
 
 ---
 

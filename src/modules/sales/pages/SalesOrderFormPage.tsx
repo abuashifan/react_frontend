@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
@@ -36,6 +36,13 @@ function lineSubtotal(l: EditableLine) {
   return l.quantity * l.unit_price * (1 - l.discount_percent / 100)
 }
 
+function toOrderLine(line: EditableLine): Omit<EditableLine, 'delivered_quantity' | 'invoiced_quantity'> {
+  const { delivered_quantity, invoiced_quantity, ...editable } = line
+  void delivered_quantity
+  void invoiced_quantity
+  return editable
+}
+
 export default function SalesOrderFormPage() {
   const navigate = useNavigate()
   const { id } = useParams()
@@ -48,10 +55,12 @@ export default function SalesOrderFormPage() {
   const order = data?.data
   const { create, createFromQuotation, update, approve, confirm, cancel } = useSalesOrderMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<SalesOrderFormValues>({
+  const { control, register, handleSubmit, setValue, reset, formState: { errors, isSubmitting } } = useForm<SalesOrderFormValues>({
     resolver: zodResolver(salesOrderSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
+  const customerId = useWatch({ control, name: 'customer_id' })
+  const paymentTermId = useWatch({ control, name: 'payment_term_id' })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
   const [isCreatingFromQuotation, setCreatingFromQuotation] = useState(false)
@@ -63,11 +72,12 @@ export default function SalesOrderFormPage() {
   useEffect(() => {
     const quotationId = searchParams.get('from_quotation')
     if (quotationId && isCreate) {
-      setCreatingFromQuotation(true)
+      const timer = window.setTimeout(() => setCreatingFromQuotation(true), 0)
       createFromQuotation.mutateAsync(Number(quotationId))
         .then((res) => navigate(`/sales/orders/${res.data.id}`, { replace: true }))
         .catch(() => toast.error('Gagal membuat SO dari quotation.'))
         .finally(() => setCreatingFromQuotation(false))
+      return () => window.clearTimeout(timer)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -80,26 +90,29 @@ export default function SalesOrderFormPage() {
         delivery_address: order.delivery_address ?? '',
         notes: order.notes ?? '',
       })
-      setLines(order.lines.map((l) => ({
-        product_id: l.product_id,
-        description: l.description,
-        quantity: l.quantity,
-        unit_price: l.unit_price,
-        discount_percent: l.discount_percent,
-        delivered_quantity: l.delivered_quantity,
-        invoiced_quantity: l.invoiced_quantity,
-      })))
+      const timer = window.setTimeout(() => {
+        setLines(order.lines.map((l) => ({
+          product_id: l.product_id,
+          description: l.description,
+          quantity: l.quantity,
+          unit_price: l.unit_price,
+          discount_percent: l.discount_percent,
+          delivered_quantity: l.delivered_quantity,
+          invoiced_quantity: l.invoiced_quantity,
+        })))
+      }, 0)
+      return () => window.clearTimeout(timer)
     }
   }, [order, reset])
 
   const handleSaveDraft = handleSubmit(async (values) => {
     try {
       if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines: lines.map(({ delivered_quantity: _d, invoiced_quantity: _i, ...l }) => l) })
+        const res = await create.mutateAsync({ ...values, lines: lines.map(toOrderLine) })
         toast.success('Sales Order berhasil dibuat.')
         navigate(`/sales/orders/${res.data.id}`)
       } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines: lines.map(({ delivered_quantity: _d, invoiced_quantity: _i, ...l }) => l) } })
+        await update.mutateAsync({ id: Number(id), payload: { ...values, lines: lines.map(toOrderLine) } })
         toast.success('Sales Order berhasil diperbarui.')
       }
     } catch { toast.error('Gagal menyimpan Sales Order.') }
@@ -244,7 +257,7 @@ export default function SalesOrderFormPage() {
               Customer <span className="text-red-500">*</span>
             </Label>
             <SearchableSelect
-              value={watch('customer_id') ?? null}
+              value={customerId ?? null}
               onChange={(v) => setValue('customer_id', v as number)}
               onSearch={(q) => kontakApi.search(q, 'customer')}
               placeholder="Pilih customer..."
@@ -265,7 +278,7 @@ export default function SalesOrderFormPage() {
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Syarat Pembayaran</Label>
             <SearchableSelect
-              value={watch('payment_term_id') ?? null}
+              value={paymentTermId ?? null}
               onChange={(v) => setValue('payment_term_id', v)}
               onSearch={paymentTermsApi.search}
               placeholder="Pilih syarat pembayaran..."

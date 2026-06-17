@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { useVendorBill, useVendorBillMutations } from '../hooks/useVendorBillList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
@@ -22,6 +23,7 @@ import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { fixedAssetCategoryApi } from '@/modules/fixed-assets/services/fixedAssetCategoryApi'
 import { vendorBillSchema, type VendorBillFormValues } from '../schemas/vendorBillSchema'
 import type { DocumentStatus } from '@/types/common.types'
+import { toDateInputValue } from '@/lib/utils'
 import type { VendorBillLineClassification } from '../types/vendorBill.types'
 
 interface EditableLine {
@@ -52,10 +54,12 @@ export default function VendorBillFormPage() {
   const bill = data?.data
   const { create, update, approve, post, void: voidBill } = useVendorBillMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<VendorBillFormValues>({
+  const { control, getValues, register, handleSubmit, setValue, reset, formState: { errors, isSubmitting } } = useForm<VendorBillFormValues>({
     resolver: zodResolver(vendorBillSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
+  const vendorId = useWatch({ control, name: 'vendor_id' })
+  const paymentTermId = useWatch({ control, name: 'payment_term_id' })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
   const [isVoidOpen, setVoidOpen] = useState(false)
@@ -70,10 +74,50 @@ export default function VendorBillFormPage() {
 
   useEffect(() => {
     if (bill) {
-      reset({ vendor_id: bill.vendor_id, date: bill.date, due_date: bill.due_date ?? '', payment_term_id: bill.payment_term_id, notes: bill.notes ?? '' })
-      setLines(bill.lines.map((l) => ({ product_id: l.product_id, line_classification: l.line_classification ?? 'inventory', fixed_asset_category_id: l.fixed_asset_category_id ?? null, description: l.description, quantity: l.quantity, unit_price: l.unit_price, discount_percent: l.discount_percent, tax_percent: l.tax_percent })))
+      reset({ vendor_id: bill.vendor_id, date: toDateInputValue(bill.date), due_date: toDateInputValue(bill.due_date), payment_term_id: bill.payment_term_id, notes: bill.notes ?? '' })
+      const timer = window.setTimeout(() => {
+        setLines(bill.lines.map((l) => ({ product_id: l.product_id, line_classification: l.line_classification ?? 'inventory', fixed_asset_category_id: l.fixed_asset_category_id ?? null, description: l.description, quantity: l.quantity, unit_price: l.unit_price, discount_percent: l.discount_percent, tax_percent: l.tax_percent })))
+      }, 0)
+      return () => window.clearTimeout(timer)
     }
   }, [bill, reset])
+
+  const formDraft = usePersistentFormDraft<VendorBillFormValues, EditableLine[]>({
+    draftKey: `purchase.bill.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [{ ...DEFAULT_LINE }]),
+    enabled: isEditable,
+  })
+
+  const handleDiscardDraft = () => {
+    if (bill) {
+      reset({
+        vendor_id: bill.vendor_id,
+        date: toDateInputValue(bill.date),
+        due_date: toDateInputValue(bill.due_date),
+        payment_term_id: bill.payment_term_id,
+        notes: bill.notes ?? '',
+      })
+      setLines(bill.lines.map((l) => ({
+        product_id: l.product_id,
+        line_classification: l.line_classification ?? 'inventory',
+        fixed_asset_category_id: l.fixed_asset_category_id ?? null,
+        description: l.description,
+        quantity: l.quantity,
+        unit_price: l.unit_price,
+        discount_percent: l.discount_percent,
+        tax_percent: l.tax_percent,
+      })))
+    } else {
+      reset({ date: new Date().toISOString().slice(0, 10) })
+      setLines([{ ...DEFAULT_LINE }])
+    }
+    formDraft.discardDraft()
+    toast.success('Draft lokal dibuang.')
+  }
 
   const handleSave = handleSubmit(async (values) => {
     const linePayloads = lines.map((l) => ({
@@ -89,19 +133,22 @@ export default function VendorBillFormPage() {
     try {
       if (isCreate) {
         const res = await create.mutateAsync({ ...values, lines: linePayloads })
+        formDraft.clearDraft()
         toast.success('Tagihan vendor berhasil dibuat.')
         navigate(`/purchase/bills/${res.data.id}`)
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads } })
+        formDraft.clearDraft()
         toast.success('Tagihan vendor berhasil diperbarui.')
       }
     } catch { toast.error('Gagal menyimpan tagihan vendor.') }
   })
 
-  const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); toast.success('Bill di-approve.') } catch { toast.error('Gagal approve bill.') } }
-  const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Bill berhasil diposting.') } catch { toast.error('Gagal posting bill.') } }
+  const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); formDraft.clearDraft(); toast.success('Bill di-approve.') } catch { toast.error('Gagal approve bill.') } }
+  const handlePost = async () => { try { await post.mutateAsync(Number(id)); formDraft.clearDraft(); toast.success('Bill berhasil diposting.') } catch { toast.error('Gagal posting bill.') } }
   const handleVoid = async (reason: string) => {
     await voidBill.mutateAsync({ id: Number(id), reason })
+    formDraft.clearDraft()
     toast.success('Bill berhasil di-void.')
     setVoidOpen(false)
   }
@@ -109,6 +156,9 @@ export default function VendorBillFormPage() {
   const actions: DocumentActionButton[] = []
   if (isEditable && can('purchase.bills.create')) {
     actions.push({ id: 'save', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+  }
+  if (isEditable && formDraft.isRestored) {
+    actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: handleDiscardDraft })
   }
   if (!isCreate) {
     if (bill?.status === 'draft' && can('purchase.bills.approve')) {
@@ -187,6 +237,7 @@ export default function VendorBillFormPage() {
         title={isCreate ? 'Buat Tagihan Vendor' : 'Tagihan Vendor'}
         documentNumber={bill?.number}
         status={status}
+        readOnly={!isEditable}
         breadcrumb={[{ label: 'Pembelian' }, { label: 'Tagihan', path: '/purchase/bills' }, { label: isCreate ? 'Buat Bill' : (bill?.number ?? '') }]}
         bottomBar={<DocumentActionBar documentStatus={status} documentNumber={bill?.number} actions={actions} />}
       >
@@ -199,7 +250,7 @@ export default function VendorBillFormPage() {
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Vendor <span className="text-red-500">*</span></Label>
-              <SearchableSelect value={watch('vendor_id') ?? null} onChange={(v) => setValue('vendor_id', v as number)} onSearch={(q) => kontakApi.search(q, 'supplier')} placeholder="Pilih vendor..." disabled={!isEditable} error={errors.vendor_id?.message} selectedOptions={bill?.vendor ? [{ value: bill.vendor.id, label: bill.vendor.name }] : []} />
+              <SearchableSelect value={vendorId ?? null} onChange={(v) => setValue('vendor_id', v as number)} onSearch={(q) => kontakApi.search(q, 'supplier')} placeholder="Pilih vendor..." disabled={!isEditable} error={errors.vendor_id?.message} selectedOptions={bill?.vendor ? [{ value: bill.vendor.id, label: bill.vendor.name }] : []} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
@@ -212,7 +263,7 @@ export default function VendorBillFormPage() {
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Syarat Pembayaran</Label>
-              <SearchableSelect value={watch('payment_term_id') ?? null} onChange={(v) => setValue('payment_term_id', v)} onSearch={paymentTermsApi.search} placeholder="Pilih syarat pembayaran..." disabled={!isEditable} selectedOptions={bill?.payment_term ? [{ value: bill.payment_term.id, label: bill.payment_term.name }] : []} />
+              <SearchableSelect value={paymentTermId ?? null} onChange={(v) => setValue('payment_term_id', v)} onSearch={paymentTermsApi.search} placeholder="Pilih syarat pembayaran..." disabled={!isEditable} selectedOptions={bill?.payment_term ? [{ value: bill.payment_term.id, label: bill.payment_term.name }] : []} />
             </div>
             {(bill?.purchase_order_number || bill?.goods_receipt_number) && (
               <div className="flex flex-col gap-1">

@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
-import { cn, formatCurrency, formatDate } from '@/lib/utils'
+import { cn, formatCurrency, formatDate, toDateInputValue } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/apiError'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
@@ -64,9 +64,9 @@ function mapAssetToForm(asset?: FixedAsset | null): FixedAssetFormValues {
     name: asset?.name ?? '',
     description: asset?.description ?? '',
     fixed_asset_category_id: asset?.fixed_asset_category_id ?? 0,
-    acquisition_date: asset?.acquisition_date ?? new Date().toISOString().slice(0, 10),
+    acquisition_date: toDateInputValue(asset?.acquisition_date) || new Date().toISOString().slice(0, 10),
     acquisition_cost: Number(asset?.acquisition_cost ?? 0),
-    service_start_date: asset?.service_start_date ?? '',
+    service_start_date: toDateInputValue(asset?.service_start_date),
     useful_life_years: asset?.useful_life_years ?? null,
     quantity: asset?.quantity ? Number(asset.quantity) : 1,
     salvage_value: asset?.salvage_value ? Number(asset.salvage_value) : 0,
@@ -228,6 +228,8 @@ export default function FixedAssetFormPage() {
       <FormLayout
         title={isCreate ? 'Buat Aktiva Tetap' : 'Aktiva Tetap'}
         documentNumber={asset?.asset_number ?? asset?.number}
+        readOnly={!isEditable}
+        readOnlyReason="Aktiva sudah dilepas/terdepresiasi penuh sehingga hanya dapat dilihat."
         breadcrumb={[{ label: 'Aktiva Tetap', path: '/fixed-assets' }, { label: isCreate ? 'Buat Aktiva' : (asset?.asset_number ?? '') }]}
         bottomBar={bottomBar}
       >

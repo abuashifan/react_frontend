@@ -14,7 +14,7 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, toDateInputValue } from '@/lib/utils'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { useJournalEntry, useJournalEntryMutations } from '../hooks/useJournalEntryList'
 import { journalEntrySchema, type JournalEntryFormValues } from '../schemas/journalEntrySchema'
@@ -59,7 +59,7 @@ export default function JournalFormPage() {
 
   useEffect(() => {
     if (journal) {
-      reset({ journal_date: journal.journal_date, description: journal.description ?? '' })
+      reset({ journal_date: toDateInputValue(journal.journal_date), description: journal.description ?? '' })
       // Detail load is the source of truth for editable line state.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setLines(journal.lines.map((l) => ({
@@ -158,6 +158,7 @@ export default function JournalFormPage() {
         title={isCreate ? 'Buat Jurnal' : 'Jurnal Umum'}
         documentNumber={journal?.journal_number}
         status={status}
+        readOnly={!isEditable}
         breadcrumb={[{ label: 'Akuntansi' }, { label: 'Jurnal', path: '/accounting/journals' }, { label: isCreate ? 'Buat Jurnal' : (journal?.journal_number ?? '') }]}
         bottomBar={<DocumentActionBar documentStatus={status} documentNumber={journal?.journal_number} actions={actions} />}
       >

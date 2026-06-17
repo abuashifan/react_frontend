@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Eye } from 'lucide-react'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { SystemGeneratedBadge } from '@/components/shared/document/SystemGeneratedBadge'
+import { documentReadOnlyReason } from '@/components/shared/document/documentEditPolicy'
 import { cn } from '@/lib/utils'
 import type { BreadcrumbItem, DocumentStatus } from '@/types/common.types'
 
@@ -11,6 +12,10 @@ interface FormLayoutProps {
   status?: DocumentStatus
   breadcrumb?: BreadcrumbItem[]
   isSystemGenerated?: boolean
+  /** Tampilkan banner read-only di atas form (Audit-12 A12-10). */
+  readOnly?: boolean
+  /** Override alasan read-only; default diturunkan dari `status`. */
+  readOnlyReason?: string
   bottomBar?: React.ReactNode
   children: React.ReactNode
 }
@@ -47,6 +52,8 @@ export function FormLayout({
   status,
   breadcrumb,
   isSystemGenerated,
+  readOnly,
+  readOnlyReason,
   bottomBar,
   children,
 }: FormLayoutProps) {
@@ -72,7 +79,15 @@ export function FormLayout({
           bottomBar && 'pb-[calc(56px+var(--shell-safe-bottom)+16px)]',
         )}
       >
-        <div className="max-w-[1200px]">{children}</div>
+        <div className="max-w-[1200px]">
+          {readOnly && (
+            <div className="mb-3 flex items-center gap-2.5 rounded-lg border border-[#cbd5e1] bg-[#f8fafc] px-4 py-2.5 text-[#475569]">
+              <Eye className="h-4 w-4 shrink-0" />
+              <p className="text-[12px]">{readOnlyReason ?? documentReadOnlyReason(status)}</p>
+            </div>
+          )}
+          {children}
+        </div>
       </div>
 
       {/* Fixed bottom bar slot */}

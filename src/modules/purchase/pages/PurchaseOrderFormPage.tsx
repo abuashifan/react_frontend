@@ -19,6 +19,7 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { purchaseOrderSchema, type PurchaseOrderFormValues } from '../schemas/purchaseOrderSchema'
 import type { DocumentStatus } from '@/types/common.types'
+import { toDateInputValue } from '@/lib/utils'
 
 interface EditableLine {
   product_id: number | null
@@ -34,6 +35,13 @@ const DEFAULT_LINE: EditableLine = { product_id: null, description: '', quantity
 
 function lineSubtotal(l: EditableLine) {
   return l.quantity * l.unit_price * (1 - l.discount_percent / 100)
+}
+
+function toPurchaseOrderLine(line: EditableLine): Omit<EditableLine, 'received_quantity' | 'billed_quantity'> {
+  const { received_quantity, billed_quantity, ...editable } = line
+  void received_quantity
+  void billed_quantity
+  return editable
 }
 
 export default function PurchaseOrderFormPage() {
@@ -74,7 +82,7 @@ export default function PurchaseOrderFormPage() {
 
   useEffect(() => {
     if (po) {
-      reset({ vendor_id: po.vendor_id, date: po.date, payment_term_id: po.payment_term_id, expected_delivery_date: po.expected_delivery_date ?? '', notes: po.notes ?? '' })
+      reset({ vendor_id: po.vendor_id, date: toDateInputValue(po.date), payment_term_id: po.payment_term_id, expected_delivery_date: toDateInputValue(po.expected_delivery_date), notes: po.notes ?? '' })
       setLines(po.lines.map((l) => ({
         product_id: l.product_id, description: l.description, quantity: l.quantity,
         unit_price: l.unit_price, discount_percent: l.discount_percent,
@@ -85,7 +93,7 @@ export default function PurchaseOrderFormPage() {
 
   const handleSave = handleSubmit(async (values) => {
     try {
-      const payload = { ...values, lines: lines.map(({ received_quantity: _r, billed_quantity: _b, ...l }) => l) }
+      const payload = { ...values, lines: lines.map(toPurchaseOrderLine) }
       if (isCreate) {
         const res = await create.mutateAsync(payload)
         toast.success('Purchase Order berhasil dibuat.')
@@ -167,6 +175,7 @@ export default function PurchaseOrderFormPage() {
       title={isCreate ? 'Buat Purchase Order' : 'Purchase Order'}
       documentNumber={po?.number}
       status={status}
+      readOnly={!isEditable}
       breadcrumb={[{ label: 'Pembelian' }, { label: 'Purchase Order', path: '/purchase/orders' }, { label: isCreate ? 'Buat PO' : (po?.number ?? '') }]}
       bottomBar={<DocumentActionBar documentStatus={status} documentNumber={po?.number} actions={actions} />}
     >

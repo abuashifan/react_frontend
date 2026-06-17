@@ -1,79 +1,75 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { FileDown } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { Button } from '@/components/ui/button'
 import { ReportFilterParameter } from '../components/ReportFilterParameter'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { reportsApi } from '../services/reportsApi'
-import { useReportExport } from '../hooks/useReportExport'
 import { formatCurrency } from '@/lib/utils'
-import type { ReportParams, CashFlowSection } from '../types/reports.types'
+import type { ReportParams } from '../types/reports.types'
 
 const today = new Date().toISOString().slice(0, 10)
 const firstOfMonth = today.slice(0, 8) + '01'
-
-function CFSection({ section }: { section: CashFlowSection }) {
-  return (
-    <>
-      <tr className="bg-[#f8fafc]"><td colSpan={2} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">{section.title}</td></tr>
-      {section.items.map((item, i) => (
-        <tr key={i} className="hover:bg-[#f8fafc]/50">
-          <td className="px-3 py-1 pl-6 text-[12px] text-[#334155]">{item.label}</td>
-          <td className={`px-3 py-1 text-right tabular-nums text-[12px] ${item.amount < 0 ? 'text-red-600' : 'text-[#334155]'}`}>{formatCurrency(item.amount)}</td>
-        </tr>
-      ))}
-      <tr className="border-t border-[#e2e8f0]">
-        <td className="px-3 py-1.5 pl-6 text-[12px] font-semibold text-[#1e293b]">Total {section.title}</td>
-        <td className={`px-3 py-1.5 text-right tabular-nums text-[12px] font-semibold ${section.total < 0 ? 'text-red-600' : 'text-green-700'}`}>{formatCurrency(section.total)}</td>
-      </tr>
-    </>
-  )
-}
 
 export default function CashFlowPage() {
   const [params, setParams] = useState<ReportParams>({ date_from: firstOfMonth, date_to: today })
   const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
   const [showFilter, setShowFilter] = useState(true)
-  const { exportPdf, exportExcel, isExportingPdf, isExportingExcel } = useReportExport('cash-flow')
 
   const { data, isLoading } = useQuery({ queryKey: ['reports', 'cash-flow', activeParams], queryFn: () => reportsApi.cashFlow(activeParams!), enabled: !!activeParams })
   const report = data?.data
+  const summary = report?.summary
+  const accounts = report?.accounts ?? []
   const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false) }
 
   return (
-    <WorkspaceLayout title="Arus Kas" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Arus Kas' }]}
-      action={activeParams && (
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="h-8 text-[12px]" onClick={() => void exportPdf(activeParams)} disabled={isExportingPdf}><FileDown className="mr-1 h-3.5 w-3.5" /> PDF</Button>
-          <Button variant="outline" size="sm" className="h-8 text-[12px]" onClick={() => void exportExcel(activeParams)} disabled={isExportingExcel}><FileDown className="mr-1 h-3.5 w-3.5" /> Excel</Button>
-        </div>
-      )}>
+    <WorkspaceLayout title="Arus Kas" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Arus Kas' }]}>
       <div className="space-y-4">
         {showFilter ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} />
           : <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} />}
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
-        {report && (
+        {report && report.no_cash_accounts && (
+          <div className="rounded-lg border border-[#e2e8f0] bg-[#f8fafc] py-8 text-center text-[13px] text-[#64748b]">
+            Belum ada akun kas/bank yang ditandai. Atur akun kas/bank di Bagan Akun terlebih dahulu.
+          </div>
+        )}
+        {report && !report.no_cash_accounts && summary && (
           <div className="overflow-auto rounded-lg border border-[#e2e8f0]">
-            <table className="w-full">
-              <colgroup><col /><col className="w-40" /></colgroup>
+            <table className="w-full text-[12px]">
+              <thead className="bg-[#f8fafc]">
+                <tr>
+                  <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Kas/Bank</th>
+                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Saldo Awal</th>
+                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kas Masuk</th>
+                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kas Keluar</th>
+                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Arus Kas Bersih</th>
+                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Saldo Akhir</th>
+                </tr>
+              </thead>
               <tbody className="divide-y divide-[#f1f5f9]">
-                <CFSection section={report.operating} />
-                <CFSection section={report.investing} />
-                <CFSection section={report.financing} />
-                <tr className="border-t-2 border-[#cbd5e1] bg-[#f1f5f9]">
-                  <td className="px-3 py-2 text-[13px] font-bold text-[#1e293b]">Kenaikan (Penurunan) Kas Bersih</td>
-                  <td className={`px-3 py-2 text-right tabular-nums text-[13px] font-bold ${report.net_change >= 0 ? 'text-green-700' : 'text-red-600'}`}>{formatCurrency(report.net_change)}</td>
-                </tr>
-                <tr className="hover:bg-[#f8fafc]/50">
-                  <td className="px-3 py-1.5 text-[12px] text-[#64748b]">Saldo Kas Awal</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums text-[12px]">{formatCurrency(report.opening_cash)}</td>
-                </tr>
-                <tr className="bg-[#f1f5f9]">
-                  <td className="px-3 py-2 text-[13px] font-bold text-[#1e293b]">Saldo Kas Akhir</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-[13px] font-bold text-[#1e293b]">{formatCurrency(report.closing_cash)}</td>
-                </tr>
+                {accounts.map((a) => (
+                  <tr key={a.account_id} className="hover:bg-[#f8fafc]">
+                    <td className="px-3 py-1.5 text-[#1e293b]">{a.account_code} — {a.account_name}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums">{formatCurrency(a.opening_balance)}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-green-700">{a.cash_in ? formatCurrency(a.cash_in) : '-'}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-red-600">{a.cash_out ? formatCurrency(a.cash_out) : '-'}</td>
+                    <td className={`px-3 py-1.5 text-right tabular-nums font-medium ${a.net_cash_flow < 0 ? 'text-red-600' : 'text-[#1e293b]'}`}>{formatCurrency(a.net_cash_flow)}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums font-medium">{formatCurrency(a.ending_balance)}</td>
+                  </tr>
+                ))}
+                {accounts.length === 0 && (
+                  <tr><td colSpan={6} className="py-8 text-center text-[#94a3b8]">Tidak ada mutasi kas pada periode ini.</td></tr>
+                )}
               </tbody>
+              <tfoot className="border-t-2 border-[#cbd5e1] bg-[#f1f5f9]">
+                <tr>
+                  <td className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-[#334155]">Total</td>
+                  <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(summary.opening_cash_balance)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums font-bold text-green-700">{formatCurrency(summary.cash_in)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums font-bold text-red-600">{formatCurrency(summary.cash_out)}</td>
+                  <td className={`px-3 py-2 text-right tabular-nums font-bold ${summary.net_cash_flow < 0 ? 'text-red-600' : 'text-green-700'}`}>{formatCurrency(summary.net_cash_flow)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(summary.ending_cash_balance)}</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}

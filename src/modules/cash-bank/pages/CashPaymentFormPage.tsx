@@ -18,6 +18,7 @@ import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { useCashPayment, useCashPaymentMutations } from '../hooks/useCashBankList'
 import { cashPaymentSchema, type CashPaymentFormValues } from '../schemas/cashBankSchemas'
 import type { DocumentStatus } from '@/types/common.types'
+import { toDateInputValue } from '@/lib/utils'
 
 interface EditableLine { account_id: number | null; amount: number; description: string }
 const DEFAULT_LINE: EditableLine = { account_id: null, amount: 0, description: '' }
@@ -39,7 +40,7 @@ export default function CashPaymentFormPage() {
 
   useEffect(() => {
     if (payment) {
-      reset({ payment_date: payment.payment_date, cash_bank_account_id: payment.cash_bank_account_id, contact_id: payment.contact_id, amount: payment.amount, notes: payment.notes ?? '' })
+      reset({ payment_date: toDateInputValue(payment.payment_date), cash_bank_account_id: payment.cash_bank_account_id, contact_id: payment.contact_id, amount: payment.amount, notes: payment.notes ?? '' })
       setLines(payment.lines.map((l) => ({ account_id: l.account_id, amount: l.amount, description: l.description ?? '' })))
     }
   }, [payment, reset])
@@ -71,7 +72,7 @@ export default function CashPaymentFormPage() {
 
   return (
     <>
-      <FormLayout title={isCreate ? 'Buat Pengeluaran Kas' : 'Pengeluaran Kas'} documentNumber={payment?.number} status={status}
+      <FormLayout title={isCreate ? 'Buat Pengeluaran Kas' : 'Pengeluaran Kas'} documentNumber={payment?.number} status={status} readOnly={!isEditable}
         breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Pengeluaran Kas', path: '/cash-bank/cash-payments' }, { label: isCreate ? 'Buat' : (payment?.number ?? '') }]}
         bottomBar={<DocumentActionBar documentStatus={status} documentNumber={payment?.number} actions={actions} />}>
         <div className="space-y-3">

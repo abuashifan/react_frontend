@@ -41,6 +41,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____audit-tech-stack.md
 | | |____audit-11-frontend-global-contract-map-16-06-26.md
 | | |____audit-12-frontend-ux-workflow-audit-16-06-26.md
+| | |____audit-13-manual-frontend-audit-tracker-17-06-26.md
 | |____design_docs/
 | | |____design-A1-topbar-ribbon.md
 | | |____design-A2-ribbon-overflow-tablet.md
@@ -81,6 +82,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____gap-06-report-gaps.md
 | | |____gap-07-master-data-dto-contract.md
 | | |____gap-08-transaction-dto-number-contract.md
+| | |____gap-09-audit-12-ux-workflow-fixes.md
 | |____issue_docs/
 | | |____issue-01-permission-keys.md
 | | |____issue-02-ribbon-paths.md
@@ -97,6 +99,17 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____issue-13-formatters-null-invalid-guard.md
 | | |____issue-14-api-error-display-and-form-errors.md
 | | |____issue-15-datatable-reuse-and-sticky-column-audit.md
+| | |____issue-16-reports-runtime-contract.md
+| | |____issue-17-stock-balance-dto-detail.md
+| | |____issue-18-transaction-list-filters.md
+| | |____issue-19-datatable-selection-bulk-void.md
+| | |____issue-20-persistent-form-draft.md
+| | |____issue-21-searchable-select-preload.md
+| | |____issue-22-date-input-normalization.md
+| | |____issue-23-primary-tab-close-all.md
+| | |____issue-24-fixed-assets-ribbon-empty.md
+| | |____issue-25-document-edit-mode-policy.md
+| | |____issue-26-lint-debt-cleanup.md
 | |____praproduction_docs/
 | | |____CLAUDE.md
 | | |____spec-01-project-context.md
@@ -134,6 +147,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____spec-33-transaction-dto-number-contract.md
 | | |____spec-34-route-ribbon-canonical-map.md
 | | |____spec-35-shared-runtime-hardening.md
+| | |____spec-36-audit-12-ux-workflow-fixes.md
 | |____prompt/
 | | |____prompt-00-master-index.md
 | | |____prompt-guardrails-audit-11-implementation.md
@@ -159,6 +173,13 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____prompt-phase-15-transaction-dto-number-contract.md
 | | |____prompt-phase-16-route-ribbon-canonical-map.md
 | | |____prompt-phase-17-shared-runtime-hardening.md
+| | |____prompt-guardrails-audit-12-implementation.md
+| | |____prompt-phase-18-reports-contract-hardening.md
+| | |____prompt-phase-19-stock-balance-contract-fixes.md
+| | |____prompt-phase-20-filter-and-table-bulk-workflow.md
+| | |____prompt-phase-21-persistent-form-drafts.md
+| | |____prompt-phase-22-select-date-edit-mode-ux.md
+| | |____prompt-phase-23-tabs-ribbon-lint-cleanup.md
 | |____tracking/
 | | |____2026-06-16-route-tabs-datatable-fixes.md
 | | |____2026-06-16-workspace-document-number-alias-fix.md
@@ -186,6 +207,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____document/
 | | | | |____DocumentActionBar.tsx
 | | | | |____DocumentLockedBanner.tsx
+| | | | |____documentEditPolicy.ts
 | | | | |____DocumentStatusBadge.tsx
 | | | | |____SystemGeneratedBadge.tsx
 | | | | |____VoidConfirmDialog.tsx
@@ -198,6 +220,10 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____FormSummary.tsx
 | | | | |____LineItemsTable.tsx
 | | | | |____SearchableSelect.tsx
+| | | |____filter/
+| | | | |____DateRangeFilterSection.tsx
+| | | | |____MultiCheckboxFilter.tsx
+| | | | |____dateRangeUtils.ts
 | | | |____layout/
 | | | | |____AppShell.tsx
 | | | | |____FilterSidebar.tsx
@@ -241,6 +267,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____useCompanySettings.ts
 | | |____useDocumentActions.ts
 | | |____usePermission.ts
+| | |____usePersistentFormDraft.ts
 | | |____useSessionTimeout.ts
 | | |____useToast.ts
 | | |____useViewMode.ts
@@ -518,8 +545,6 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____components/
 | | | | |____ReportCompactBar.tsx
 | | | | |____ReportFilterParameter.tsx
-| | | |____hooks/
-| | | | |____useReportExport.ts
 | | | |____pages/
 | | | | |____ApAgingReportPage.tsx
 | | | | |____ArAgingReportPage.tsx
@@ -532,7 +557,6 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____ReconciliationPage.tsx
 | | | | |____ReportIndexPage.tsx
 | | | | |____StockReportPage.tsx
-| | | | |____TransactionListPage.tsx
 | | | | |____TrialBalancePage.tsx
 | | | |____routes.tsx
 | | | |____services/

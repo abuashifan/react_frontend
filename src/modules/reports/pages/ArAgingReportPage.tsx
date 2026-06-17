@@ -1,12 +1,9 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { FileDown } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { Button } from '@/components/ui/button'
 import { ReportFilterParameter } from '../components/ReportFilterParameter'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { reportsApi } from '../services/reportsApi'
-import { useReportExport } from '../hooks/useReportExport'
 import { formatCurrency } from '@/lib/utils'
 import type { ReportParams } from '../types/reports.types'
 
@@ -16,20 +13,13 @@ export default function ArAgingReportPage() {
   const [params, setParams] = useState<ReportParams>({ as_of_date: today })
   const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
   const [showFilter, setShowFilter] = useState(true)
-  const { exportPdf, exportExcel, isExportingPdf, isExportingExcel } = useReportExport('ar-aging')
 
   const { data, isLoading } = useQuery({ queryKey: ['reports', 'ar-aging', activeParams], queryFn: () => reportsApi.arAging(activeParams!), enabled: !!activeParams })
   const report = data?.data
   const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false) }
 
   return (
-    <WorkspaceLayout title="AR Aging" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'AR Aging' }]}
-      action={activeParams && (
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="h-8 text-[12px]" onClick={() => void exportPdf(activeParams)} disabled={isExportingPdf}><FileDown className="mr-1 h-3.5 w-3.5" /> PDF</Button>
-          <Button variant="outline" size="sm" className="h-8 text-[12px]" onClick={() => void exportExcel(activeParams)} disabled={isExportingExcel}><FileDown className="mr-1 h-3.5 w-3.5" /> Excel</Button>
-        </div>
-      )}>
+    <WorkspaceLayout title="AR Aging" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'AR Aging' }]}>
       <div className="space-y-4">
         {showFilter ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} mode="as_of_date" isLoading={isLoading} />
           : <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} mode="as_of_date" />}

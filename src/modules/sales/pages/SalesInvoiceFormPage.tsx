@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
@@ -15,12 +15,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { useSalesInvoice, useSalesInvoiceMutations } from '../hooks/useSalesInvoiceList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { salesInvoiceSchema, type SalesInvoiceFormValues } from '../schemas/salesInvoiceSchema'
 import type { DocumentStatus } from '@/types/common.types'
+import { toDateInputValue } from '@/lib/utils'
 
 interface EditableLine {
   product_id: number | null
@@ -49,10 +51,12 @@ export default function SalesInvoiceFormPage() {
   const invoice = data?.data
   const { create, update, approve, post, void: voidInv } = useSalesInvoiceMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<SalesInvoiceFormValues>({
+  const { control, getValues, register, handleSubmit, setValue, reset, formState: { errors, isSubmitting } } = useForm<SalesInvoiceFormValues>({
     resolver: zodResolver(salesInvoiceSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
+  const customerId = useWatch({ control, name: 'customer_id' })
+  const paymentTermId = useWatch({ control, name: 'payment_term_id' })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
   const [isVoidOpen, setVoidOpen] = useState(false)
@@ -69,8 +73,41 @@ export default function SalesInvoiceFormPage() {
     if (invoice) {
       reset({
         customer_id: invoice.customer_id,
-        date: invoice.date,
-        due_date: invoice.due_date ?? '',
+        date: toDateInputValue(invoice.date),
+        due_date: toDateInputValue(invoice.due_date),
+        payment_term_id: invoice.payment_term_id,
+        notes: invoice.notes ?? '',
+      })
+      const timer = window.setTimeout(() => {
+        setLines(invoice.lines.map((l) => ({
+          product_id: l.product_id,
+          description: l.description,
+          quantity: l.quantity,
+          unit_price: l.unit_price,
+          discount_percent: l.discount_percent,
+          tax_percent: l.tax_percent,
+        })))
+      }, 0)
+      return () => window.clearTimeout(timer)
+    }
+  }, [invoice, reset])
+
+  const formDraft = usePersistentFormDraft<SalesInvoiceFormValues, EditableLine[]>({
+    draftKey: `sales.invoice.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [{ ...DEFAULT_LINE }]),
+    enabled: isEditable,
+  })
+
+  const handleDiscardDraft = () => {
+    if (invoice) {
+      reset({
+        customer_id: invoice.customer_id,
+        date: toDateInputValue(invoice.date),
+        due_date: toDateInputValue(invoice.due_date),
         payment_term_id: invoice.payment_term_id,
         notes: invoice.notes ?? '',
       })
@@ -82,17 +119,24 @@ export default function SalesInvoiceFormPage() {
         discount_percent: l.discount_percent,
         tax_percent: l.tax_percent,
       })))
+    } else {
+      reset({ date: new Date().toISOString().slice(0, 10) })
+      setLines([{ ...DEFAULT_LINE }])
     }
-  }, [invoice, reset])
+    formDraft.discardDraft()
+    toast.success('Draft lokal dibuang.')
+  }
 
   const handleSaveDraft = handleSubmit(async (values) => {
     try {
       if (isCreate) {
         const res = await create.mutateAsync({ ...values, lines })
+        formDraft.clearDraft()
         toast.success('Invoice berhasil dibuat.')
         navigate(`/sales/invoices/${res.data.id}`)
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
+        formDraft.clearDraft()
         toast.success('Invoice berhasil diperbarui.')
       }
     } catch { toast.error('Gagal menyimpan Invoice.') }
@@ -101,6 +145,7 @@ export default function SalesInvoiceFormPage() {
   const handleApprove = async () => {
     try {
       await approve.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Invoice berhasil di-approve.')
     } catch { toast.error('Gagal approve invoice.') }
   }
@@ -108,12 +153,14 @@ export default function SalesInvoiceFormPage() {
   const handlePost = async () => {
     try {
       await post.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Invoice berhasil diposting.')
     } catch { toast.error('Gagal memposting invoice.') }
   }
 
   const handleVoid = async (reason: string) => {
     await voidInv.mutateAsync({ id: Number(id), reason })
+    formDraft.clearDraft()
     toast.success('Invoice berhasil di-void.')
     setVoidOpen(false)
   }
@@ -121,6 +168,9 @@ export default function SalesInvoiceFormPage() {
   const actions: DocumentActionButton[] = []
   if (isEditable && can('sales.invoices.create')) {
     actions.push({ id: 'save_draft', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
+  }
+  if (isEditable && formDraft.isRestored) {
+    actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: handleDiscardDraft })
   }
   if (!isCreate) {
     if (invoice?.status === 'draft' && can('sales.invoices.approve')) {
@@ -210,6 +260,7 @@ export default function SalesInvoiceFormPage() {
         title={isCreate ? 'Buat Invoice' : 'Invoice Penjualan'}
         documentNumber={invoice?.number}
         status={status}
+        readOnly={!isEditable}
         breadcrumb={[
           { label: 'Sales' },
           { label: 'Invoice', path: '/sales/invoices' },
@@ -230,7 +281,7 @@ export default function SalesInvoiceFormPage() {
                 Customer <span className="text-red-500">*</span>
               </Label>
               <SearchableSelect
-                value={watch('customer_id') ?? null}
+                value={customerId ?? null}
                 onChange={(v) => setValue('customer_id', v as number)}
                 onSearch={(q) => kontakApi.search(q, 'customer')}
                 placeholder="Pilih customer..."
@@ -256,7 +307,7 @@ export default function SalesInvoiceFormPage() {
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Syarat Pembayaran</Label>
               <SearchableSelect
-                value={watch('payment_term_id') ?? null}
+                value={paymentTermId ?? null}
                 onChange={(v) => setValue('payment_term_id', v)}
                 onSearch={paymentTermsApi.search}
                 placeholder="Pilih syarat pembayaran..."

@@ -24,9 +24,9 @@ const INVENTORY_REPORTS: ReportCard[] = [
   { title: 'Analisis Inventori', description: 'Valuasi, stok rendah, dan stok negatif', path: '/reports/inventory-analysis' },
 ]
 
-const TRANSACTION_REPORTS: ReportCard[] = [
-  { title: 'Daftar Transaksi', description: 'Ringkasan transaksi penjualan dan pembelian', path: '/reports/transactions' },
-]
+// Catatan: "Daftar Transaksi" (/reports/transactions) disembunyikan karena
+// route backend belum ada (Audit-12 A12-15). Tambahkan kembali setelah
+// endpoint backend tersedia.
 
 function ReportCardItem({ card, onClick }: { card: ReportCard; onClick: () => void }) {
   return (
@@ -57,7 +57,6 @@ export default function ReportIndexPage() {
           <Section title="Laporan Keuangan" cards={FINANCIAL_REPORTS} navigate={navigate} />
           <Section title="Buku Besar & Subledger" cards={LEDGER_REPORTS} navigate={navigate} />
           <Section title="Persediaan" cards={INVENTORY_REPORTS} navigate={navigate} />
-          <Section title="Transaksi" cards={TRANSACTION_REPORTS} navigate={navigate} />
         </div>
       </WorkspaceLayout>
     </PermissionGuard>

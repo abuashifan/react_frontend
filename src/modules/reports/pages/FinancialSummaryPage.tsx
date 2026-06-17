@@ -39,27 +39,26 @@ export default function FinancialSummaryPage() {
             <div>
               <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Posisi Keuangan</p>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <KPICard label="Total Aset" value={report.total_assets} />
-                <KPICard label="Total Kewajiban" value={report.total_liabilities} />
-                <KPICard label="Total Ekuitas" value={report.total_equity} />
-                <KPICard label="Kas & Bank" value={report.cash_and_bank} />
+                <KPICard label="Total Aset" value={report.balance_sheet.total_assets} />
+                <KPICard label="Total Kewajiban" value={report.balance_sheet.total_liabilities} />
+                <KPICard label="Total Ekuitas" value={report.balance_sheet.total_equity} />
+                <KPICard label="Laba/Rugi Tahun Berjalan" value={report.balance_sheet.current_year_profit_or_loss} positive={report.balance_sheet.current_year_profit_or_loss >= 0} />
               </div>
             </div>
             <div>
               <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kinerja Periode</p>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <KPICard label="Pendapatan" value={report.revenue} positive={report.revenue > 0} />
-                <KPICard label="HPP" value={report.cost_of_goods_sold} />
-                <KPICard label="Laba Kotor" value={report.gross_profit} positive={report.gross_profit >= 0} />
-                <KPICard label="Laba Bersih" value={report.net_income} positive={report.net_income >= 0} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <KPICard label="Laba/Rugi Bersih" value={report.profit_loss.net_profit_or_loss} positive={report.profit_loss.net_profit_or_loss >= 0} />
+                <KPICard label="Arus Kas Bersih" value={report.cash_flow.cash_in - report.cash_flow.cash_out} positive={report.cash_flow.cash_in - report.cash_flow.cash_out >= 0} />
               </div>
             </div>
             <div>
-              <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Modal Kerja</p>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <KPICard label="Piutang Usaha" value={report.accounts_receivable} />
-                <KPICard label="Hutang Usaha" value={report.accounts_payable} />
-                <KPICard label="Nilai Inventori" value={report.inventory_value} />
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kas</p>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <KPICard label="Saldo Kas Awal" value={report.cash_flow.opening_cash_balance} />
+                <KPICard label="Kas Masuk" value={report.cash_flow.cash_in} />
+                <KPICard label="Kas Keluar" value={report.cash_flow.cash_out} />
+                <KPICard label="Saldo Kas Akhir" value={report.cash_flow.ending_cash_balance} />
               </div>
             </div>
           </div>

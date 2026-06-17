@@ -1,12 +1,10 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { FileDown, ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { Button } from '@/components/ui/button'
 import { ReportFilterParameter } from '../components/ReportFilterParameter'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { reportsApi } from '../services/reportsApi'
-import { useReportExport } from '../hooks/useReportExport'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { ReportParams, GeneralLedgerGroup } from '../types/reports.types'
 
@@ -44,20 +42,13 @@ export default function GeneralLedgerPage() {
   const [params, setParams] = useState<ReportParams>({ date_from: firstOfMonth, date_to: today })
   const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
   const [showFilter, setShowFilter] = useState(true)
-  const { exportPdf, exportExcel, isExportingPdf, isExportingExcel } = useReportExport('general-ledger')
 
   const { data, isLoading } = useQuery({ queryKey: ['reports', 'general-ledger', activeParams], queryFn: () => reportsApi.generalLedger(activeParams!), enabled: !!activeParams })
   const report = data?.data
   const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false) }
 
   return (
-    <WorkspaceLayout title="Buku Besar" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Buku Besar' }]}
-      action={activeParams && (
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="h-8 text-[12px]" onClick={() => void exportPdf(activeParams)} disabled={isExportingPdf}><FileDown className="mr-1 h-3.5 w-3.5" /> PDF</Button>
-          <Button variant="outline" size="sm" className="h-8 text-[12px]" onClick={() => void exportExcel(activeParams)} disabled={isExportingExcel}><FileDown className="mr-1 h-3.5 w-3.5" /> Excel</Button>
-        </div>
-      )}>
+    <WorkspaceLayout title="Buku Besar" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Buku Besar' }]}>
       <div className="space-y-4">
         {showFilter ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} />
           : <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} />}

@@ -44,137 +44,144 @@ export interface GeneralLedgerReport {
   accounts: GeneralLedgerGroup[]
 }
 
-// Trial Balance
-export interface TrialBalanceLine {
+// ---------------------------------------------------------------------------
+// Financial report contracts.
+//
+// Shape ini adalah OUTPUT adapter frontend yang stabil (lihat reportsApi.ts).
+// Bentuknya mengikuti response backend aktual (App\Services\Reports\*),
+// bukan shape lama yang menyebabkan crash di Audit-12 (A12-12/A12-15).
+// ---------------------------------------------------------------------------
+
+// Trial Balance — backend: { accounts: [...], totals: {...} }
+export interface TrialBalanceAccount {
   account_id: number
   account_code: string
   account_name: string
   account_type: string
+  normal_balance: string
+  is_active: boolean
   opening_debit: number
   opening_credit: number
   period_debit: number
   period_credit: number
-  closing_debit: number
-  closing_credit: number
+  ending_debit: number
+  ending_credit: number
+  ending_balance: number
+}
+
+export interface TrialBalanceTotals {
+  opening_debit: number
+  opening_credit: number
+  period_debit: number
+  period_credit: number
+  ending_debit: number
+  ending_credit: number
+  difference: number
+  is_balanced: boolean
 }
 
 export interface TrialBalanceReport {
-  date_from: string
-  date_to: string
-  lines: TrialBalanceLine[]
-  totals: {
-    opening_debit: number
-    opening_credit: number
-    period_debit: number
-    period_credit: number
-    closing_debit: number
-    closing_credit: number
-  }
+  accounts: TrialBalanceAccount[]
+  totals: TrialBalanceTotals
 }
 
-// Profit & Loss (P&L)
-export interface ProfitLossItem {
-  account_id?: number
-  account_code?: string
+// Section-based reports (Profit & Loss, Balance Sheet)
+export interface ReportAccountLine {
+  account_id: number | null
+  account_code: string | null
   account_name: string
+  account_type: string
+  normal_balance: string
+  debit: number
+  credit: number
   amount: number
-  is_section_header?: boolean
+  is_active: boolean
+  is_system_generated?: boolean
 }
 
-export interface ProfitLossSection {
-  title: string
-  items: ProfitLossItem[]
+export interface ReportSection {
+  key: string
+  label: string
+  accounts: ReportAccountLine[]
   total: number
+}
+
+// Profit & Loss — backend: { sections: [...], totals: {...} }
+export interface ProfitLossTotals {
+  total_revenue: number
+  total_expense: number
+  net_profit: number
+  net_loss: number
+  net_profit_or_loss: number
 }
 
 export interface ProfitLossReport {
-  date_from: string
-  date_to: string
-  revenue: ProfitLossSection
-  cost_of_goods_sold: ProfitLossSection
-  gross_profit: number
-  operating_expenses: ProfitLossSection
-  operating_income: number
-  other_income: ProfitLossSection
-  other_expenses: ProfitLossSection
-  net_income: number
+  sections: ReportSection[]
+  totals: ProfitLossTotals
 }
 
-// Balance Sheet
-export interface BalanceSheetItem {
-  account_id?: number
-  account_code?: string
-  account_name: string
-  amount: number
-  level?: number
-  is_section_header?: boolean
-}
-
-export interface BalanceSheetSection {
-  title: string
-  items: BalanceSheetItem[]
-  total: number
-}
-
-export interface BalanceSheetReport {
-  as_of_date: string
-  assets: {
-    current_assets: BalanceSheetSection
-    non_current_assets: BalanceSheetSection
-    total_assets: number
-  }
-  liabilities: {
-    current_liabilities: BalanceSheetSection
-    non_current_liabilities: BalanceSheetSection
-    total_liabilities: number
-  }
-  equity: {
-    items: BalanceSheetItem[]
-    total_equity: number
-  }
-  total_liabilities_and_equity: number
-}
-
-// Cash Flow
-export interface CashFlowItem {
-  label: string
-  amount: number
-  is_section_header?: boolean
-}
-
-export interface CashFlowSection {
-  title: string
-  items: CashFlowItem[]
-  total: number
-}
-
-export interface CashFlowReport {
-  date_from: string
-  date_to: string
-  operating: CashFlowSection
-  investing: CashFlowSection
-  financing: CashFlowSection
-  net_change: number
-  opening_cash: number
-  closing_cash: number
-}
-
-// Financial Summary
-export interface FinancialSummaryReport {
-  as_of_date: string
-  period: { date_from: string; date_to: string }
+// Balance Sheet — backend: { sections: [...], totals: {...} }
+export interface BalanceSheetTotals {
   total_assets: number
   total_liabilities: number
   total_equity: number
-  revenue: number
-  cost_of_goods_sold: number
-  gross_profit: number
-  operating_expenses: number
-  net_income: number
-  cash_and_bank: number
-  accounts_receivable: number
-  accounts_payable: number
-  inventory_value: number
+  total_liabilities_and_equity: number
+  current_year_profit_or_loss: number
+  difference: number
+  is_balanced: boolean
+}
+
+export interface BalanceSheetReport {
+  sections: ReportSection[]
+  totals: BalanceSheetTotals
+}
+
+// Cash Flow — backend: { summary: {...}, accounts: [...], notes? }
+export interface CashFlowSummary {
+  opening_cash_balance: number
+  cash_in: number
+  cash_out: number
+  net_cash_flow: number
+  ending_cash_balance: number
+}
+
+export interface CashFlowAccount {
+  account_id: number
+  account_code: string
+  account_name: string
+  normal_balance: string
+  opening_balance: number
+  cash_in: number
+  cash_out: number
+  net_cash_flow: number
+  ending_balance: number
+  is_active: boolean
+}
+
+export interface CashFlowReport {
+  summary: CashFlowSummary
+  accounts: CashFlowAccount[]
+  no_cash_accounts: boolean
+}
+
+// Financial Summary — backend: { profit_loss, balance_sheet, cash_flow }
+export interface FinancialSummaryReport {
+  profit_loss: {
+    net_profit_or_loss: number
+  }
+  balance_sheet: {
+    total_assets: number
+    total_liabilities: number
+    total_equity: number
+    is_balanced: boolean
+    current_year_profit_or_loss: number
+  }
+  cash_flow: {
+    opening_cash_balance: number
+    cash_in: number
+    cash_out: number
+    ending_cash_balance: number
+  }
 }
 
 // AR/AP Aging
@@ -288,22 +295,6 @@ export interface LowStockReportLine {
   unit: string
 }
 
-// Transaction list
-export interface TransactionListLine {
-  id: number
-  number: string
-  date: string
-  contact_name: string
-  total_amount: number
-  paid_amount?: number
-  status: string
-}
-
-export interface TransactionListReport {
-  type: 'sales' | 'purchase'
-  date_from: string
-  date_to: string
-  lines: TransactionListLine[]
-  total_amount: number
-  total_paid: number
-}
+// NOTE: Transaction list report (/reports/transactions) dan export PDF/Excel
+// (/reports/{type}/export/*) TIDAK punya route backend (Audit-12 A12-15).
+// Endpoint & UI-nya sengaja dihapus, bukan dibiarkan memanggil 404.

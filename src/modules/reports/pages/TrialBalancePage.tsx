@@ -1,12 +1,9 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { FileDown } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { Button } from '@/components/ui/button'
 import { ReportFilterParameter } from '../components/ReportFilterParameter'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { reportsApi } from '../services/reportsApi'
-import { useReportExport } from '../hooks/useReportExport'
 import { formatCurrency } from '@/lib/utils'
 import type { ReportParams } from '../types/reports.types'
 
@@ -17,7 +14,6 @@ export default function TrialBalancePage() {
   const [params, setParams] = useState<ReportParams>({ date_from: firstOfMonth, date_to: today })
   const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
   const [showFilter, setShowFilter] = useState(true)
-  const { exportPdf, exportExcel, isExportingPdf, isExportingExcel } = useReportExport('trial-balance')
 
   const { data, isLoading } = useQuery({
     queryKey: ['reports', 'trial-balance', activeParams],
@@ -25,17 +21,13 @@ export default function TrialBalancePage() {
     enabled: !!activeParams,
   })
   const report = data?.data
+  const accounts = report?.accounts ?? []
+  const totals = report?.totals
 
   const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false) }
 
   return (
-    <WorkspaceLayout title="Neraca Saldo" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Neraca Saldo' }]}
-      action={activeParams && (
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="h-8 text-[12px]" onClick={() => void exportPdf(activeParams, 'neraca-saldo.pdf')} disabled={isExportingPdf}><FileDown className="mr-1 h-3.5 w-3.5" /> PDF</Button>
-          <Button variant="outline" size="sm" className="h-8 text-[12px]" onClick={() => void exportExcel(activeParams, 'neraca-saldo.xlsx')} disabled={isExportingExcel}><FileDown className="mr-1 h-3.5 w-3.5" /> Excel</Button>
-        </div>
-      )}>
+    <WorkspaceLayout title="Neraca Saldo" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Neraca Saldo' }]}>
       <div className="space-y-4">
         {showFilter
           ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} />
@@ -58,7 +50,7 @@ export default function TrialBalancePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f1f5f9]">
-                {report.lines.map((l) => (
+                {accounts.map((l) => (
                   <tr key={l.account_id} className="hover:bg-[#f8fafc]">
                     <td className="px-3 py-1.5 text-[#64748b]">{l.account_code}</td>
                     <td className="px-3 py-1.5 text-[#1e293b]">{l.account_name}</td>
@@ -66,22 +58,27 @@ export default function TrialBalancePage() {
                     <td className="px-3 py-1.5 text-right tabular-nums">{l.opening_credit ? formatCurrency(l.opening_credit) : '-'}</td>
                     <td className="px-3 py-1.5 text-right tabular-nums">{l.period_debit ? formatCurrency(l.period_debit) : '-'}</td>
                     <td className="px-3 py-1.5 text-right tabular-nums">{l.period_credit ? formatCurrency(l.period_credit) : '-'}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums font-medium">{l.closing_debit ? formatCurrency(l.closing_debit) : '-'}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums font-medium">{l.closing_credit ? formatCurrency(l.closing_credit) : '-'}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums font-medium">{l.ending_debit ? formatCurrency(l.ending_debit) : '-'}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums font-medium">{l.ending_credit ? formatCurrency(l.ending_credit) : '-'}</td>
                   </tr>
                 ))}
+                {accounts.length === 0 && (
+                  <tr><td colSpan={8} className="py-8 text-center text-[#94a3b8]">Tidak ada saldo akun pada periode ini.</td></tr>
+                )}
               </tbody>
-              <tfoot className="border-t-2 border-[#cbd5e1] bg-[#f1f5f9]">
-                <tr>
-                  <td colSpan={2} className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-[#334155]">Total</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(report.totals.opening_debit)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(report.totals.opening_credit)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(report.totals.period_debit)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(report.totals.period_credit)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(report.totals.closing_debit)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(report.totals.closing_credit)}</td>
-                </tr>
-              </tfoot>
+              {totals && (
+                <tfoot className="border-t-2 border-[#cbd5e1] bg-[#f1f5f9]">
+                  <tr>
+                    <td colSpan={2} className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-[#334155]">Total</td>
+                    <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.opening_debit)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.opening_credit)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.period_debit)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.period_credit)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.ending_debit)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.ending_credit)}</td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         )}

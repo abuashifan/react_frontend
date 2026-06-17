@@ -2,7 +2,9 @@
 
 Tanggal audit: 2026-06-16  
 Source awal: Membaca seluruh `laravel_backend/app/Modules/*/Routes/api.php` secara langsung.  
-Source aktif tambahan: `../audit_docs/audit-11-frontend-global-contract-map-16-06-26.md`.
+Source aktif tambahan:
+- `../audit_docs/audit-11-frontend-global-contract-map-16-06-26.md`
+- `../audit_docs/audit-12-frontend-ux-workflow-audit-16-06-26.md`
 
 > Catatan Audit-11:
 > GAP-01 sampai GAP-06 tetap valid sebagai gap lama, tetapi harus dibaca bersama Audit-11 dan source code aktual. Beberapa area sudah punya mitigasi parsial di code, namun belum menjadi kontrak canonical.
@@ -21,6 +23,7 @@ Source aktif tambahan: `../audit_docs/audit-11-frontend-global-contract-map-16-0
 | GAP-06 | Report endpoint gaps — GRNI, deposits recon, export, AR/AP aging | 🟡 Medium | [gap-06-report-gaps.md](gap-06-report-gaps.md) |
 | GAP-07 | Master Data DTO/action contract mismatch | 🔴 Critical | [gap-07-master-data-dto-contract.md](gap-07-master-data-dto-contract.md) |
 | GAP-08 | Transaction document number DTO mismatch | 🟠 High | [gap-08-transaction-dto-number-contract.md](gap-08-transaction-dto-number-contract.md) |
+| GAP-09 | Audit-12 UX/workflow/filter/tabs/reports fixes | 🔴 Critical | [gap-09-audit-12-ux-workflow-fixes.md](gap-09-audit-12-ux-workflow-fixes.md) |
 
 ---
 
@@ -33,13 +36,18 @@ Phase 14 → GAP-07: Master Data DTO/action contract fixes
 Phase 15 → GAP-08: Transaction document number DTO contract fixes
 Phase 16 → GAP-04 + GAP-03b: Setup Wizard + Opening Balance
 Phase 17 → GAP-06 + GAP-05: Reports gaps + Dashboard fallback
-Phase 18 → GAP-03c: Period-End Processing
-Phase 19 → GAP-03a: Fixed Assets Module
+Phase 18 → GAP-09a: Reports contract hardening
+Phase 19 → GAP-09b: Stock balance contract fixes
+Phase 20 → GAP-09c: Filter and table bulk workflow
+Phase 21 → GAP-09d: Persistent form drafts
+Phase 22 → GAP-09e: Select/date/edit-mode UX
+Phase 23 → GAP-09f: Tabs/ribbon/lint cleanup
 ```
 
 Catatan:
 - Nomor phase 10-13 lama masih ada sebagai dokumen historis untuk missing modules.
-- Setelah Audit-11, Master Data DTO dan transaction DTO diprioritaskan lebih dulu karena memengaruhi menu yang sudah terlihat di UI.
+- Setelah Audit-11, phase 8-17 sudah selesai secara tracking.
+- Setelah Audit-12, gunakan GAP-09 dan prompt phase 18-23 sebagai prioritas aktif.
 
 ---
 
@@ -55,3 +63,4 @@ Catatan:
 | GAP-06 | Tombol export PDF/Excel → 404; tab GRNI recon hilang; AR/AP aging pakai endpoint salah |
 | GAP-07 | Master Data terlihat kosong/NaN/422 karena frontend field tidak cocok dengan backend request/model |
 | GAP-08 | Nomor dokumen kosong/salah di banyak workspace list karena frontend pakai `number`, backend pakai field spesifik |
+| GAP-09 | Laporan crash, stock balance kosong/404, filter tidak multi-select, bulk void belum ada, draft form hilang, select/date/edit UX belum konsisten |

@@ -20,6 +20,7 @@ import { useStockMovement, useStockMovementMutations } from '../hooks/useStockMo
 import { stockMovementSchema, type StockMovementFormValues } from '../schemas/stockMovementSchema'
 import type { DocumentStatus } from '@/types/common.types'
 import type { StockMovementType } from '../types/stockMovement.types'
+import { toDateInputValue } from '@/lib/utils'
 
 const MANUAL_TYPES: { value: StockMovementType; label: string }[] = [
   { value: 'adjustment_in', label: 'Penyesuaian Masuk' },
@@ -61,7 +62,7 @@ export default function StockMovementFormPage() {
   useEffect(() => {
     if (movement) {
       reset({
-        movement_date: movement.movement_date,
+        movement_date: toDateInputValue(movement.movement_date),
         movement_type: movement.movement_type,
         description: movement.description ?? '',
         notes: movement.notes ?? '',
@@ -134,6 +135,7 @@ export default function StockMovementFormPage() {
         title={isCreate ? 'Buat Mutasi Stok' : 'Mutasi Stok'}
         documentNumber={movement?.number}
         status={status}
+        readOnly={!isEditable}
         breadcrumb={[{ label: 'Inventori' }, { label: 'Mutasi Stok', path: '/inventory/movements' }, { label: isCreate ? 'Buat Mutasi' : (movement?.number ?? '') }]}
         bottomBar={<DocumentActionBar documentStatus={status} documentNumber={movement?.number} actions={actions} />}
       >

@@ -46,8 +46,11 @@ export default function CompanySettingsPage() {
 
   useEffect(() => {
     if (data?.data) {
-      setAccounting(data.data.accounting ?? {})
-      setModules(data.data.modules ?? {})
+      const timer = window.setTimeout(() => {
+        setAccounting(data.data.accounting ?? {})
+        setModules(data.data.modules ?? {})
+      }, 0)
+      return () => window.clearTimeout(timer)
     }
   }, [data])
 

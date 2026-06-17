@@ -51,14 +51,18 @@ export default function OpeningBalanceBatchPage() {
 
   useEffect(() => {
     if (batch?.lines) {
-      setLines(batch.lines.filter((l) => !l.is_system_generated).map((l) => ({
-        account_id: l.account_id,
-        account_code: l.account_code ?? l.account?.account_code ?? null,
-        account_name: l.account_name ?? l.account?.account_name ?? null,
-        debit: Number(l.debit ?? 0),
-        credit: Number(l.credit ?? 0),
-        description: l.description ?? '',
-      })))
+      const batchLines = batch.lines
+      const timer = window.setTimeout(() => {
+        setLines(batchLines.filter((l) => !l.is_system_generated).map((l) => ({
+          account_id: l.account_id,
+          account_code: l.account_code ?? l.account?.account_code ?? null,
+          account_name: l.account_name ?? l.account?.account_name ?? null,
+          debit: Number(l.debit ?? 0),
+          credit: Number(l.credit ?? 0),
+          description: l.description ?? '',
+        })))
+      }, 0)
+      return () => window.clearTimeout(timer)
     }
   }, [batch])
 

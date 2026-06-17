@@ -26,18 +26,21 @@ export default function AccountMappingPage() {
 
   useEffect(() => {
     if (mappings.length > 0) {
-      const vals: Record<string, number | null> = {}
-      const opts: Record<string, SelectOption<number>[]> = {}
-      mappings.forEach((m) => {
-        vals[m.key] = m.account_id
-        if (m.account) {
-          opts[m.key] = [{ value: m.account.id, label: m.account.name, sublabel: m.account.code }]
-        }
-      })
-      setLocalValues(vals)
-      setSelectedOptions(opts)
+      const timer = window.setTimeout(() => {
+        const vals: Record<string, number | null> = {}
+        const opts: Record<string, SelectOption<number>[]> = {}
+        mappings.forEach((m) => {
+          vals[m.key] = m.account_id
+          if (m.account) {
+            opts[m.key] = [{ value: m.account.id, label: m.account.name, sublabel: m.account.code }]
+          }
+        })
+        setLocalValues(vals)
+        setSelectedOptions(opts)
+      }, 0)
+      return () => window.clearTimeout(timer)
     }
-  }, [data])
+  }, [mappings])
 
   const handleChange = (key: string, value: number | null, option?: SelectOption<number> | null) => {
     setLocalValues((prev) => ({ ...prev, [key]: value }))
@@ -48,7 +51,7 @@ export default function AccountMappingPage() {
     }
   }
 
-  const handleSearchWithOption = (_key: string) => async (query: string): Promise<SelectOption<number>[]> => {
+  const handleSearchWithOption = async (query: string): Promise<SelectOption<number>[]> => {
     return coaApi.search(query)
   }
 
@@ -118,7 +121,7 @@ export default function AccountMappingPage() {
                   const opt = opts.find((o) => o.value === value) ?? null
                   handleChange(mapping.key, value, opt)
                 }}
-                onSearch={handleSearchWithOption(mapping.key)}
+                onSearch={handleSearchWithOption}
                 placeholder="Pilih akun..."
                 selectedOptions={selectedOptions[mapping.key] ?? []}
               />

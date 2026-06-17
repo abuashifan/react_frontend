@@ -19,6 +19,7 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { salesOrderApi } from '../services/salesOrderApi'
 import { quotationSchema, type QuotationFormValues } from '../schemas/quotationSchema'
 import type { DocumentStatus } from '@/types/common.types'
+import { toDateInputValue } from '@/lib/utils'
 
 interface EditableLine {
   product_id: number | null
@@ -61,8 +62,8 @@ export default function QuotationFormPage() {
     if (quotation) {
       reset({
         customer_id: quotation.customer_id,
-        date: quotation.date,
-        expiry_date: quotation.expiry_date ?? '',
+        date: toDateInputValue(quotation.date),
+        expiry_date: toDateInputValue(quotation.expiry_date),
         notes: quotation.notes ?? '',
       })
       setLines(quotation.lines.map((l) => ({
@@ -257,6 +258,7 @@ export default function QuotationFormPage() {
       title={isCreate ? 'Buat Quotation' : 'Quotation'}
       documentNumber={quotation?.number}
       status={status}
+      readOnly={!isEditable}
       breadcrumb={[
         { label: 'Sales' },
         { label: 'Quotation', path: '/sales/quotations' },

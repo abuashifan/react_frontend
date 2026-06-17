@@ -46,9 +46,10 @@ interface FilterSidebarProps {
   children: React.ReactNode
   activeCount?: number
   onReset?: () => void
+  hint?: React.ReactNode
 }
 
-export function FilterSidebar({ children, activeCount = 0, onReset }: FilterSidebarProps) {
+export function FilterSidebar({ children, activeCount = 0, onReset, hint }: FilterSidebarProps) {
   const { isDashboard, isFormView } = useViewMode()
 
   if (isDashboard || isFormView) return null
@@ -83,6 +84,12 @@ export function FilterSidebar({ children, activeCount = 0, onReset }: FilterSide
 
       {/* Filter sections */}
       <div className="py-1">{children}</div>
+
+      {hint && (
+        <div className="px-4 pb-2 pt-1">
+          <p className="text-[11px] leading-4 text-[#94a3b8]">{hint}</p>
+        </div>
+      )}
     </aside>
   )
 }
