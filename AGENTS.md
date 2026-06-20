@@ -27,6 +27,21 @@ DILARANG EDIT : /workspace/backend/            ← jangan sentuh apapun di sini
 ABAIKAN       : node_modules/, dist/, *.sqlite, storage/logs/
 ```
 
+### 2A. Akses Runtime Audit
+
+Gunakan deployment berikut untuk audit manual/browser frontend:
+
+```text
+URL      : https://app.finlite.my.id/
+Email    : admin@example.com
+Password : password
+```
+
+- Gunakan Playwright untuk audit browser dan viewport.
+- Untuk pengujian create/edit/status, gunakan data uji berawalan `AUDIT-`.
+- Jangan mengubah data bisnis existing milik user.
+- Catat dengan jelas jika hasil berasal dari runtime live, API mock, atau source-only.
+
 ---
 
 ## 3. PETA DOKUMEN — BACA INI SEBELUM TAHU HARUS BACA APA
@@ -178,16 +193,18 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 | Audit 01–10 | sebelum 2026-06-14 | Backend architecture, ERD, workflow, API contract, business rules | ✅ Selesai | `docs/audit_docs/audit-00..audit-10*` |
 | Audit-11 | 2026-06-16 | Frontend vs Backend global contract map | ✅ Selesai, fixes ⏳ | 18 issue (A11-01..A11-18) — `audit-11-frontend-global-contract-map-16-06-26.md` |
 | Audit-12 | 2026-06-16 | Frontend UX/workflow/filter/tabs/reports audit berdasarkan temuan user | ✅ Selesai, fixes ⏳ | 16 issue (A12-01..A12-16) — `audit-12-frontend-ux-workflow-audit-16-06-26.md` |
+| Audit-13 | 2026-06-17–2026-06-20 | Manual frontend audit tracker + runtime/source/contract audit bertahap | 🔧 In Progress | 71 halaman diaudit, 185 finding tercatat sampai seluruh form/list Sales-Purchase serta laporan/ledger AR-AP; audit halaman baseline lain masih berlanjut — `audit-13-manual-frontend-audit-tracker-17-06-26.md` |
 
 ---
 
 ### 6C. Build Status
 
 ```
-Terakhir dicek  : 2026-06-16 (Phase 23 — Tabs, Ribbon & Lint Cleanup)
+Terakhir dicek  : 2026-06-19 (Audit-13 audit ulang Jurnal Umum)
 npm run build   : ✅ 0 error
-npm run lint    : ✅ 0 error; warnings tersisa pada RHF watch/useMemo legacy
-                  di file-file non-Phase-23
+npm run lint    : ✅ 0 error; 35 warning RHF watch/useMemo legacy
+                  di file-file yang tidak diubah pada audit ini
+Playwright      : ✅ @playwright/test 1.55.0 + Chromium terpasang; audit seluruh form/list Sales-Purchase dan laporan/ledger AR-AP 2026-06-20 selesai
 ```
 
 ---
@@ -209,6 +226,26 @@ npm run lint    : ✅ 0 error; warnings tersisa pada RHF watch/useMemo legacy
 | 9 | Phase 23 | ~~Fixed Assets Ribbon Empty Diagnostic~~ ✅ Done | A12-04 | Medium |
 | 10 | Phase 22 | ~~Document Edit/View Mode Policy~~ ✅ Done | A12-10 | Medium |
 | 11 | Phase 23 | ~~Lint Debt Cleanup~~ ✅ Done | A12-16 | Medium |
+
+#### Audit-13 P0 Next Action
+
+| Urutan | Finding | Nama | Modul | Severity |
+|---|---|---|---|---|
+| 1 | A13-155 | Perbaiki adapter AR Aging | Sales / AR | Critical |
+| 2 | A13-156 | Perbaiki renderer AR Reconciliation | Sales / AR | Critical |
+| 3 | A13-157 | Perbaiki adapter Customer/Invoice Ledger | Sales / AR | Critical |
+| 4 | A13-180 | Perbaiki adapter AP Aging | Purchase / AP | Critical |
+| 5 | A13-181 | Perbaiki renderer AP Reconciliation | Purchase / AP | Critical |
+| 6 | A13-182 | Perbaiki adapter Vendor/Bill Ledger | Purchase / AP | Critical |
+| 7 | A13-136 | Tambahkan request adapter semua form Sales | Sales | Critical |
+| 8 | A13-137 | Tambahkan response adapter detail Sales | Sales | Critical |
+| 9 | A13-161 | Tambahkan request adapter semua form Purchase | Purchase | Critical |
+| 10 | A13-162 | Tambahkan response adapter detail Purchase | Purchase | Critical |
+| 11 | A13-145 | Wajibkan source Retur Penjualan | Sales / Return | Critical |
+| 12 | A13-170 | Wajibkan source Retur Pembelian | Purchase / Return | Critical |
+| 13 | A13-139 | Persist draft tujuh form Sales | Sales | Critical |
+| 14 | A13-164 | Persist draft enam form Purchase | Purchase | Critical |
+| 15 | A13-127 | Adaptasi DTO line Rekonsiliasi Bank | Cash & Bank / Rekonsiliasi Bank | Critical |
 
 ---
 
