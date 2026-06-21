@@ -403,15 +403,19 @@ Email    : admin@example.com
 Password : password
 ```
 
-Live environment default adalah read-only.
+Live environment: **live-mutating diizinkan** (keputusan eksplisit user 2026-06-21).
+
+> Otorisasi (§12.5): User menyatakan database `app.finlite.my.id` berisi data sample
+> dan memberi izin eksplisit untuk input/mutasi data real saat verifikasi.
+> Scope: verifikasi Audit-13 Phase 24–39. Berlaku sampai dicabut user.
 
 Aturan:
 
-- Jangan meneruskan mutation live tanpa izin eksplisit.
-- Intercept mutation bila hanya perlu memvalidasi request UI.
-- Gunakan local disposable database untuk side effect.
-- Data test memakai prefix `AUDIT-`.
-- Jangan menyentuh data bisnis existing.
+- Live-mutating boleh dijalankan untuk membuktikan kontrak end-to-end.
+- Tetap pakai prefix `AUDIT-`/`AUDIT` untuk data uji agar mudah diidentifikasi.
+- Utamakan beroperasi pada record yang dibuat sendiri saat verifikasi (mis. filter
+  search `AUDIT` sebelum bulk action) agar dampak terkendali, walau data adalah sample.
+- Jangan menjalankan migration/data-repair destruktif pada live tanpa izin terpisah.
 - Jangan menampilkan credential pada log/report di luar konteks dokumentasi internal yang sudah diizinkan.
 
 Environment label:
@@ -422,7 +426,7 @@ frontend-local
 backend-local
 route-mock
 live-read-only
-live-mutating — memerlukan izin eksplisit
+live-mutating — diizinkan (otorisasi user 2026-06-21)
 ```
 
 ---

@@ -199,7 +199,7 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 | 22 | Select, Date & Edit Mode UX | ✅ Done | `prompt-phase-22-select-date-edit-mode-ux.md` | A12-09/10/11 — SearchableSelect preload, `toDateInputValue` di 12 form, edit/read-only policy (`documentEditPolicy` + `FormLayout.readOnly`) |
 | 23 | Tabs, Ribbon & Lint Cleanup | ✅ Done | `prompt-phase-23-tabs-ribbon-lint-cleanup.md` | A12-03/04/16 — close-all tabs, ribbon empty diagnostic, lint debt cleanup |
 | 24 | Test Foundation, Runtime Containment & Router Canonical | ✅ Done | `prompt-phase-24-remediation-foundation-router.md` | A13-059/254/271 — `createBrowserRouter`, `RouteErrorBoundary`+telemetry, hapus opsi rememberMe (session tunggal), Playwright foundation. Open item: SPA fallback host produksi (issue-27 §6.5). Lihat `tracking/phase-24-completion-report.md` |
-| 25 | Master Data & Account Mapping Canonical | ✅ Done | `prompt-phase-25-master-data-account-mapping-canonical.md` | Canonical list/form/lifecycle seluruh resource; account mapping atomic bulk PATCH; default payment-term policy; bulk lifecycle 6 simple master. Automated gate hijau (build/lint/Playwright 5/5/backend 36/36). Residual: live-runtime retest (env read-only). Lihat `tracking/phase-25-completion-report.md`. |
+| 25 | Master Data & Account Mapping Canonical | ✅ Done | `prompt-phase-25-master-data-account-mapping-canonical.md` | Canonical list/form/lifecycle seluruh resource; account mapping atomic bulk PATCH; default payment-term policy; bulk lifecycle 6 simple master. Gate hijau: build/lint, Playwright route-mock 5/5, backend 36/36, **live 2/2 (login+render 6 page + bulk deactivate end-to-end)**. Lihat `tracking/phase-25-completion-report.md`. |
 
 ---
 
@@ -225,6 +225,7 @@ Playwright      : ✅ Chromium route-mock; 12/12 tests/e2e/router (A13-059/254/2
                   pada matrix 1440×900 / 1180×708 / 1024×656 / 390×844.
                   Foundation permanen: playwright.config.ts + tests/e2e/fixtures
                   ✅ Phase 25 master-data route-mock 5/5 (account-mapping + core incl. bulk).
+                  ✅ Phase 25 live 2/2 (PLAYWRIGHT_LIVE=1) terhadap app.finlite.my.id.
 Backend test    : ✅ MasterData scope 36/36 (280 assertions).
 ```
 

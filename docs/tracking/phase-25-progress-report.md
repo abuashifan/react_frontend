@@ -54,10 +54,10 @@ Status item per 2026-06-21 (update lanjutan):
 - Keputusan modal-vs-form-page — **diputuskan**: simple master (field sedikit) memakai
   `Dialog`; complex master (COA/Kontak/Produk, banyak field + relation) memakai
   full form-page route. Pola sudah konsisten di kode.
-- Validation gate per-finding (A13-004..046, 060..084, 255..257) — automated gate
-  hijau (build/lint/Playwright/backend). Rekonsiliasi cluster ada di
-  `phase-25-completion-report.md`. Residual: live-runtime retest (env live read-only
-  per guardrails §10).
+- Validation gate per-finding (A13-004..046, 060..084, 255..257) — gate hijau
+  (build/lint/Playwright route-mock/backend) plus **live-mutating retest 2/2** ke
+  app.finlite.my.id (login+render 6 page + bulk deactivate end-to-end). Rekonsiliasi
+  cluster ada di `phase-25-completion-report.md`.
 
 ## Progress Lanjutan — Core Master Data
 

@@ -37,13 +37,17 @@ Status exit: Phase complete (automated gate) — residual live-runtime retest
 - Frontend lint: 0 error, 34 warning legacy (RHF watch/useMemo, file di luar phase).
 - Playwright route-mock `tests/e2e/master-data/`: 5/5 pass
   (account-mapping 1, core-master-data 4 termasuk bulk deactivate unit).
+- Playwright **live** `tests/e2e/master-data/master-data.live.ts`: 2/2 pass
+  (login + render 6 master page tanpa crash/undefined/Invalid Date; bulk deactivate
+  2 unit `AUDIT` end-to-end ke backend live).
 - Backend feature `tests/Feature/MasterData/` + `AccountMappingHealthTest`: 36/36 pass (280 assertions).
 - Pint scoped: pass (slice account mapping).
 
 ## Runtime environment
 - frontend-local + route-mock (Playwright Chromium).
 - backend-local (sqlite test).
-- Live (`app.finlite.my.id`) tidak dimutasi — default read-only per guardrails §10.
+- **live-mutating** (`app.finlite.my.id`) — diizinkan otorisasi user 2026-06-21
+  (guardrails §10). Data uji berprefix `AUDIT`, difilter via search sebelum bulk.
 
 ## Finding reconciliation (cluster level)
 
@@ -65,11 +69,12 @@ Status exit: Phase complete (automated gate) — residual live-runtime retest
 - Regression new: 0
 
 ## Exit decision
-- Phase complete pada level automated gate (build/lint/Playwright route-mock/backend feature).
-- Residual: live-runtime retest belum dijalankan (env live read-only; butuh izin mutasi eksplisit).
+- Phase complete. Automated gate (build/lint/route-mock/backend) hijau dan
+  live-mutating retest membuktikan kontrak end-to-end utama (render master + bulk lifecycle).
 
 ## Residual risk
-- Verifikasi berbasis route-mock + backend-local, bukan live runtime.
+- Live retest mencakup smoke render 6 page + bulk lifecycle unit; belum mencakup
+  setiap mutasi per resource (create/edit/default seluruh master) secara live.
 - Rekonsiliasi pada level cluster, bukan baris per-finding individual untuk seluruh 71 finding.
 
 ## Next phase

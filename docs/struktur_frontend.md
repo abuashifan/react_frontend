@@ -728,7 +728,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____settings-bootstrap.spec.ts # A13-271
 | | |____master-data/
 | | | |____account-mapping.spec.ts     # Phase 25 — A13-046/078..084/255..257
-| | | |____core-master-data.spec.ts    # Phase 25 — draft isolation + server-side search
+| | | |____core-master-data.spec.ts    # Phase 25 — draft isolation + server-side search + bulk
+| | | |____master-data.live.ts         # Phase 25 — live retest (PLAYWRIGHT_LIVE=1): render + bulk
 |____tailwind.config.ts
 |____tsconfig.app.json
 |____tsconfig.json
