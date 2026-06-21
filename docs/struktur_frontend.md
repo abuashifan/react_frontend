@@ -733,6 +733,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____opening-balance.live.ts     # Phase 26 Slice B — live retest (status+batch render)
 | | | |____period-lock.spec.ts         # Phase 26 Slice C — locked_until, error state, unlock confirm
 | | | |____period-lock.live.ts         # Phase 26 Slice C — live retest (status render)
+| | | |____fiscal-year.spec.ts         # Phase 26 Slice D — preview GET+id, close POST, blocker
+| | | |____fiscal-year.live.ts         # Phase 26 Slice D — live retest (status + preview GET)
 | | |____router/
 | | | |____deep-link.spec.ts          # A13-059
 | | | |____error-containment.spec.ts  # A13-254

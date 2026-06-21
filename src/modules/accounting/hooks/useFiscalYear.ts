@@ -17,7 +17,7 @@ export function useFiscalYearMutations() {
 
   return {
     close: useMutation({
-      mutationFn: ({ id, payload }: { id: number; payload: { closing_entry_date?: string; retained_earnings_account_id?: number } }) =>
+      mutationFn: ({ id, payload }: { id: number; payload: { closing_notes?: string } }) =>
         fiscalYearApi.close(id, payload),
       onSuccess: invalidate,
     }),

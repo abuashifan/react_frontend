@@ -1,43 +1,73 @@
 import { useState } from 'react'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/shared/feedback/ConfirmDialog'
+import { QueryErrorState } from '@/components/shared/feedback/QueryErrorState'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
-import { formatDate } from '@/lib/utils'
-import { coaApi } from '@/modules/master-data/services/coaApi'
+import { formatCurrency, formatDate, cn } from '@/lib/utils'
+import { getApiErrorMessage, getApiValidationErrors } from '@/lib/apiError'
+import { fiscalYearApi } from '../services/fiscalYearApi'
 import { useFiscalYearStatus, useFiscalYearMutations } from '../hooks/useFiscalYear'
+import type { FiscalYearClosingPreview } from '../types/fiscalYear.types'
 
 export default function FiscalYearPage() {
   const { toast } = useToast()
   const { can } = usePermission()
-  const { data, isLoading } = useFiscalYearStatus()
+  const { data, isLoading, isError, error, refetch } = useFiscalYearStatus()
   const { close, reopen } = useFiscalYearMutations()
 
-  const [closingDate, setClosingDate] = useState('')
-  const [retainedEarningsId, setRetainedEarningsId] = useState<number | null>(null)
-  const [reopenReason, setReopenReason] = useState('')
+  const [preview, setPreview] = useState<FiscalYearClosingPreview['preview'] | null>(null)
+  const [blockers, setBlockers] = useState<string[]>([])
+  const [warnings, setWarnings] = useState<string[]>([])
+  const [previewing, setPreviewing] = useState(false)
+  const [closeOpen, setCloseOpen] = useState(false)
+  const [reopenOpen, setReopenOpen] = useState(false)
 
   const fy = data?.data?.active_fiscal_year
+  const isClosed = fy ? (fy.is_closed ?? fy.status === 'closed') : false
 
-  const handleClose = async () => {
-    if (!fy) return
+  const runPreview = async () => {
+    if (!fy?.id) return
+    setPreviewing(true)
+    setPreview(null); setBlockers([]); setWarnings([])
     try {
-      await close.mutateAsync({ id: fy.id, payload: { closing_entry_date: closingDate || undefined, retained_earnings_account_id: retainedEarningsId ?? undefined } })
-      toast.success('Tahun fiskal berhasil ditutup.')
-    } catch { toast.error('Gagal menutup tahun fiskal.') }
+      const res = await fiscalYearApi.preview(fy.id)
+      setPreview(res.data.preview)
+      setWarnings(res.data.warnings ?? res.data.preview?.warnings ?? [])
+    } catch (err) {
+      // 422 preview = ada blocker; tampilkan, jangan izinkan close.
+      setBlockers(Object.values(getApiValidationErrors(err)))
+      toast.error(getApiErrorMessage(err, 'Penutupan belum dapat dilanjutkan.'))
+    } finally {
+      setPreviewing(false)
+    }
   }
 
-  const handleReopen = async () => {
-    if (!fy || !reopenReason.trim()) { toast.error('Alasan reopen wajib diisi.'); return }
+  const handleClose = async (notes?: string) => {
+    if (!fy?.id) return
     try {
-      await reopen.mutateAsync({ id: fy.id, payload: { reopen_reason: reopenReason } })
+      await close.mutateAsync({ id: fy.id, payload: { closing_notes: notes || undefined } })
+      toast.success('Tahun fiskal berhasil ditutup.')
+      setCloseOpen(false)
+      setPreview(null)
+    } catch (err) {
+      setBlockers(Object.values(getApiValidationErrors(err)))
+      toast.error(getApiErrorMessage(err, 'Gagal menutup tahun fiskal.'))
+    }
+  }
+
+  const handleReopen = async (reason?: string) => {
+    if (!fy?.id) return
+    try {
+      await reopen.mutateAsync({ id: fy.id, payload: { reopen_reason: reason ?? '' } })
       toast.success('Tahun fiskal berhasil dibuka kembali.')
-      setReopenReason('')
-    } catch { toast.error('Gagal membuka kembali tahun fiskal.') }
+      setReopenOpen(false)
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Gagal membuka kembali tahun fiskal.'))
+    }
   }
 
   if (isLoading) {
@@ -48,25 +78,34 @@ export default function FiscalYearPage() {
     )
   }
 
+  // A13-113 — status error tidak disamarkan.
+  if (isError || !fy) {
+    return (
+      <FormLayout title="Tahun Fiskal" breadcrumb={[{ label: 'Akuntansi' }, { label: 'Tahun Fiskal' }]}>
+        <QueryErrorState error={error} onRetry={() => void refetch()} title="Status tahun fiskal gagal dimuat" />
+      </FormLayout>
+    )
+  }
+
   return (
     <FormLayout title="Tahun Fiskal" breadcrumb={[{ label: 'Akuntansi' }, { label: 'Tahun Fiskal' }]}>
       <div className="space-y-3">
         <FormSection title="Tahun Fiskal Aktif">
           <div className="flex flex-col gap-0.5">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tahun</span>
-            <span className="text-[15px] font-semibold text-[#334155]">{fy?.year ?? '-'}</span>
+            <span className="text-[15px] font-semibold text-[#334155]">{fy.year}</span>
           </div>
           <div className="flex flex-col gap-0.5">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Periode</span>
-            <span className="text-[13px] text-[#334155]">{fy ? `${formatDate(fy.start_date)} – ${formatDate(fy.end_date)}` : '-'}</span>
+            <span className="text-[13px] text-[#334155]">{formatDate(fy.start_date)} – {formatDate(fy.end_date)}</span>
           </div>
           <div className="flex flex-col gap-0.5">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Status</span>
-            <span className={`text-[13px] font-semibold ${fy?.status === 'open' ? 'text-green-600' : 'text-red-600'}`}>
-              {fy?.status === 'open' ? 'Terbuka' : 'Ditutup'}
-            </span>
+            <Badge className={cn('w-fit text-[11px]', isClosed ? 'bg-[#F1F5F9] text-[#64748b]' : 'bg-[#D1FAE5] text-[#065F46]')}>
+              {isClosed ? 'Ditutup' : 'Terbuka'}
+            </Badge>
           </div>
-          {fy?.closed_at && (
+          {fy.closed_at && (
             <div className="flex flex-col gap-0.5">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Ditutup Pada</span>
               <span className="text-[13px] text-[#334155]">{formatDate(fy.closed_at)}</span>
@@ -74,43 +113,85 @@ export default function FiscalYearPage() {
           )}
         </FormSection>
 
-        {fy?.status === 'open' && can('accounting.fiscal-years.manage') && (
+        {!isClosed && can('fiscal_year.view') && (
           <FormSection title="Tutup Tahun Fiskal">
-            <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal Jurnal Penutup</Label>
-              <Input type="date" value={closingDate} onChange={(e) => setClosingDate(e.target.value)} className="h-9 text-[13px]" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Laba Ditahan</Label>
-              <SearchableSelect value={retainedEarningsId} onChange={(v) => setRetainedEarningsId(v)} onSearch={coaApi.search} placeholder="Pilih akun laba ditahan..." />
-            </div>
-            <div className="md:col-span-2">
+            <div className="md:col-span-2 space-y-3">
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-[12px] text-amber-800">
-                ⚠ Menutup tahun fiskal akan mengunci semua periode di tahun ini dan membuat jurnal penutup secara otomatis. Pastikan semua transaksi sudah diposting.
+                ⚠ Menutup tahun fiskal mengunci seluruh periode tahun ini dan membuat jurnal penutup otomatis. Jalankan pratinjau terlebih dahulu.
               </div>
-            </div>
-            <div className="md:col-span-2">
-              <Button onClick={() => void handleClose()} disabled={close.isPending} className="h-9 bg-red-600 px-4 text-[13px] hover:bg-red-700">
-                Tutup Tahun Fiskal {fy?.year}
+
+              {/* A13-108 — pratinjau wajib sebelum close. */}
+              <Button onClick={() => void runPreview()} disabled={previewing} variant="outline" className="h-9 text-[13px]">
+                {previewing ? 'Memuat pratinjau...' : 'Jalankan Pratinjau Penutupan'}
               </Button>
+
+              {/* A13-113 — blocker & warning ditampilkan. */}
+              {blockers.length > 0 && (
+                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-[12px] text-red-700">
+                  <p className="font-semibold">Penutupan diblokir:</p>
+                  <ul className="mt-1 list-inside list-disc">{blockers.map((b, i) => <li key={i}>{b}</li>)}</ul>
+                </div>
+              )}
+
+              {preview && (
+                <div className="space-y-1 rounded-md border border-[#e2e8f0] bg-[#f8fafc] p-3 text-[12px]">
+                  <div className="flex justify-between"><span className="text-[#64748b]">Laba/Rugi Bersih</span><span className="tabular-nums font-medium">{formatCurrency(preview.net_profit_loss)}</span></div>
+                  <div className="flex justify-between"><span className="text-[#64748b]">Jumlah Jurnal</span><span className="tabular-nums font-medium">{preview.journal_count}</span></div>
+                  <div className="flex justify-between border-t border-[#e2e8f0] pt-1">
+                    <span className="font-semibold text-[#334155]">Status</span>
+                    <span className={cn('font-semibold', preview.can_close ? 'text-green-700' : 'text-red-600')}>{preview.can_close ? 'Siap ditutup' : 'Belum dapat ditutup'}</span>
+                  </div>
+                </div>
+              )}
+
+              {warnings.length > 0 && (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-[12px] text-amber-700">
+                  <p className="font-semibold">Peringatan:</p>
+                  <ul className="list-inside list-disc">{warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
+                </div>
+              )}
+
+              {/* A13-110 — gating khusus close. A13-112 — konfirmasi destruktif. */}
+              {can('fiscal_year.close') && (
+                <Button
+                  onClick={() => setCloseOpen(true)}
+                  disabled={close.isPending || !preview?.can_close}
+                  className="h-9 bg-red-600 px-4 text-[13px] hover:bg-red-700 disabled:opacity-40"
+                >
+                  Tutup Tahun Fiskal {fy.year}
+                </Button>
+              )}
             </div>
           </FormSection>
         )}
 
-        {fy?.status === 'closed' && can('accounting.fiscal-years.manage') && (
+        {isClosed && can('fiscal_year.reopen') && (
           <FormSection title="Buka Kembali Tahun Fiskal">
-            <div className="flex flex-col gap-1 md:col-span-2">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Alasan Reopen <span className="text-red-500">*</span></Label>
-              <Input value={reopenReason} onChange={(e) => setReopenReason(e.target.value)} placeholder="Alasan membuka kembali tahun fiskal..." className="h-9 text-[13px]" />
-            </div>
             <div className="md:col-span-2">
-              <Button onClick={() => void handleReopen()} disabled={reopen.isPending} className="h-9 bg-[#5c9ead] px-4 text-[13px] hover:bg-[#4a8a9c]">
+              <Button onClick={() => setReopenOpen(true)} disabled={reopen.isPending} className="h-9 bg-[#5c9ead] px-4 text-[13px] hover:bg-[#4a8a9c]">
                 Buka Kembali Tahun Fiskal
               </Button>
             </div>
           </FormSection>
         )}
       </div>
+
+      <ConfirmDialog
+        open={closeOpen} onOpenChange={setCloseOpen}
+        title={`Tutup Tahun Fiskal ${fy.year}`}
+        description="Seluruh periode tahun ini akan dikunci dan jurnal penutup dibuat. Tindakan ini sulit dibatalkan."
+        confirmLabel="Tutup Tahun Fiskal" variant="destructive" isLoading={close.isPending}
+        requireReason reasonLabel="Catatan penutupan" reasonPlaceholder="Catatan penutupan (untuk jejak audit)..."
+        onConfirm={(notes) => void handleClose(notes)}
+      />
+      <ConfirmDialog
+        open={reopenOpen} onOpenChange={setReopenOpen}
+        title="Buka Kembali Tahun Fiskal"
+        description="Membuka kembali tahun fiskal membalik penutupan agar dapat dikoreksi. Berikan alasan untuk jejak audit."
+        confirmLabel="Buka Kembali" isLoading={reopen.isPending}
+        requireReason reasonLabel="Alasan reopen"
+        onConfirm={(reason) => void handleReopen(reason)}
+      />
     </FormLayout>
   )
 }

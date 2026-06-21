@@ -1,7 +1,7 @@
 # Phase 26 Progress Report — Accounting Foundation & Opening Balance
 
 Tanggal: 2026-06-21
-Status: In Progress (Slice A selesai)
+Status: DONE (Slice A–D selesai)
 Scope finding: A13-047..058 + A13-085..115 (≈42, minus A13-048 yang di-defer ke Reports)
 
 Eksekusi slice-per-slice (keputusan user):
@@ -9,7 +9,7 @@ Eksekusi slice-per-slice (keputusan user):
 - **Slice A — Jurnal Umum** ✅ DONE
 - **Slice B — Saldo Awal (Opening Balance)** ✅ DONE
 - **Slice C — Periode Akuntansi (Period Lock)** ✅ DONE
-- Slice D — Tahun Fiskal (Fiscal Year) ⏳
+- **Slice D — Tahun Fiskal (Fiscal Year)** ✅ DONE
 
 A13-048 (Reports/Laba Rugi blank) di-defer ke phase Reports (domain Reports, bukan accounting foundation) — keputusan user.
 
@@ -76,6 +76,27 @@ Frontend-only (backend PeriodLockController sudah canonical: `locked_until`).
 - A13-106 label `htmlFor`/`id` pada input.
 
 Type `FiscalYear` dikanonikkan: `locked_until` + `is_closed`/`is_active` (hapus `lock_until`). Verifikasi: build/lint 0 error, route-mock period-lock 3/3 (full suite 25/25), live read 1/1.
+
+## Slice D — Tahun Fiskal / Fiscal Year (selesai)
+
+Backend: `FiscalYearStatusController` kini mengirim `id`/`is_closed`/`locked_until`/`closed_at` di `active_fiscal_year` (akar A13-107: tanpa id → `/undefined`). Frontend:
+
+- A13-107 endpoint canonical: preview/checklist = **GET**, close/reopen = **POST** (sebelumnya semua PATCH); id valid dari status.
+- A13-108 pratinjau (GET) wajib sebelum close; ringkasan can_close + tombol close terkunci sampai preview valid.
+- A13-109/114 buang field palsu `closing_entry_date` & `retained_earnings_account_id`; close hanya `closing_notes` (sesuai CloseFiscalYearRequest).
+- A13-110 permission spesifik: `fiscal_year.view` (preview), `fiscal_year.close`, `fiscal_year.reopen` (bukan alias `accounting.fiscal-years.manage`).
+- A13-111 selector retained earnings dibuang (backend pakai account mapping, bukan payload).
+- A13-112 konfirmasi destruktif close/reopen via `ConfirmDialog`.
+- A13-113 blocker preview (422) + warning ditampilkan; status error → error/retry.
+- A13-115 label via `ConfirmDialog` (htmlFor/id).
+
+Verifikasi: build/lint 0 error · route-mock fiscal-year 2/2 (full suite 27/27) · backend FY 6/6 + pint · live read+preview 1/1.
+
+---
+
+## Ringkasan Phase 26 (SELESAI)
+
+42 finding (A13-047..058 minus 048, A13-085..115) tuntas lintas 4 slice. Gate per-slice: build/lint hijau, Playwright route-mock 27/27, backend Journal 12/12 + FY 6/6, **live 6/6** (jurnal create mutating, OB render, period lock render, fiscal year preview). A13-048 (Reports) di-defer ke phase Reports.
 
 ## Catatan baseline backend
 Full suite backend: 698 test, 639 pass, **59 fail pre-existing** di domain Purchase/VendorBill/GoodsReceipt/AP/FixedAsset/SourceType (mis. `purchase_order_lines has no column named line_classification`, SourceType enum tanpa `fixed_asset`). Dikonfirmasi pre-existing via stash perubahan Slice A — **bukan regresi Phase 26**. Ditangani di phase Purchase/Fixed-Assets terkait.
