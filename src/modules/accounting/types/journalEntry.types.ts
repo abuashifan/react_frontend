@@ -38,6 +38,7 @@ export interface JournalEntryListParams {
   date_from?: string
   date_to?: string
   is_system_generated?: boolean
+  include_void?: boolean
 }
 
 export interface JournalEntryLinePayload {
