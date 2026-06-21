@@ -8,7 +8,7 @@ Eksekusi slice-per-slice (keputusan user):
 
 - **Slice A — Jurnal Umum** ✅ DONE
 - **Slice B — Saldo Awal (Opening Balance)** ✅ DONE
-- Slice C — Periode Akuntansi (Period Lock) ⏳
+- **Slice C — Periode Akuntansi (Period Lock)** ✅ DONE
 - Slice D — Tahun Fiskal (Fiscal Year) ⏳
 
 A13-048 (Reports/Laba Rugi blank) di-defer ke phase Reports (domain Reports, bukan accounting foundation) — keputusan user.
@@ -63,6 +63,19 @@ Semua perbaikan frontend (backend OB sudah canonical: status `reopened`, totals 
 - A13-093 post/lock pakai `ConfirmDialog` aplikasi, bukan `window.confirm`.
 
 Komponen baru shared: `ConfirmDialog` (feedback). Verifikasi: build/lint 0 error, route-mock OB 3/3 (full suite 22/22), live read 1/1 (status+batch render).
+
+## Slice C — Periode Akuntansi / Period Lock (selesai)
+
+Frontend-only (backend PeriodLockController sudah canonical: `locked_until`).
+
+- A13-101 status baca `active_fiscal_year.locked_until` (sebelumnya keliru `lock_until`) → lock aktif terbaca.
+- A13-102 unlock wajib alasan + konfirmasi via `ConfirmDialog` (bukan tombol langsung tanpa alasan); apply lock juga via konfirmasi+alasan.
+- A13-103 status error → error/retry state (bukan dianggap "tidak ada lock").
+- A13-104 input lock di-preload `locked_until` + dibatasi `min`/`max` rentang fiscal year.
+- A13-105 konteks fiscal year aktif (tahun/rentang/closed) + daftar status periode bulanan (diturunkan client-side dari rentang + locked_until).
+- A13-106 label `htmlFor`/`id` pada input.
+
+Type `FiscalYear` dikanonikkan: `locked_until` + `is_closed`/`is_active` (hapus `lock_until`). Verifikasi: build/lint 0 error, route-mock period-lock 3/3 (full suite 25/25), live read 1/1.
 
 ## Catatan baseline backend
 Full suite backend: 698 test, 639 pass, **59 fail pre-existing** di domain Purchase/VendorBill/GoodsReceipt/AP/FixedAsset/SourceType (mis. `purchase_order_lines has no column named line_classification`, SourceType enum tanpa `fixed_asset`). Dikonfirmasi pre-existing via stash perubahan Slice A — **bukan regresi Phase 26**. Ditangani di phase Purchase/Fixed-Assets terkait.

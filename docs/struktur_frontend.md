@@ -731,6 +731,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____journal.live.ts             # Phase 26 Slice A — live retest (render + create mutating)
 | | | |____opening-balance.spec.ts     # Phase 26 Slice B — status error, reopened, preview objek
 | | | |____opening-balance.live.ts     # Phase 26 Slice B — live retest (status+batch render)
+| | | |____period-lock.spec.ts         # Phase 26 Slice C — locked_until, error state, unlock confirm
+| | | |____period-lock.live.ts         # Phase 26 Slice C — live retest (status render)
 | | |____router/
 | | | |____deep-link.spec.ts          # A13-059
 | | | |____error-containment.spec.ts  # A13-254

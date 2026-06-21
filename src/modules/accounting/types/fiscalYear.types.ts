@@ -6,12 +6,13 @@ export interface FiscalYear {
   start_date: string
   end_date: string
   status: FiscalYearStatus
-  lock_until?: string | null
+  is_active?: boolean
+  is_closed?: boolean
+  /** Canonical backend: tanggal lock periode aktif (sebelumnya keliru dibaca `lock_until`). */
+  locked_until?: string | null
   closed_at?: string | null
 }
 
 export interface FiscalYearStatusResponse {
   active_fiscal_year: FiscalYear
-  lock_until?: string | null
-  periods?: Array<{ month: number; year: number; label: string; is_locked: boolean }>
 }
