@@ -3,23 +3,18 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
+import { QueryErrorState } from '@/components/shared/feedback/QueryErrorState'
 import { useToast } from '@/hooks/useToast'
 import { formatCurrency, cn } from '@/lib/utils'
 import { useOBStatus, useOBMutations } from '../hooks/useOpeningBalance'
-import type { OBBatchStatus } from '../types/openingBalance.types'
+import { OB_STATUS_BADGE } from '../obStatusBadge'
 
-const STATUS_BADGE: Record<OBBatchStatus, { label: string; className: string }> = {
-  draft: { label: 'Draft', className: 'bg-[#FEF3C7] text-[#92400E] hover:bg-[#FEF3C7]' },
-  validated: { label: 'Tervalidasi', className: 'bg-[#DBEAFE] text-[#1E40AF] hover:bg-[#DBEAFE]' },
-  posted: { label: 'Diposting', className: 'bg-[#D1FAE5] text-[#065F46] hover:bg-[#D1FAE5]' },
-  locked: { label: 'Dikunci', className: 'bg-[#E0E7FF] text-[#3730A3] hover:bg-[#E0E7FF]' },
-  voided: { label: 'Dibatalkan', className: 'bg-[#F1F5F9] text-[#64748b] hover:bg-[#F1F5F9]' },
-}
+const STATUS_BADGE = OB_STATUS_BADGE
 
 export default function OpeningBalanceStatusPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { data, isLoading } = useOBStatus()
+  const { data, isLoading, isError, error, refetch } = useOBStatus()
   const { createBatch } = useOBMutations()
 
   const status = data?.data
@@ -37,6 +32,22 @@ export default function OpeningBalanceStatusPage() {
     return (
       <WorkspaceLayout title="Saldo Awal" breadcrumb={[{ label: 'Akuntansi' }, { label: 'Saldo Awal' }]}>
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat...</div>
+      </WorkspaceLayout>
+    )
+  }
+
+  // A13-085 — kegagalan status TIDAK disamarkan sebagai "belum ada saldo awal".
+  if (isError) {
+    return (
+      <WorkspaceLayout title="Saldo Awal" breadcrumb={[{ label: 'Akuntansi' }, { label: 'Saldo Awal' }]}>
+        <div className="max-w-2xl">
+          <QueryErrorState
+            error={error}
+            onRetry={() => void refetch()}
+            title="Status saldo awal gagal dimuat"
+            fallbackMessage="Tidak dapat memastikan status saldo awal. Coba lagi sebelum memulai input."
+          />
+        </div>
       </WorkspaceLayout>
     )
   }

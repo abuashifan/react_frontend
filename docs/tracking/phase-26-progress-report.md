@@ -7,7 +7,7 @@ Scope finding: A13-047..058 + A13-085..115 (≈42, minus A13-048 yang di-defer k
 Eksekusi slice-per-slice (keputusan user):
 
 - **Slice A — Jurnal Umum** ✅ DONE
-- Slice B — Saldo Awal (Opening Balance) ⏳
+- **Slice B — Saldo Awal (Opening Balance)** ✅ DONE
 - Slice C — Periode Akuntansi (Period Lock) ⏳
 - Slice D — Tahun Fiskal (Fiscal Year) ⏳
 
@@ -48,5 +48,21 @@ A13-048 (Reports/Laba Rugi blank) di-defer ke phase Reports (domain Reports, buk
 - Pint: fixed (file yang diubah).
 - **Live (PLAYWRIGHT_LIVE=1) 2/2**: render list+form tanpa crash/undefined/Invalid Date; **create jurnal manual end-to-end** (POST /journals) di app.finlite.my.id.
 
-### Catatan baseline backend
+## Slice B — Saldo Awal (selesai)
+
+Semua perbaikan frontend (backend OB sudah canonical: status `reopened`, totals termasuk system line, `blocking_errors` objek `{code,message}`).
+
+- A13-085 status 500 → error/retry state (bukan "belum ada saldo awal").
+- A13-086 status `reopened` ditambah ke type + badge bersama (`obStatusBadge`); batch reopened editable & tidak crash.
+- A13-087 system line ditampilkan read-only (badge Sistem) dan ikut total.
+- A13-088 `blocking_errors`/`warnings` objek `{code,message}` dirender via `obMessageText` (tidak crash render object).
+- A13-089 persistent draft lokal manual lines per batch (restore + clear setelah simpan/post).
+- A13-090 aksi pindah ke `FixedBottomBar`.
+- A13-091 reopen pakai `ConfirmDialog` (copy reopen + alasan), bukan dialog Void.
+- A13-092 accessible name pada input debit/kredit/keterangan + tombol hapus + selector akun.
+- A13-093 post/lock pakai `ConfirmDialog` aplikasi, bukan `window.confirm`.
+
+Komponen baru shared: `ConfirmDialog` (feedback). Verifikasi: build/lint 0 error, route-mock OB 3/3 (full suite 22/22), live read 1/1 (status+batch render).
+
+## Catatan baseline backend
 Full suite backend: 698 test, 639 pass, **59 fail pre-existing** di domain Purchase/VendorBill/GoodsReceipt/AP/FixedAsset/SourceType (mis. `purchase_order_lines has no column named line_classification`, SourceType enum tanpa `fixed_asset`). Dikonfirmasi pre-existing via stash perubahan Slice A — **bukan regresi Phase 26**. Ditangani di phase Purchase/Fixed-Assets terkait.

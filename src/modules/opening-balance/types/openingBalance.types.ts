@@ -1,7 +1,14 @@
 // Opening Balance — mengikuti backend aktual (OpeningBalanceController + OpeningBalanceBatchService).
 // Phase 11 — spec-29.
 
-export type OBBatchStatus = 'draft' | 'validated' | 'posted' | 'locked' | 'voided'
+export type OBBatchStatus = 'draft' | 'reopened' | 'validated' | 'posted' | 'locked' | 'voided'
+
+/** Pesan validasi/blocker backend: bisa objek {code,message} atau string legacy. */
+export type OBMessage = string | { code?: string; message: string; metadata?: Record<string, unknown> | null }
+
+export function obMessageText(msg: OBMessage): string {
+  return typeof msg === 'string' ? msg : msg.message
+}
 
 export interface OBLine {
   id?: number
@@ -43,8 +50,8 @@ export interface OBStatus {
 
 export interface OBValidation {
   valid: boolean
-  errors: string[]
-  warnings: string[]
+  errors: OBMessage[]
+  warnings: OBMessage[]
 }
 
 // GET /opening-balance/batches/{batch}/preview
@@ -54,8 +61,8 @@ export interface OBPreview {
   total_credit: number
   difference: number
   validation: OBValidation
-  blocking_errors: string[]
-  warnings: string[]
+  blocking_errors: OBMessage[]
+  warnings: OBMessage[]
 }
 
 export interface CreateOBBatchPayload {
