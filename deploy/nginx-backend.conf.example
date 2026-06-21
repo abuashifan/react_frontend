@@ -1,0 +1,48 @@
+# =============================================================================
+# Contoh nginx untuk BACKEND Laravel di DigitalOcean — api.finlite.my.id
+# =============================================================================
+# Arsitektur Opsi A: backend API-only di domain terpisah; frontend di Vercel.
+# Backend TIDAK perlu SPA fallback (itu tugas Vercel). Backend hanya melayani
+# Laravel (public/index.php). CORS diatur di Laravel (config/cors.php), BUKAN di
+# nginx, agar preflight OPTIONS tetap ditangani aplikasi.
+#
+# Pasang di droplet:  /etc/nginx/sites-available/api.finlite.my.id
+# Aktifkan:           ln -s ../sites-available/api.finlite.my.id ../sites-enabled/
+# HTTPS:              certbot --nginx -d api.finlite.my.id
+# Sesuaikan: root path, versi php-fpm socket.
+# =============================================================================
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.finlite.my.id;
+
+    # Setelah certbot dijalankan, blok 443 + redirect 80→443 ditambahkan otomatis.
+
+    root /var/www/laravel_backend/public;
+    index index.php;
+
+    charset utf-8;
+    client_max_body_size 20M;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+        # Sesuaikan dengan versi PHP terpasang (mis. php8.3-fpm).
+        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    # Jangan ekspos file dotfile (kecuali .well-known untuk certbot).
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}

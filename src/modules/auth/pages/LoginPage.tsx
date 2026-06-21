@@ -6,7 +6,6 @@ import { Eye, EyeOff, BarChart3, ShoppingCart, FileText, Building2 } from 'lucid
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useCompanyStore } from '@/stores/useCompanyStore'
@@ -39,7 +38,7 @@ export function LoginPage() {
 
   const form = useForm<LoginFormInput, unknown, LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '', remember_me: false },
+    defaultValues: { email: '', password: '' },
   })
 
   function focusPasswordField() {
@@ -110,11 +109,10 @@ export function LoginPage() {
       const response = await authApi.login({
         email: values.email,
         password: values.password,
-        remember_me: values.remember_me,
       })
       const { token, user } = response.data
 
-      setAuth(token, user, [], [], values.remember_me)
+      setAuth(token, user, [], [])
 
       const companiesResponse = await companyApi.list()
       const companies = companiesResponse.data
@@ -243,27 +241,6 @@ export function LoginPage() {
                         </div>
                       </FormControl>
                       <FormMessage className="text-xs" />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="remember_me"
-                  render={({ field }) => (
-                    <FormItem>
-                      <div className="flex items-center gap-2">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            id="remember_me"
-                          />
-                        </FormControl>
-                        <Label htmlFor="remember_me" className="text-[13px] text-[#64748b] cursor-pointer font-normal">
-                          Ingat saya
-                        </Label>
-                      </div>
                     </FormItem>
                   )}
                 />

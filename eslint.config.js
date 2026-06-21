@@ -25,4 +25,16 @@ export default defineConfig([
       'react-refresh/only-export-components': 'off',
     },
   },
+  {
+    // Playwright E2E suite + config run under Node, not the browser.
+    files: ['tests/**/*.{ts,tsx}', 'playwright.config.ts'],
+    languageOptions: {
+      globals: globals.node,
+    },
+    rules: {
+      'react-refresh/only-export-components': 'off',
+      // Playwright fixture callback `use()` bukan React Hook.
+      'react-hooks/rules-of-hooks': 'off',
+    },
+  },
 ])

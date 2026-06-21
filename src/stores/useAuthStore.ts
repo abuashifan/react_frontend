@@ -9,14 +9,12 @@ interface AuthState {
   permissionsLoaded: boolean
   companies: Company[]
   activeCompanyId: number | null
-  rememberMe: boolean
 
   setAuth: (
     token: string,
     user: User,
     companies?: Company[],
     permissions?: string[],
-    rememberMe?: boolean,
   ) => void
   setCompanies: (companies: Company[]) => void
   setPermissions: (permissions: string[]) => void
@@ -33,20 +31,15 @@ export const useAuthStore = create<AuthState>()(
       permissionsLoaded: false,
       companies: [],
       activeCompanyId: null,
-      rememberMe: false,
 
-      setAuth: (token, user, companies = [], permissions = [], rememberMe = false) => {
+      setAuth: (token, user, companies = [], permissions = []) => {
         set({
           token,
           user,
           permissions: permissions.length > 0 ? permissions : user.permissions ?? [],
           permissionsLoaded: permissions.length > 0 || Array.isArray(user.permissions),
           companies,
-          rememberMe,
         })
-        if (!rememberMe) {
-          sessionStorage.setItem('auth-session', '1')
-        }
       },
 
       setCompanies: (companies) => set({ companies }),
@@ -56,7 +49,6 @@ export const useAuthStore = create<AuthState>()(
       setActiveCompany: (companyId) => set({ activeCompanyId: companyId }),
 
       logout: () => {
-        sessionStorage.removeItem('auth-session')
         set({
           token: null,
           user: null,
@@ -64,7 +56,6 @@ export const useAuthStore = create<AuthState>()(
           permissionsLoaded: false,
           companies: [],
           activeCompanyId: null,
-          rememberMe: false,
         })
       },
     }),
@@ -78,7 +69,6 @@ export const useAuthStore = create<AuthState>()(
         permissionsLoaded: state.permissionsLoaded,
         companies: state.companies,
         activeCompanyId: state.activeCompanyId,
-        rememberMe: state.rememberMe,
       }),
     },
   ),

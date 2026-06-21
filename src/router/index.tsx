@@ -1,5 +1,6 @@
-import { createMemoryRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { ProtectedRoute, CompanySelectionGuard, OnboardingGuard } from './guards'
+import { RouteErrorBoundary } from './RouteErrorBoundary'
 import { LoginPage } from '@/modules/auth/pages/LoginPage'
 import { CompanyPickerPage } from '@/modules/auth/pages/CompanyPickerPage'
 import { ForbiddenPage, NotFoundPage, ServerErrorPage } from '@/modules/errors/ErrorPage'
@@ -18,55 +19,54 @@ import { reportsRoutes } from '@/modules/reports/routes'
 import { settingsRoutes } from '@/modules/settings/routes'
 import { openingBalanceRoutes } from '@/modules/opening-balance/routes'
 
-const initialEntry = `${window.location.pathname}${window.location.search}${window.location.hash}`
-
-if (window.location.pathname !== '/') {
-  window.history.replaceState(window.history.state, '', '/')
-}
-
-export const router = createMemoryRouter([
-  { path: '/login', element: <LoginPage /> },
+export const router = createBrowserRouter([
   {
-    path: '/select-company',
-    element: (
-      <CompanySelectionGuard>
-        <CompanyPickerPage />
-      </CompanySelectionGuard>
-    ),
+    // Pathless root route: menangkap uncaught route/render error dari seluruh
+    // child route lewat satu production-safe boundary (A13-254).
+    errorElement: <RouteErrorBoundary />,
+    children: [
+      { path: '/login', element: <LoginPage /> },
+      {
+        path: '/select-company',
+        element: (
+          <CompanySelectionGuard>
+            <CompanyPickerPage />
+          </CompanySelectionGuard>
+        ),
+      },
+      {
+        path: '/onboarding',
+        element: (
+          <OnboardingGuard>
+            <OnboardingPage />
+          </OnboardingGuard>
+        ),
+      },
+      {
+        path: '/',
+        element: (
+          <ProtectedRoute requireCompany requireOnboarding>
+            <DashboardPage />
+          </ProtectedRoute>
+        ),
+      },
+      ...masterDataRoutes,
+      ...salesRoutes,
+      { path: '/sales/ar', element: <Navigate to="/sales/ar/summary" replace /> },
+      ...purchaseRoutes,
+      { path: '/purchase/ap', element: <Navigate to="/purchase/ap/summary" replace /> },
+      ...inventoryRoutes,
+      ...accountingRoutes,
+      ...openingBalanceRoutes,
+      ...cashBankRoutes,
+      ...fixedAssetRoutes,
+      ...reportsRoutes,
+      ...settingsRoutes,
+      { path: '/403', element: <ForbiddenPage /> },
+      { path: '/500', element: <ServerErrorPage /> },
+      { path: '/network-error', element: <NetworkErrorPage /> },
+      { path: '/maintenance', element: <MaintenancePage /> },
+      { path: '*', element: <NotFoundPage /> },
+    ],
   },
-  {
-    path: '/onboarding',
-    element: (
-      <OnboardingGuard>
-        <OnboardingPage />
-      </OnboardingGuard>
-    ),
-  },
-  {
-    path: '/',
-    element: (
-      <ProtectedRoute requireCompany requireOnboarding>
-        <DashboardPage />
-      </ProtectedRoute>
-    ),
-  },
-  ...masterDataRoutes,
-  ...salesRoutes,
-  { path: '/sales/ar', element: <Navigate to="/sales/ar/summary" replace /> },
-  ...purchaseRoutes,
-  { path: '/purchase/ap', element: <Navigate to="/purchase/ap/summary" replace /> },
-  ...inventoryRoutes,
-  ...accountingRoutes,
-  ...openingBalanceRoutes,
-  ...cashBankRoutes,
-  ...fixedAssetRoutes,
-  ...reportsRoutes,
-  ...settingsRoutes,
-  { path: '/403', element: <ForbiddenPage /> },
-  { path: '/500', element: <ServerErrorPage /> },
-  { path: '/network-error', element: <NetworkErrorPage /> },
-  { path: '/maintenance', element: <MaintenancePage /> },
-  { path: '*', element: <NotFoundPage /> },
-], {
-  initialEntries: [initialEntry],
-})
+])

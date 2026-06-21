@@ -4,14 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
 import { router } from '@/router'
-import { useAuthStore } from '@/stores/useAuthStore'
 import './index.css'
-
-// If user didn't check "remember me", clear auth when browser session ends
-const { rememberMe, logout } = useAuthStore.getState()
-if (!rememberMe && !sessionStorage.getItem('auth-session')) {
-  logout()
-}
 
 const queryClient = new QueryClient({
   defaultOptions: {

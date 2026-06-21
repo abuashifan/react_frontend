@@ -1,6 +1,7 @@
 import { Component } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { logRouteError } from '@/router/routerTelemetry'
 
 interface Props {
   children: React.ReactNode
@@ -24,7 +25,11 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error('[ErrorBoundary]', error, info.componentStack)
+    // Detail teknis hanya ke channel log, tidak pernah dirender ke UI (A13-254).
+    logRouteError(error, { boundary: 'component' })
+    if (import.meta.env.DEV) {
+      console.error('[ErrorBoundary]', error, info.componentStack)
+    }
   }
 
   handleReset = () => {
@@ -45,7 +50,7 @@ export class ErrorBoundary extends Component<Props, State> {
               Terjadi kesalahan
             </p>
             <p className="text-[12px] text-[#64748b] mb-4">
-              {this.state.error?.message || 'Komponen tidak dapat dirender.'}
+              Komponen tidak dapat dirender. Coba lagi atau muat ulang halaman.
             </p>
             <Button size="sm" variant="outline" onClick={this.handleReset}>
               Coba lagi

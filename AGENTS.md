@@ -198,6 +198,7 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 | 21 | Persistent Form Drafts | ✅ Done | `prompt-phase-21-persistent-form-drafts.md` | A12-08 — localStorage draft hook + rollout awal Sales Invoice, Vendor Bill, Stock Adjustment, Bank Transfer |
 | 22 | Select, Date & Edit Mode UX | ✅ Done | `prompt-phase-22-select-date-edit-mode-ux.md` | A12-09/10/11 — SearchableSelect preload, `toDateInputValue` di 12 form, edit/read-only policy (`documentEditPolicy` + `FormLayout.readOnly`) |
 | 23 | Tabs, Ribbon & Lint Cleanup | ✅ Done | `prompt-phase-23-tabs-ribbon-lint-cleanup.md` | A12-03/04/16 — close-all tabs, ribbon empty diagnostic, lint debt cleanup |
+| 24 | Test Foundation, Runtime Containment & Router Canonical | ✅ Done | `prompt-phase-24-remediation-foundation-router.md` | A13-059/254/271 — `createBrowserRouter`, `RouteErrorBoundary`+telemetry, hapus opsi rememberMe (session tunggal), Playwright foundation. Open item: SPA fallback host produksi (issue-27 §6.5). Lihat `tracking/phase-24-completion-report.md` |
 
 ---
 
@@ -215,12 +216,13 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 ### 6C. Build Status
 
 ```
-Terakhir dicek  : 2026-06-21 (Audit-13 Period-End, perubahan dokumen saja)
+Terakhir dicek  : 2026-06-21 (Phase 24 — router/runtime/test foundation)
 npm run build   : ✅ 0 error
 npm run lint    : ✅ 0 error; 35 warning RHF watch/useMemo legacy
-                  di file-file yang tidak diubah pada audit ini
-Playwright      : ✅ Chromium headless; Period-End live + route-mock pada 1440×900,
-                  1180×708, 1024×656, dan 390×844; POST run/reopen diintersep
+                  di file-file yang tidak diubah pada phase ini
+Playwright      : ✅ Chromium route-mock; 12/12 tests/e2e/router (A13-059/254/271)
+                  pada matrix 1440×900 / 1180×708 / 1024×656 / 390×844.
+                  Foundation permanen: playwright.config.ts + tests/e2e/fixtures
 ```
 
 ---
@@ -281,7 +283,7 @@ Playwright      : ✅ Chromium headless; Period-End live + route-mock pada 1440�
 | 30 | A13-238 | Perbaiki adapter Analisis Inventori | Reports | Critical |
 | 31 | A13-255 | Perbaiki kontrak Pemetaan Akun settings (save ke `/undefined`) | Settings / Pemetaan Akun | Critical |
 | 32 | A13-263 | Cegah self/last-owner deactivate-remove | Settings / Pengguna | High |
-| 33 | A13-271 | Pulihkan deep-link/refresh rute (memory router) | Settings / Global Router | High |
+| 33 | ~~A13-271~~ ✅ Phase 24 | Pulihkan deep-link/refresh rute (memory router) | Settings / Global Router | High |
 | 34 | A13-272 | Pulihkan endpoint live Period-End | Accounting / Period-End | Critical |
 | 35 | A13-273 | Perbaiki renderer blocker/warning Period-End | Accounting / Period-End | Critical |
 | 36 | A13-274 | Adaptasi checklist canonical Period-End | Accounting / Period-End | High |

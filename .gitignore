@@ -13,6 +13,11 @@ dist-ssr
 praproductions-docs/
 *.local
 
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
 # Editor directories and files
 .claude/settings.local.json
 .vscode/*

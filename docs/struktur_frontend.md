@@ -215,15 +215,22 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____prompt-phase-21-persistent-form-drafts.md
 | | |____prompt-phase-22-select-date-edit-mode-ux.md
 | | |____prompt-phase-23-tabs-ribbon-lint-cleanup.md
+| |____deployment/
+| | |____deploy-guide-vercel-do.md   (Phase 24 — panduan deploy Vercel + DO + CORS)
 | |____tracking/
 | | |____2026-06-16-route-tabs-datatable-fixes.md
 | | |____2026-06-16-workspace-document-number-alias-fix.md
+| | |____phase-24-completion-report.md
 | |____struktur_frontend.md
+|____.env.production.example   (Phase 24 — contoh VITE_API_BASE_URL produksi)
+|____deploy/
+| |____nginx-backend.conf.example   (Phase 24 — contoh nginx backend DO)
 |____eslint.config.js
 |____index.html
 |____package-lock.json
 |____package.json
 |____postcss.config.js
+|____vercel.json   (Phase 24 — build + SPA fallback Vercel)
 |____public/
 | |____favicon.svg
 | |____icons.svg
@@ -690,6 +697,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____index.tsx
 | | |____moduleConfig.ts
 | | |____placeholders.tsx
+| | |____RouteErrorBoundary.tsx   (Phase 24 — production-safe errorElement)
+| | |____routerTelemetry.ts       (Phase 24 — logRouteError abstraction)
 | |____services/
 | | |____http.ts
 | |____stores/
@@ -700,6 +709,16 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____api.types.ts
 | | |____auth.types.ts
 | | |____common.types.ts
+|____playwright.config.ts  # Phase 24 — route-mock + live-read-only projects
+|____tests/
+| |____e2e/
+| | |____fixtures/
+| | | |____test.ts          # errors collector, seedAuth/clearAuth, mockApi
+| | | |____viewports.ts     # matrix 1440×900 / 1180×708 / 1024×656 / 390×844
+| | |____router/
+| | | |____deep-link.spec.ts          # A13-059
+| | | |____error-containment.spec.ts  # A13-254
+| | | |____settings-bootstrap.spec.ts # A13-271
 |____tailwind.config.ts
 |____tsconfig.app.json
 |____tsconfig.json
