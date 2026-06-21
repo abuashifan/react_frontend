@@ -258,6 +258,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____feedback/
 | | | | |____EmptyState.tsx
 | | | | |____ErrorBoundary.tsx
+| | | | |____QueryErrorState.tsx   (Phase 26 — error/retry generik untuk query gagal)
 | | | | |____SessionWarningDialog.tsx
 | | | |____form/
 | | | | |____FormSection.tsx
@@ -722,6 +723,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____fixtures/
 | | | |____test.ts          # errors collector, seedAuth/clearAuth, mockApi
 | | | |____viewports.ts     # matrix 1440×900 / 1180×708 / 1024×656 / 390×844
+| | |____accounting/
+| | | |____journal-form.spec.ts        # Phase 26 Slice A — dimensi, validasi line, draft
 | | |____router/
 | | | |____deep-link.spec.ts          # A13-059
 | | | |____error-containment.spec.ts  # A13-254
