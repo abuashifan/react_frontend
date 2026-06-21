@@ -223,6 +223,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____phase-24-completion-report.md
 | | |____phase-25-progress-report.md
 | | |____phase-25-completion-report.md   (Phase 25 — completion & validation report)
+| | |____phase-26-progress-report.md     (Phase 26 — slice progress; Slice A done)
 | |____struktur_frontend.md
 |____.env.production.example   (Phase 24 — contoh VITE_API_BASE_URL produksi)
 |____deploy/
@@ -725,6 +726,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____viewports.ts     # matrix 1440×900 / 1180×708 / 1024×656 / 390×844
 | | |____accounting/
 | | | |____journal-form.spec.ts        # Phase 26 Slice A — dimensi, validasi line, draft
+| | | |____journal.live.ts             # Phase 26 Slice A — live retest (render + create mutating)
 | | |____router/
 | | | |____deep-link.spec.ts          # A13-059
 | | | |____error-containment.spec.ts  # A13-254
