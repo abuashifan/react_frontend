@@ -156,4 +156,69 @@ test.describe('Phase 25 core master data', () => {
     await expect.poll(() => defaultPaymentTermId).toBe(30)
     await expect(page.locator('tbody').getByText('Default', { exact: true })).toBeVisible()
   })
+
+  test('bulk nonaktifkan unit memanggil deactivate untuk tiap baris terpilih', async ({ page }) => {
+    await seedAuth(page)
+    const deactivated: number[] = []
+
+    await page.route('**/api/**', async (route) => {
+      const url = new URL(route.request().url())
+
+      if (url.pathname.endsWith('/auth/permissions')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            success: true,
+            data: { role: 'owner', permission_mode: 'all', permissions: ['*'] },
+          }),
+        })
+        return
+      }
+
+      const deactivateMatch = url.pathname.match(/\/master-data\/units\/(\d+)\/deactivate$/)
+      if (deactivateMatch) {
+        deactivated.push(Number(deactivateMatch[1]))
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true, data: null }),
+        })
+        return
+      }
+
+      if (url.pathname.endsWith('/master-data/units')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            success: true,
+            data: [
+              { id: 11, code: 'PCS', name: 'Pieces', precision: 0, is_active: true, created_at: '2026-06-21T00:00:00Z', updated_at: '2026-06-21T00:00:00Z' },
+              { id: 12, code: 'KG', name: 'Kilogram', precision: 2, is_active: true, created_at: '2026-06-21T00:00:00Z', updated_at: '2026-06-21T00:00:00Z' },
+            ],
+            meta: { current_page: 1, last_page: 1, per_page: 25, total: 2 },
+          }),
+        })
+        return
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, data: null }),
+      })
+    })
+
+    page.on('dialog', (dialog) => void dialog.accept())
+
+    await page.goto('/master-data/units')
+    await expect(page.getByText('Kilogram')).toBeVisible()
+
+    // pilih semua baris via checkbox header, lalu jalankan bulk nonaktifkan
+    await page.getByRole('checkbox').first().click()
+    await page.getByRole('button', { name: 'Nonaktifkan', exact: true }).click()
+
+    await expect.poll(() => [...deactivated].sort((a, b) => a - b)).toEqual([11, 12])
+  })
 })

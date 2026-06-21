@@ -28,9 +28,23 @@ export default function GudangPage() {
   const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
+  const [selectedRows, setSelectedRows] = useState<string[]>([])
 
   const { data, isLoading, isFetching } = useGudangList({ page, per_page: perPage, search: deferredSearch || undefined })
   const { create, update, activate, deactivate } = useGudangMutations()
+
+  const updateSelectedStatus = async (active: boolean) => {
+    if (!confirm(`${active ? 'Aktifkan' : 'Nonaktifkan'} ${selectedRows.length} gudang terpilih?`)) return
+    try {
+      await Promise.all(selectedRows.map((rowId) =>
+        active ? activate.mutateAsync(Number(rowId)) : deactivate.mutateAsync(Number(rowId)),
+      ))
+      toast.success(`${selectedRows.length} gudang berhasil ${active ? 'diaktifkan' : 'dinonaktifkan'}.`)
+      setSelectedRows([])
+    } catch {
+      toast.error('Sebagian status gudang gagal diubah.')
+    }
+  }
 
   const {
     register,
@@ -163,6 +177,12 @@ export default function GudangPage() {
         isFetching={isFetching}
         pagination={{ pageIndex: page - 1, pageSize: perPage }}
         onPaginationChange={(state) => { setPage(state.pageIndex + 1); setPerPage(state.pageSize) }}
+        selectedRows={selectedRows}
+        onRowSelect={setSelectedRows}
+        bulkActions={[
+          { id: 'activate', label: 'Aktifkan', icon: <Power className="h-3.5 w-3.5" />, permission: 'warehouses.deactivate', onClick: () => void updateSelectedStatus(true) },
+          { id: 'deactivate', label: 'Nonaktifkan', icon: <PowerOff className="h-3.5 w-3.5" />, permission: 'warehouses.deactivate', variant: 'destructive', onClick: () => void updateSelectedStatus(false) },
+        ]}
         emptyTitle="Belum ada gudang"
         emptyDescription="Tambahkan gudang untuk menyimpan stok produk."
       />

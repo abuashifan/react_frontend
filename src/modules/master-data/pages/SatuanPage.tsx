@@ -26,9 +26,23 @@ export default function SatuanPage() {
   const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
+  const [selectedRows, setSelectedRows] = useState<string[]>([])
 
   const { data, isLoading, isFetching } = useSatuanList({ page, per_page: perPage, search: deferredSearch || undefined })
   const { create, update, activate, deactivate } = useSatuanMutations()
+
+  const updateSelectedStatus = async (active: boolean) => {
+    if (!confirm(`${active ? 'Aktifkan' : 'Nonaktifkan'} ${selectedRows.length} satuan terpilih?`)) return
+    try {
+      await Promise.all(selectedRows.map((rowId) =>
+        active ? activate.mutateAsync(Number(rowId)) : deactivate.mutateAsync(Number(rowId)),
+      ))
+      toast.success(`${selectedRows.length} satuan berhasil ${active ? 'diaktifkan' : 'dinonaktifkan'}.`)
+      setSelectedRows([])
+    } catch {
+      toast.error('Sebagian status satuan gagal diubah.')
+    }
+  }
 
   const {
     register,
@@ -155,6 +169,12 @@ export default function SatuanPage() {
         isFetching={isFetching}
         pagination={{ pageIndex: page - 1, pageSize: perPage }}
         onPaginationChange={(state) => { setPage(state.pageIndex + 1); setPerPage(state.pageSize) }}
+        selectedRows={selectedRows}
+        onRowSelect={setSelectedRows}
+        bulkActions={[
+          { id: 'activate', label: 'Aktifkan', icon: <Power className="h-3.5 w-3.5" />, permission: 'units.deactivate', onClick: () => void updateSelectedStatus(true) },
+          { id: 'deactivate', label: 'Nonaktifkan', icon: <PowerOff className="h-3.5 w-3.5" />, permission: 'units.deactivate', variant: 'destructive', onClick: () => void updateSelectedStatus(false) },
+        ]}
         emptyTitle="Belum ada satuan"
         emptyDescription="Tambahkan satuan seperti pcs, kg, liter, dll."
       />

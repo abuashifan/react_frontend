@@ -49,9 +49,23 @@ export default function ProyekPage() {
   const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
+  const [selectedRows, setSelectedRows] = useState<string[]>([])
 
   const query = useProyekList({ page, per_page: perPage, search: deferredSearch || undefined, status: filterStatus })
   const { create, update, activate, deactivate } = useProyekMutations()
+
+  const updateSelectedStatus = async (active: boolean) => {
+    if (!confirm(`${active ? 'Aktifkan' : 'Nonaktifkan'} ${selectedRows.length} proyek terpilih?`)) return
+    try {
+      await Promise.all(selectedRows.map((rowId) =>
+        active ? activate.mutateAsync(Number(rowId)) : deactivate.mutateAsync(Number(rowId)),
+      ))
+      toast.success(`${selectedRows.length} proyek berhasil ${active ? 'diaktifkan' : 'dinonaktifkan'}.`)
+      setSelectedRows([])
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Sebagian status proyek gagal diubah.'))
+    }
+  }
 
   const {
     register,
@@ -229,6 +243,12 @@ export default function ProyekPage() {
         isFetching={query.isFetching}
         pagination={{ pageIndex: page - 1, pageSize: perPage }}
         onPaginationChange={(state) => { setPage(state.pageIndex + 1); setPerPage(state.pageSize) }}
+        selectedRows={selectedRows}
+        onRowSelect={setSelectedRows}
+        bulkActions={[
+          { id: 'activate', label: 'Aktifkan', icon: <Power className="h-3.5 w-3.5" />, permission: 'projects.edit', onClick: () => void updateSelectedStatus(true) },
+          { id: 'deactivate', label: 'Nonaktifkan', icon: <PowerOff className="h-3.5 w-3.5" />, permission: 'projects.edit', variant: 'destructive', onClick: () => void updateSelectedStatus(false) },
+        ]}
         emptyTitle="Belum ada proyek"
         emptyDescription="Tambahkan proyek untuk pelacakan biaya per proyek."
       />}

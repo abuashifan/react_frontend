@@ -41,9 +41,23 @@ Pint scoped: pass
 
 ## Remaining
 
-Phase 25 belum selesai. Default payment-term policy, bulk lifecycle pada simple
-masters, keputusan modal-vs-form-page, dan validation checklist per finding masih
-harus diselesaikan serta diretest pada backend/runtime yang sesuai.
+Status item per 2026-06-21 (update lanjutan):
+
+- Default payment-term policy — **selesai**. `PaymentTermsPage` menulis
+  `default_payment_term_id` ke company `transaction_defaults`, dengan badge Default,
+  guard `settings.company.edit`, dan disable saat item nonaktif. E2E route-mock
+  membuktikan request default terkirim.
+- Bulk lifecycle simple masters — **selesai**. Satuan, Kategori Produk, Gudang,
+  Payment Term, Departemen, dan Proyek kini memakai row-selection + `BulkActionBar`
+  (activate/deactivate) lewat `DataTable`, pola identik COA. E2E bulk deactivate unit
+  membuktikan tiap baris terpilih memanggil endpoint deactivate.
+- Keputusan modal-vs-form-page — **diputuskan**: simple master (field sedikit) memakai
+  `Dialog`; complex master (COA/Kontak/Produk, banyak field + relation) memakai
+  full form-page route. Pola sudah konsisten di kode.
+- Validation gate per-finding (A13-004..046, 060..084, 255..257) — automated gate
+  hijau (build/lint/Playwright/backend). Rekonsiliasi cluster ada di
+  `phase-25-completion-report.md`. Residual: live-runtime retest (env live read-only
+  per guardrails §10).
 
 ## Progress Lanjutan — Core Master Data
 

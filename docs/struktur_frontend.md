@@ -222,6 +222,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____2026-06-16-workspace-document-number-alias-fix.md
 | | |____phase-24-completion-report.md
 | | |____phase-25-progress-report.md
+| | |____phase-25-completion-report.md   (Phase 25 — completion & validation report)
 | |____struktur_frontend.md
 |____.env.production.example   (Phase 24 — contoh VITE_API_BASE_URL produksi)
 |____deploy/

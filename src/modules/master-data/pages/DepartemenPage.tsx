@@ -29,9 +29,23 @@ export default function DepartemenPage() {
   const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
+  const [selectedRows, setSelectedRows] = useState<string[]>([])
 
   const query = useDepartemenList({ page, per_page: perPage, search: deferredSearch || undefined })
   const { create, update, activate, deactivate } = useDepartemenMutations()
+
+  const updateSelectedStatus = async (active: boolean) => {
+    if (!confirm(`${active ? 'Aktifkan' : 'Nonaktifkan'} ${selectedRows.length} departemen terpilih?`)) return
+    try {
+      await Promise.all(selectedRows.map((rowId) =>
+        active ? activate.mutateAsync(Number(rowId)) : deactivate.mutateAsync(Number(rowId)),
+      ))
+      toast.success(`${selectedRows.length} departemen berhasil ${active ? 'diaktifkan' : 'dinonaktifkan'}.`)
+      setSelectedRows([])
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Sebagian status departemen gagal diubah.'))
+    }
+  }
 
   const {
     register,
@@ -161,6 +175,12 @@ export default function DepartemenPage() {
         isFetching={query.isFetching}
         pagination={{ pageIndex: page - 1, pageSize: perPage }}
         onPaginationChange={(state) => { setPage(state.pageIndex + 1); setPerPage(state.pageSize) }}
+        selectedRows={selectedRows}
+        onRowSelect={setSelectedRows}
+        bulkActions={[
+          { id: 'activate', label: 'Aktifkan', icon: <Power className="h-3.5 w-3.5" />, permission: 'master-data.departments.edit', onClick: () => void updateSelectedStatus(true) },
+          { id: 'deactivate', label: 'Nonaktifkan', icon: <PowerOff className="h-3.5 w-3.5" />, permission: 'master-data.departments.edit', variant: 'destructive', onClick: () => void updateSelectedStatus(false) },
+        ]}
         emptyTitle="Belum ada departemen"
         emptyDescription="Tambahkan departemen untuk pengelompokan transaksi."
       />}

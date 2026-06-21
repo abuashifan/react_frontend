@@ -1,7 +1,7 @@
 # Issue-28 — Phase 25 Master Data and Account Mapping Canonical
 
 Tanggal dibuat: 2026-06-21  
-Status: In Progress  
+Status: Done (automated gate) — residual live-runtime retest  
 Phase: 25  
 Severity tertinggi: Critical  
 Finding canonical: A13-004..046, A13-060..084, A13-255..257  

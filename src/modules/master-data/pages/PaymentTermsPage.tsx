@@ -30,6 +30,7 @@ export default function PaymentTermsPage() {
   const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
+  const [selectedRows, setSelectedRows] = useState<string[]>([])
   const { can } = usePermission()
   const canViewCompanySettings = can('settings.company.view')
 
@@ -72,6 +73,19 @@ export default function PaymentTermsPage() {
     } catch (error) {
       applyApiValidationErrors(error, setError)
       toast.error(getApiErrorMessage(error, 'Gagal menyimpan syarat pembayaran.'))
+    }
+  }
+
+  const updateSelectedStatus = async (active: boolean) => {
+    if (!confirm(`${active ? 'Aktifkan' : 'Nonaktifkan'} ${selectedRows.length} syarat pembayaran terpilih?`)) return
+    try {
+      await Promise.all(selectedRows.map((rowId) =>
+        active ? activate.mutateAsync(Number(rowId)) : deactivate.mutateAsync(Number(rowId)),
+      ))
+      toast.success(`${selectedRows.length} syarat pembayaran berhasil ${active ? 'diaktifkan' : 'dinonaktifkan'}.`)
+      setSelectedRows([])
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Sebagian status syarat pembayaran gagal diubah.'))
     }
   }
 
@@ -198,6 +212,12 @@ export default function PaymentTermsPage() {
         isFetching={query.isFetching}
         pagination={{ pageIndex: page - 1, pageSize: perPage }}
         onPaginationChange={(state) => { setPage(state.pageIndex + 1); setPerPage(state.pageSize) }}
+        selectedRows={selectedRows}
+        onRowSelect={setSelectedRows}
+        bulkActions={[
+          { id: 'activate', label: 'Aktifkan', icon: <Power className="h-3.5 w-3.5" />, permission: 'payment_terms.edit', onClick: () => void updateSelectedStatus(true) },
+          { id: 'deactivate', label: 'Nonaktifkan', icon: <PowerOff className="h-3.5 w-3.5" />, permission: 'payment_terms.deactivate', variant: 'destructive', onClick: () => void updateSelectedStatus(false) },
+        ]}
         emptyTitle="Belum ada syarat pembayaran"
         emptyDescription="Tambahkan syarat pembayaran seperti COD, Net 30, dll."
       />}
