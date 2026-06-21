@@ -198,6 +198,68 @@ Guardrails ini wajib dibaca sebelum phase 14, 15, 16, dan 17.
 
 ---
 
+## Audit-13 Guardrails — Wajib untuk Phase 24–39
+
+| File | Status | Isi |
+|---|---|---|
+| `prompt-guardrails-audit-13-implementation.md` | ✅ Tersedia | Scope discipline, supersession aturan lama, contract freeze, frontend/backend safety, phase dependency, mandatory validation gate, completion report |
+
+Guardrails Audit-13 mengalahkan guardrail historis yang bertentangan. Secara khusus, aturan Audit-11 untuk mempertahankan memory router/hidden URL telah superseded oleh A13-059/A13-271 dan Phase 24.
+
+Referensi wajib:
+
+```text
+praproduction_docs/spec-37-audit-13-remediation.md
+gap_docs/gap-10-audit-13-remediation-roadmap.md
+audit_docs/audit-13-manual-frontend-audit-tracker-17-06-26.md
+```
+
+Status berikutnya:
+
+```text
+Phase aktif     : Phase 24
+Issue Phase 24 : selesai — issue-27-phase-24-runtime-router-foundation.md
+Prompt Phase 24: selesai — prompt-phase-24-remediation-foundation-router.md
+```
+
+---
+
+## Phase 24 — Test Foundation, Global Runtime Containment, and Router Canonicalization
+
+| Task | File | Status |
+|---|---|---|
+| Playwright regression foundation | `prompt-phase-24-remediation-foundation-router.md` | ✅ Tersedia |
+| Router canonicalization | `prompt-phase-24-remediation-foundation-router.md` | ✅ Tersedia |
+| Safe error containment | `prompt-phase-24-remediation-foundation-router.md` | ✅ Tersedia |
+| Auth/session bootstrap and destination handling | `prompt-phase-24-remediation-foundation-router.md` | ✅ Tersedia |
+| Tab/URL sync verification | `prompt-phase-24-remediation-foundation-router.md` | ✅ Tersedia |
+
+**Referensi**: `praproduction_docs/spec-37-audit-13-remediation.md`, `issue_docs/issue-27-phase-24-runtime-router-foundation.md`
+
+---
+
+## Audit-13 Phase Prompt Tracker
+
+| Phase | Prompt File | Status |
+|---:|---|---|
+| 25 | `prompt-phase-25-master-data-account-mapping-canonical.md` | ✅ Ada |
+| 26 | `prompt-phase-26-accounting-foundation-opening-balance.md` | ✅ Ada |
+| 27 | `prompt-phase-27-cash-bank-contract-reconciliation.md` | ✅ Ada |
+| 28 | `prompt-phase-28-sales-transaction-contract.md` | ✅ Ada |
+| 29 | `prompt-phase-29-ar-subledger-reports.md` | ✅ Ada |
+| 30 | `prompt-phase-30-purchase-transaction-contract.md` | ✅ Ada |
+| 31 | `prompt-phase-31-ap-subledger-reports.md` | ✅ Ada |
+| 32 | `prompt-phase-32-inventory-integrity-workflow.md` | ✅ Ada |
+| 33 | `prompt-phase-33-fixed-assets-runtime-core.md` | ✅ Ada |
+| 34 | `prompt-phase-34-fixed-assets-lifecycle-reports.md` | ✅ Ada |
+| 35 | `prompt-phase-35-period-end-processing.md` | ✅ Ada |
+| 36 | `prompt-phase-36-financial-operational-reports.md` | ✅ Ada |
+| 37 | `prompt-phase-37-settings-access-dashboard-router.md` | ✅ Ada |
+| 38 | `prompt-phase-38-cross-cutting-ux-accessibility-consistency.md` | ✅ Ada |
+| 39 | `prompt-phase-39-full-regression-data-repair-audit-closure.md` | ✅ Ada |
+
+---
+
 ## Phase 14 — Master Data DTO & Action Contract Fixes
 
 | Task | File | Status |

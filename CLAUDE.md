@@ -25,7 +25,7 @@
 **Backend** : Laravel API only (Bearer token + X-Company-ID header)  
 **Target**  : iPad mini 6 (768px) ke atas  
 **Working directory** : `/workspace/frontend/`  
-**Backend** : `/workspace/backend/` — READ ONLY, jangan dimodifikasi  
+**Backend** : `/workspace/laravel_backend/` — boleh diperbaiki sesuai scope task dan aturan backend-local
 
 ---
 
@@ -49,6 +49,8 @@ Detail lengkap ada di `AGENTS.md` §8.
 ✅ WAJIB tabular-nums untuk semua angka
 ✅ WAJIB update docs/struktur_frontend.md jika ada file baru
 ✅ WAJIB npm run build lulus 0 error sebelum selesai
+✅ WAJIB baca /workspace/laravel_backend/AGENTS.md sebelum mengubah backend
+✅ WAJIB test backend terkait + Pint check jika backend diubah
 ```
 
 ---

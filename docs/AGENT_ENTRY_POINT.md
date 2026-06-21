@@ -1,71 +1,71 @@
 # AGENT_ENTRY_POINT.md — Seaside Escape ERP Frontend
 
 > Dibaca setelah `/workspace/frontend/AGENTS.md`.
-> Status dokumen ini: entry point aktif setelah Audit-12.
+> Status dokumen ini: entry point aktif setelah Audit-13.
 
 ---
 
 ## 1. Entry Point Aktif
 
-Untuk task frontend saat ini, agent **WAJIB membaca file ini setelah `AGENTS.md`**:
+Untuk task remediation saat ini, agent **WAJIB membaca file berikut setelah `AGENTS.md`**:
 
 ```text
-docs/audit_docs/audit-12-frontend-ux-workflow-audit-16-06-26.md
-docs/gap_docs/gap-09-audit-12-ux-workflow-fixes.md
+docs/praproduction_docs/spec-37-audit-13-remediation.md
+docs/audit_docs/audit-13-manual-frontend-audit-tracker-17-06-26.md
+docs/gap_docs/gap-10-audit-13-remediation-roadmap.md
+docs/prompt/prompt-guardrails-audit-13-implementation.md
+docs/prompt/prompt-phase-24-remediation-foundation-router.md
 ```
 
-Audit-12 adalah peta global terbaru untuk:
+Audit-13 adalah baseline runtime/source/contract terbaru:
 
-- UX/workflow frontend setelah Audit-11;
-- filter multi-select dan date range;
-- report crash dan endpoint fiktif;
-- stock balance DTO/detail mismatch;
-- DataTable selection dan bulk void;
-- draft form persistence;
-- SearchableSelect/date input/edit mode;
-- close-all virtual tabs, ribbon diagnostic, lint cleanup.
+- 105 area baseline sudah diaudit;
+- 280 finding tercatat;
+- mencakup frontend dan backend;
+- mencakup contract, workflow, accounting/inventory integrity, permission, report, responsive, dan accessibility.
 
-Jangan mulai dari audit lama atau prompt phase lama kecuali Audit-12 atau GAP-09 secara eksplisit merujuk ke file itu.
+Spec-37 adalah spesifikasi canonical lintas sesi untuk contract, invariant, verification, dan handoff. GAP-10 adalah roadmap Phase 24–39. Prompt guardrails Audit-13 adalah checklist eksekusi wajib setiap phase. Jangan memilih finding secara acak di luar urutan dependency GAP-10 kecuali user secara eksplisit mengubah prioritas.
 
 ---
 
 ## 2. Status Dokumen Lama
 
-Dokumen lama di folder berikut **bukan entry point utama lagi**:
+Dokumen berikut **bukan entry point utama lagi**:
 
 ```text
-docs/gap_docs/
-docs/issue_docs/
-docs/praproduction_docs/
-docs/design_docs/
-docs/prompt/
-docs/audit_docs/audit-00..audit-11*
+docs/audit_docs/audit-00..audit-12*
+docs/gap_docs/gap-01..gap-09*
+docs/issue_docs/*
+docs/praproduction_docs/spec-01..spec-36*
+docs/prompt/prompt-phase-1..prompt-phase-23*
 ```
 
 Dokumen tersebut sekarang berfungsi sebagai:
 
 - detail historis;
-- bahan referensi saat Audit-12/GAP-09 menunjuk issue tertentu;
+- bahan referensi saat Audit-13/GAP-10 menunjuk issue atau primitive lama;
 - template untuk membuat detail gap/issue/spec/prompt baru.
 
-Jika dokumen lama bertentangan dengan Audit-12, source code aktual, atau Laravel route list aktual, gunakan urutan prioritas berikut:
+Jika dokumen lama bertentangan dengan roadmap aktif atau source aktual, gunakan urutan prioritas:
 
 ```text
-1. Backend route/source aktual
-2. Frontend source aktual
-3. Audit-12
-4. GAP-09 / issue-16..26 / spec-36 / prompt phase 18..23
-5. Audit-11
-6. Dokumen gap/issue/spec/prompt lama
+1. Business rule/accounting invariant yang sudah disepakati
+2. Backend source dan test aktual
+3. Frontend source aktual
+4. Audit-13
+5. Spec-37
+6. GAP-10
+7. Audit-12/GAP-09 dan Audit-11
+8. Dokumen gap/issue/spec/prompt historis lain
 ```
 
 ---
 
-## 2b. Status Phase 1–17
+## 2b. Status Phase 1–23
 
-Phase 1–17 sudah selesai secara tracking dan tidak perlu diulang kecuali issue Audit-12 meminta koreksi di area yang sama.
+Phase 1–23 sudah selesai secara tracking dan tidak perlu dijalankan ulang sebagai phase lama.
 
-Catatan: Done berarti implementasi/build phase selesai, bukan berarti semua UX/workflow sudah final. Audit-12 adalah backlog aktif berikutnya.
+Catatan: `Done` berarti implementasi/build phase selesai pada saat itu, bukan berarti area tersebut bebas finding. Audit-13 adalah baseline baru dan Phase 24–39 adalah backlog aktif.
 
 ---
 
@@ -74,26 +74,49 @@ Catatan: Done berarti implementasi/build phase selesai, bukan berarti semua UX/w
 ```text
 1. /workspace/frontend/AGENTS.md
 2. /workspace/frontend/docs/AGENT_ENTRY_POINT.md
-3. /workspace/frontend/docs/audit_docs/audit-12-frontend-ux-workflow-audit-16-06-26.md
-4. /workspace/frontend/docs/gap_docs/gap-09-audit-12-ux-workflow-fixes.md
-5. /workspace/frontend/docs/praproduction_docs/spec-36-audit-12-ux-workflow-fixes.md
-6. /workspace/frontend/docs/prompt/prompt-guardrails-audit-12-implementation.md
-7. Issue detail + prompt phase terkait
-8. Source code terkait
-9. Backend route/controller/request/model terkait sebagai read-only reference
+3. /workspace/frontend/docs/praproduction_docs/spec-37-audit-13-remediation.md
+4. /workspace/frontend/docs/audit_docs/audit-13-manual-frontend-audit-tracker-17-06-26.md
+5. /workspace/frontend/docs/gap_docs/gap-10-audit-13-remediation-roadmap.md
+6. /workspace/frontend/docs/prompt/prompt-guardrails-audit-13-implementation.md
+7. /workspace/frontend/docs/prompt/prompt-phase-24-remediation-foundation-router.md
+8. Bagian phase aktif di GAP-10
+9. Issue/spec/prompt baru untuk phase tersebut, jika sudah dibuat
+10. Audit-12/GAP-09 atau Audit-11 hanya jika dirujuk oleh phase aktif
+11. Source frontend terkait
+12. /workspace/laravel_backend/AGENTS.md
+13. Dokumen backend-local wajib dan source/test backend terkait
 ```
 
-Untuk pekerjaan yang masih menyentuh kontrak Audit-11, baca juga:
+Untuk task UI/layout, baca design doc relevan dan `spec-23-tablet-first-layout-rules.md`.
 
-```text
-/workspace/frontend/docs/audit_docs/audit-11-frontend-global-contract-map-16-06-26.md
-```
-
-Untuk task UI/layout, tetap baca design doc yang relevan setelah Audit-12.
+Untuk perubahan backend, ikuti reading order di `/workspace/laravel_backend/AGENTS.md`.
 
 ---
 
-## 4. Mapping Cepat Audit-12
+## 4. Mapping Cepat Audit-13 / GAP-10
+
+| Phase | Fokus | Finding utama |
+|---:|---|---|
+| 24 | Test foundation, error containment, router/deep-link | A13-059, A13-254, A13-271 |
+| 25 | Master Data dan Account Mapping | A13-004..046, A13-060..084, A13-255..257 |
+| 26 | Accounting foundation dan Opening Balance | A13-047..058, A13-085..115 |
+| 27 | Cash & Bank dan Rekonsiliasi | A13-116..135 |
+| 28 | Sales transaction contract | A13-136..154 |
+| 29 | AR subledger/report | A13-155..160 |
+| 30 | Purchase transaction contract | A13-161..179 |
+| 31 | AP subledger/report | A13-180..185 |
+| 32 | Inventory integrity/workflow | A13-186..203 |
+| 33 | Fixed Assets runtime/core | A13-204..214, A13-220..224, A13-229..231 |
+| 34 | Fixed Assets lifecycle/report | A13-215..219, A13-225..228 |
+| 35 | Period-End | A13-272..280 |
+| 36 | Financial/operational reports | A13-232..253 |
+| 37 | Settings, access, dashboard, router verification | A13-001..003, A13-258..270 |
+| 38 | Cross-cutting UX/accessibility | P2/P3 tersisa |
+| 39 | Full regression dan Audit-13 closure | A13-001..280 |
+
+---
+
+## 5. Mapping Historis Audit-12
 
 Gunakan A12 issue group sebagai unit kerja. Jangan memperbaiki semua sekaligus.
 
@@ -113,7 +136,7 @@ Gunakan A12 issue group sebagai unit kerja. Jangan memperbaiki semua sekaligus.
 
 ---
 
-## 5. Mapping Cepat Audit-11
+## 6. Mapping Historis Audit-11
 
 Audit-11 tetap historis dan relevan untuk contract mismatch yang belum disentuh ulang.
 
@@ -140,32 +163,42 @@ Audit-11 tetap historis dan relevan untuk contract mismatch yang belum disentuh 
 
 ---
 
-## 6. Aturan Kerja dari Audit-12
+## 7. Aturan Kerja Audit-13
 
 Sebelum implementasi:
 
 ```text
-1. Pilih satu phase Audit-12 (18-23).
-2. Baca bagian A12 terkait di Audit-12.
-3. Baca GAP-09, spec-36, dan prompt guardrails Audit-12.
-4. Baca issue detail sesuai phase.
-5. Baca source frontend aktual.
-6. Baca backend route/controller/request/model aktual sebagai read-only.
-7. Baru implementasi.
+1. Pilih satu phase aktif GAP-10 (24–39).
+2. Terapkan guardrail dan checklist startup Spec-37.
+3. Terapkan `prompt-guardrails-audit-13-implementation.md`.
+4. Baca seluruh scope, dependency, dan exit criteria phase tersebut.
+5. Baca finding Audit-13 yang masuk phase.
+6. Buat/baca issue detail dan prompt phase baru.
+7. Baca source frontend aktual.
+8. Baca backend `AGENTS.md`, dokumen backend-local, source, migration, dan test aktual.
+9. Tetapkan kontrak request/response/permission/lifecycle canonical.
+10. Implementasikan frontend dan/atau backend.
+11. Tambahkan automated test dan jalankan runtime verification.
 ```
 
 Setelah implementasi:
 
 ```text
-1. Update docs/struktur_frontend.md jika ada file baru.
-2. Jalankan npm run build.
-3. Update AGENTS.md section 6A/6C/6D.
-4. Catat status fix di dokumen issue/gap terkait.
+1. Jalankan mandatory phase validation gate dari Spec-37 §17.1.
+2. Rekonsiliasi seluruh finding coverage phase satu per satu.
+3. Pastikan total finding phase = total checklist = total `verified`.
+4. Jika satu finding gagal atau regression baru ditemukan, kembalikan phase ke `in-progress`.
+5. Update finding Audit-13 beserta evidence runtime dan automated test.
+6. Update GAP-10 dan dokumen issue/spec/prompt phase.
+7. Update `docs/struktur_frontend.md` jika ada file baru.
+8. Jalankan frontend build/lint/Playwright scope terkait.
+9. Jika backend berubah, jalankan feature test terkait dan Pint.
+10. Update AGENTS.md section 6A/6C/6D.
 ```
 
 ---
 
-## 7. Canonical Rules yang Tetap Berlaku
+## 8. Canonical Rules yang Tetap Berlaku
 
 ```text
 ❌ Jangan fetch data langsung di component; gunakan TanStack Query.
@@ -173,7 +206,6 @@ Setelah implementasi:
 ❌ Jangan hardcode API URL.
 ❌ Jangan edit src/components/ui/.
 ❌ Jangan render action button tanpa permission guard.
-❌ Jangan ubah backend dari task frontend.
 ❌ Jangan menambah endpoint fiktif.
 
 ✅ API call di src/modules/{module}/services/.
@@ -181,15 +213,24 @@ Setelah implementasi:
 ✅ Props dan API response typed.
 ✅ Angka pakai tabular-nums.
 ✅ Untuk layout, ikuti tablet-first rules dan pakai dvh, bukan vh.
+✅ Backend boleh diubah secara scoped setelah membaca `/workspace/laravel_backend/AGENTS.md`.
+✅ Perubahan backend wajib menjaga tenancy/accounting invariants dan memiliki test terkait.
 ```
 
 ---
 
-## 8. Build Check
+## 9. Verification Check
 
 ```bash
 cd /workspace/frontend
 npm run build
+npm run lint
+npx playwright test <scope>
+
+# Jika backend diubah
+cd /workspace/laravel_backend
+php artisan test --filter=<scope>
+vendor/bin/pint --test
 ```
 
-Build harus 0 error sebelum task frontend dianggap selesai.
+Finding hanya boleh menjadi `verified` setelah automated test dan runtime outcome terkait lulus. Phase hanya boleh ditutup setelah seluruh finding pada coverage phase telah diverifikasi satu per satu dan tidak ada regression baru yang belum selesai.

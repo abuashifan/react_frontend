@@ -5,6 +5,8 @@ Source awal: Membaca seluruh `laravel_backend/app/Modules/*/Routes/api.php` seca
 Source aktif tambahan:
 - `../audit_docs/audit-11-frontend-global-contract-map-16-06-26.md`
 - `../audit_docs/audit-12-frontend-ux-workflow-audit-16-06-26.md`
+- `../audit_docs/audit-13-manual-frontend-audit-tracker-17-06-26.md`
+- `../praproduction_docs/spec-37-audit-13-remediation.md`
 
 > Catatan Audit-11:
 > GAP-01 sampai GAP-06 tetap valid sebagai gap lama, tetapi harus dibaca bersama Audit-11 dan source code aktual. Beberapa area sudah punya mitigasi parsial di code, namun belum menjadi kontrak canonical.
@@ -24,6 +26,7 @@ Source aktif tambahan:
 | GAP-07 | Master Data DTO/action contract mismatch | 🔴 Critical | [gap-07-master-data-dto-contract.md](gap-07-master-data-dto-contract.md) |
 | GAP-08 | Transaction document number DTO mismatch | 🟠 High | [gap-08-transaction-dto-number-contract.md](gap-08-transaction-dto-number-contract.md) |
 | GAP-09 | Audit-12 UX/workflow/filter/tabs/reports fixes | 🔴 Critical | [gap-09-audit-12-ux-workflow-fixes.md](gap-09-audit-12-ux-workflow-fixes.md) |
+| GAP-10 | Audit-13 full remediation lintas frontend/backend | 🔴 Critical | [gap-10-audit-13-remediation-roadmap.md](gap-10-audit-13-remediation-roadmap.md) |
 
 ---
 
@@ -42,12 +45,13 @@ Phase 20 → GAP-09c: Filter and table bulk workflow
 Phase 21 → GAP-09d: Persistent form drafts
 Phase 22 → GAP-09e: Select/date/edit-mode UX
 Phase 23 → GAP-09f: Tabs/ribbon/lint cleanup
+Phase 24–39 → Spec-37 + GAP-10: Audit-13 full remediation dan verification
 ```
 
 Catatan:
 - Nomor phase 10-13 lama masih ada sebagai dokumen historis untuk missing modules.
 - Setelah Audit-11, phase 8-17 sudah selesai secara tracking.
-- Setelah Audit-12, gunakan GAP-09 dan prompt phase 18-23 sebagai prioritas aktif.
+- Setelah Audit-13, gunakan GAP-10 sebagai roadmap aktif. GAP-09 dan phase 18-23 menjadi konteks historis untuk primitive yang sudah dibuat.
 
 ---
 
@@ -64,3 +68,4 @@ Catatan:
 | GAP-07 | Master Data terlihat kosong/NaN/422 karena frontend field tidak cocok dengan backend request/model |
 | GAP-08 | Nomor dokumen kosong/salah di banyak workspace list karena frontend pakai `number`, backend pakai field spesifik |
 | GAP-09 | Laporan crash, stock balance kosong/404, filter tidak multi-select, bulk void belum ada, draft form hilang, select/date/edit UX belum konsisten |
+| GAP-10 | 280 finding Audit-13 belum diremediasi end-to-end; termasuk contract transaksi, accounting/inventory integrity, Fixed Assets, Period-End, Reports, Settings, dan runtime safety |

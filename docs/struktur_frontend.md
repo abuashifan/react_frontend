@@ -83,6 +83,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____gap-07-master-data-dto-contract.md
 | | |____gap-08-transaction-dto-number-contract.md
 | | |____gap-09-audit-12-ux-workflow-fixes.md
+| | |____gap-10-audit-13-remediation-roadmap.md
 | |____issue_docs/
 | | |____issue-01-permission-keys.md
 | | |____issue-02-ribbon-paths.md
@@ -110,6 +111,22 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____issue-24-fixed-assets-ribbon-empty.md
 | | |____issue-25-document-edit-mode-policy.md
 | | |____issue-26-lint-debt-cleanup.md
+| | |____issue-27-phase-24-runtime-router-foundation.md
+| | |____issue-28-phase-25-master-data-account-mapping-canonical.md
+| | |____issue-29-phase-26-accounting-foundation-opening-balance.md
+| | |____issue-30-phase-27-cash-bank-contract-reconciliation.md
+| | |____issue-31-phase-28-sales-transaction-contract.md
+| | |____issue-32-phase-29-ar-subledger-reports.md
+| | |____issue-33-phase-30-purchase-transaction-contract.md
+| | |____issue-34-phase-31-ap-subledger-reports.md
+| | |____issue-35-phase-32-inventory-integrity-workflow.md
+| | |____issue-36-phase-33-fixed-assets-runtime-core.md
+| | |____issue-37-phase-34-fixed-assets-lifecycle-reports.md
+| | |____issue-38-phase-35-period-end-processing.md
+| | |____issue-39-phase-36-financial-operational-reports.md
+| | |____issue-40-phase-37-settings-access-dashboard-router.md
+| | |____issue-41-phase-38-cross-cutting-ux-accessibility-consistency.md
+| | |____issue-42-phase-39-full-regression-data-repair-audit-closure.md
 | |____praproduction_docs/
 | | |____CLAUDE.md
 | | |____spec-01-project-context.md
@@ -148,9 +165,27 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____spec-34-route-ribbon-canonical-map.md
 | | |____spec-35-shared-runtime-hardening.md
 | | |____spec-36-audit-12-ux-workflow-fixes.md
+| | |____spec-37-audit-13-remediation.md
 | |____prompt/
 | | |____prompt-00-master-index.md
 | | |____prompt-guardrails-audit-11-implementation.md
+| | |____prompt-guardrails-audit-13-implementation.md
+| | |____prompt-phase-24-remediation-foundation-router.md
+| | |____prompt-phase-25-master-data-account-mapping-canonical.md
+| | |____prompt-phase-26-accounting-foundation-opening-balance.md
+| | |____prompt-phase-27-cash-bank-contract-reconciliation.md
+| | |____prompt-phase-28-sales-transaction-contract.md
+| | |____prompt-phase-29-ar-subledger-reports.md
+| | |____prompt-phase-30-purchase-transaction-contract.md
+| | |____prompt-phase-31-ap-subledger-reports.md
+| | |____prompt-phase-32-inventory-integrity-workflow.md
+| | |____prompt-phase-33-fixed-assets-runtime-core.md
+| | |____prompt-phase-34-fixed-assets-lifecycle-reports.md
+| | |____prompt-phase-35-period-end-processing.md
+| | |____prompt-phase-36-financial-operational-reports.md
+| | |____prompt-phase-37-settings-access-dashboard-router.md
+| | |____prompt-phase-38-cross-cutting-ux-accessibility-consistency.md
+| | |____prompt-phase-39-full-regression-data-repair-audit-closure.md
 | | |____prompt-phase-1A-project-setup.md
 | | |____prompt-phase-1B-auth-pages.md
 | | |____prompt-phase-1C-app-shell-layout.md

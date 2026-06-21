@@ -330,7 +330,7 @@ src/hooks/usePermission.ts
 src/lib/utils.ts
 ```
 
-Backend reference read-only:
+Backend source (boleh diperbaiki sesuai kontrak end-to-end dan backend `AGENTS.md`):
 
 ```text
 /workspace/laravel_backend/app/Modules/MasterData/Routes/api.php

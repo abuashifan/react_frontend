@@ -173,7 +173,7 @@ Acceptance:
 - Jangan fetch langsung di component.
 - Jangan simpan API response di Zustand.
 - Jangan menambah business DTO mapping besar di `src/services/http.ts`; pakai service adapter.
-- Jangan edit backend.
+- Backend `/workspace/laravel_backend` boleh diperbaiki bila kontrak end-to-end membutuhkannya. Ikuti backend `AGENTS.md`, tambahkan test relevan, dan jangan mengubah data live.
 - Jangan edit `src/components/ui/`.
 - Jangan pakai `any` tanpa komentar justifikasi.
 

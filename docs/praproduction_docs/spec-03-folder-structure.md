@@ -89,7 +89,7 @@ seaside-erp/
 │   ├── CLAUDE.md
 │   ├── 01-project-context.md
 │   ├── ...
-│   └── backend/                  ← Backend docs (read-only reference)
+│   └── backend/                  ← Dokumentasi referensi; source backend aktual ada di /workspace/laravel_backend
 │       ├── frontend-api-contract.md
 │       ├── 02-api-route-map.md
 │       └── ...

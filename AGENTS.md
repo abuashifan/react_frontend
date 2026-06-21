@@ -9,7 +9,7 @@
 
 ```
 Kamu bekerja di: /workspace/frontend/
-Backend ada di : /workspace/backend/  ← READ-ONLY, jangan dimodifikasi
+Backend ada di : /workspace/laravel_backend/
 ```
 
 **Produk:** Seaside Escape ERP — SPA React untuk akuntansi & operasional bisnis UKM  
@@ -22,12 +22,25 @@ Backend ada di : /workspace/backend/  ← READ-ONLY, jangan dimodifikasi
 ```
 BOLEH TULIS   : /workspace/frontend/src/
                 /workspace/frontend/docs/      ← update struktur_frontend.md jika ada file baru
-BOLEH BACA    : /workspace/backend/            ← referensi API & business rules saja
-DILARANG EDIT : /workspace/backend/            ← jangan sentuh apapun di sini
+                /workspace/laravel_backend/     ← backend boleh diperbaiki sesuai scope task
+BOLEH BACA    : /workspace/frontend/
+                /workspace/laravel_backend/
 ABAIKAN       : node_modules/, dist/, *.sqlite, storage/logs/
 ```
 
-### 2A. Akses Runtime Audit
+### 2A. Aturan Perubahan Backend
+
+- Baca `/workspace/laravel_backend/AGENTS.md` dan dokumen backend-local yang diwajibkan sebelum mengubah backend.
+- Backend boleh diubah jika diperlukan untuk menutup finding Audit-13 atau menjaga kontrak end-to-end.
+- Pertahankan tenant middleware, permission, journal immutability, period/date guard, transaction atomicity, serta rollback/void behavior.
+- Business logic backend wajib berada di service; validasi request di FormRequest; operasi write wajib transaction-safe.
+- Perubahan schema wajib melalui migration. Jangan mengedit database live, file SQLite, atau data bisnis existing secara langsung.
+- Tambahkan atau perbarui feature test backend untuk happy path dan failure path utama.
+- Jalankan test backend tersempit yang relevan dan `vendor/bin/pint --test` untuk file PHP yang diubah.
+- Perubahan frontend dan backend dalam satu phase harus memakai satu kontrak request/response canonical yang didokumentasikan.
+- Pernyataan lama di spec/prompt historis yang menyebut backend `read-only` dianggap superseded oleh aturan ini.
+
+### 2B. Akses Runtime Audit
 
 Gunakan deployment berikut untuk audit manual/browser frontend:
 
@@ -146,7 +159,9 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 ## 6. TRACKING PROGRESS
 
 > **WAJIB diupdate** setiap kali phase atau audit selesai — lihat instruksi lengkap di §10C.  
-> Context global terbaru: `docs/audit_docs/audit-12-frontend-ux-workflow-audit-16-06-26.md` + `docs/gap_docs/gap-09-audit-12-ux-workflow-fixes.md`.
+> Context global terbaru: `docs/praproduction_docs/spec-37-audit-13-remediation.md` + `docs/audit_docs/audit-13-manual-frontend-audit-tracker-17-06-26.md` + `docs/gap_docs/gap-10-audit-13-remediation-roadmap.md` + `docs/prompt/prompt-guardrails-audit-13-implementation.md`.
+
+> **Mandatory phase validation:** Setelah implementasi/refactor setiap phase, jalankan validation pass Spec-37 §17.1. Phase tidak boleh ditandai selesai sebelum seluruh finding pada coverage phase diverifikasi satu per satu, jumlah checklist cocok dengan jumlah finding, dan tidak ada regression baru yang belum selesai.
 
 ---
 
@@ -193,25 +208,26 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 | Audit 01–10 | sebelum 2026-06-14 | Backend architecture, ERD, workflow, API contract, business rules | ✅ Selesai | `docs/audit_docs/audit-00..audit-10*` |
 | Audit-11 | 2026-06-16 | Frontend vs Backend global contract map | ✅ Selesai, fixes ⏳ | 18 issue (A11-01..A11-18) — `audit-11-frontend-global-contract-map-16-06-26.md` |
 | Audit-12 | 2026-06-16 | Frontend UX/workflow/filter/tabs/reports audit berdasarkan temuan user | ✅ Selesai, fixes ⏳ | 16 issue (A12-01..A12-16) — `audit-12-frontend-ux-workflow-audit-16-06-26.md` |
-| Audit-13 | 2026-06-17–2026-06-20 | Manual frontend audit tracker + runtime/source/contract audit bertahap | 🔧 In Progress | 71 halaman diaudit, 185 finding tercatat sampai seluruh form/list Sales-Purchase serta laporan/ledger AR-AP; audit halaman baseline lain masih berlanjut — `audit-13-manual-frontend-audit-tracker-17-06-26.md` |
+| Audit-13 | 2026-06-17–2026-06-21 | Manual frontend audit tracker + runtime/source/contract audit bertahap | ✅ Selesai, fixes ⏳ | Seluruh 105 area baseline diaudit dan 280 finding tercatat. Audit penutup Period-End live+route-mock menemukan endpoint status/checklist 500 yang disamarkan sebagai empty, blocker DTO membuat route crash, dan checklist canonical salah dirender — A13-272..280. Backlog implementasi tetap terbuka — `audit-13-manual-frontend-audit-tracker-17-06-26.md` |
 
 ---
 
 ### 6C. Build Status
 
 ```
-Terakhir dicek  : 2026-06-19 (Audit-13 audit ulang Jurnal Umum)
+Terakhir dicek  : 2026-06-21 (Audit-13 Period-End, perubahan dokumen saja)
 npm run build   : ✅ 0 error
 npm run lint    : ✅ 0 error; 35 warning RHF watch/useMemo legacy
                   di file-file yang tidak diubah pada audit ini
-Playwright      : ✅ @playwright/test 1.55.0 + Chromium terpasang; audit seluruh form/list Sales-Purchase dan laporan/ledger AR-AP 2026-06-20 selesai
+Playwright      : ✅ Chromium headless; Period-End live + route-mock pada 1440×900,
+                  1180×708, 1024×656, dan 390×844; POST run/reopen diintersep
 ```
 
 ---
 
-### 6D. Next Action (Urutan Audit-12 — ikuti ini, BUKAN nomor phase)
+### 6D. Next Action
 
-> ⚠️ Nomor phase bukan urutan prioritas. Ikuti urutan di bawah ini.
+> Roadmap aktif adalah GAP-10 Phase 24–39. Tabel Audit-12 berikut hanya riwayat phase yang sudah selesai.
 
 | Urutan | Phase | Nama | A12 | Severity |
 |---|---|---|---|---|
@@ -227,7 +243,9 @@ Playwright      : ✅ @playwright/test 1.55.0 + Chromium terpasang; audit seluru
 | 10 | Phase 22 | ~~Document Edit/View Mode Policy~~ ✅ Done | A12-10 | Medium |
 | 11 | Phase 23 | ~~Lint Debt Cleanup~~ ✅ Done | A12-16 | Medium |
 
-#### Audit-13 P0 Next Action
+#### Audit-13 Critical Reference
+
+> Daftar ini adalah referensi finding kritis. Urutan eksekusi canonical mengikuti dependency di `gap-10-audit-13-remediation-roadmap.md`, dimulai dari Phase 24.
 
 | Urutan | Finding | Nama | Modul | Severity |
 |---|---|---|---|---|
@@ -246,6 +264,28 @@ Playwright      : ✅ @playwright/test 1.55.0 + Chromium terpasang; audit seluru
 | 13 | A13-139 | Persist draft tujuh form Sales | Sales | Critical |
 | 14 | A13-164 | Persist draft enam form Purchase | Purchase | Critical |
 | 15 | A13-127 | Adaptasi DTO line Rekonsiliasi Bank | Cash & Bank / Rekonsiliasi Bank | Critical |
+| 16 | A13-204 | Pulihkan seluruh API Fixed Assets | Fixed Assets | Critical |
+| 17 | A13-210 | Kunci/revisi field finansial capitalized | Fixed Assets | Critical |
+| 18 | A13-212 | Perbaiki partial capitalization | Fixed Assets | Critical |
+| 19 | A13-214 | Terapkan period/date guards Fixed Assets | Fixed Assets | Critical |
+| 20 | A13-217 | Hentikan depresiasi setelah disposal | Fixed Assets | Critical |
+| 21 | A13-220 | Validasi account mapping kategori | Fixed Assets | Critical |
+| 22 | A13-225 | Perbaiki register as-of | Fixed Assets / Reports | Critical |
+| 23 | A13-226 | Perbaiki reconciliation cutoff | Fixed Assets / Reports | Critical |
+| 24 | A13-232 | Perbaiki contract Buku Besar | Reports | Critical |
+| 25 | A13-233 | Canonical-kan filter periode report | Reports | Critical |
+| 26 | A13-234 | Perbaiki filter Ringkasan Keuangan | Reports | Critical |
+| 27 | A13-235 | Perbaiki adapter AR/AP Aging | Reports | Critical |
+| 28 | A13-236 | Perbaiki adapter Rekonsiliasi | Reports | Critical |
+| 29 | A13-237 | Perbaiki adapter Laporan Stok | Reports | Critical |
+| 30 | A13-238 | Perbaiki adapter Analisis Inventori | Reports | Critical |
+| 31 | A13-255 | Perbaiki kontrak Pemetaan Akun settings (save ke `/undefined`) | Settings / Pemetaan Akun | Critical |
+| 32 | A13-263 | Cegah self/last-owner deactivate-remove | Settings / Pengguna | High |
+| 33 | A13-271 | Pulihkan deep-link/refresh rute (memory router) | Settings / Global Router | High |
+| 34 | A13-272 | Pulihkan endpoint live Period-End | Accounting / Period-End | Critical |
+| 35 | A13-273 | Perbaiki renderer blocker/warning Period-End | Accounting / Period-End | Critical |
+| 36 | A13-274 | Adaptasi checklist canonical Period-End | Accounting / Period-End | High |
+| 37 | A13-276 | Tampilkan error/retry Period-End | Accounting / Period-End | High |
 
 ---
 
@@ -308,6 +348,11 @@ Zod schema        : camelCase + Schema     → salesInvoiceSchema
 cd /workspace/frontend
 npm run build      # harus 0 TypeScript error
 npm run lint       # 0 error (warning boleh)
+
+# Jika backend diubah:
+cd /workspace/laravel_backend
+php artisan test --filter=<test terkait>
+vendor/bin/pint --test
 ```
 
 ### 10B. Update `docs/struktur_frontend.md`
@@ -330,6 +375,12 @@ Setelah setiap **audit baru selesai**:
 
 Setelah phase dijalankan dan isunya hilang:
 - Update §6D — hapus atau tandai urutan yang sudah selesai
+
+Sebelum status phase diubah menjadi `✅ Done`:
+- Jalankan mandatory phase validation gate di `spec-37-audit-13-remediation.md` §17.1
+- Rekonsiliasi `total finding phase = total validation checklist = total verified`
+- Pastikan tidak ada finding scope yang masih `open`, `triaged`, `in-progress`, atau hanya `fixed`
+- Jika retest gagal atau regression baru ditemukan, pertahankan status `🔧 In Progress`
 
 ### 10D. Format Commit
 

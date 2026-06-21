@@ -20,7 +20,7 @@ docs/praproduction_docs/spec-08-form-architecture.md
 docs/praproduction_docs/spec-09-table-and-list.md
 ```
 
-Backend read-only reference:
+Backend source (boleh diperbaiki bila kontrak end-to-end memerlukannya; ikuti backend `AGENTS.md`):
 
 ```text
 /workspace/laravel_backend/app/Modules/MasterData/Routes/api.php
