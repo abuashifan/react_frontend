@@ -4,7 +4,7 @@ import type { SelectOption } from '@/types/common.types'
 import type { Gudang, CreateGudangPayload, UpdateGudangPayload } from '../types/gudang.types'
 
 export const gudangApi = {
-  list: (params?: { search?: string; is_active?: boolean }) =>
+  list: (params: { page: number; per_page: 25 | 50 | 100; search?: string; is_active?: boolean }) =>
     http.get<unknown, PaginatedResponse<Gudang>>('/master-data/warehouses', { params }),
 
   create: (payload: CreateGudangPayload) =>

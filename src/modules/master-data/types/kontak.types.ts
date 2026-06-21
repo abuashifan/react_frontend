@@ -1,4 +1,4 @@
-export type KontakType = 'customer' | 'supplier' | 'both'
+export type KontakType = 'customer' | 'supplier' | 'both' | 'employee' | 'other'
 
 export interface Kontak {
   id: number
@@ -28,6 +28,7 @@ export interface KontakListParams {
 }
 
 export interface CreateKontakPayload {
+  contact_code?: string
   name: string
   contact_type: KontakType
   phone?: string

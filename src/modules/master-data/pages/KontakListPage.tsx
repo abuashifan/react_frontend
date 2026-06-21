@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { useDeferredValue, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Plus, Power, PowerOff } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
 import { DataTable } from '@/components/shared/table/DataTable'
@@ -9,6 +9,10 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { useKontakList } from '../hooks/useKontakList'
+import { useKontakMutations } from '../hooks/useKontakList'
+import { MasterDataSearch } from '../components/MasterDataSearch'
+import { MasterDataQueryError } from '../components/MasterDataQueryError'
+import { useToast } from '@/hooks/useToast'
 import type { Kontak, KontakType } from '../types/kontak.types'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import { cn } from '@/lib/utils'
@@ -17,6 +21,8 @@ const KONTAK_TYPE_LABELS: Record<KontakType, string> = {
   customer: 'Customer',
   supplier: 'Supplier',
   both: 'Keduanya',
+  employee: 'Karyawan',
+  other: 'Lainnya',
 }
 
 const columns: ColumnDef<Kontak>[] = [
@@ -25,13 +31,21 @@ const columns: ColumnDef<Kontak>[] = [
     header: 'Kode',
     size: 100,
     meta: { sticky: true, stickyLeft: 0, className: 'font-medium text-[#5c9ead]' },
-    cell: ({ original }) => original.contact_code ?? '-',
+    cell: ({ original }) => (
+      <Link to={`/master-data/contacts/${original.id}`} className="hover:underline">
+        {original.contact_code ?? `#${original.id}`}
+      </Link>
+    ),
   },
   {
     id: 'name',
     header: 'Nama',
     size: 200,
-    cell: ({ original }) => original.name,
+    cell: ({ original }) => (
+      <Link to={`/master-data/contacts/${original.id}`} className="font-medium text-[#24323a] hover:text-[#326273] hover:underline">
+        {original.name}
+      </Link>
+    ),
   },
   {
     id: 'contact_type',
@@ -76,16 +90,35 @@ const columns: ColumnDef<Kontak>[] = [
 
 export default function KontakListPage() {
   const navigate = useNavigate()
+  const { toast } = useToast()
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
+  const [search, setSearch] = useState('')
+  const deferredSearch = useDeferredValue(search)
+  const [selectedRows, setSelectedRows] = useState<string[]>([])
   const [filterType, setFilterType] = useState<KontakType | undefined>()
   const [filterActive, setFilterActive] = useState<boolean | undefined>()
-  const { data, isLoading, isFetching } = useKontakList({
+  const query = useKontakList({
     page,
     per_page: perPage,
+    search: deferredSearch || undefined,
     contact_type: filterType,
     is_active: filterActive,
   })
+  const { activate, deactivate } = useKontakMutations()
+
+  const updateSelectedStatus = async (active: boolean) => {
+    if (!confirm(`${active ? 'Aktifkan' : 'Nonaktifkan'} ${selectedRows.length} kontak terpilih?`)) return
+    try {
+      await Promise.all(selectedRows.map((rowId) =>
+        active ? activate.mutateAsync(Number(rowId)) : deactivate.mutateAsync(Number(rowId)),
+      ))
+      toast.success(`${selectedRows.length} kontak berhasil ${active ? 'diaktifkan' : 'dinonaktifkan'}.`)
+      setSelectedRows([])
+    } catch {
+      toast.error('Sebagian status kontak gagal diubah.')
+    }
+  }
 
   const activeFilterCount = [filterType, filterActive].filter((v) => v !== undefined).length
 
@@ -95,7 +128,7 @@ export default function KontakListPage() {
       onReset={() => { setFilterType(undefined); setFilterActive(undefined) }}
     >
       <FilterSection title="Tipe Kontak">
-        {(['customer', 'supplier', 'both'] as KontakType[]).map((t) => (
+        {(Object.keys(KONTAK_TYPE_LABELS) as KontakType[]).map((t) => (
           <label key={t} className="flex items-center gap-2 cursor-pointer">
             <Checkbox
               checked={filterType === t}
@@ -140,17 +173,46 @@ export default function KontakListPage() {
         </PermissionGuard>
       }
     >
-      <DataTable
-        data={data?.data ?? []}
+      <MasterDataSearch
+        value={search}
+        onChange={(value) => {
+          setSearch(value)
+          setPage(1)
+        }}
+        placeholder="Cari kode, nama, telepon, atau email kontak..."
+      />
+      {query.isError ? (
+        <MasterDataQueryError error={query.error} onRetry={() => void query.refetch()} />
+      ) : <DataTable
+        data={query.data?.data ?? []}
         columns={columns}
-        totalRows={data?.meta.total ?? 0}
-        isLoading={isLoading}
-        isFetching={isFetching}
+        totalRows={query.data?.meta.total ?? 0}
+        isLoading={query.isLoading}
+        isFetching={query.isFetching}
         pagination={{ pageIndex: page - 1, pageSize: perPage }}
         onPaginationChange={(s) => { setPage(s.pageIndex + 1); setPerPage(s.pageSize) }}
+        selectedRows={selectedRows}
+        onRowSelect={setSelectedRows}
+        bulkActions={[
+          {
+            id: 'activate',
+            label: 'Aktifkan',
+            icon: <Power className="h-3.5 w-3.5" />,
+            permission: 'master-data.contacts.edit',
+            onClick: () => void updateSelectedStatus(true),
+          },
+          {
+            id: 'deactivate',
+            label: 'Nonaktifkan',
+            icon: <PowerOff className="h-3.5 w-3.5" />,
+            permission: 'master-data.contacts.edit',
+            variant: 'destructive',
+            onClick: () => void updateSelectedStatus(false),
+          },
+        ]}
         emptyTitle="Belum ada kontak"
         emptyDescription="Tambahkan customer atau supplier pertama untuk memulai."
-      />
+      />}
     </WorkspaceLayout>
   )
 }

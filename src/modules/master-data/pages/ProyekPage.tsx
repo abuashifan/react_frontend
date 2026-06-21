@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Plus, Pencil, PowerOff } from 'lucide-react'
+import { useDeferredValue, useState } from 'react'
+import { Plus, Pencil, Power, PowerOff } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -8,27 +8,34 @@ import { DataTable } from '@/components/shared/table/DataTable'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/useToast'
 import { useProyekList, useProyekMutations } from '../hooks/useSimpleLists'
 import { proyekSchema, type ProyekFormValues } from '../schemas/proyekSchema'
 import type { Proyek, ProyekStatus } from '../types/proyek.types'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import { cn } from '@/lib/utils'
+import { toDateInputValue } from '@/lib/utils'
+import { MasterDataSearch } from '../components/MasterDataSearch'
+import { MasterDataQueryError } from '../components/MasterDataQueryError'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 
 const STATUS_LABELS: Record<ProyekStatus, string> = {
   active: 'Aktif',
   completed: 'Selesai',
+  on_hold: 'Ditahan',
   cancelled: 'Dibatalkan',
 }
 
 const STATUS_COLORS: Record<ProyekStatus, string> = {
   active: 'bg-[#D1FAE5] text-[#065F46] hover:bg-[#D1FAE5]',
   completed: 'bg-[#DBEAFE] text-[#1E40AF] hover:bg-[#DBEAFE]',
+  on_hold: 'bg-amber-100 text-amber-800 hover:bg-amber-100',
   cancelled: 'bg-[#F1F5F9] text-[#64748b] hover:bg-[#F1F5F9]',
 }
 
@@ -38,14 +45,19 @@ export default function ProyekPage() {
   const [editingItem, setEditingItem] = useState<Proyek | null>(null)
   const [filterStatus, setFilterStatus] = useState<ProyekStatus | undefined>()
   const [formStatus, setFormStatus] = useState<ProyekStatus>('active')
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
+  const [search, setSearch] = useState('')
+  const deferredSearch = useDeferredValue(search)
 
-  const { data, isLoading, isFetching } = useProyekList(undefined, filterStatus)
-  const { create, update, deactivate } = useProyekMutations()
+  const query = useProyekList({ page, per_page: perPage, search: deferredSearch || undefined, status: filterStatus })
+  const { create, update, activate, deactivate } = useProyekMutations()
 
   const {
     register,
     handleSubmit,
     reset,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<ProyekFormValues>({
     resolver: zodResolver(proyekSchema),
@@ -55,7 +67,7 @@ export default function ProyekPage() {
   const openCreate = () => {
     setEditingItem(null)
     setFormStatus('active')
-    reset({ name: '', status: 'active', start_date: '', end_date: '' })
+    reset({ code: '', name: '', description: '', status: 'active', start_date: '', end_date: '' })
     setDialogOpen(true)
   }
 
@@ -63,10 +75,12 @@ export default function ProyekPage() {
     setEditingItem(item)
     setFormStatus(item.status)
     reset({
+      code: item.code,
       name: item.name,
+      description: item.description ?? '',
       status: item.status,
-      start_date: item.start_date ?? '',
-      end_date: item.end_date ?? '',
+      start_date: toDateInputValue(item.start_date),
+      end_date: toDateInputValue(item.end_date),
     })
     setDialogOpen(true)
   }
@@ -82,8 +96,18 @@ export default function ProyekPage() {
         toast.success('Proyek berhasil dibuat.')
       }
       setDialogOpen(false)
-    } catch {
-      toast.error('Gagal menyimpan proyek.')
+    } catch (error) {
+      applyApiValidationErrors(error, setError)
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan proyek.'))
+    }
+  }
+
+  const handleActivate = async (item: Proyek) => {
+    try {
+      await activate.mutateAsync(item.id)
+      toast.success('Proyek berhasil diaktifkan.')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal mengaktifkan proyek.'))
     }
   }
 
@@ -98,6 +122,12 @@ export default function ProyekPage() {
   }
 
   const columns: ColumnDef<Proyek>[] = [
+    {
+      id: 'lifecycle',
+      header: 'Aktivasi',
+      size: 90,
+      cell: ({ original }) => original.is_active ? 'Aktif' : 'Nonaktif',
+    },
     {
       id: 'code',
       header: 'Kode',
@@ -144,13 +174,13 @@ export default function ProyekPage() {
       cell: ({ original }) => (
         <div className="flex items-center gap-1">
           <PermissionGuard permission="projects.edit">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-[#326273]" onClick={() => openEdit(original)}>
+            <Button type="button" aria-label={`Edit proyek ${original.name}`} variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-[#326273]" onClick={() => openEdit(original)}>
               <Pencil className="w-3.5 h-3.5" />
             </Button>
           </PermissionGuard>
-          <PermissionGuard permission="projects.deactivate">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-amber-600" onClick={() => handleDeactivate(original)}>
-              <PowerOff className="w-3.5 h-3.5" />
+          <PermissionGuard permission="projects.edit">
+            <Button type="button" aria-label={`${original.is_active ? 'Nonaktifkan' : 'Aktifkan'} proyek ${original.name}`} variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-amber-600" onClick={() => original.is_active ? handleDeactivate(original) : void handleActivate(original)}>
+              {original.is_active ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
             </Button>
           </PermissionGuard>
         </div>
@@ -164,7 +194,7 @@ export default function ProyekPage() {
       onReset={() => setFilterStatus(undefined)}
     >
       <FilterSection title="Status">
-        {(['active', 'completed', 'cancelled'] as ProyekStatus[]).map((s) => (
+        {(Object.keys(STATUS_LABELS) as ProyekStatus[]).map((s) => (
           <label key={s} className="flex items-center gap-2 cursor-pointer">
             <Checkbox
               checked={filterStatus === s}
@@ -190,24 +220,33 @@ export default function ProyekPage() {
         </PermissionGuard>
       }
     >
-      <DataTable
-        data={data?.data ?? []}
+      <MasterDataSearch value={search} onChange={(value) => { setSearch(value); setPage(1) }} placeholder="Cari kode atau nama proyek..." />
+      {query.isError ? <MasterDataQueryError error={query.error} onRetry={() => void query.refetch()} /> : <DataTable
+        data={query.data?.data ?? []}
         columns={columns}
-        totalRows={data?.meta.total ?? 0}
-        isLoading={isLoading}
-        isFetching={isFetching}
-        pagination={{ pageIndex: 0, pageSize: 25 }}
-        onPaginationChange={() => {}}
+        totalRows={query.data?.meta.total ?? 0}
+        isLoading={query.isLoading}
+        isFetching={query.isFetching}
+        pagination={{ pageIndex: page - 1, pageSize: perPage }}
+        onPaginationChange={(state) => { setPage(state.pageIndex + 1); setPerPage(state.pageSize) }}
         emptyTitle="Belum ada proyek"
         emptyDescription="Tambahkan proyek untuk pelacakan biaya per proyek."
-      />
+      />}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-[15px]">{editingItem ? 'Edit Proyek' : 'Tambah Proyek'}</DialogTitle>
+            <DialogDescription>Kelola kode, periode, status bisnis, dan deskripsi proyek.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 pt-1">
+            <div className="flex flex-col gap-1">
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
+                Kode <span className="text-red-500">*</span>
+              </Label>
+              <Input {...register('code')} placeholder="PRJ-001" className="h-9 text-[13px]" />
+              {errors.code && <p className="text-[11px] text-red-500">{errors.code.message}</p>}
+            </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Nama <span className="text-red-500">*</span>
@@ -224,6 +263,7 @@ export default function ProyekPage() {
                 <SelectContent>
                   <SelectItem value="active">Aktif</SelectItem>
                   <SelectItem value="completed">Selesai</SelectItem>
+                  <SelectItem value="on_hold">Ditahan</SelectItem>
                   <SelectItem value="cancelled">Dibatalkan</SelectItem>
                 </SelectContent>
               </Select>
@@ -236,7 +276,12 @@ export default function ProyekPage() {
               <div className="flex flex-col gap-1">
                 <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal Selesai</Label>
                 <Input {...register('end_date')} type="date" className="h-9 text-[13px]" />
+                {errors.end_date && <p className="text-[11px] text-red-500">{errors.end_date.message}</p>}
               </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Deskripsi</Label>
+              <Textarea {...register('description')} rows={3} className="resize-none text-[13px]" />
             </div>
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" className="h-8 text-[13px]" onClick={() => setDialogOpen(false)}>Batal</Button>

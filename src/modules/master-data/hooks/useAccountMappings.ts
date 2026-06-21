@@ -1,6 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { accountMappingApi } from '../services/accountMappingApi'
-import type { UpdateAccountMappingPayload } from '../types/accountMapping.types'
+import type {
+  UpdateAccountMappingPayload,
+  UpdateAccountMappingsPayload,
+} from '../types/accountMapping.types'
 
 export function useAccountMappings() {
   return useQuery({
@@ -18,5 +21,12 @@ export function useAccountMappingMutations() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['master-data-account-mappings'] }),
   })
 
-  return { update }
+  const updateMany = useMutation({
+    mutationFn: (payload: UpdateAccountMappingsPayload) => accountMappingApi.updateMany(payload),
+    onSuccess: (response) => {
+      qc.setQueryData(['master-data-account-mappings'], response)
+    },
+  })
+
+  return { update, updateMany }
 }

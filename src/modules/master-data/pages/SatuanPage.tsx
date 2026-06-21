@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Plus, Pencil, PowerOff } from 'lucide-react'
+import { useDeferredValue, useState } from 'react'
+import { Plus, Pencil, Power, PowerOff } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -14,14 +14,21 @@ import { useSatuanList, useSatuanMutations } from '../hooks/useSimpleLists'
 import { satuanSchema, type SatuanFormValues } from '../schemas/satuanSchema'
 import type { Satuan } from '../types/satuan.types'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
+import { Badge } from '@/components/ui/badge'
+import { MasterDataSearch } from '../components/MasterDataSearch'
+import { cn } from '@/lib/utils'
 
 export default function SatuanPage() {
   const { toast } = useToast()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<Satuan | null>(null)
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
+  const [search, setSearch] = useState('')
+  const deferredSearch = useDeferredValue(search)
 
-  const { data, isLoading, isFetching } = useSatuanList()
-  const { create, update, deactivate } = useSatuanMutations()
+  const { data, isLoading, isFetching } = useSatuanList({ page, per_page: perPage, search: deferredSearch || undefined })
+  const { create, update, activate, deactivate } = useSatuanMutations()
 
   const {
     register,
@@ -37,6 +44,11 @@ export default function SatuanPage() {
     setEditingItem(null)
     reset({ name: '', code: '', precision: 0 })
     setDialogOpen(true)
+  }
+
+  const handleActivate = async (item: Satuan) => {
+    await activate.mutateAsync(item.id)
+    toast.success('Satuan berhasil diaktifkan.')
   }
 
   const openEdit = (item: Satuan) => {
@@ -72,6 +84,16 @@ export default function SatuanPage() {
 
   const columns: ColumnDef<Satuan>[] = [
     {
+      id: 'is_active',
+      header: 'Status',
+      size: 90,
+      cell: ({ original }) => (
+        <Badge className={cn('rounded-full px-2 py-0.5 text-[11px]', original.is_active ? 'bg-[#D1FAE5] text-[#065F46]' : 'bg-[#F1F5F9] text-[#64748b]')}>
+          {original.is_active ? 'Aktif' : 'Nonaktif'}
+        </Badge>
+      ),
+    },
+    {
       id: 'name',
       header: 'Nama',
       size: 180,
@@ -103,8 +125,8 @@ export default function SatuanPage() {
             </Button>
           </PermissionGuard>
           <PermissionGuard permission="units.deactivate">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-amber-600" onClick={() => handleDeactivate(original)}>
-              <PowerOff className="w-3.5 h-3.5" />
+            <Button type="button" aria-label={`${original.is_active ? 'Nonaktifkan' : 'Aktifkan'} satuan ${original.name}`} variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-amber-600" onClick={() => original.is_active ? handleDeactivate(original) : void handleActivate(original)}>
+              {original.is_active ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
             </Button>
           </PermissionGuard>
         </div>
@@ -124,14 +146,15 @@ export default function SatuanPage() {
         </PermissionGuard>
       }
     >
+      <MasterDataSearch value={search} onChange={(value) => { setSearch(value); setPage(1) }} placeholder="Cari kode atau nama satuan..." />
       <DataTable
         data={data?.data ?? []}
         columns={columns}
         totalRows={data?.meta.total ?? 0}
         isLoading={isLoading}
         isFetching={isFetching}
-        pagination={{ pageIndex: 0, pageSize: 25 }}
-        onPaginationChange={() => {}}
+        pagination={{ pageIndex: page - 1, pageSize: perPage }}
+        onPaginationChange={(state) => { setPage(state.pageIndex + 1); setPerPage(state.pageSize) }}
         emptyTitle="Belum ada satuan"
         emptyDescription="Tambahkan satuan seperti pcs, kg, liter, dll."
       />

@@ -14,10 +14,10 @@ import type { CreateProyekPayload, UpdateProyekPayload } from '../types/proyek.t
 
 // ── KategoriProduk ────────────────────────────────────────────────────────────
 
-export function useKategoriProdukList(search?: string) {
+export function useKategoriProdukList(params: { page: number; per_page: 25 | 50 | 100; search?: string }) {
   return useQuery({
-    queryKey: ['master-data-kategori-produk', search],
-    queryFn: () => kategoriProdukApi.list({ search }),
+    queryKey: ['master-data-kategori-produk', params],
+    queryFn: () => kategoriProdukApi.list(params),
   })
 }
 
@@ -38,16 +38,20 @@ export function useKategoriProdukMutations() {
     mutationFn: (id: number) => kategoriProdukApi.deactivate(id),
     onSuccess: invalidate,
   })
+  const activate = useMutation({
+    mutationFn: (id: number) => kategoriProdukApi.activate(id),
+    onSuccess: invalidate,
+  })
 
-  return { create, update, deactivate }
+  return { create, update, activate, deactivate }
 }
 
 // ── Satuan ────────────────────────────────────────────────────────────────────
 
-export function useSatuanList(search?: string) {
+export function useSatuanList(params: { page: number; per_page: 25 | 50 | 100; search?: string }) {
   return useQuery({
-    queryKey: ['master-data-satuan', search],
-    queryFn: () => satuanApi.list({ search }),
+    queryKey: ['master-data-satuan', params],
+    queryFn: () => satuanApi.list(params),
   })
 }
 
@@ -68,16 +72,20 @@ export function useSatuanMutations() {
     mutationFn: (id: number) => satuanApi.deactivate(id),
     onSuccess: invalidate,
   })
+  const activate = useMutation({
+    mutationFn: (id: number) => satuanApi.activate(id),
+    onSuccess: invalidate,
+  })
 
-  return { create, update, deactivate }
+  return { create, update, activate, deactivate }
 }
 
 // ── Gudang ────────────────────────────────────────────────────────────────────
 
-export function useGudangList(search?: string) {
+export function useGudangList(params: { page: number; per_page: 25 | 50 | 100; search?: string; is_active?: boolean }) {
   return useQuery({
-    queryKey: ['master-data-gudang', search],
-    queryFn: () => gudangApi.list({ search }),
+    queryKey: ['master-data-gudang', params],
+    queryFn: () => gudangApi.list(params),
   })
 }
 
@@ -98,16 +106,20 @@ export function useGudangMutations() {
     mutationFn: (id: number) => gudangApi.deactivate(id),
     onSuccess: invalidate,
   })
+  const activate = useMutation({
+    mutationFn: (id: number) => gudangApi.activate(id),
+    onSuccess: invalidate,
+  })
 
-  return { create, update, deactivate }
+  return { create, update, activate, deactivate }
 }
 
 // ── PaymentTerms ──────────────────────────────────────────────────────────────
 
-export function usePaymentTermsList(search?: string) {
+export function usePaymentTermsList(params: { page: number; per_page: 25 | 50 | 100; search?: string; is_active?: boolean }) {
   return useQuery({
-    queryKey: ['master-data-payment-terms', search],
-    queryFn: () => paymentTermsApi.list({ search }),
+    queryKey: ['master-data-payment-terms', params],
+    queryFn: () => paymentTermsApi.list(params),
   })
 }
 
@@ -128,16 +140,20 @@ export function usePaymentTermsMutations() {
     mutationFn: (id: number) => paymentTermsApi.deactivate(id),
     onSuccess: invalidate,
   })
+  const activate = useMutation({
+    mutationFn: (id: number) => paymentTermsApi.activate(id),
+    onSuccess: invalidate,
+  })
 
-  return { create, update, deactivate }
+  return { create, update, activate, deactivate }
 }
 
 // ── Departemen ────────────────────────────────────────────────────────────────
 
-export function useDepartemenList(search?: string) {
+export function useDepartemenList(params: { page: number; per_page: 25 | 50 | 100; search?: string; is_active?: boolean }) {
   return useQuery({
-    queryKey: ['master-data-departemen', search],
-    queryFn: () => departemenApi.list({ search }),
+    queryKey: ['master-data-departemen', params],
+    queryFn: () => departemenApi.list(params),
   })
 }
 
@@ -158,16 +174,20 @@ export function useDepartemenMutations() {
     mutationFn: (id: number) => departemenApi.deactivate(id),
     onSuccess: invalidate,
   })
+  const activate = useMutation({
+    mutationFn: (id: number) => departemenApi.activate(id),
+    onSuccess: invalidate,
+  })
 
-  return { create, update, deactivate }
+  return { create, update, activate, deactivate }
 }
 
 // ── Proyek ────────────────────────────────────────────────────────────────────
 
-export function useProyekList(search?: string, status?: string) {
+export function useProyekList(params: { page: number; per_page: 25 | 50 | 100; search?: string; status?: string; is_active?: boolean }) {
   return useQuery({
-    queryKey: ['master-data-proyek', search, status],
-    queryFn: () => proyekApi.list({ search, status }),
+    queryKey: ['master-data-proyek', params],
+    queryFn: () => proyekApi.list(params),
   })
 }
 
@@ -188,6 +208,10 @@ export function useProyekMutations() {
     mutationFn: (id: number) => proyekApi.deactivate(id),
     onSuccess: invalidate,
   })
+  const activate = useMutation({
+    mutationFn: (id: number) => proyekApi.activate(id),
+    onSuccess: invalidate,
+  })
 
-  return { create, update, deactivate }
+  return { create, update, activate, deactivate }
 }

@@ -6,8 +6,8 @@ import type {
 
 const COMPANY_KEY = ['settings', 'company']
 
-export function useCompanySettings() {
-  return useQuery({ queryKey: COMPANY_KEY, queryFn: companySettingsApi.get })
+export function useCompanySettings(enabled = true) {
+  return useQuery({ queryKey: COMPANY_KEY, queryFn: companySettingsApi.get, enabled })
 }
 
 export function useCompanyWorkflow() {

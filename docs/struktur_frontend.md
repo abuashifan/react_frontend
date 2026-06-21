@@ -221,6 +221,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____2026-06-16-route-tabs-datatable-fixes.md
 | | |____2026-06-16-workspace-document-number-alias-fix.md
 | | |____phase-24-completion-report.md
+| | |____phase-25-progress-report.md
 | |____struktur_frontend.md
 |____.env.production.example   (Phase 24 — contoh VITE_API_BASE_URL produksi)
 |____deploy/
@@ -444,6 +445,11 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____stockMovement.types.ts
 | | | | |____stockOpname.types.ts
 | | |____master-data/
+| | | |____components/
+| | | | |____AccountMappingEditor.tsx   (Phase 25 — canonical metadata/dirty bulk save editor)
+| | | | |____MasterDataFormActions.tsx  (Phase 25 — Save, Save & Close, Save & New)
+| | | | |____MasterDataQueryError.tsx   (Phase 25 — load error/retry state)
+| | | | |____MasterDataSearch.tsx       (Phase 25 — canonical list search input)
 | | | |____hooks/
 | | | | |____useAccountMappings.ts
 | | | | |____useCoaList.ts
@@ -719,6 +725,9 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____deep-link.spec.ts          # A13-059
 | | | |____error-containment.spec.ts  # A13-254
 | | | |____settings-bootstrap.spec.ts # A13-271
+| | |____master-data/
+| | | |____account-mapping.spec.ts     # Phase 25 — A13-046/078..084/255..257
+| | | |____core-master-data.spec.ts    # Phase 25 — draft isolation + server-side search
 |____tailwind.config.ts
 |____tsconfig.app.json
 |____tsconfig.json

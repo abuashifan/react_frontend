@@ -4,7 +4,7 @@ import type { SelectOption } from '@/types/common.types'
 import type { Departemen, CreateDepartemenPayload, UpdateDepartemenPayload } from '../types/departemen.types'
 
 export const departemenApi = {
-  list: (params?: { search?: string; is_active?: boolean }) =>
+  list: (params: { page: number; per_page: 25 | 50 | 100; search?: string; is_active?: boolean }) =>
     http.get<unknown, PaginatedResponse<Departemen>>('/master-data/departments', { params }),
 
   create: (payload: CreateDepartemenPayload) =>

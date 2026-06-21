@@ -199,6 +199,7 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 | 22 | Select, Date & Edit Mode UX | ✅ Done | `prompt-phase-22-select-date-edit-mode-ux.md` | A12-09/10/11 — SearchableSelect preload, `toDateInputValue` di 12 form, edit/read-only policy (`documentEditPolicy` + `FormLayout.readOnly`) |
 | 23 | Tabs, Ribbon & Lint Cleanup | ✅ Done | `prompt-phase-23-tabs-ribbon-lint-cleanup.md` | A12-03/04/16 — close-all tabs, ribbon empty diagnostic, lint debt cleanup |
 | 24 | Test Foundation, Runtime Containment & Router Canonical | ✅ Done | `prompt-phase-24-remediation-foundation-router.md` | A13-059/254/271 — `createBrowserRouter`, `RouteErrorBoundary`+telemetry, hapus opsi rememberMe (session tunggal), Playwright foundation. Open item: SPA fallback host produksi (issue-27 §6.5). Lihat `tracking/phase-24-completion-report.md` |
+| 25 | Master Data & Account Mapping Canonical | 🔧 In Progress | `prompt-phase-25-master-data-account-mapping-canonical.md` | Seluruh resource utama sudah mendapat canonical list/form/lifecycle baseline. Sisa default payment-term policy, bulk simple-master, runtime retest, dan validation gate penuh. |
 
 ---
 
@@ -216,13 +217,14 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 ### 6C. Build Status
 
 ```
-Terakhir dicek  : 2026-06-21 (Phase 24 — router/runtime/test foundation)
+Terakhir dicek  : 2026-06-21 (Phase 25 in progress — account mapping canonical slice)
 npm run build   : ✅ 0 error
-npm run lint    : ✅ 0 error; 35 warning RHF watch/useMemo legacy
+npm run lint    : ✅ 0 error; 34 warning RHF watch/useMemo legacy
                   di file-file yang tidak diubah pada phase ini
 Playwright      : ✅ Chromium route-mock; 12/12 tests/e2e/router (A13-059/254/271)
                   pada matrix 1440×900 / 1180×708 / 1024×656 / 390×844.
                   Foundation permanen: playwright.config.ts + tests/e2e/fixtures
+                  ✅ Phase 25 master-data route-mock 3/3.
 ```
 
 ---

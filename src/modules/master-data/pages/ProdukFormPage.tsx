@@ -6,17 +6,20 @@ import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { FixedBottomBar } from '@/components/shared/layout/FixedBottomBar'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useProduk, useProdukMutations } from '../hooks/useProdukList'
 import { coaApi } from '../services/coaApi'
 import { satuanApi } from '../services/satuanApi'
 import { kategoriProdukApi } from '../services/kategoriProdukApi'
 import { produkSchema, type ProdukFormValues } from '../schemas/produkSchema'
+import { MasterDataFormActions, type SaveIntent } from '../components/MasterDataFormActions'
 
 const PRODUCT_TYPE_OPTIONS = [
   { value: 'goods', label: 'Barang' },
@@ -43,6 +46,8 @@ export default function ProdukFormPage() {
     watch,
     setValue,
     reset,
+    getValues,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<ProdukFormValues>({
     resolver: zodResolver(produkSchema),
@@ -53,8 +58,15 @@ export default function ProdukFormPage() {
   const productType = watch('product_type')
   const canBeStockItem = productType === 'goods' || productType === 'non_inventory'
 
+  const formDraft = usePersistentFormDraft<ProdukFormValues>({
+    draftKey: `master-data.product.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+  })
+
   useEffect(() => {
-    if (produk) {
+    if (produk && !formDraft.hasDraft) {
       reset({
         product_code: produk.product_code ?? '',
         product_name: produk.product_name,
@@ -69,20 +81,30 @@ export default function ProdukFormPage() {
         cogs_account_id: produk.cogs_account_id,
       })
     }
-  }, [produk, reset])
+  }, [formDraft.hasDraft, produk, reset])
 
-  const onSubmit = async (values: ProdukFormValues) => {
+  const onSubmit = async (values: ProdukFormValues, intent: SaveIntent) => {
     try {
+      let savedId = id ? Number(id) : undefined
       if (isCreate) {
         const res = await create.mutateAsync(values)
+        savedId = res.data.id
         toast.success('Produk berhasil dibuat.')
-        navigate(`/master-data/products/${res.data.id}`)
       } else {
         await update.mutateAsync({ id: Number(id), payload: values })
         toast.success('Produk berhasil diperbarui.')
       }
-    } catch {
-      toast.error('Gagal menyimpan produk.')
+      formDraft.clearDraft()
+
+      if (intent === 'close') navigate('/master-data/products')
+      if (intent === 'new') {
+        reset({ is_stock_item: true, product_type: 'goods' })
+        navigate('/master-data/products/create')
+      }
+      if (intent === 'stay' && isCreate && savedId) navigate(`/master-data/products/${savedId}`)
+    } catch (error) {
+      applyApiValidationErrors(error, setError)
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan produk.'))
     }
   }
 
@@ -106,24 +128,21 @@ export default function ProdukFormPage() {
         <FixedBottomBar
           left={<span className="text-[13px] text-[#64748b]">{isCreate ? 'Produk baru' : produk?.product_code}</span>}
         >
-          <Button variant="outline" className="h-8 text-[13px]" onClick={() => navigate('/master-data/products')}>
-            Batal
-          </Button>
-          <Button
-            className="bg-[#e39774] hover:bg-[#d4845e] h-8 text-[13px]"
-            onClick={handleSubmit(onSubmit)}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Menyimpan...' : 'Simpan'}
-          </Button>
+          <MasterDataFormActions
+            permission={isCreate ? 'master-data.products.create' : 'master-data.products.edit'}
+            isSubmitting={isSubmitting}
+            onCancel={() => navigate('/master-data/products')}
+            onSave={(intent) => void handleSubmit((values) => onSubmit(values, intent))()}
+          />
         </FixedBottomBar>
       }
     >
       <div className="space-y-3">
         <FormSection title="Informasi Produk">
           <div className="flex flex-col gap-1">
-            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kode Produk</Label>
+            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">SKU / Kode Produk</Label>
             <Input {...register('product_code')} placeholder="PRD-001" className="h-9 text-[13px]" />
+            {errors.product_code && <p className="text-[11px] text-red-500">{errors.product_code.message}</p>}
           </div>
 
           <div className="flex flex-col gap-1">
@@ -136,7 +155,16 @@ export default function ProdukFormPage() {
 
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tipe Produk</Label>
-            <Select value={watch('product_type')} onValueChange={(v) => setValue('product_type', v as ProdukFormValues['product_type'])}>
+            <Select
+              value={watch('product_type')}
+              onValueChange={(value) => {
+                const nextType = value as ProdukFormValues['product_type']
+                setValue('product_type', nextType)
+                if (nextType === 'service' || nextType === 'fixed_asset') {
+                  setValue('is_stock_item', false)
+                }
+              }}
+            >
               <SelectTrigger className="h-9 text-[13px]">
                 <SelectValue placeholder="Pilih tipe..." />
               </SelectTrigger>
@@ -176,6 +204,7 @@ export default function ProdukFormPage() {
                   onChange={field.onChange}
                   onSearch={satuanApi.search}
                   placeholder="Pilih satuan..."
+                  error={errors.unit_id?.message}
                   selectedOptions={produk?.unit ? [{ value: produk.unit.id, label: produk.unit.name, sublabel: produk.unit.code }] : []}
                 />
               )}
@@ -194,9 +223,20 @@ export default function ProdukFormPage() {
               <div>
                 <p className="text-[13px] font-medium text-[#24323a]">Item Stok</p>
                 <p className="text-[11px] text-[#64748b]">Lacak stok di gudang</p>
+                {errors.is_stock_item && <p className="text-[11px] text-red-500">{errors.is_stock_item.message}</p>}
               </div>
             </div>
           )}
+
+          <div className="flex flex-col gap-1 md:col-span-2">
+            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Deskripsi</Label>
+            <Textarea
+              {...register('description')}
+              placeholder="Deskripsi produk (opsional)"
+              rows={3}
+              className="resize-none text-[13px]"
+            />
+          </div>
         </FormSection>
 
         <FormSection title="Akun Akuntansi">
@@ -209,7 +249,7 @@ export default function ProdukFormPage() {
                 <SearchableSelect
                   value={field.value ?? null}
                   onChange={field.onChange}
-                  onSearch={coaApi.search}
+                  onSearch={(query) => coaApi.search(query, { accountTypes: ['revenue'], isActive: true })}
                   placeholder="Pilih akun penjualan..."
                   selectedOptions={produk?.sales_account ? [{ value: produk.sales_account.id, label: produk.sales_account.account_name, sublabel: produk.sales_account.account_code }] : []}
                 />
@@ -226,7 +266,7 @@ export default function ProdukFormPage() {
                 <SearchableSelect
                   value={field.value ?? null}
                   onChange={field.onChange}
-                  onSearch={coaApi.search}
+                  onSearch={(query) => coaApi.search(query, { accountTypes: ['expense'], isActive: true })}
                   placeholder="Pilih akun pembelian..."
                   selectedOptions={produk?.purchase_account ? [{ value: produk.purchase_account.id, label: produk.purchase_account.account_name, sublabel: produk.purchase_account.account_code }] : []}
                 />
@@ -244,7 +284,7 @@ export default function ProdukFormPage() {
                   <SearchableSelect
                     value={field.value ?? null}
                     onChange={field.onChange}
-                    onSearch={coaApi.search}
+                    onSearch={(query) => coaApi.search(query, { accountTypes: ['asset'], isActive: true })}
                     placeholder="Pilih akun inventory..."
                     selectedOptions={produk?.inventory_account ? [{ value: produk.inventory_account.id, label: produk.inventory_account.account_name, sublabel: produk.inventory_account.account_code }] : []}
                   />
@@ -262,7 +302,7 @@ export default function ProdukFormPage() {
                 <SearchableSelect
                   value={field.value ?? null}
                   onChange={field.onChange}
-                  onSearch={coaApi.search}
+                  onSearch={(query) => coaApi.search(query, { accountTypes: ['expense'], isActive: true })}
                   placeholder="Pilih akun HPP..."
                   selectedOptions={produk?.cogs_account ? [{ value: produk.cogs_account.id, label: produk.cogs_account.account_name, sublabel: produk.cogs_account.account_code }] : []}
                 />

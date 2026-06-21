@@ -10,6 +10,8 @@ interface SearchableSelectBaseProps {
   disabled?: boolean
   error?: string
   label?: string
+  ariaLabel?: string
+  clearable?: boolean
   size?: 'sm' | 'md'
   selectedOptions?: SelectOption<number>[]
 }
@@ -41,6 +43,8 @@ export function SearchableSelect({
   disabled,
   error,
   label,
+  ariaLabel,
+  clearable = true,
   size = 'md',
   selectedOptions = [],
 }: SearchableSelectProps) {
@@ -176,6 +180,7 @@ export function SearchableSelect({
           <button
             type="button"
             disabled={disabled}
+            aria-label={ariaLabel ?? label ?? placeholder}
             aria-expanded={open}
             aria-haspopup="listbox"
             className={cn(
@@ -191,7 +196,7 @@ export function SearchableSelect({
               {displayLabel ?? placeholder}
             </span>
             <div className="flex items-center gap-1 ml-2 shrink-0">
-              {hasValue && !disabled && (
+              {hasValue && !disabled && clearable && (
                 <span onClick={handleClear}>
                   <X className="w-3.5 h-3.5 text-[#94a3b8] hover:text-[#24323a] transition-colors" />
                 </span>

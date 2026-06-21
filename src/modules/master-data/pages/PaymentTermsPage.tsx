@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Plus, Pencil, PowerOff } from 'lucide-react'
+import { useDeferredValue, useState } from 'react'
+import { Plus, Pencil, Power, PowerOff, Star } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -9,32 +9,47 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/useToast'
 import { usePaymentTermsList, usePaymentTermsMutations } from '../hooks/useSimpleLists'
 import { paymentTermsSchema, type PaymentTermsFormValues } from '../schemas/paymentTermsSchema'
 import type { PaymentTerms } from '../types/paymentTerms.types'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import { cn } from '@/lib/utils'
+import { MasterDataSearch } from '../components/MasterDataSearch'
+import { MasterDataQueryError } from '../components/MasterDataQueryError'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { useCompanySettings, useCompanySettingsMutations } from '@/modules/settings/hooks/useCompanySettings'
+import { usePermission } from '@/hooks/usePermission'
 
 export default function PaymentTermsPage() {
   const { toast } = useToast()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<PaymentTerms | null>(null)
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
+  const [search, setSearch] = useState('')
+  const deferredSearch = useDeferredValue(search)
+  const { can } = usePermission()
+  const canViewCompanySettings = can('settings.company.view')
 
-  const { data, isLoading, isFetching } = usePaymentTermsList()
-  const { create, update, deactivate } = usePaymentTermsMutations()
+  const query = usePaymentTermsList({ page, per_page: perPage, search: deferredSearch || undefined })
+  const { create, update, activate, deactivate } = usePaymentTermsMutations()
+  const companySettings = useCompanySettings(canViewCompanySettings)
+  const { updateTransactionDefaults } = useCompanySettingsMutations()
+  const defaultPaymentTermId = companySettings.data?.data.transaction_defaults?.default_payment_term_id ?? null
 
   const {
     register,
     handleSubmit,
     reset,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<PaymentTermsFormValues>({ resolver: zodResolver(paymentTermsSchema) })
 
   const openCreate = () => {
     setEditingItem(null)
-    reset({ code: '', name: '', days: 0 as number })
+    reset({ code: '', name: '', days: 30 })
     setDialogOpen(true)
   }
 
@@ -54,8 +69,18 @@ export default function PaymentTermsPage() {
         toast.success('Syarat pembayaran berhasil dibuat.')
       }
       setDialogOpen(false)
-    } catch {
-      toast.error('Gagal menyimpan syarat pembayaran.')
+    } catch (error) {
+      applyApiValidationErrors(error, setError)
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan syarat pembayaran.'))
+    }
+  }
+
+  const handleActivate = async (item: PaymentTerms) => {
+    try {
+      await activate.mutateAsync(item.id)
+      toast.success('Syarat pembayaran berhasil diaktifkan.')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal mengaktifkan syarat pembayaran.'))
     }
   }
 
@@ -64,8 +89,17 @@ export default function PaymentTermsPage() {
     try {
       await deactivate.mutateAsync(item.id)
       toast.success('Syarat pembayaran berhasil dinonaktifkan.')
-    } catch {
-      toast.error('Gagal menonaktifkan syarat pembayaran.')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal menonaktifkan syarat pembayaran.'))
+    }
+  }
+
+  const handleSetDefault = async (item: PaymentTerms) => {
+    try {
+      await updateTransactionDefaults.mutateAsync({ default_payment_term_id: item.id })
+      toast.success(`"${item.name}" sekarang menjadi syarat pembayaran default.`)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal mengubah syarat pembayaran default.'))
     }
   }
 
@@ -91,6 +125,14 @@ export default function PaymentTermsPage() {
       cell: ({ original }) => `${original.days} hari`,
     },
     {
+      id: 'default',
+      header: 'Default',
+      size: 90,
+      cell: ({ original }) => defaultPaymentTermId === original.id
+        ? <Badge className="bg-[#EFF9FB] text-[#326273] hover:bg-[#EFF9FB]">Default</Badge>
+        : '-',
+    },
+    {
       id: 'is_active',
       header: 'Status',
       size: 90,
@@ -103,17 +145,31 @@ export default function PaymentTermsPage() {
     {
       id: 'actions',
       header: '',
-      size: 100,
+      size: 140,
       cell: ({ original }) => (
         <div className="flex items-center gap-1">
+          <PermissionGuard permission="settings.company.edit">
+            <Button
+              type="button"
+              aria-label={`Jadikan ${original.name} syarat pembayaran default`}
+              title={original.is_active ? 'Jadikan default' : 'Aktifkan terlebih dahulu untuk menjadikannya default'}
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-[#64748b] hover:text-amber-500 disabled:opacity-30"
+              disabled={!original.is_active || defaultPaymentTermId === original.id || updateTransactionDefaults.isPending}
+              onClick={() => void handleSetDefault(original)}
+            >
+              <Star className={cn('w-3.5 h-3.5', defaultPaymentTermId === original.id && 'fill-amber-400 text-amber-500')} />
+            </Button>
+          </PermissionGuard>
           <PermissionGuard permission="payment_terms.edit">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-[#326273]" onClick={() => openEdit(original)}>
+            <Button type="button" aria-label={`Edit syarat pembayaran ${original.name}`} variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-[#326273]" onClick={() => openEdit(original)}>
               <Pencil className="w-3.5 h-3.5" />
             </Button>
           </PermissionGuard>
-          <PermissionGuard permission="payment_terms.deactivate">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-amber-600" onClick={() => handleDeactivate(original)}>
-              <PowerOff className="w-3.5 h-3.5" />
+          <PermissionGuard permission={original.is_active ? 'payment_terms.deactivate' : 'payment_terms.edit'}>
+            <Button type="button" aria-label={`${original.is_active ? 'Nonaktifkan' : 'Aktifkan'} syarat pembayaran ${original.name}`} variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-amber-600" onClick={() => original.is_active ? handleDeactivate(original) : void handleActivate(original)}>
+              {original.is_active ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
             </Button>
           </PermissionGuard>
         </div>
@@ -133,22 +189,24 @@ export default function PaymentTermsPage() {
         </PermissionGuard>
       }
     >
-      <DataTable
-        data={data?.data ?? []}
+      <MasterDataSearch value={search} onChange={(value) => { setSearch(value); setPage(1) }} placeholder="Cari kode atau nama syarat pembayaran..." />
+      {query.isError ? <MasterDataQueryError error={query.error} onRetry={() => void query.refetch()} /> : <DataTable
+        data={query.data?.data ?? []}
         columns={columns}
-        totalRows={data?.meta.total ?? 0}
-        isLoading={isLoading}
-        isFetching={isFetching}
-        pagination={{ pageIndex: 0, pageSize: 25 }}
-        onPaginationChange={() => {}}
+        totalRows={query.data?.meta.total ?? 0}
+        isLoading={query.isLoading}
+        isFetching={query.isFetching}
+        pagination={{ pageIndex: page - 1, pageSize: perPage }}
+        onPaginationChange={(state) => { setPage(state.pageIndex + 1); setPerPage(state.pageSize) }}
         emptyTitle="Belum ada syarat pembayaran"
         emptyDescription="Tambahkan syarat pembayaran seperti COD, Net 30, dll."
-      />
+      />}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-[15px]">{editingItem ? 'Edit Syarat Pembayaran' : 'Tambah Syarat Pembayaran'}</DialogTitle>
+            <DialogDescription>Atur kode, nama, dan jumlah hari jatuh tempo pembayaran.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 pt-1">
             <div className="flex flex-col gap-1">
@@ -169,7 +227,7 @@ export default function PaymentTermsPage() {
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Jumlah Hari <span className="text-red-500">*</span>
               </Label>
-              <Input {...register('days', { valueAsNumber: true })} type="number" min="0" placeholder="30" className="h-9 text-[13px] tabular-nums" />
+              <Input {...register('days', { valueAsNumber: true })} type="number" min="1" max="3650" placeholder="30" className="h-9 text-[13px] tabular-nums" />
               {errors.days && <p className="text-[11px] text-red-500">{errors.days.message}</p>}
             </div>
             <DialogFooter className="pt-2">

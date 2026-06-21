@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Plus, Pencil, PowerOff } from 'lucide-react'
+import { useDeferredValue, useState } from 'react'
+import { Plus, Pencil, Power, PowerOff } from 'lucide-react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -18,14 +18,19 @@ import { gudangSchema, type GudangFormValues } from '../schemas/gudangSchema'
 import type { Gudang } from '../types/gudang.types'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import { cn } from '@/lib/utils'
+import { MasterDataSearch } from '../components/MasterDataSearch'
 
 export default function GudangPage() {
   const { toast } = useToast()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<Gudang | null>(null)
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
+  const [search, setSearch] = useState('')
+  const deferredSearch = useDeferredValue(search)
 
-  const { data, isLoading, isFetching } = useGudangList()
-  const { create, update, deactivate } = useGudangMutations()
+  const { data, isLoading, isFetching } = useGudangList({ page, per_page: perPage, search: deferredSearch || undefined })
+  const { create, update, activate, deactivate } = useGudangMutations()
 
   const {
     register,
@@ -40,13 +45,18 @@ export default function GudangPage() {
 
   const openCreate = () => {
     setEditingItem(null)
-    reset({ code: '', name: '', address: '', is_active: true })
+    reset({ code: '', name: '', address: '', is_default: false, is_active: true })
     setDialogOpen(true)
+  }
+
+  const handleActivate = async (item: Gudang) => {
+    await activate.mutateAsync(item.id)
+    toast.success('Gudang berhasil diaktifkan.')
   }
 
   const openEdit = (item: Gudang) => {
     setEditingItem(item)
-    reset({ code: item.code, name: item.name, address: item.address ?? '', is_active: item.is_active })
+    reset({ code: item.code, name: item.name, address: item.address ?? '', is_default: item.is_default, is_active: item.is_active })
     setDialogOpen(true)
   }
 
@@ -76,6 +86,12 @@ export default function GudangPage() {
   }
 
   const columns: ColumnDef<Gudang>[] = [
+    {
+      id: 'is_default',
+      header: 'Default',
+      size: 90,
+      cell: ({ original }) => original.is_default ? <Badge className="bg-[#EFF9FB] text-[#326273]">Default</Badge> : '-',
+    },
     {
       id: 'code',
       header: 'Kode',
@@ -117,8 +133,8 @@ export default function GudangPage() {
             </Button>
           </PermissionGuard>
           <PermissionGuard permission="warehouses.deactivate">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-amber-600" onClick={() => handleDeactivate(original)}>
-              <PowerOff className="w-3.5 h-3.5" />
+            <Button type="button" aria-label={`${original.is_active ? 'Nonaktifkan' : 'Aktifkan'} gudang ${original.name}`} variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-amber-600" onClick={() => original.is_active ? handleDeactivate(original) : void handleActivate(original)}>
+              {original.is_active ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
             </Button>
           </PermissionGuard>
         </div>
@@ -138,14 +154,15 @@ export default function GudangPage() {
         </PermissionGuard>
       }
     >
+      <MasterDataSearch value={search} onChange={(value) => { setSearch(value); setPage(1) }} placeholder="Cari kode, nama, atau alamat gudang..." />
       <DataTable
         data={data?.data ?? []}
         columns={columns}
         totalRows={data?.meta.total ?? 0}
         isLoading={isLoading}
         isFetching={isFetching}
-        pagination={{ pageIndex: 0, pageSize: 25 }}
-        onPaginationChange={() => {}}
+        pagination={{ pageIndex: page - 1, pageSize: perPage }}
+        onPaginationChange={(state) => { setPage(state.pageIndex + 1); setPerPage(state.pageSize) }}
         emptyTitle="Belum ada gudang"
         emptyDescription="Tambahkan gudang untuk menyimpan stok produk."
       />
@@ -173,6 +190,16 @@ export default function GudangPage() {
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Alamat</Label>
               <Textarea {...register('address')} placeholder="Alamat gudang (opsional)" className="text-[13px] resize-none" rows={2} />
+            </div>
+            <div className="flex items-center gap-3">
+              <Controller
+                name="is_default"
+                control={control}
+                render={({ field }) => (
+                  <Switch checked={field.value ?? false} onCheckedChange={field.onChange} />
+                )}
+              />
+              <Label className="text-[13px] text-[#24323a]">Jadikan gudang default</Label>
             </div>
             <div className="flex items-center gap-3">
               <Controller

@@ -114,8 +114,10 @@ function normalizeApiResponse<T>(payload: T): T {
   } as T
 }
 
+const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ?? ''
+
 export const http: AxiosInstance = axios.create({
-  baseURL: `${import.meta.env.VITE_API_BASE_URL}/api`,
+  baseURL: `${configuredApiBaseUrl}/api`,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',

@@ -4,7 +4,7 @@ import type { SelectOption } from '@/types/common.types'
 import type { PaymentTerms, CreatePaymentTermsPayload, UpdatePaymentTermsPayload } from '../types/paymentTerms.types'
 
 export const paymentTermsApi = {
-  list: (params?: { search?: string }) =>
+  list: (params: { page: number; per_page: 25 | 50 | 100; search?: string; is_active?: boolean }) =>
     http.get<unknown, PaginatedResponse<PaymentTerms>>('/master-data/payment-terms', { params }),
 
   create: (payload: CreatePaymentTermsPayload) =>

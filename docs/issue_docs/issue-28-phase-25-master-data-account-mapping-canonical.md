@@ -1,7 +1,7 @@
 # Issue-28 — Phase 25 Master Data and Account Mapping Canonical
 
 Tanggal dibuat: 2026-06-21  
-Status: Planned  
+Status: In Progress  
 Phase: 25  
 Severity tertinggi: Critical  
 Finding canonical: A13-004..046, A13-060..084, A13-255..257  
@@ -103,3 +103,34 @@ tests/Feature/*
 - verify permission and lifecycle state;
 - verify no regression pada tab/ribbon/navigation.
 
+## Progress 2026-06-21 — Account Mapping Slice
+
+Implemented:
+
+- frontend memakai `mapping_key` canonical, bukan `key`;
+- selected account memakai `account_name`/`account_code`, bukan fallback ID;
+- hanya mapping `visible_in_settings` yang dirender dan dikelompokkan per `settings_section`;
+- required mapping tidak dapat di-clear dan account search difilter ke akun aktif/tipe yang diizinkan;
+- save hanya mengirim mapping dirty melalui satu bulk PATCH;
+- backend bulk update memvalidasi seluruh payload sebelum transaction sehingga atomic;
+- load error, retry, save error, dirty count, dan accessible name selector tersedia;
+- HTTP base URL tidak lagi menghasilkan literal `undefined` saat env base URL kosong.
+
+Automated evidence:
+
+- frontend build: pass;
+- frontend lint: 0 error, 34 warning legacy;
+- Playwright `tests/e2e/master-data/account-mapping.spec.ts`: 1/1 pass;
+- Playwright `tests/e2e/master-data/core-master-data.spec.ts`: 2/2 pass;
+- backend `AccountMappingTest`: 3/3 pass;
+- backend `ChartOfAccountTest`: 7/7 pass;
+- backend MasterData feature scope: 31/31 pass;
+- Pint scoped files: pass.
+
+Status finding account-mapping: implementation fixed, runtime live retest masih diperlukan sebelum `verified`.
+
+### Core master-data slice
+
+COA, Contact, Product, Department, Project, dan Payment Term sudah mendapat
+normalisasi list/form/lifecycle utama. Build dan lint lulus. Status tetap
+`fixed`/implementation-only sampai Playwright cluster dan runtime real selesai.

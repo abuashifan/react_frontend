@@ -1,7 +1,7 @@
 # Prompt — Phase 25: Master Data and Account Mapping Canonical
 
 **Phase**: 25  
-**Status**: Planned  
+**Status**: In Progress — account mapping canonical slice implemented 2026-06-21  
 **Referensi utama**: `../issue_docs/issue-28-phase-25-master-data-account-mapping-canonical.md`  
 **Spec canonical**: `../praproduction_docs/spec-37-audit-13-remediation.md`  
 **Roadmap canonical**: `../gap_docs/gap-10-audit-13-remediation-roadmap.md`  

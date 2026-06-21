@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Plus, Pencil, PowerOff } from 'lucide-react'
+import { useDeferredValue, useState } from 'react'
+import { Plus, Pencil, Power, PowerOff } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -16,15 +16,19 @@ import { kategoriProdukSchema, type KategoriProdukFormValues } from '../schemas/
 import type { KategoriProduk } from '../types/kategoriProduk.types'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import { cn } from '@/lib/utils'
+import { MasterDataSearch } from '../components/MasterDataSearch'
 
 export default function KategoriProdukPage() {
   const { toast } = useToast()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<KategoriProduk | null>(null)
   const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
+  const [search, setSearch] = useState('')
+  const deferredSearch = useDeferredValue(search)
 
-  const { data, isLoading, isFetching } = useKategoriProdukList()
-  const { create, update, deactivate } = useKategoriProdukMutations()
+  const { data, isLoading, isFetching } = useKategoriProdukList({ page, per_page: perPage, search: deferredSearch || undefined })
+  const { create, update, activate, deactivate } = useKategoriProdukMutations()
 
   const {
     register,
@@ -39,6 +43,11 @@ export default function KategoriProdukPage() {
     setEditingItem(null)
     reset({ name: '' })
     setDialogOpen(true)
+  }
+
+  const handleActivate = async (item: KategoriProduk) => {
+    await activate.mutateAsync(item.id)
+    toast.success('Kategori berhasil diaktifkan.')
   }
 
   const openEdit = (item: KategoriProduk) => {
@@ -102,8 +111,8 @@ export default function KategoriProdukPage() {
             </Button>
           </PermissionGuard>
           <PermissionGuard permission="products.deactivate">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-amber-600" onClick={() => handleDeactivate(original)}>
-              <PowerOff className="w-3.5 h-3.5" />
+            <Button type="button" aria-label={`${original.is_active ? 'Nonaktifkan' : 'Aktifkan'} kategori ${original.name}`} variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-amber-600" onClick={() => original.is_active ? handleDeactivate(original) : void handleActivate(original)}>
+              {original.is_active ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
             </Button>
           </PermissionGuard>
         </div>
@@ -123,14 +132,15 @@ export default function KategoriProdukPage() {
         </PermissionGuard>
       }
     >
+      <MasterDataSearch value={search} onChange={(value) => { setSearch(value); setPage(1) }} placeholder="Cari kategori produk..." />
       <DataTable
         data={data?.data ?? []}
         columns={columns}
         totalRows={data?.meta.total ?? 0}
         isLoading={isLoading}
         isFetching={isFetching}
-        pagination={{ pageIndex: page - 1, pageSize: 25 }}
-        onPaginationChange={(s) => setPage(s.pageIndex + 1)}
+        pagination={{ pageIndex: page - 1, pageSize: perPage }}
+        onPaginationChange={(state) => { setPage(state.pageIndex + 1); setPerPage(state.pageSize) }}
         emptyTitle="Belum ada kategori produk"
         emptyDescription="Tambahkan kategori untuk mengelompokkan produk."
       />

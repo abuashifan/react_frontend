@@ -6,15 +6,17 @@ import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { FixedBottomBar } from '@/components/shared/layout/FixedBottomBar'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/useToast'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useCoa, useCoaMutations } from '../hooks/useCoaList'
 import { coaApi } from '../services/coaApi'
 import { coaSchema, type CoaFormValues } from '../schemas/coaSchema'
+import { MasterDataFormActions, type SaveIntent } from '../components/MasterDataFormActions'
 
 const COA_TYPES = [
   { value: 'asset', label: 'Aset' },
@@ -41,14 +43,24 @@ export default function CoaFormPage() {
     setValue,
     watch,
     reset,
+    control,
+    getValues,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<CoaFormValues>({
     resolver: zodResolver(coaSchema),
     defaultValues: { account_type: 'asset', parent_account_id: null },
   })
 
+  const formDraft = usePersistentFormDraft<CoaFormValues>({
+    draftKey: `master-data.coa.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+  })
+
   useEffect(() => {
-    if (coa) {
+    if (coa && !formDraft.hasDraft) {
       reset({
         account_code: coa.account_code,
         account_name: coa.account_name,
@@ -57,20 +69,30 @@ export default function CoaFormPage() {
         description: coa.description ?? '',
       })
     }
-  }, [coa, reset])
+  }, [coa, formDraft.hasDraft, reset])
 
-  const onSubmit = async (values: CoaFormValues) => {
+  const onSubmit = async (values: CoaFormValues, intent: SaveIntent) => {
     try {
+      let savedId = id ? Number(id) : undefined
       if (isCreate) {
         const res = await create.mutateAsync(values)
+        savedId = res.data.id
         toast.success('Akun berhasil dibuat.')
-        navigate(`/master-data/coa/${res.data.id}`)
       } else {
         await update.mutateAsync({ id: Number(id), payload: values })
         toast.success('Akun berhasil diperbarui.')
       }
-    } catch {
-      toast.error('Gagal menyimpan akun.')
+      formDraft.clearDraft()
+
+      if (intent === 'close') navigate('/master-data/coa')
+      if (intent === 'new') {
+        reset({ account_type: 'asset', parent_account_id: null })
+        navigate('/master-data/coa/create')
+      }
+      if (intent === 'stay' && isCreate && savedId) navigate(`/master-data/coa/${savedId}`)
+    } catch (error) {
+      applyApiValidationErrors(error, setError)
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan akun.'))
     }
   }
 
@@ -94,16 +116,12 @@ export default function CoaFormPage() {
         <FixedBottomBar
           left={<span className="text-[13px] text-[#64748b]">{isCreate ? 'Akun baru' : coa?.account_name}</span>}
         >
-          <Button variant="outline" className="h-8 text-[13px]" onClick={() => navigate('/master-data/coa')}>
-            Batal
-          </Button>
-          <Button
-            className="bg-[#e39774] hover:bg-[#d4845e] h-8 text-[13px]"
-            onClick={handleSubmit(onSubmit)}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Menyimpan...' : 'Simpan'}
-          </Button>
+          <MasterDataFormActions
+            permission={isCreate ? 'master-data.coa.create' : 'master-data.coa.edit'}
+            isSubmitting={isSubmitting}
+            onCancel={() => navigate('/master-data/coa')}
+            onSave={(intent) => void handleSubmit((values) => onSubmit(values, intent))()}
+          />
         </FixedBottomBar>
       }
     >

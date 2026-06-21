@@ -6,15 +6,17 @@ import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { FixedBottomBar } from '@/components/shared/layout/FixedBottomBar'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/useToast'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useKontak, useKontakMutations } from '../hooks/useKontakList'
 import { paymentTermsApi } from '../services/paymentTermsApi'
 import { kontakSchema, type KontakFormValues } from '../schemas/kontakSchema'
+import { MasterDataFormActions, type SaveIntent } from '../components/MasterDataFormActions'
 
 export default function KontakFormPage() {
   const navigate = useNavigate()
@@ -33,15 +35,26 @@ export default function KontakFormPage() {
     setValue,
     watch,
     reset,
+    control,
+    getValues,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<KontakFormValues>({
     resolver: zodResolver(kontakSchema),
     defaultValues: { contact_type: 'customer' },
   })
 
+  const formDraft = usePersistentFormDraft<KontakFormValues>({
+    draftKey: `master-data.contact.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+  })
+
   useEffect(() => {
-    if (kontak) {
+    if (kontak && !formDraft.hasDraft) {
       reset({
+        contact_code: kontak.contact_code ?? '',
         name: kontak.name,
         contact_type: kontak.contact_type,
         phone: kontak.phone ?? '',
@@ -51,25 +64,35 @@ export default function KontakFormPage() {
         payment_term_id: kontak.payment_term_id,
       })
     }
-  }, [kontak, reset])
+  }, [formDraft.hasDraft, kontak, reset])
 
-  const onSubmit = async (values: KontakFormValues) => {
+  const onSubmit = async (values: KontakFormValues, intent: SaveIntent) => {
     const payload = {
       ...values,
       email: values.email || undefined,
       phone: values.phone || undefined,
     }
     try {
+      let savedId = id ? Number(id) : undefined
       if (isCreate) {
         const res = await create.mutateAsync(payload)
+        savedId = res.data.id
         toast.success('Kontak berhasil dibuat.')
-        navigate(`/master-data/contacts/${res.data.id}`)
       } else {
         await update.mutateAsync({ id: Number(id), payload })
         toast.success('Kontak berhasil diperbarui.')
       }
-    } catch {
-      toast.error('Gagal menyimpan kontak.')
+      formDraft.clearDraft()
+
+      if (intent === 'close') navigate('/master-data/contacts')
+      if (intent === 'new') {
+        reset({ contact_type: 'customer' })
+        navigate('/master-data/contacts/create')
+      }
+      if (intent === 'stay' && isCreate && savedId) navigate(`/master-data/contacts/${savedId}`)
+    } catch (error) {
+      applyApiValidationErrors(error, setError)
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan kontak.'))
     }
   }
 
@@ -93,21 +116,25 @@ export default function KontakFormPage() {
         <FixedBottomBar
           left={<span className="text-[13px] text-[#64748b]">{isCreate ? 'Kontak baru' : kontak?.contact_code}</span>}
         >
-          <Button variant="outline" className="h-8 text-[13px]" onClick={() => navigate('/master-data/contacts')}>
-            Batal
-          </Button>
-          <Button
-            className="bg-[#e39774] hover:bg-[#d4845e] h-8 text-[13px]"
-            onClick={handleSubmit(onSubmit)}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Menyimpan...' : 'Simpan'}
-          </Button>
+          <MasterDataFormActions
+            permission={isCreate ? 'master-data.contacts.create' : 'master-data.contacts.edit'}
+            isSubmitting={isSubmitting}
+            onCancel={() => navigate('/master-data/contacts')}
+            onSave={(intent) => void handleSubmit((values) => onSubmit(values, intent))()}
+          />
         </FixedBottomBar>
       }
     >
       <div className="space-y-3">
         <FormSection title="Informasi Kontak">
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
+              Kode Kontak
+            </Label>
+            <Input {...register('contact_code')} placeholder="CUST-001" className="h-9 text-[13px]" />
+            {errors.contact_code && <p className="text-[11px] text-red-500">{errors.contact_code.message}</p>}
+          </div>
+
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
               Nama <span className="text-red-500">*</span>
@@ -128,6 +155,8 @@ export default function KontakFormPage() {
                 <SelectItem value="customer">Customer</SelectItem>
                 <SelectItem value="supplier">Supplier</SelectItem>
                 <SelectItem value="both">Keduanya</SelectItem>
+                <SelectItem value="employee">Karyawan</SelectItem>
+                <SelectItem value="other">Lainnya</SelectItem>
               </SelectContent>
             </Select>
             {errors.contact_type && <p className="text-[11px] text-red-500">{errors.contact_type.message}</p>}

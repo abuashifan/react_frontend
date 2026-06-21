@@ -4,7 +4,7 @@ import type { SelectOption } from '@/types/common.types'
 import type { KategoriProduk, CreateKategoriProdukPayload, UpdateKategoriProdukPayload } from '../types/kategoriProduk.types'
 
 export const kategoriProdukApi = {
-  list: (params?: { search?: string }) =>
+  list: (params: { page: number; per_page: 25 | 50 | 100; search?: string }) =>
     http.get<unknown, PaginatedResponse<KategoriProduk>>('/master-data/product-categories', { params }),
 
   create: (payload: CreateKategoriProdukPayload) =>
