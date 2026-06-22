@@ -14,6 +14,7 @@ export function useCashReceiptMutations() {
   const inv = () => qc.invalidateQueries({ queryKey: ['cash-bank', 'receipts'] })
   return {
     create: useMutation({ mutationFn: (p: CreateCashReceiptPayload) => cashReceiptApi.create(p), onSuccess: inv }),
+    update: useMutation({ mutationFn: ({ id, payload }: { id: number; payload: CreateCashReceiptPayload }) => cashReceiptApi.update(id, payload), onSuccess: inv }),
     post: useMutation({ mutationFn: (id: number) => cashReceiptApi.post(id), onSuccess: inv }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => cashReceiptApi.void(id, reason), onSuccess: inv }),
   }
@@ -31,6 +32,7 @@ export function useCashPaymentMutations() {
   const inv = () => qc.invalidateQueries({ queryKey: ['cash-bank', 'payments'] })
   return {
     create: useMutation({ mutationFn: (p: CreateCashPaymentPayload) => cashPaymentApi.create(p), onSuccess: inv }),
+    update: useMutation({ mutationFn: ({ id, payload }: { id: number; payload: CreateCashPaymentPayload }) => cashPaymentApi.update(id, payload), onSuccess: inv }),
     post: useMutation({ mutationFn: (id: number) => cashPaymentApi.post(id), onSuccess: inv }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => cashPaymentApi.void(id, reason), onSuccess: inv }),
   }
@@ -48,6 +50,7 @@ export function useBankTransferMutations() {
   const inv = () => qc.invalidateQueries({ queryKey: ['cash-bank', 'transfers'] })
   return {
     create: useMutation({ mutationFn: (p: CreateBankTransferPayload) => bankTransferApi.create(p), onSuccess: inv }),
+    update: useMutation({ mutationFn: ({ id, payload }: { id: number; payload: CreateBankTransferPayload }) => bankTransferApi.update(id, payload), onSuccess: inv }),
     post: useMutation({ mutationFn: (id: number) => bankTransferApi.post(id), onSuccess: inv }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => bankTransferApi.void(id, reason), onSuccess: inv }),
   }
@@ -72,10 +75,18 @@ export function useBankReconciliationMutations() {
       mutationFn: ({ id, payload }: { id: number; payload: Partial<CreateBankReconciliationPayload> }) => bankReconciliationApi.update(id, payload),
       onSuccess: (_, { id }) => inv(id),
     }),
-    refreshLines: useMutation({ mutationFn: (id: number) => bankReconciliationApi.refreshLines(id), onSuccess: (_, id) => inv(id) }),
+    refreshLines: useMutation({
+      mutationFn: ({ id, resetCleared = false }: { id: number; resetCleared?: boolean }) => bankReconciliationApi.refreshLines(id, resetCleared),
+      onSuccess: (_, { id }) => inv(id),
+    }),
     markLines: useMutation({
       mutationFn: ({ id, lineIds, cleared, clearedDate }: { id: number; lineIds: number[]; cleared: boolean; clearedDate?: string }) =>
         bankReconciliationApi.markLines(id, lineIds, cleared, clearedDate),
+      onSuccess: (_, { id }) => inv(id),
+    }),
+    finalize: useMutation({ mutationFn: (id: number) => bankReconciliationApi.finalize(id), onSuccess: (_, id) => inv(id) }),
+    reopen: useMutation({
+      mutationFn: ({ id, reason }: { id: number; reason: string }) => bankReconciliationApi.reopen(id, reason),
       onSuccess: (_, { id }) => inv(id),
     }),
   }

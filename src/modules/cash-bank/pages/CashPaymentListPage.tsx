@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useDeferredValue, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
-import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
+import { QueryErrorState } from '@/components/shared/feedback/QueryErrorState'
+import { Input } from '@/components/ui/input'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { useCashPaymentList, useCashPaymentMutations } from '../hooks/useCashBankList'
@@ -18,12 +19,13 @@ import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { CashPayment, CashBankStatus } from '../types/cashBank.types'
 
 const STATUSES: CashBankStatus[] = ['draft', 'posted', 'void']
-const FILTER_HINT = 'Filter multi-select dan tanggal berlaku pada data halaman yang sedang dimuat.'
-
 export default function CashPaymentListPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState<25 | 50 | 100>(25)
+  const [search, setSearch] = useState('')
+  const deferredSearch = useDeferredValue(search)
   const [filterStatuses, setFilterStatuses] = useState<CashBankStatus[]>([])
   const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [selectedRows, setSelectedRows] = useState<string[]>([])
@@ -31,17 +33,16 @@ export default function CashPaymentListPage() {
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
   const { void: voidPayment } = useCashPaymentMutations()
 
-  const { data, isLoading, isFetching } = useCashPaymentList({ page: page + 1, per_page: 25 })
-  const rows = data?.data ?? []
-  const visibleRows = useMemo(
-    () =>
-      rows.filter((payment) => {
-        const matchesStatus = filterStatuses.length === 0 || filterStatuses.includes(payment.status)
-        const matchesDate = isDateInRange(payment.payment_date, dateRange.from, dateRange.to)
-        return matchesStatus && matchesDate
-      }),
-    [rows, filterStatuses, dateRange.from, dateRange.to],
-  )
+  const query = useCashPaymentList({
+    page: page + 1,
+    per_page: pageSize,
+    search: deferredSearch || undefined,
+    statuses: filterStatuses.length ? filterStatuses : undefined,
+    date_from: dateRange.from || undefined,
+    date_to: dateRange.to || undefined,
+  })
+  const { data, isLoading, isFetching } = query
+  const visibleRows = data?.data ?? []
 
   const activeFilters = [filterStatuses.length > 0, dateRange.from, dateRange.to].filter(Boolean).length
 
@@ -128,7 +129,7 @@ export default function CashPaymentListPage() {
         setDateRange({ from: '', to: '' })
         resetSelection()
       }}
-      hint={FILTER_HINT}
+      hint="Filter diterapkan server-side sebelum pagination."
     >
       <MultiCheckboxFilter
         title="Status"
@@ -146,7 +147,7 @@ export default function CashPaymentListPage() {
           setDateRange(next)
           resetSelection()
         }}
-        note="Berlaku pada data halaman yang sedang dimuat."
+        note="Diterapkan ke seluruh dataset."
       />
     </FilterSidebar>
   )
@@ -165,15 +166,17 @@ export default function CashPaymentListPage() {
           </PermissionGuard>
         }
       >
-        <DataTable
+        <Input type="search" value={search} onChange={(event) => { setSearch(event.target.value); resetSelection() }} placeholder="Cari nomor, kontak, atau catatan..." aria-label="Cari pengeluaran kas" className="mb-3 h-9 max-w-md text-[13px]" />
+        {query.isError ? <QueryErrorState error={query.error} onRetry={() => void query.refetch()} title="Pengeluaran kas gagal dimuat" /> : <DataTable
           data={visibleRows}
           columns={columns}
           totalRows={data?.meta.total ?? 0}
           isLoading={isLoading}
           isFetching={isFetching}
-          pagination={{ pageIndex: page, pageSize: 25 }}
+          pagination={{ pageIndex: page, pageSize }}
           onPaginationChange={(p) => {
             setPage(p.pageIndex)
+            setPageSize(p.pageSize as 25 | 50 | 100)
             setSelectedRows([])
           }}
           selectedRows={selectedRows}
@@ -181,7 +184,7 @@ export default function CashPaymentListPage() {
           bulkActions={bulkActions}
           emptyTitle="Belum ada pengeluaran kas"
           emptyDescription="Catat pengeluaran kas atau pembayaran."
-        />
+        />}
       </WorkspaceLayout>
 
       <VoidConfirmDialog

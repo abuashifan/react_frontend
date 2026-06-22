@@ -224,6 +224,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____phase-25-progress-report.md
 | | |____phase-25-completion-report.md   (Phase 25 — completion & validation report)
 | | |____phase-26-progress-report.md     (Phase 26 — slice progress; Slice A done)
+| | |____phase-27-completion-report.md   (Phase 27 — 20/20 finding verified)
 | |____struktur_frontend.md
 |____.env.production.example   (Phase 24 — contoh VITE_API_BASE_URL produksi)
 |____deploy/
@@ -357,6 +358,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____authApi.ts
 | | | | |____companyApi.ts
 | | |____cash-bank/
+| | | |____components/
+| | | | |____CashAllocationTable.tsx
 | | | |____hooks/
 | | | | |____useCashBankList.ts
 | | | |____pages/
@@ -735,6 +738,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____period-lock.live.ts         # Phase 26 Slice C — live retest (status render)
 | | | |____fiscal-year.spec.ts         # Phase 26 Slice D — preview GET+id, close POST, blocker
 | | | |____fiscal-year.live.ts         # Phase 26 Slice D — live retest (status + preview GET)
+| | |____cash-bank/
+| | | |____cash-bank.spec.ts           # Phase 27 — route-mock contract/workflow coverage
 | | |____router/
 | | | |____deep-link.spec.ts          # A13-059
 | | | |____error-containment.spec.ts  # A13-254

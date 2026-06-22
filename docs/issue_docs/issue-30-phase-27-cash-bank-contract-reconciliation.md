@@ -1,7 +1,7 @@
 # Issue-30 — Phase 27 Cash and Bank Contract and Reconciliation
 
 Tanggal dibuat: 2026-06-21  
-Status: Planned  
+Status: Implemented and validated
 Phase: 27  
 Severity tertinggi: Critical  
 Finding canonical: A13-116..135  
@@ -76,3 +76,16 @@ tests/Feature/*
 - verify line refresh policy;
 - verify permission and lifecycle states.
 
+## Implementation Result
+
+- Frontend request/response adapters normalize document numbers, account relations,
+  numeric values, and reconciliation journal-line DTOs.
+- Receipt/payment lines are RHF/Zod fields with required account/amount validation,
+  realtime allocation totals, financial dimensions, and server error mapping.
+- Draft receipt/payment/transfer documents use canonical PATCH updates.
+- Cash/bank selectors use `/cash-bank/accounts`.
+- Reconciliation refresh preserves cleared state, cleared date is period-bounded,
+  and finalize/reopen lifecycle is available.
+- Lists use server-side search/filter/pagination and explicit query error states.
+
+Evidence: `../tracking/phase-27-completion-report.md`.

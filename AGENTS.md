@@ -201,6 +201,7 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 | 24 | Test Foundation, Runtime Containment & Router Canonical | ✅ Done | `prompt-phase-24-remediation-foundation-router.md` | A13-059/254/271 — `createBrowserRouter`, `RouteErrorBoundary`+telemetry, hapus opsi rememberMe (session tunggal), Playwright foundation. Open item: SPA fallback host produksi (issue-27 §6.5). Lihat `tracking/phase-24-completion-report.md` |
 | 25 | Master Data & Account Mapping Canonical | ✅ Done | `prompt-phase-25-master-data-account-mapping-canonical.md` | Canonical list/form/lifecycle seluruh resource; account mapping atomic bulk PATCH; default payment-term policy; bulk lifecycle 6 simple master. Gate hijau: build/lint, Playwright route-mock 5/5, backend 36/36, **live 2/2 (login+render 6 page + bulk deactivate end-to-end)**. Lihat `tracking/phase-25-completion-report.md`. |
 | 26 | Accounting Foundation & Opening Balance | ✅ Done | `prompt-phase-26-accounting-foundation-opening-balance.md` | **Slice A–D DONE.** A Jurnal (A13-047/049..058/094..100/096), B Saldo Awal (A13-085..093), C Period Lock (A13-101..106), D Tahun Fiskal (A13-107..115: endpoint id+method canonical, preview-before-close, payload canonical, permission, blocker, confirm). Gate: build/lint, route-mock 27/27, backend Journal 12/12 + FY 6/6, live 6/6. A13-048 di-defer ke Reports. Lihat `tracking/phase-26-progress-report.md`. |
+| 27 | Cash & Bank Contract and Reconciliation | ✅ Done | `prompt-phase-27-cash-bank-contract-reconciliation.md` | A13-116..135: adapter transaksi/reconciliation, line validation, draft edit, server filter, safe refresh, cleared cutoff, finalize/reopen. Gate: build/lint, route-mock 5/5, backend CashBank 25/25 (131 assertions), Pint. Lihat `tracking/phase-27-completion-report.md`. |
 
 ---
 
@@ -218,21 +219,25 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 ### 6C. Build Status
 
 ```
-Terakhir dicek  : 2026-06-21 (Phase 25 done — automated gate; account mapping + bulk simple-master)
+Terakhir dicek  : 2026-06-21 (Phase 27 done — Cash & Bank contract/reconciliation)
 npm run build   : ✅ 0 error
-npm run lint    : ✅ 0 error; 34 warning RHF watch/useMemo legacy
+npm run lint    : ✅ 0 error; 28 warning RHF watch/useMemo legacy
                   di file-file yang tidak diubah pada phase ini
 Playwright      : ✅ Chromium route-mock; 12/12 tests/e2e/router (A13-059/254/271)
                   pada matrix 1440×900 / 1180×708 / 1024×656 / 390×844.
                   Foundation permanen: playwright.config.ts + tests/e2e/fixtures
                   ✅ Phase 25 master-data route-mock 5/5 (account-mapping + core incl. bulk).
                   ✅ Phase 25 live 2/2 (PLAYWRIGHT_LIVE=1) terhadap app.finlite.my.id.
-Backend test    : ✅ MasterData scope 36/36 (280 assertions).
+                  ✅ Phase 27 Cash & Bank route-mock 5/5.
+Backend test    : ✅ CashBank scope 25/25 (131 assertions).
 ```
 
 ---
 
 ### 6D. Next Action
+
+> Next canonical implementation: Phase 28 — Sales Transaction Contract
+> (A13-136..154), setelah Phase 27 tervalidasi.
 
 > Roadmap aktif adalah GAP-10 Phase 24–39. Tabel Audit-12 berikut hanya riwayat phase yang sudah selesai.
 

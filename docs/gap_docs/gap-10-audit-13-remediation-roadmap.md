@@ -437,6 +437,9 @@ Exit:
 
 ### Phase 27 — Cash & Bank Contract and Reconciliation
 
+Status: ✅ Completed and validated (2026-06-21). Evidence:
+`../tracking/phase-27-completion-report.md`.
+
 Tujuan:
 
 - memastikan penerimaan, pengeluaran, transfer, dan rekonsiliasi memiliki DTO dan accounting workflow yang benar.
@@ -981,27 +984,11 @@ Setelah phase:
 
 ## 10. Immediate Next Action
 
-Phase 24 kini sudah punya issue detail canonical:
+Phase 24–27 telah selesai dan tervalidasi. Lanjutkan Phase 28:
 
 ```text
-docs/issue_docs/issue-27-phase-24-runtime-router-foundation.md
+docs/issue_docs/issue-31-phase-28-sales-transaction-contract.md
+docs/prompt/prompt-phase-28-sales-transaction-contract.md
 ```
 
-Proses kerja sekarang:
-
-1. baca issue Phase 24;
-2. buat prompt Phase 24;
-3. implementasikan scope kecil dan terukur;
-4. jalankan mandatory validation gate Spec-37 §17.1;
-5. update A13-059, A13-254, dan A13-271 satu per satu;
-6. hanya setelah itu lanjut ke Phase 25.
-
-Scope teknis Phase 24:
-
-1. buat Playwright regression foundation;
-2. pasang production-safe route error boundary;
-3. tetapkan keputusan Browser Router/deployment fallback;
-4. buat backend critical-route contract smoke test;
-5. jangan mencampur phase ini dengan adapter transaksi.
-
-Setelah Phase 24 lulus dan divalidasi, lanjut Phase 25 karena Master Data dan Account Mapping adalah dependency untuk Accounting, transaksi, Fixed Assets, dan Period-End.
+Scope canonical berikutnya adalah A13-136..154 (seluruh transaksi Sales).

@@ -1,7 +1,7 @@
 # Prompt — Phase 27: Cash and Bank Contract and Reconciliation
 
 **Phase**: 27  
-**Status**: Planned  
+**Status**: Completed
 **Referensi utama**: `../issue_docs/issue-30-phase-27-cash-bank-contract-reconciliation.md`  
 **Spec canonical**: `../praproduction_docs/spec-37-audit-13-remediation.md`  
 **Roadmap canonical**: `../gap_docs/gap-10-audit-13-remediation-roadmap.md`  
