@@ -13,17 +13,29 @@ import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { QueryErrorState } from '@/components/shared/feedback/QueryErrorState'
+import { ConfirmDialog } from '@/components/shared/feedback/ConfirmDialog'
+import { SourceDocumentPicker } from '../components/SourceDocumentPicker'
+import { Button } from '@/components/ui/button'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useDeliveryOrder, useDeliveryOrderMutations } from '../hooks/useDeliveryOrderList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { deliveryOrderSchema, type DeliveryOrderFormValues } from '../schemas/deliveryOrderSchema'
 import type { DocumentStatus } from '@/types/common.types'
+import type { SourceDocumentItem } from '../services/sourceDocumentApi'
+import { validateSalesLines } from '../services/salesFormValidation'
 
 interface EditableLine {
   product_id: number | null
   description: string
   quantity: number
+  warehouse_id?: number | null
+  sales_order_line_id?: number
+  source_line_type?: string
+  source_line_id?: number
 }
 
 const DEFAULT_LINE: EditableLine = { product_id: null, description: '', quantity: 1 }
@@ -35,21 +47,39 @@ export default function DeliveryOrderFormPage() {
   const { toast } = useToast()
   const { can } = usePermission()
 
-  const { data, isLoading } = useDeliveryOrder(id ? Number(id) : undefined)
+  const query = useDeliveryOrder(id ? Number(id) : undefined)
+  const { data, isLoading } = query
   const order = data?.data
   const { create, update, ready, ship, deliver, cancel, void: voidDo } = useDeliveryOrderMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<DeliveryOrderFormValues>({
+  const { control, getValues, register, handleSubmit, setError, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<DeliveryOrderFormValues>({
     resolver: zodResolver(deliveryOrderSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const [lineErrors, setLineErrors] = useState<string[]>([])
+  const [isSourceOpen, setSourceOpen] = useState(false)
+  const [salesOrderId, setSalesOrderId] = useState<number | null>(null)
   const [isVoidOpen, setVoidOpen] = useState(false)
   const [isDeliverConfirming, setDeliverConfirming] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<'ready' | 'ship' | 'deliver' | 'cancel' | null>(null)
 
   const status = (order?.status ?? 'draft') as DocumentStatus
   const isEditable = isCreate || order?.status === 'draft'
+
+  const formDraft = usePersistentFormDraft<DeliveryOrderFormValues, { lines: EditableLine[]; salesOrderId: number | null }>({
+    draftKey: `sales.delivery-order.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: { lines, salesOrderId },
+    onRestoreExtra: (extra) => {
+      setLines(extra.lines.length ? extra.lines : [{ ...DEFAULT_LINE }])
+      setSalesOrderId(extra.salesOrderId)
+    },
+    enabled: isEditable,
+  })
 
   useEffect(() => {
     if (order) {
@@ -69,22 +99,47 @@ export default function DeliveryOrderFormPage() {
   }, [order, reset])
 
   const handleSaveDraft = handleSubmit(async (values) => {
+    const nextLineErrors = validateSalesLines(lines.map((line) => ({ ...line, unit_price: 0 })))
+    setLineErrors(nextLineErrors)
+    if (nextLineErrors.length > 0) return
     try {
+      const payload = { ...values, sales_order_id: salesOrderId ?? undefined, lines }
       if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines })
+        const res = await create.mutateAsync(payload)
+        formDraft.clearDraft()
         toast.success('Delivery Order berhasil dibuat.')
         navigate(`/sales/delivery-orders/${res.data.id}`)
       } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
+        await update.mutateAsync({ id: Number(id), payload })
+        formDraft.clearDraft()
         toast.success('Delivery Order berhasil diperbarui.')
       }
-    } catch { toast.error('Gagal menyimpan Delivery Order.') }
+    } catch (error) {
+      applyApiValidationErrors(error, setError, { delivery_date: 'date' })
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan Delivery Order.'))
+    }
   })
+
+  const handleSourceSelect = (source: SourceDocumentItem) => {
+    setSalesOrderId(source.source_id)
+    if (typeof source.header.customer_id === 'number') setValue('customer_id', source.header.customer_id)
+    setLines(source.lines.map((line) => ({
+      product_id: typeof line.product_id === 'number' ? line.product_id : null,
+      description: String(line.description ?? ''),
+      quantity: Number(line.remaining_quantity ?? line.quantity ?? 0),
+      warehouse_id: typeof line.warehouse_id === 'number' ? line.warehouse_id : null,
+      sales_order_line_id: Number(line.sales_order_line_id ?? line.id),
+      source_line_type: String(line.source_line_type ?? 'sales_order_line'),
+      source_line_id: Number(line.source_line_id ?? line.id),
+    })))
+    setLineErrors([])
+  }
 
   const handleReady = async () => {
     try {
       await ready.mutateAsync(Number(id))
       toast.success('DO siap dikirim.')
+      setConfirmAction(null)
     } catch { toast.error('Gagal mengubah status DO.') }
   }
 
@@ -92,6 +147,7 @@ export default function DeliveryOrderFormPage() {
     try {
       await ship.mutateAsync(Number(id))
       toast.success('DO dalam pengiriman.')
+      setConfirmAction(null)
     } catch { toast.error('Gagal mengubah status DO.') }
   }
 
@@ -100,14 +156,16 @@ export default function DeliveryOrderFormPage() {
     try {
       await deliver.mutateAsync(Number(id))
       toast.success('Pengiriman berhasil dikonfirmasi.')
+      setConfirmAction(null)
     } catch { toast.error('Gagal mengkonfirmasi pengiriman.') }
     finally { setDeliverConfirming(false) }
   }
 
-  const handleCancel = async () => {
+  const handleCancel = async (reason: string) => {
     try {
-      await cancel.mutateAsync(Number(id))
+      await cancel.mutateAsync({ id: Number(id), reason })
       toast.success('DO dibatalkan.')
+      setConfirmAction(null)
     } catch { toast.error('Gagal membatalkan DO.') }
   }
 
@@ -118,23 +176,23 @@ export default function DeliveryOrderFormPage() {
   }
 
   const actions: DocumentActionButton[] = []
-  if (isEditable && can('sales.delivery-orders.create')) {
+  if (isEditable && can(isCreate ? 'sales.delivery_orders.create' : 'sales.delivery_orders.edit')) {
     actions.push({ id: 'save_draft', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
   }
   if (!isCreate) {
-    if (order?.status === 'draft' && can('sales.delivery-orders.update')) {
-      actions.push({ id: 'ready', label: 'Tandai Siap', variant: 'primary', onClick: () => void handleReady(), isLoading: ready.isPending })
+    if (order?.status === 'draft' && can('sales.delivery_orders.ship')) {
+      actions.push({ id: 'ready', label: 'Tandai Siap', variant: 'primary', onClick: () => setConfirmAction('ready'), isLoading: ready.isPending })
     }
-    if (order?.status === 'ready' && can('sales.delivery-orders.update')) {
-      actions.push({ id: 'ship', label: 'Kirim', variant: 'primary', onClick: () => void handleShip(), isLoading: ship.isPending })
+    if (order?.status === 'ready' && can('sales.delivery_orders.ship')) {
+      actions.push({ id: 'ship', label: 'Kirim', variant: 'primary', onClick: () => setConfirmAction('ship'), isLoading: ship.isPending })
     }
-    if (order?.status === 'shipped' && can('sales.delivery-orders.update')) {
-      actions.push({ id: 'deliver', label: 'Konfirmasi Terima', variant: 'primary', onClick: () => void handleDeliver(), isLoading: deliver.isPending || isDeliverConfirming })
+    if (order?.status === 'shipped' && can('sales.delivery_orders.deliver')) {
+      actions.push({ id: 'deliver', label: 'Konfirmasi Terima', variant: 'primary', onClick: () => setConfirmAction('deliver'), isLoading: deliver.isPending || isDeliverConfirming })
     }
-    if (['draft', 'ready', 'shipped'].includes(order?.status ?? '') && can('sales.delivery-orders.update')) {
-      actions.push({ id: 'cancel', label: 'Batalkan', variant: 'neutral', onClick: () => void handleCancel(), isLoading: cancel.isPending })
+    if (['draft', 'ready', 'shipped'].includes(order?.status ?? '') && can('sales.delivery_orders.cancel')) {
+      actions.push({ id: 'cancel', label: 'Batalkan', variant: 'neutral', onClick: () => setConfirmAction('cancel'), isLoading: cancel.isPending })
     }
-    if (order?.status === 'delivered' && can('sales.delivery-orders.void')) {
+    if (order?.status === 'delivered' && can('sales.delivery_orders.void')) {
       actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
     }
   }
@@ -182,6 +240,14 @@ export default function DeliveryOrderFormPage() {
     )
   }
 
+  if (!isCreate && query.isError) {
+    return (
+      <FormLayout title="Delivery Order" breadcrumb={[{ label: 'Sales' }, { label: 'Delivery Order', path: '/sales/delivery-orders' }, { label: 'Gagal dimuat' }]}>
+        <QueryErrorState error={query.error} onRetry={() => void query.refetch()} title="Delivery Order gagal dimuat" />
+      </FormLayout>
+    )
+  }
+
   return (
     <>
       <FormLayout
@@ -197,6 +263,13 @@ export default function DeliveryOrderFormPage() {
       >
         <div className="space-y-3">
           <FormSection title="Header">
+            {isCreate && can('sales.delivery_orders.create') && (
+              <div className="md:col-span-2">
+                <Button type="button" variant="outline" className="h-9 text-[13px]" onClick={() => setSourceOpen(true)}>
+                  {salesOrderId ? 'Ganti Sales Order Sumber' : 'Pilih Sales Order Sumber'}
+                </Button>
+              </div>
+            )}
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Customer <span className="text-red-500">*</span>
@@ -257,10 +330,11 @@ export default function DeliveryOrderFormPage() {
               columns={columns}
               onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
               onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}
-              onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))}
+              onUpdate={(i, field, value) => { setLineErrors([]); setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l)) }}
               isReadOnly={!isEditable}
               addLabel="Tambah Item"
             />
+            {lineErrors.length > 0 && <div role="alert" className="mt-2 space-y-1 text-[11px] text-red-600">{lineErrors.map((message) => <p key={message}>{message}</p>)}</div>}
           </div>
         </div>
       </FormLayout>
@@ -271,6 +345,31 @@ export default function DeliveryOrderFormPage() {
         onConfirm={(reason) => void handleVoid(reason)}
         documentNumber={order?.number ?? ''}
         isLoading={voidDo.isPending}
+      />
+      <SourceDocumentPicker
+        isOpen={isSourceOpen}
+        onClose={() => setSourceOpen(false)}
+        onSelect={handleSourceSelect}
+        targetType="sales.delivery-orders"
+        sourceType="sales_order"
+        customerId={watch('customer_id') ?? undefined}
+        title="Pilih Sales Order"
+      />
+      <ConfirmDialog
+        open={confirmAction !== null}
+        onOpenChange={(open) => !open && setConfirmAction(null)}
+        title={confirmAction === 'ready' ? 'Tandai Siap Dikirim' : confirmAction === 'ship' ? 'Kirim Delivery Order' : confirmAction === 'deliver' ? 'Konfirmasi Barang Diterima' : 'Batalkan Delivery Order'}
+        description="Perubahan status pengiriman memengaruhi kuantitas source dan kelayakan invoice."
+        confirmLabel={confirmAction === 'ready' ? 'Tandai Siap' : confirmAction === 'ship' ? 'Kirim' : confirmAction === 'deliver' ? 'Konfirmasi Terima' : 'Batalkan'}
+        variant={confirmAction === 'cancel' ? 'destructive' : 'default'}
+        requireReason={confirmAction === 'cancel'}
+        isLoading={ready.isPending || ship.isPending || deliver.isPending || cancel.isPending}
+        onConfirm={(reason) => {
+          if (confirmAction === 'ready') void handleReady()
+          if (confirmAction === 'ship') void handleShip()
+          if (confirmAction === 'deliver') void handleDeliver()
+          if (confirmAction === 'cancel' && reason) void handleCancel(reason)
+        }}
       />
     </>
   )

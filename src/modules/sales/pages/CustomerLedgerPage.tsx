@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { QueryErrorState } from '@/components/shared/feedback/QueryErrorState'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
@@ -23,13 +24,14 @@ export default function CustomerLedgerPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
 
-  const { data, isLoading } = useCustomerLedger(customerId, {
-    date_from: dateFrom || undefined,
-    date_to: dateTo || undefined,
+  const query = useCustomerLedger(customerId, {
+    start_date: dateFrom || undefined,
+    end_date: dateTo || undefined,
   })
 
-  const entries = data?.data ?? []
-  const lastBalance = entries.length > 0 ? entries[entries.length - 1].running_balance : 0
+  const ledger = query.data?.data
+  const entries = ledger?.entries ?? []
+  const lastBalance = ledger?.ending_balance ?? 0
 
   return (
     <WorkspaceLayout
@@ -56,50 +58,54 @@ export default function CustomerLedgerPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-[#d9e2e5] bg-white">
-        <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse text-[13px]">
-            <thead>
-              <tr className="bg-[#eeeeee]">
-                <th className="px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b]">Tanggal</th>
-                <th className="px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b]">Tipe</th>
-                <th className="px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b]">Nomor</th>
-                <th className="px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b]">Keterangan</th>
-                <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">Debit</th>
-                <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">Kredit</th>
-                <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">Saldo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr><td colSpan={7} className="px-3 py-8 text-center text-[#94a3b8]">Memuat data...</td></tr>
-              ) : !customerId ? (
-                <tr><td colSpan={7} className="px-3 py-8 text-center text-[#94a3b8]">Pilih customer untuk melihat buku besarnya.</td></tr>
-              ) : entries.length === 0 ? (
-                <tr><td colSpan={7} className="px-3 py-8 text-center text-[#94a3b8]">Tidak ada transaksi pada periode ini.</td></tr>
-              ) : (
-                entries.map((entry) => (
-                  <tr key={entry.id} className="border-b border-[#f1f5f9] last:border-b-0 hover:bg-[#f8fbfc]">
-                    <td className="px-3 py-2.5 text-[#64748b]">{formatDate(entry.date)}</td>
-                    <td className="px-3 py-2.5 text-[12px] text-[#64748b]">{TYPE_LABELS[entry.type]}</td>
-                    <td className="px-3 py-2.5 font-medium text-[#24323a]">{entry.number}</td>
-                    <td className="px-3 py-2.5 text-[#64748b]">{entry.description}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">
-                      {entry.debit > 0 ? formatCurrency(entry.debit) : <span className="text-[#e2e8f0]">-</span>}
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-[#065F46]">
-                      {entry.credit > 0 ? formatCurrency(entry.credit) : <span className="text-[#e2e8f0]">-</span>}
-                    </td>
-                    <td className={cn('px-3 py-2.5 text-right tabular-nums font-medium', entry.running_balance < 0 ? 'text-[#991B1B]' : 'text-[#24323a]')}>
-                      {formatCurrency(Math.abs(entry.running_balance))}{entry.running_balance < 0 ? ' (K)' : ''}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {query.isError ? (
+        <QueryErrorState error={query.error} onRetry={() => void query.refetch()} title="Buku Besar Customer gagal dimuat" />
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-[#d9e2e5] bg-white">
+          <div className="overflow-x-auto">
+            <table className="min-w-full border-collapse text-[13px]">
+              <thead>
+                <tr className="bg-[#eeeeee]">
+                  <th className="px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b]">Tanggal</th>
+                  <th className="px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b]">Tipe</th>
+                  <th className="px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b]">Nomor</th>
+                  <th className="px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b]">Keterangan</th>
+                  <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">Debit</th>
+                  <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">Kredit</th>
+                  <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">Saldo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {query.isLoading ? (
+                  <tr><td colSpan={7} className="px-3 py-8 text-center text-[#94a3b8]">Memuat data...</td></tr>
+                ) : !customerId ? (
+                  <tr><td colSpan={7} className="px-3 py-8 text-center text-[#94a3b8]">Pilih customer untuk melihat buku besarnya.</td></tr>
+                ) : entries.length === 0 ? (
+                  <tr><td colSpan={7} className="px-3 py-8 text-center text-[#94a3b8]">Tidak ada transaksi pada periode ini.</td></tr>
+                ) : (
+                  entries.map((entry) => (
+                    <tr key={entry.id} className="border-b border-[#f1f5f9] last:border-b-0 hover:bg-[#f8fbfc]">
+                      <td className="px-3 py-2.5 text-[#64748b]">{formatDate(entry.date)}</td>
+                      <td className="px-3 py-2.5 text-[12px] text-[#64748b]">{TYPE_LABELS[entry.type]}</td>
+                      <td className="px-3 py-2.5 font-medium text-[#24323a]">{entry.number}</td>
+                      <td className="px-3 py-2.5 text-[#64748b]">{entry.description}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">
+                        {entry.debit > 0 ? formatCurrency(entry.debit) : <span className="text-[#e2e8f0]">-</span>}
+                      </td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-[#065F46]">
+                        {entry.credit > 0 ? formatCurrency(entry.credit) : <span className="text-[#e2e8f0]">-</span>}
+                      </td>
+                      <td className={cn('px-3 py-2.5 text-right tabular-nums font-medium', entry.running_balance < 0 ? 'text-[#991B1B]' : 'text-[#24323a]')}>
+                        {formatCurrency(Math.abs(entry.running_balance))}{entry.running_balance < 0 ? ' (K)' : ''}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       {entries.length > 0 && (
         <div className="mt-3 flex justify-end">

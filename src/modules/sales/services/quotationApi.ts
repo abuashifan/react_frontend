@@ -1,5 +1,6 @@
 import { http } from '@/services/http'
 import { adaptSalesListRows } from './salesListAdapter'
+import { adaptSalesDocument, adaptSalesPayload } from './salesTransactionAdapter'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type { SelectOption } from '@/types/common.types'
 import type {
@@ -15,14 +16,16 @@ export const quotationApi = {
     return { ...res, data: adaptSalesListRows(res.data, { date: 'quotation_date', expiry_date: 'valid_until' }) }
   },
 
-  get: (id: number) =>
-    http.get<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}`),
+  get: async (id: number) => {
+    const res = await http.get<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}`)
+    return { ...res, data: adaptSalesDocument<SalesQuotation>(res.data, { dateFields: ['quotation_date'], expiryFields: ['valid_until'] }) }
+  },
 
   create: (payload: CreateQuotationPayload) =>
-    http.post<unknown, ApiResponse<SalesQuotation>>('/sales/quotations', payload),
+    http.post<unknown, ApiResponse<SalesQuotation>>('/sales/quotations', adaptSalesPayload(payload, { dateField: 'quotation_date', expiryField: 'valid_until' })),
 
   update: (id: number, payload: UpdateQuotationPayload) =>
-    http.patch<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}`, payload),
+    http.patch<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}`, adaptSalesPayload(payload, { dateField: 'quotation_date', expiryField: 'valid_until' })),
 
   send: (id: number) =>
     http.patch<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}/send`),
@@ -33,11 +36,11 @@ export const quotationApi = {
   accept: (id: number) =>
     http.patch<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}/accept`),
 
-  reject: (id: number) =>
-    http.patch<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}/reject`),
+  reject: (id: number, reason: string) =>
+    http.patch<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}/reject`, { reason }),
 
-  cancel: (id: number) =>
-    http.patch<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}/cancel`),
+  cancel: (id: number, reason: string) =>
+    http.patch<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}/cancel`, { reason }),
 
   search: async (query: string): Promise<SelectOption<number>[]> => {
     const res = await http.get<unknown, PaginatedResponse<SalesQuotation>>('/sales/quotations', {

@@ -38,6 +38,11 @@ export interface SalesInvoice {
   paid_amount: number
   returned_amount: number
   balance_due: number
+  applied_down_payment_amount?: number
+  available_deposit_summary?: {
+    unapplied_total: number
+    deposits: Array<{ id: number; deposit_number: string; remaining_amount: number }>
+  }
   lines: SalesInvoiceLine[]
   created_at: string
   updated_at: string
@@ -62,6 +67,12 @@ export interface SalesInvoiceLinePayload {
   unit_price: number
   discount_percent?: number
   tax_percent?: number
+  sales_order_line_id?: number
+  delivery_order_line_id?: number
+  proforma_invoice_line_id?: number
+  warehouse_id?: number | null
+  source_line_type?: string
+  source_line_id?: number
 }
 
 export interface CreateSalesInvoicePayload {
@@ -73,6 +84,7 @@ export interface CreateSalesInvoicePayload {
   delivery_order_id?: number | null
   proforma_id?: number | null
   notes?: string | null
+  applied_down_payment_amount?: number
   lines: SalesInvoiceLinePayload[]
 }
 

@@ -666,6 +666,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____salesReceiptSchema.ts
 | | | | |____salesReturnSchema.ts
 | | | |____services/
+| | | | |____arAdapter.ts
 | | | | |____arApi.ts
 | | | | |____customerDepositApi.ts
 | | | | |____deliveryOrderApi.ts
@@ -676,6 +677,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____salesReceiptApi.ts
 | | | | |____salesReturnApi.ts
 | | | | |____salesListAdapter.ts          (Phase 28 — adapter DTO list sales: date/relation canonical)
+| | | | |____salesFormValidation.ts       (Phase 28 — validasi line transaksi Sales)
+| | | | |____salesTransactionAdapter.ts   (Phase 28 — adapter request/detail transaksi Sales)
 | | | |____sourceDocumentApi.ts
 | | | |____types/
 | | | | |____ar.types.ts
@@ -742,6 +745,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____fiscal-year.live.ts         # Phase 26 Slice D — live retest (status + preview GET)
 | | |____cash-bank/
 | | | |____cash-bank.spec.ts           # Phase 27 — route-mock contract/workflow coverage
+| | |____sales/
+| | | |____sales-transaction.spec.ts    # Phase 28 — source, detail, lifecycle, error regression
 | | |____router/
 | | | |____deep-link.spec.ts          # A13-059
 | | | |____error-containment.spec.ts  # A13-254

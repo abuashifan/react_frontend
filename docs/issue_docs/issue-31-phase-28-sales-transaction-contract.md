@@ -1,7 +1,7 @@
 # Issue-31 — Phase 28 Sales Transaction Contract
 
 Tanggal dibuat: 2026-06-21  
-Status: Planned  
+Status: Completed and validated (2026-06-22)  
 Phase: 28  
 Severity tertinggi: Critical  
 Finding canonical: A13-136..154  
@@ -79,3 +79,4 @@ tests/Feature/*
 - verify draft persistence;
 - verify error/not-found/permission states.
 
+Completion evidence: `../tracking/phase-28-completion-report.md`.

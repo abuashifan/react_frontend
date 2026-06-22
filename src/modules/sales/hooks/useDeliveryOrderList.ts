@@ -30,7 +30,7 @@ export function useDeliveryOrderMutations() {
     ready: useMutation({ mutationFn: (id: number) => deliveryOrderApi.ready(id), onSuccess: invalidate }),
     ship: useMutation({ mutationFn: (id: number) => deliveryOrderApi.ship(id), onSuccess: invalidate }),
     deliver: useMutation({ mutationFn: (id: number) => deliveryOrderApi.deliver(id), onSuccess: invalidate }),
-    cancel: useMutation({ mutationFn: (id: number) => deliveryOrderApi.cancel(id), onSuccess: invalidate }),
+    cancel: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => deliveryOrderApi.cancel(id, reason), onSuccess: invalidate }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => deliveryOrderApi.void(id, reason), onSuccess: invalidate }),
   }
 }

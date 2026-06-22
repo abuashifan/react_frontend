@@ -59,10 +59,10 @@ Bagian ini melacak status artefak dokumentasi remediation, bukan status implemen
 | Completion report Phase 27 | `../tracking/phase-27-completion-report.md` atau lokasi yang dipilih | ⏳ Belum dibuat | Dibuat setelah Phase 27 selesai |
 | Issue Phase 28 | `../issue_docs/issue-31-phase-28-sales-transaction-contract.md` | ✅ Ada | Issue detail Phase 28 |
 | Prompt Phase 28 | `../prompt/prompt-phase-28-sales-transaction-contract.md` | ✅ Ada | Checklist implementasi Phase 28 |
-| Completion report Phase 28 | `../tracking/phase-28-completion-report.md` atau lokasi yang dipilih | ⏳ Belum dibuat | Dibuat setelah Phase 28 selesai |
+| Completion report Phase 28 | `../tracking/phase-28-completion-report.md` | ✅ Ada | Phase 28 selesai dan divalidasi 2026-06-22 — A13-136..154 verified |
 | Issue Phase 29 | `../issue_docs/issue-32-phase-29-ar-subledger-reports.md` | ✅ Ada | Issue detail Phase 29 |
 | Prompt Phase 29 | `../prompt/prompt-phase-29-ar-subledger-reports.md` | ✅ Ada | Checklist implementasi Phase 29 |
-| Completion report Phase 29 | `../tracking/phase-29-completion-report.md` atau lokasi yang dipilih | ⏳ Belum dibuat | Dibuat setelah Phase 29 selesai |
+| Completion report Phase 29 | `../tracking/phase-29-completion-report.md` | ✅ Ada | Phase 29 selesai & tervalidasi (A13-155..160 verified) |
 | Issue Phase 30 | `../issue_docs/issue-33-phase-30-purchase-transaction-contract.md` | ✅ Ada | Issue detail Phase 30 |
 | Prompt Phase 30 | `../prompt/prompt-phase-30-purchase-transaction-contract.md` | ✅ Ada | Checklist implementasi Phase 30 |
 | Completion report Phase 30 | `../tracking/phase-30-completion-report.md` atau lokasi yang dipilih | ⏳ Belum dibuat | Dibuat setelah Phase 30 selesai |
@@ -476,6 +476,9 @@ Exit:
 ---
 
 ### Phase 28 — Sales Transaction Contract
+
+Status: ✅ Completed and validated (2026-06-22). Evidence:
+`../tracking/phase-28-completion-report.md`.
 
 Tujuan:
 
@@ -984,11 +987,12 @@ Setelah phase:
 
 ## 10. Immediate Next Action
 
-Phase 24–27 telah selesai dan tervalidasi. Lanjutkan Phase 28:
+Phase 24–29 telah selesai dan tervalidasi. Lanjutkan Phase 30 (AP subledger & reports):
 
 ```text
-docs/issue_docs/issue-31-phase-28-sales-transaction-contract.md
-docs/prompt/prompt-phase-28-sales-transaction-contract.md
+docs/issue_docs/issue-33-phase-30-ap-subledger-reports.md (jika tersedia)
+docs/prompt/prompt-phase-30-ap-subledger-reports.md (jika tersedia)
 ```
 
-Scope canonical berikutnya adalah A13-136..154 (seluruh transaksi Sales).
+Scope canonical berikutnya adalah A13-180..182 dkk (AP subledger dan reports),
+memetakan ulang pola adapter/cutoff/permission Phase 29 ke entity vendor/bill.

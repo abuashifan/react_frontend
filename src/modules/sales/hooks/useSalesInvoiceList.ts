@@ -30,7 +30,7 @@ export function useSalesInvoiceMutations() {
     createFromProforma: useMutation({ mutationFn: (proformaId: number) => salesInvoiceApi.createFromProforma(proformaId), onSuccess: invalidate }),
     update: useMutation({ mutationFn: ({ id, payload }: { id: number; payload: UpdateSalesInvoicePayload }) => salesInvoiceApi.update(id, payload), onSuccess: invalidate }),
     approve: useMutation({ mutationFn: (id: number) => salesInvoiceApi.approve(id), onSuccess: invalidate }),
-    post: useMutation({ mutationFn: (id: number) => salesInvoiceApi.post(id), onSuccess: invalidate }),
+    post: useMutation({ mutationFn: ({ id, appliedDownPaymentAmount }: { id: number; appliedDownPaymentAmount?: number }) => salesInvoiceApi.post(id, appliedDownPaymentAmount), onSuccess: invalidate }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => salesInvoiceApi.void(id, reason), onSuccess: invalidate }),
   }
 }

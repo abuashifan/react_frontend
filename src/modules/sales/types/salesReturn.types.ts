@@ -9,6 +9,7 @@ export interface SalesReturnLine {
   unit_price: number
   subtotal: number
   sales_invoice_line_id?: number | null
+  delivery_order_line_id?: number | null
 }
 
 export interface SalesReturn {
@@ -47,6 +48,10 @@ export interface SalesReturnLinePayload {
   quantity: number
   unit_price: number
   sales_invoice_line_id?: number | null
+  delivery_order_line_id?: number | null
+  warehouse_id?: number | null
+  source_line_type?: string
+  source_line_id?: number
 }
 
 export interface CreateSalesReturnPayload {

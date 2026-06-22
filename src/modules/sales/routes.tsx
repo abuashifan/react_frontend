@@ -42,9 +42,9 @@ export const salesRoutes = [
   { path: '/sales/orders/:id', element: guard('sales.orders.view', <SalesOrderFormPage />) },
 
   // Delivery Order
-  { path: '/sales/delivery-orders', element: guard('sales.delivery-orders.view', <DeliveryOrderListPage />) },
-  { path: '/sales/delivery-orders/create', element: guard('sales.delivery-orders.create', <DeliveryOrderFormPage />) },
-  { path: '/sales/delivery-orders/:id', element: guard('sales.delivery-orders.view', <DeliveryOrderFormPage />) },
+  { path: '/sales/delivery-orders', element: guard('sales.delivery_orders.view', <DeliveryOrderListPage />) },
+  { path: '/sales/delivery-orders/create', element: guard('sales.delivery_orders.create', <DeliveryOrderFormPage />) },
+  { path: '/sales/delivery-orders/:id', element: guard('sales.delivery_orders.view', <DeliveryOrderFormPage />) },
 
   // Proforma Invoice
   { path: '/sales/proformas', element: guard('sales.proformas.view', <ProformaListPage />) },
@@ -74,7 +74,7 @@ export const salesRoutes = [
   // AR Summary
   { path: '/sales/ar/summary', element: guard('sales.ar.view', <ArSummaryPage />) },
   { path: '/sales/ar/aging', element: guard('sales.ar.view', <ArAgingPage />) },
-  { path: '/sales/ar/reconciliation', element: guard('sales.ar.view', <ArReconciliationPage />) },
+  { path: '/sales/ar/reconciliation', element: guard('sales.ar.reconcile', <ArReconciliationPage />) },
   { path: '/sales/ar/customer-ledger', element: guard('sales.ar.view', <CustomerLedgerPage />) },
   { path: '/sales/ar/customer-ledger/:customerId', element: guard('sales.ar.view', <CustomerLedgerPage />) },
   { path: '/sales/ar/invoice-ledger', element: guard('sales.ar.view', <InvoiceLedgerPage />) },

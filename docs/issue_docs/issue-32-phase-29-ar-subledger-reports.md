@@ -1,7 +1,7 @@
 # Issue-32 — Phase 29 AR Subledger and Reports
 
 Tanggal dibuat: 2026-06-21  
-Status: Planned  
+Status: Done (2026-06-22) — A13-155..160 verified, lihat `../tracking/phase-29-completion-report.md`  
 Phase: 29  
 Severity tertinggi: Critical  
 Finding canonical: A13-155..160  

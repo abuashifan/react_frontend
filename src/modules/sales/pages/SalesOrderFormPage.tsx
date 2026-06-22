@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -13,12 +13,20 @@ import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { QueryErrorState } from '@/components/shared/feedback/QueryErrorState'
+import { ConfirmDialog } from '@/components/shared/feedback/ConfirmDialog'
+import { SourceDocumentPicker } from '../components/SourceDocumentPicker'
+import { Button } from '@/components/ui/button'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useSalesOrder, useSalesOrderMutations } from '../hooks/useSalesOrderList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { salesOrderSchema, type SalesOrderFormValues } from '../schemas/salesOrderSchema'
 import type { DocumentStatus } from '@/types/common.types'
+import type { SourceDocumentItem } from '../services/sourceDocumentApi'
+import { validateSalesLines } from '../services/salesFormValidation'
 
 interface EditableLine {
   product_id: number | null
@@ -28,6 +36,9 @@ interface EditableLine {
   discount_percent: number
   delivered_quantity?: number
   invoiced_quantity?: number
+  quotation_line_id?: number
+  source_line_type?: string
+  source_line_id?: number
 }
 
 const DEFAULT_LINE: EditableLine = { product_id: null, description: '', quantity: 1, unit_price: 0, discount_percent: 0 }
@@ -46,16 +57,16 @@ function toOrderLine(line: EditableLine): Omit<EditableLine, 'delivered_quantity
 export default function SalesOrderFormPage() {
   const navigate = useNavigate()
   const { id } = useParams()
-  const [searchParams] = useSearchParams()
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
 
-  const { data, isLoading } = useSalesOrder(id ? Number(id) : undefined)
+  const query = useSalesOrder(id ? Number(id) : undefined)
+  const { data, isLoading } = query
   const order = data?.data
-  const { create, createFromQuotation, update, approve, confirm, cancel } = useSalesOrderMutations()
+  const { create, update, approve, confirm, cancel } = useSalesOrderMutations()
 
-  const { control, register, handleSubmit, setValue, reset, formState: { errors, isSubmitting } } = useForm<SalesOrderFormValues>({
+  const { control, getValues, register, handleSubmit, setError, setValue, reset, formState: { errors, isSubmitting } } = useForm<SalesOrderFormValues>({
     resolver: zodResolver(salesOrderSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -63,23 +74,27 @@ export default function SalesOrderFormPage() {
   const paymentTermId = useWatch({ control, name: 'payment_term_id' })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
-  const [isCreatingFromQuotation, setCreatingFromQuotation] = useState(false)
+  const [lineErrors, setLineErrors] = useState<string[]>([])
+  const [isSourceOpen, setSourceOpen] = useState(false)
+  const [quotationId, setQuotationId] = useState<number | null>(null)
+  const [confirmAction, setConfirmAction] = useState<'approve' | 'confirm' | 'cancel' | null>(null)
 
   const status = (order?.status ?? 'draft') as DocumentStatus
   const isEditable = isCreate || order?.status === 'draft'
   const subtotal = lines.reduce((s, l) => s + lineSubtotal(l), 0)
 
-  useEffect(() => {
-    const quotationId = searchParams.get('from_quotation')
-    if (quotationId && isCreate) {
-      const timer = window.setTimeout(() => setCreatingFromQuotation(true), 0)
-      createFromQuotation.mutateAsync(Number(quotationId))
-        .then((res) => navigate(`/sales/orders/${res.data.id}`, { replace: true }))
-        .catch(() => toast.error('Gagal membuat SO dari quotation.'))
-        .finally(() => setCreatingFromQuotation(false))
-      return () => window.clearTimeout(timer)
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const formDraft = usePersistentFormDraft<SalesOrderFormValues, { lines: EditableLine[]; quotationId: number | null }>({
+    draftKey: `sales.order.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: { lines, quotationId },
+    onRestoreExtra: (extra) => {
+      setLines(extra.lines.length ? extra.lines : [{ ...DEFAULT_LINE }])
+      setQuotationId(extra.quotationId)
+    },
+    enabled: isEditable,
+  })
 
   useEffect(() => {
     if (order) {
@@ -106,22 +121,48 @@ export default function SalesOrderFormPage() {
   }, [order, reset])
 
   const handleSaveDraft = handleSubmit(async (values) => {
+    const nextLineErrors = validateSalesLines(lines)
+    setLineErrors(nextLineErrors)
+    if (nextLineErrors.length > 0) return
     try {
+      const payload = { ...values, quotation_id: quotationId ?? undefined, lines: lines.map(toOrderLine) }
       if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines: lines.map(toOrderLine) })
+        const res = await create.mutateAsync(payload)
+        formDraft.clearDraft()
         toast.success('Sales Order berhasil dibuat.')
         navigate(`/sales/orders/${res.data.id}`)
       } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines: lines.map(toOrderLine) } })
+        await update.mutateAsync({ id: Number(id), payload })
+        formDraft.clearDraft()
         toast.success('Sales Order berhasil diperbarui.')
       }
-    } catch { toast.error('Gagal menyimpan Sales Order.') }
+    } catch (error) {
+      applyApiValidationErrors(error, setError, { order_date: 'date' })
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan Sales Order.'))
+    }
   })
+
+  const handleSourceSelect = (source: SourceDocumentItem) => {
+    setQuotationId(source.source_id)
+    if (typeof source.header.customer_id === 'number') setValue('customer_id', source.header.customer_id)
+    setLines(source.lines.map((line) => ({
+      product_id: typeof line.product_id === 'number' ? line.product_id : null,
+      description: String(line.description ?? ''),
+      quantity: Number(line.remaining_quantity ?? line.quantity ?? 0),
+      unit_price: Number(line.unit_price ?? 0),
+      discount_percent: line.discount_type === 'percent' ? Number(line.discount_value ?? 0) : 0,
+      quotation_line_id: Number(line.quotation_line_id ?? line.id),
+      source_line_type: String(line.source_line_type ?? 'sales_quotation_line'),
+      source_line_id: Number(line.source_line_id ?? line.id),
+    })))
+    setLineErrors([])
+  }
 
   const handleApprove = async () => {
     try {
       await approve.mutateAsync(Number(id))
       toast.success('Sales Order berhasil di-approve.')
+      setConfirmAction(null)
     } catch { toast.error('Gagal approve Sales Order.') }
   }
 
@@ -129,29 +170,31 @@ export default function SalesOrderFormPage() {
     try {
       await confirm.mutateAsync(Number(id))
       toast.success('Sales Order berhasil dikonfirmasi.')
+      setConfirmAction(null)
     } catch { toast.error('Gagal konfirmasi Sales Order.') }
   }
 
-  const handleCancel = async () => {
+  const handleCancel = async (reason: string) => {
     try {
-      await cancel.mutateAsync(Number(id))
+      await cancel.mutateAsync({ id: Number(id), reason })
       toast.success('Sales Order dibatalkan.')
+      setConfirmAction(null)
     } catch { toast.error('Gagal membatalkan Sales Order.') }
   }
 
   const actions: DocumentActionButton[] = []
-  if (isEditable && can('sales.orders.create')) {
+  if (isEditable && can(isCreate ? 'sales.orders.create' : 'sales.orders.edit')) {
     actions.push({ id: 'save_draft', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (order?.status === 'draft' && can('sales.orders.approve')) {
-      actions.push({ id: 'approve', label: 'Approve', variant: 'primary', onClick: () => void handleApprove(), isLoading: approve.isPending })
+      actions.push({ id: 'approve', label: 'Approve', variant: 'primary', onClick: () => setConfirmAction('approve'), isLoading: approve.isPending })
     }
     if (order?.status === 'approved' && can('sales.orders.approve')) {
-      actions.push({ id: 'confirm', label: 'Konfirmasi', variant: 'primary', onClick: () => void handleConfirm(), isLoading: confirm.isPending })
+      actions.push({ id: 'confirm', label: 'Konfirmasi', variant: 'primary', onClick: () => setConfirmAction('confirm'), isLoading: confirm.isPending })
     }
-    if (['draft', 'approved'].includes(order?.status ?? '') && can('sales.orders.update')) {
-      actions.push({ id: 'cancel', label: 'Batalkan', variant: 'destructive', onClick: () => void handleCancel(), isLoading: cancel.isPending })
+    if (['draft', 'approved'].includes(order?.status ?? '') && can('sales.orders.cancel')) {
+      actions.push({ id: 'cancel', label: 'Batalkan', variant: 'destructive', onClick: () => setConfirmAction('cancel'), isLoading: cancel.isPending })
     }
   }
 
@@ -230,7 +273,7 @@ export default function SalesOrderFormPage() {
     ] : []),
   ]
 
-  if (isCreatingFromQuotation || (!isCreate && isLoading)) {
+  if (!isCreate && isLoading) {
     return (
       <FormLayout title="Sales Order" breadcrumb={[{ label: 'Sales' }, { label: 'Sales Order', path: '/sales/orders' }, { label: 'Memuat...' }]}>
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
@@ -238,7 +281,16 @@ export default function SalesOrderFormPage() {
     )
   }
 
+  if (!isCreate && query.isError) {
+    return (
+      <FormLayout title="Sales Order" breadcrumb={[{ label: 'Sales' }, { label: 'Sales Order', path: '/sales/orders' }, { label: 'Gagal dimuat' }]}>
+        <QueryErrorState error={query.error} onRetry={() => void query.refetch()} title="Sales Order gagal dimuat" />
+      </FormLayout>
+    )
+  }
+
   return (
+    <>
     <FormLayout
       title={isCreate ? 'Buat Sales Order' : 'Sales Order'}
       documentNumber={order?.number}
@@ -252,6 +304,13 @@ export default function SalesOrderFormPage() {
     >
       <div className="space-y-3">
         <FormSection title="Header">
+          {isCreate && can('sales.orders.convert') && (
+            <div className="md:col-span-2">
+              <Button type="button" variant="outline" className="h-9 text-[13px]" onClick={() => setSourceOpen(true)}>
+                {quotationId ? 'Ganti Quotation Sumber' : 'Pilih Quotation Sumber'}
+              </Button>
+            </div>
+          )}
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
               Customer <span className="text-red-500">*</span>
@@ -312,14 +371,40 @@ export default function SalesOrderFormPage() {
             columns={columns}
             onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
             onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}
-            onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))}
+            onUpdate={(i, field, value) => { setLineErrors([]); setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l)) }}
             getSubtotal={lineSubtotal}
             isReadOnly={!isEditable}
             addLabel="Tambah Item"
           />
+          {lineErrors.length > 0 && <div role="alert" className="mt-2 space-y-1 text-[11px] text-red-600">{lineErrors.map((message) => <p key={message}>{message}</p>)}</div>}
           <FormSummary subtotal={subtotal} grandTotal={subtotal} />
         </div>
       </div>
     </FormLayout>
+    <SourceDocumentPicker
+      isOpen={isSourceOpen}
+      onClose={() => setSourceOpen(false)}
+      onSelect={handleSourceSelect}
+      targetType="sales.orders"
+      sourceType="sales_quotation"
+      customerId={customerId}
+      title="Pilih Quotation"
+    />
+    <ConfirmDialog
+      open={confirmAction !== null}
+      onOpenChange={(open) => !open && setConfirmAction(null)}
+      title={confirmAction === 'approve' ? 'Approve Sales Order' : confirmAction === 'confirm' ? 'Konfirmasi Sales Order' : 'Batalkan Sales Order'}
+      description="Perubahan status ini memengaruhi kelayakan dokumen turunan dan kuantitas yang dapat diproses."
+      confirmLabel={confirmAction === 'approve' ? 'Approve' : confirmAction === 'confirm' ? 'Konfirmasi' : 'Batalkan'}
+      variant={confirmAction === 'cancel' ? 'destructive' : 'default'}
+      requireReason={confirmAction === 'cancel'}
+      isLoading={approve.isPending || confirm.isPending || cancel.isPending}
+      onConfirm={(reason) => {
+        if (confirmAction === 'approve') void handleApprove()
+        if (confirmAction === 'confirm') void handleConfirm()
+        if (confirmAction === 'cancel' && reason) void handleCancel(reason)
+      }}
+    />
+    </>
   )
 }

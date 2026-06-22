@@ -29,7 +29,7 @@ export function useSalesOrderMutations() {
     update: useMutation({ mutationFn: ({ id, payload }: { id: number; payload: UpdateSalesOrderPayload }) => salesOrderApi.update(id, payload), onSuccess: invalidate }),
     approve: useMutation({ mutationFn: (id: number) => salesOrderApi.approve(id), onSuccess: invalidate }),
     confirm: useMutation({ mutationFn: (id: number) => salesOrderApi.confirm(id), onSuccess: invalidate }),
-    cancel: useMutation({ mutationFn: (id: number) => salesOrderApi.cancel(id), onSuccess: invalidate }),
+    cancel: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => salesOrderApi.cancel(id, reason), onSuccess: invalidate }),
     close: useMutation({ mutationFn: (id: number) => salesOrderApi.close(id), onSuccess: invalidate }),
   }
 }

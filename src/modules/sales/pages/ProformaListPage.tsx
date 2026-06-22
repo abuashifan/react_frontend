@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useDeferredValue, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
+import { QueryErrorState } from '@/components/shared/feedback/QueryErrorState'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useProformaList } from '../hooks/useProformaList'
@@ -20,15 +22,20 @@ const STATUSES: ProformaStatus[] = ['draft', 'issued', 'accepted', 'cancelled', 
 export default function ProformaListPage() {
   const navigate = useNavigate()
   const [page, setPage] = useState(0)
+  const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
+  const [search, setSearch] = useState('')
+  const deferredSearch = useDeferredValue(search)
   const [filterStatus, setFilterStatus] = useState<ProformaStatus | undefined>()
   const [filterCustomer, setFilterCustomer] = useState<number | null>(null)
 
-  const { data, isLoading, isFetching } = useProformaList({
+  const query = useProformaList({
     page: page + 1,
-    per_page: 25,
+    per_page: perPage,
+    search: deferredSearch || undefined,
     status: filterStatus,
     customer_id: filterCustomer ?? undefined,
   })
+  const { data, isLoading, isFetching } = query
 
   const activeFilters = [filterStatus, filterCustomer].filter(Boolean).length
 
@@ -95,17 +102,33 @@ export default function ProformaListPage() {
         </PermissionGuard>
       }
     >
-      <DataTable
-        data={data?.data ?? []}
-        columns={columns}
-        totalRows={data?.meta.total ?? 0}
-        isLoading={isLoading}
-        isFetching={isFetching}
-        pagination={{ pageIndex: page, pageSize: 25 }}
-        onPaginationChange={(p) => setPage(p.pageIndex)}
-        emptyTitle="Belum ada proforma invoice"
-        emptyDescription="Buat proforma invoice dari sales order."
-      />
+      <div className="relative mb-3 max-w-sm">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#94a3b8]" />
+        <Input
+          type="search"
+          role="searchbox"
+          aria-label="Cari nomor proforma"
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(0) }}
+          placeholder="Cari nomor proforma..."
+          className="h-9 pl-8 text-[13px]"
+        />
+      </div>
+      {query.isError ? (
+        <QueryErrorState error={query.error} onRetry={() => void query.refetch()} title="Proforma gagal dimuat" />
+      ) : (
+        <DataTable
+          data={data?.data ?? []}
+          columns={columns}
+          totalRows={data?.meta.total ?? 0}
+          isLoading={isLoading}
+          isFetching={isFetching}
+          pagination={{ pageIndex: page, pageSize: perPage }}
+          onPaginationChange={(p) => { setPage(p.pageIndex); setPerPage(p.pageSize as 25 | 50 | 100) }}
+          emptyTitle="Belum ada proforma invoice"
+          emptyDescription="Buat proforma invoice dari sales order."
+        />
+      )}
     </WorkspaceLayout>
   )
 }

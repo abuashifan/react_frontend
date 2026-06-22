@@ -1,6 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { arApi } from '../services/arApi'
-import type { ArSummaryParams, ArAgingParams, CustomerLedgerParams, InvoiceLedgerParams } from '../types/ar.types'
+import type {
+  ArSummaryParams,
+  ArAgingParams,
+  ArReconciliationParams,
+  CustomerLedgerParams,
+  InvoiceLedgerParams,
+} from '../types/ar.types'
 
 export function useArCustomerSummary(params?: ArSummaryParams) {
   return useQuery({
@@ -16,10 +22,10 @@ export function useArAging(params?: ArAgingParams) {
   })
 }
 
-export function useArReconciliation() {
+export function useArReconciliation(params?: ArReconciliationParams) {
   return useQuery({
-    queryKey: ['sales', 'ar', 'reconciliation'],
-    queryFn: () => arApi.reconciliation(),
+    queryKey: ['sales', 'ar', 'reconciliation', params],
+    queryFn: () => arApi.reconciliation(params),
   })
 }
 

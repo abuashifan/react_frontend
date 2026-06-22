@@ -15,6 +15,7 @@ export interface ProformaInvoice {
   id: number
   number: string
   date: string
+  expiry_date?: string | null
   customer_id: number
   customer?: { id: number; code: string; name: string }
   sales_order_id?: number | null
@@ -46,11 +47,15 @@ export interface ProformaLinePayload {
   quantity: number
   unit_price: number
   discount_percent?: number
+  tax_percent?: number
+  source_line_type?: string
+  source_line_id?: number
 }
 
 export interface CreateProformaPayload {
   customer_id: number
   date: string
+  expiry_date?: string | null
   sales_order_id?: number | null
   notes?: string | null
   lines: ProformaLinePayload[]

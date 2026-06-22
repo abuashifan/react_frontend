@@ -27,7 +27,11 @@ export function useCustomerDepositMutations() {
     create: useMutation({ mutationFn: (p: CreateCustomerDepositPayload) => customerDepositApi.create(p), onSuccess: invalidate }),
     post: useMutation({ mutationFn: (id: number) => customerDepositApi.post(id), onSuccess: invalidate }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => customerDepositApi.void(id, reason), onSuccess: invalidate }),
-    refund: useMutation({ mutationFn: (id: number) => customerDepositApi.refund(id), onSuccess: invalidate }),
+    refund: useMutation({
+      mutationFn: ({ id, amount, reason }: { id: number; amount: number; reason: string }) =>
+        customerDepositApi.refund(id, { amount, reason }),
+      onSuccess: invalidate,
+    }),
     allocate: useMutation({
       mutationFn: ({ depositId, invoiceId, payload }: { depositId: number; invoiceId: number; payload: AllocateDepositPayload }) =>
         customerDepositApi.allocateToInvoice(depositId, invoiceId, payload),

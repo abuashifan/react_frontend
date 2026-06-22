@@ -1,20 +1,20 @@
 import { useState } from 'react'
 import { Search } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
-import { formatCurrency } from '@/lib/utils'
 import { sourceDocumentApi } from '../services/sourceDocumentApi'
-import type { SourceDocumentType, SourceDocumentItem } from '../services/sourceDocumentApi'
+import type { SourceDocumentType, SourceDocumentItem, SourceTargetType } from '../services/sourceDocumentApi'
 import type { DocumentStatus } from '@/types/common.types'
 
 interface SourceDocumentPickerProps {
   isOpen: boolean
   onClose: () => void
   onSelect: (doc: SourceDocumentItem) => void
-  type: SourceDocumentType
+  targetType: SourceTargetType
+  sourceType?: SourceDocumentType
   customerId?: number
   title?: string
 }
@@ -23,7 +23,8 @@ export function SourceDocumentPicker({
   isOpen,
   onClose,
   onSelect,
-  type,
+  targetType,
+  sourceType,
   customerId,
   title = 'Pilih Dokumen Sumber',
 }: SourceDocumentPickerProps) {
@@ -31,8 +32,8 @@ export function SourceDocumentPicker({
   const [selected, setSelected] = useState<SourceDocumentItem | null>(null)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['sales', 'source-documents', type, customerId, search],
-    queryFn: () => sourceDocumentApi.list({ type, customer_id: customerId, search }),
+    queryKey: ['sales', 'source-documents', targetType, sourceType, customerId, search],
+    queryFn: () => sourceDocumentApi.list({ target_type: targetType, source_type: sourceType, customer_id: customerId, search }),
     enabled: isOpen,
   })
 
@@ -57,6 +58,9 @@ export function SourceDocumentPicker({
       <DialogContent className="max-h-[calc(100dvh-48px)] sm:max-w-lg flex flex-col gap-0 p-0">
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-[#f1f5f9]">
           <DialogTitle className="text-[15px]">{title}</DialogTitle>
+          <DialogDescription className="sr-only">
+            Cari dan pilih dokumen sumber yang masih memiliki kuantitas tersedia.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="px-4 py-3 border-b border-[#f1f5f9]">
@@ -87,12 +91,10 @@ export function SourceDocumentPicker({
                 >
                   <div className="min-w-0">
                     <p className="text-[13px] font-medium text-[#24323a]">{doc.number}</p>
-                    <p className="text-[11px] text-[#64748b] truncate">{doc.customer_name} · {doc.date}</p>
+                    <p className="text-[11px] text-[#64748b] truncate">{doc.description || 'Dokumen sumber'} · {doc.date}</p>
                   </div>
                   <div className="flex items-center gap-3 ml-3 shrink-0">
-                    <span className="text-[12px] tabular-nums text-[#24323a]">
-                      {formatCurrency(doc.grand_total)}
-                    </span>
+                    <span className="text-[12px] tabular-nums text-[#24323a]">{doc.lines.length} item</span>
                     <DocumentStatusBadge status={doc.status as DocumentStatus} size="xs" />
                   </div>
                 </button>

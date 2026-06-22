@@ -6,18 +6,23 @@ import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
+import { ConfirmDialog } from '@/components/shared/feedback/ConfirmDialog'
+import { QueryErrorState } from '@/components/shared/feedback/QueryErrorState'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { useSalesReceipt, useSalesReceiptMutations, useCustomerOpenInvoices } from '../hooks/useSalesReceiptList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { salesReceiptSchema, type SalesReceiptFormValues } from '../schemas/salesReceiptSchema'
 import { formatCurrency } from '@/lib/utils'
 import type { DocumentStatus } from '@/types/common.types'
+import { validateSalesLines } from '../services/salesFormValidation'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 
 interface ReceiptLine {
   sales_invoice_id: number
@@ -33,24 +38,36 @@ export default function SalesReceiptFormPage() {
   const { toast } = useToast()
   const { can } = usePermission()
 
-  const { data, isLoading } = useSalesReceipt(id ? Number(id) : undefined)
+  const query = useSalesReceipt(id ? Number(id) : undefined)
+  const { data, isLoading } = query
   const receipt = data?.data
   const { create, post, void: voidRec } = useSalesReceiptMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<SalesReceiptFormValues>({
+  const { control, getValues, register, handleSubmit, setError, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<SalesReceiptFormValues>({
     resolver: zodResolver(salesReceiptSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
 
   const [lines, setLines] = useState<ReceiptLine[]>([])
   const [isVoidOpen, setVoidOpen] = useState(false)
+  const [isPostOpen, setPostOpen] = useState(false)
+  const [lineErrors, setLineErrors] = useState<string[]>([])
 
   const customerId = watch('customer_id')
-  const { data: openInvoicesData } = useCustomerOpenInvoices(customerId && isCreate ? customerId : undefined)
+  const customerContext = useCustomerOpenInvoices(customerId)
 
   const status = (receipt?.status ?? 'draft') as DocumentStatus
   const isEditable = isCreate
   const totalAmount = lines.reduce((s, l) => s + l.amount, 0)
+  const formDraft = usePersistentFormDraft<SalesReceiptFormValues, { lines: ReceiptLine[] }>({
+    draftKey: `sales.receipt.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: { lines },
+    onRestoreExtra: (extra) => setLines(extra.lines ?? []),
+    enabled: isCreate,
+  })
 
   useEffect(() => {
     if (receipt) {
@@ -75,21 +92,30 @@ export default function SalesReceiptFormPage() {
   }, [totalAmount, setValue])
 
   const handleSave = handleSubmit(async (values) => {
+    const validationErrors = validateSalesLines(lines, 'receipt')
+    setLineErrors(validationErrors)
+    if (validationErrors.length > 0) return
+
     try {
       const res = await create.mutateAsync({
         ...values,
         lines: lines.map(({ sales_invoice_id, amount }) => ({ sales_invoice_id, amount })),
       })
+      formDraft.clearDraft()
       toast.success('Penerimaan berhasil disimpan.')
       navigate(`/sales/receipts/${res.data.id}`)
-    } catch { toast.error('Gagal menyimpan penerimaan.') }
+    } catch (error) {
+      applyApiValidationErrors(error, setError, { receipt_date: 'date' })
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan penerimaan.'))
+    }
   })
 
   const handlePost = async () => {
     try {
       await post.mutateAsync(Number(id))
       toast.success('Penerimaan berhasil diposting.')
-    } catch { toast.error('Gagal memposting penerimaan.') }
+      setPostOpen(false)
+    } catch (error) { toast.error(getApiErrorMessage(error, 'Gagal memposting penerimaan.')) }
   }
 
   const handleVoid = async (reason: string) => {
@@ -104,14 +130,15 @@ export default function SalesReceiptFormPage() {
   }
   if (!isCreate) {
     if (receipt?.status === 'draft' && can('sales.receipts.post')) {
-      actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
+      actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => setPostOpen(true), isLoading: post.isPending })
     }
     if (receipt?.status === 'posted' && can('sales.receipts.void')) {
       actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
     }
   }
 
-  const openInvoices = openInvoicesData?.data?.open_invoices ?? []
+  const context = customerContext.data?.data
+  const openInvoices = context?.open_invoices ?? []
 
   const addInvoiceLine = (invoiceId: number) => {
     const inv = openInvoices.find((i) => i.id === invoiceId)
@@ -128,6 +155,14 @@ export default function SalesReceiptFormPage() {
     return (
       <FormLayout title="Penerimaan" breadcrumb={[{ label: 'Sales' }, { label: 'Penerimaan', path: '/sales/receipts' }, { label: 'Memuat...' }]}>
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
+      </FormLayout>
+    )
+  }
+
+  if (!isCreate && query.isError) {
+    return (
+      <FormLayout title="Penerimaan" breadcrumb={[{ label: 'Sales' }, { label: 'Penerimaan', path: '/sales/receipts' }, { label: 'Gagal dimuat' }]}>
+        <QueryErrorState error={query.error} onRetry={() => void query.refetch()} title="Penerimaan gagal dimuat" />
       </FormLayout>
     )
   }
@@ -221,6 +256,7 @@ export default function SalesReceiptFormPage() {
                         <td className="px-3 py-2 text-right">
                           {isEditable ? (
                             <Input
+                              aria-label={`Jumlah bayar invoice ${line.invoice_number}`}
                               type="number"
                               value={line.amount}
                               onChange={(e) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, amount: Number(e.target.value) } : l))}
@@ -235,6 +271,7 @@ export default function SalesReceiptFormPage() {
                         {isEditable && (
                           <td className="px-2 py-2 text-center">
                             <button
+                              aria-label={`Hapus invoice ${line.invoice_number}`}
                               type="button"
                               onClick={() => setLines((prev) => prev.filter((_, idx) => idx !== i))}
                               className="text-[#94a3b8] hover:text-[#ef4444] text-[11px]"
@@ -270,12 +307,35 @@ export default function SalesReceiptFormPage() {
               )}
             </div>
 
+            {lineErrors.length > 0 && (
+              <div role="alert" className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">
+                {lineErrors.map((message) => <p key={message}>{message}</p>)}
+              </div>
+            )}
+
             <div className="mt-3 flex justify-end">
               <div className="text-[14px] font-semibold text-[#24323a]">
                 Total: <span className="tabular-nums">{formatCurrency(totalAmount)}</span>
               </div>
             </div>
           </div>
+
+          {context && (
+            <FormSection title="Konteks Customer">
+              <div className="text-[13px]">
+                <p className="text-[#64748b]">Piutang Resmi</p>
+                <p className="tabular-nums font-semibold">{formatCurrency(context.official_ar_balance)}</p>
+              </div>
+              <div className="text-[13px]">
+                <p className="text-[#64748b]">Deposit Belum Terpakai</p>
+                <p className="tabular-nums font-semibold text-[#065F46]">{formatCurrency(context.unapplied_deposit_total)}</p>
+              </div>
+              <div className="text-[13px]">
+                <p className="text-[#64748b]">Eksposur Bersih</p>
+                <p className="tabular-nums font-semibold">{formatCurrency(context.net_customer_exposure)}</p>
+              </div>
+            </FormSection>
+          )}
         </div>
       </FormLayout>
 
@@ -285,6 +345,15 @@ export default function SalesReceiptFormPage() {
         onConfirm={(reason) => void handleVoid(reason)}
         documentNumber={receipt?.number ?? ''}
         isLoading={voidRec.isPending}
+      />
+      <ConfirmDialog
+        open={isPostOpen}
+        onOpenChange={setPostOpen}
+        title="Post Penerimaan"
+        description="Posting akan membuat jurnal kas/bank dan mengurangi saldo invoice."
+        confirmLabel="Post Penerimaan"
+        isLoading={post.isPending}
+        onConfirm={() => void handlePost()}
       />
     </>
   )

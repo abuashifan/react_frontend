@@ -13,6 +13,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { QueryErrorState } from '@/components/shared/feedback/QueryErrorState'
+import { ConfirmDialog } from '@/components/shared/feedback/ConfirmDialog'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useQuotation, useQuotationMutations } from '../hooks/useQuotationList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
@@ -20,6 +24,7 @@ import { salesOrderApi } from '../services/salesOrderApi'
 import { quotationSchema, type QuotationFormValues } from '../schemas/quotationSchema'
 import type { DocumentStatus } from '@/types/common.types'
 import { toDateInputValue } from '@/lib/utils'
+import { validateSalesLines } from '../services/salesFormValidation'
 
 interface EditableLine {
   product_id: number | null
@@ -42,21 +47,34 @@ export default function QuotationFormPage() {
   const { toast } = useToast()
   const { can } = usePermission()
 
-  const { data, isLoading } = useQuotation(id ? Number(id) : undefined)
+  const query = useQuotation(id ? Number(id) : undefined)
+  const { data, isLoading } = query
   const quotation = data?.data
   const { create, update, send, approve, accept, reject, cancel } = useQuotationMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<QuotationFormValues>({
+  const { control, getValues, register, handleSubmit, setError, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<QuotationFormValues>({
     resolver: zodResolver(quotationSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const [lineErrors, setLineErrors] = useState<string[]>([])
   const [isConverting, setConverting] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<'send' | 'approve' | 'accept' | 'reject' | 'cancel' | 'convert' | null>(null)
 
   const status = (quotation?.status ?? 'draft') as DocumentStatus
   const isEditable = isCreate || quotation?.status === 'draft'
   const subtotal = lines.reduce((s, l) => s + lineSubtotal(l), 0)
+
+  const formDraft = usePersistentFormDraft<QuotationFormValues, EditableLine[]>({
+    draftKey: `sales.quotation.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length ? draftLines : [{ ...DEFAULT_LINE }]),
+    enabled: isEditable,
+  })
 
   useEffect(() => {
     if (quotation) {
@@ -77,21 +95,28 @@ export default function QuotationFormPage() {
   }, [quotation, reset])
 
   const updateLine = (index: number, field: string, value: unknown) => {
+    setLineErrors([])
     setLines((prev) => prev.map((l, i) => i === index ? { ...l, [field]: value } : l))
   }
 
   const handleSaveDraft = handleSubmit(async (values) => {
+    const nextLineErrors = validateSalesLines(lines)
+    setLineErrors(nextLineErrors)
+    if (nextLineErrors.length > 0) return
     try {
       if (isCreate) {
         const res = await create.mutateAsync({ ...values, lines })
+        formDraft.clearDraft()
         toast.success('Draft berhasil disimpan.')
         navigate(`/sales/quotations/${res.data.id}`)
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
+        formDraft.clearDraft()
         toast.success('Draft berhasil diperbarui.')
       }
-    } catch {
-      toast.error('Gagal menyimpan draft.')
+    } catch (error) {
+      applyApiValidationErrors(error, setError, { quotation_date: 'date', valid_until: 'expiry_date' })
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan draft.'))
     }
   })
 
@@ -99,6 +124,7 @@ export default function QuotationFormPage() {
     try {
       await send.mutateAsync(Number(id))
       toast.success('Quotation berhasil dikirim.')
+      setConfirmAction(null)
     } catch { toast.error('Gagal mengirim quotation.') }
   }
 
@@ -106,6 +132,7 @@ export default function QuotationFormPage() {
     try {
       await approve.mutateAsync(Number(id))
       toast.success('Quotation berhasil di-approve.')
+      setConfirmAction(null)
     } catch { toast.error('Gagal approve quotation.') }
   }
 
@@ -113,20 +140,23 @@ export default function QuotationFormPage() {
     try {
       await accept.mutateAsync(Number(id))
       toast.success('Quotation diterima.')
+      setConfirmAction(null)
     } catch { toast.error('Gagal menerima quotation.') }
   }
 
-  const handleReject = async () => {
+  const handleReject = async (reason: string) => {
     try {
-      await reject.mutateAsync(Number(id))
+      await reject.mutateAsync({ id: Number(id), reason })
       toast.success('Quotation ditolak.')
+      setConfirmAction(null)
     } catch { toast.error('Gagal menolak quotation.') }
   }
 
-  const handleCancel = async () => {
+  const handleCancel = async (reason: string) => {
     try {
-      await cancel.mutateAsync(Number(id))
+      await cancel.mutateAsync({ id: Number(id), reason })
       toast.success('Quotation dibatalkan.')
+      setConfirmAction(null)
     } catch { toast.error('Gagal membatalkan quotation.') }
   }
 
@@ -146,21 +176,21 @@ export default function QuotationFormPage() {
   }
   if (!isCreate) {
     if (quotation?.status === 'draft' && can('sales.quotations.update')) {
-      actions.push({ id: 'send', label: 'Kirim', variant: 'primary', onClick: () => void handleSend(), isLoading: send.isPending })
+      actions.push({ id: 'send', label: 'Kirim', variant: 'primary', onClick: () => setConfirmAction('send'), isLoading: send.isPending })
     }
     if (quotation?.status === 'sent' && can('sales.quotations.approve')) {
-      actions.push({ id: 'approve', label: 'Approve', variant: 'primary', onClick: () => void handleApprove(), isLoading: approve.isPending })
-      actions.push({ id: 'reject', label: 'Tolak', variant: 'neutral', onClick: () => void handleReject(), isLoading: reject.isPending })
+      actions.push({ id: 'approve', label: 'Approve', variant: 'primary', onClick: () => setConfirmAction('approve'), isLoading: approve.isPending })
+      actions.push({ id: 'reject', label: 'Tolak', variant: 'neutral', onClick: () => setConfirmAction('reject'), isLoading: reject.isPending })
     }
     if (quotation?.status === 'approved' && can('sales.quotations.approve')) {
-      actions.push({ id: 'accept', label: 'Terima', variant: 'primary', onClick: () => void handleAccept(), isLoading: accept.isPending })
-      actions.push({ id: 'reject', label: 'Tolak', variant: 'neutral', onClick: () => void handleReject(), isLoading: reject.isPending })
+      actions.push({ id: 'accept', label: 'Terima', variant: 'primary', onClick: () => setConfirmAction('accept'), isLoading: accept.isPending })
+      actions.push({ id: 'reject', label: 'Tolak', variant: 'neutral', onClick: () => setConfirmAction('reject'), isLoading: reject.isPending })
     }
     if (quotation?.status === 'accepted' && can('sales.orders.create')) {
-      actions.push({ id: 'convert', label: 'Convert ke SO', variant: 'primary', onClick: () => void handleConvertToSO(), isLoading: isConverting })
+      actions.push({ id: 'convert', label: 'Convert ke SO', variant: 'primary', onClick: () => setConfirmAction('convert'), isLoading: isConverting })
     }
     if (['draft', 'sent', 'approved'].includes(quotation?.status ?? '') && can('sales.quotations.update')) {
-      actions.push({ id: 'cancel', label: 'Batalkan', variant: 'destructive', onClick: () => void handleCancel(), isLoading: cancel.isPending })
+      actions.push({ id: 'cancel', label: 'Batalkan', variant: 'destructive', onClick: () => setConfirmAction('cancel'), isLoading: cancel.isPending })
     }
   }
 
@@ -253,7 +283,34 @@ export default function QuotationFormPage() {
     )
   }
 
+  if (!isCreate && query.isError) {
+    return (
+      <FormLayout title="Quotation" breadcrumb={[{ label: 'Sales' }, { label: 'Quotation', path: '/sales/quotations' }, { label: 'Gagal dimuat' }]}>
+        <QueryErrorState error={query.error} onRetry={() => void query.refetch()} title="Quotation gagal dimuat" />
+      </FormLayout>
+    )
+  }
+
+  const confirmLabels = {
+    send: 'Kirim Quotation',
+    approve: 'Approve Quotation',
+    accept: 'Terima Quotation',
+    reject: 'Tolak Quotation',
+    cancel: 'Batalkan Quotation',
+    convert: 'Convert ke Sales Order',
+  }
+
+  const runConfirmedAction = (reason?: string) => {
+    if (confirmAction === 'send') void handleSend()
+    if (confirmAction === 'approve') void handleApprove()
+    if (confirmAction === 'accept') void handleAccept()
+    if (confirmAction === 'reject' && reason) void handleReject(reason)
+    if (confirmAction === 'cancel' && reason) void handleCancel(reason)
+    if (confirmAction === 'convert') void handleConvertToSO()
+  }
+
   return (
+    <>
     <FormLayout
       title={isCreate ? 'Buat Quotation' : 'Quotation'}
       documentNumber={quotation?.number}
@@ -315,9 +372,26 @@ export default function QuotationFormPage() {
             addLabel="Tambah Item"
             emptyLabel="Belum ada item"
           />
+          {lineErrors.length > 0 && (
+            <div role="alert" className="mt-2 space-y-1 text-[11px] text-red-600">
+              {lineErrors.map((message) => <p key={message}>{message}</p>)}
+            </div>
+          )}
           <FormSummary subtotal={subtotal} grandTotal={subtotal} />
         </div>
       </div>
     </FormLayout>
+    <ConfirmDialog
+      open={confirmAction !== null}
+      onOpenChange={(open) => !open && setConfirmAction(null)}
+      title={confirmAction ? confirmLabels[confirmAction] : 'Konfirmasi'}
+      description="Pastikan status, nilai, dan dokumen sumber sudah benar sebelum melanjutkan."
+      confirmLabel={confirmAction ? confirmLabels[confirmAction] : 'Konfirmasi'}
+      variant={confirmAction === 'cancel' || confirmAction === 'reject' ? 'destructive' : 'default'}
+      requireReason={confirmAction === 'cancel' || confirmAction === 'reject'}
+      isLoading={send.isPending || approve.isPending || accept.isPending || reject.isPending || cancel.isPending || isConverting}
+      onConfirm={runConfirmedAction}
+    />
+    </>
   )
 }

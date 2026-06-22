@@ -29,6 +29,6 @@ export function useProformaMutations() {
     update: useMutation({ mutationFn: ({ id, payload }: { id: number; payload: UpdateProformaPayload }) => proformaApi.update(id, payload), onSuccess: invalidate }),
     issue: useMutation({ mutationFn: (id: number) => proformaApi.issue(id), onSuccess: invalidate }),
     accept: useMutation({ mutationFn: (id: number) => proformaApi.accept(id), onSuccess: invalidate }),
-    cancel: useMutation({ mutationFn: (id: number) => proformaApi.cancel(id), onSuccess: invalidate }),
+    cancel: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => proformaApi.cancel(id, reason), onSuccess: invalidate }),
   }
 }

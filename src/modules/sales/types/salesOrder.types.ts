@@ -1,4 +1,4 @@
-export type SalesOrderStatus = 'draft' | 'approved' | 'confirmed' | 'cancelled' | 'closed'
+export type SalesOrderStatus = 'draft' | 'approved' | 'confirmed' | 'partially_delivered' | 'delivered' | 'partially_invoiced' | 'invoiced' | 'cancelled' | 'closed'
 
 export interface SalesOrderLine {
   id: number
@@ -55,11 +55,16 @@ export interface SalesOrderLinePayload {
   quantity: number
   unit_price: number
   discount_percent?: number
+  tax_percent?: number
+  quotation_line_id?: number
+  source_line_type?: string
+  source_line_id?: number
 }
 
 export interface CreateSalesOrderPayload {
   customer_id: number
   date: string
+  quotation_id?: number | null
   payment_term_id?: number | null
   delivery_address?: string | null
   notes?: string | null

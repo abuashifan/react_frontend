@@ -1,12 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useDeferredValue, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Search, Trash2 } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
+import { QueryErrorState } from '@/components/shared/feedback/QueryErrorState'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
@@ -32,6 +34,9 @@ export default function SalesInvoiceListPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
+  const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
+  const [search, setSearch] = useState('')
+  const deferredSearch = useDeferredValue(search)
   const [filterStatuses, setFilterStatuses] = useState<SalesInvoiceStatus[]>([])
   const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [filterCustomer, setFilterCustomer] = useState<number | null>(null)
@@ -40,11 +45,13 @@ export default function SalesInvoiceListPage() {
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
   const { void: voidInvoice } = useSalesInvoiceMutations()
 
-  const { data, isLoading, isFetching } = useSalesInvoiceList({
+  const query = useSalesInvoiceList({
     page: page + 1,
-    per_page: 25,
+    per_page: perPage,
+    search: deferredSearch || undefined,
     customer_id: filterCustomer ?? undefined,
   })
+  const { data, isLoading, isFetching } = query
 
   const rows = data?.data ?? []
   const visibleRows = useMemo(
@@ -229,23 +236,40 @@ export default function SalesInvoiceListPage() {
           </PermissionGuard>
         }
       >
-        <DataTable
-          data={visibleRows}
-          columns={columns}
-          totalRows={data?.meta.total ?? 0}
-          isLoading={isLoading}
-          isFetching={isFetching}
-          pagination={{ pageIndex: page, pageSize: 25 }}
-          onPaginationChange={(p) => {
-            setPage(p.pageIndex)
-            setSelectedRows([])
-          }}
-          selectedRows={selectedRows}
-          onRowSelect={setSelectedRows}
-          bulkActions={bulkActions}
-          emptyTitle="Belum ada invoice penjualan"
-          emptyDescription="Buat invoice dari sales order, delivery order, atau manual."
-        />
+        <div className="relative mb-3 max-w-sm">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#94a3b8]" />
+          <Input
+            type="search"
+            role="searchbox"
+            aria-label="Cari nomor invoice"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); resetSelection() }}
+            placeholder="Cari nomor invoice..."
+            className="h-9 pl-8 text-[13px]"
+          />
+        </div>
+        {query.isError ? (
+          <QueryErrorState error={query.error} onRetry={() => void query.refetch()} title="Invoice gagal dimuat" />
+        ) : (
+          <DataTable
+            data={visibleRows}
+            columns={columns}
+            totalRows={data?.meta.total ?? 0}
+            isLoading={isLoading}
+            isFetching={isFetching}
+            pagination={{ pageIndex: page, pageSize: perPage }}
+            onPaginationChange={(p) => {
+              setPage(p.pageIndex)
+              setPerPage(p.pageSize as 25 | 50 | 100)
+              setSelectedRows([])
+            }}
+            selectedRows={selectedRows}
+            onRowSelect={setSelectedRows}
+            bulkActions={bulkActions}
+            emptyTitle="Belum ada invoice penjualan"
+            emptyDescription="Buat invoice dari sales order, delivery order, atau manual."
+          />
+        )}
       </WorkspaceLayout>
 
       <VoidConfirmDialog

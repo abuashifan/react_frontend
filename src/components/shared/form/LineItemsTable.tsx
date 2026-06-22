@@ -26,6 +26,8 @@ interface LineItemsTableProps<T> {
   addLabel?: string
   emptyLabel?: string
   currency?: string
+  canAdd?: boolean
+  canRemove?: boolean
 }
 
 /** Reusable horizontal table for transaction line items. */
@@ -40,6 +42,8 @@ export function LineItemsTable<T>({
   addLabel = 'Tambah Item',
   emptyLabel = 'Belum ada item',
   currency = 'IDR',
+  canAdd = true,
+  canRemove = true,
 }: LineItemsTableProps<T>) {
   return (
     <div className="overflow-hidden rounded-lg border border-[#d9e2e5] bg-white">
@@ -115,7 +119,7 @@ export function LineItemsTable<T>({
                     </td>
                   )}
                   <td className="px-2 py-2 text-center">
-                    {!isReadOnly && (
+                    {!isReadOnly && canRemove && (
                       <button
                         type="button"
                         onClick={() => onRemove(index)}
@@ -133,7 +137,7 @@ export function LineItemsTable<T>({
         </table>
       </div>
 
-      {!isReadOnly && (
+      {!isReadOnly && canAdd && (
         <Button
           type="button"
           variant="ghost"

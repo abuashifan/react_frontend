@@ -29,7 +29,7 @@ export function useQuotationMutations() {
     send: useMutation({ mutationFn: (id: number) => quotationApi.send(id), onSuccess: invalidate }),
     approve: useMutation({ mutationFn: (id: number) => quotationApi.approve(id), onSuccess: invalidate }),
     accept: useMutation({ mutationFn: (id: number) => quotationApi.accept(id), onSuccess: invalidate }),
-    reject: useMutation({ mutationFn: (id: number) => quotationApi.reject(id), onSuccess: invalidate }),
-    cancel: useMutation({ mutationFn: (id: number) => quotationApi.cancel(id), onSuccess: invalidate }),
+    reject: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => quotationApi.reject(id, reason), onSuccess: invalidate }),
+    cancel: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => quotationApi.cancel(id, reason), onSuccess: invalidate }),
   }
 }

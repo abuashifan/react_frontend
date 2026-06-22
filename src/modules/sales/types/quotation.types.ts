@@ -47,6 +47,9 @@ export interface QuotationLinePayload {
   quantity: number
   unit_price: number
   discount_percent?: number
+  tax_percent?: number
+  source_line_type?: string
+  source_line_id?: number
 }
 
 export interface CreateQuotationPayload {

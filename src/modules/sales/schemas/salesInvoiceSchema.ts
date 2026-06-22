@@ -6,6 +6,10 @@ export const salesInvoiceSchema = z.object({
   due_date: z.string().nullable().optional(),
   payment_term_id: z.number().nullable().optional(),
   notes: z.string().nullable().optional(),
+}).superRefine((value, ctx) => {
+  if (value.due_date && value.due_date < value.date) {
+    ctx.addIssue({ code: 'custom', path: ['due_date'], message: 'Jatuh tempo tidak boleh sebelum tanggal invoice' })
+  }
 })
 
 export type SalesInvoiceFormValues = z.infer<typeof salesInvoiceSchema>

@@ -1,4 +1,6 @@
 import { http } from '@/services/http'
+import { adaptSalesListRows } from './salesListAdapter'
+import { adaptSalesDocument, adaptSalesPayload } from './salesTransactionAdapter'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type { SelectOption } from '@/types/common.types'
 import type {
@@ -21,22 +23,22 @@ function toSalesOrder(row: SalesOrder): SalesOrder {
 export const salesOrderApi = {
   list: async (params: SalesOrderListParams) => {
     const res = await http.get<unknown, PaginatedResponse<SalesOrder>>('/sales/orders', { params })
-    return { ...res, data: res.data.map(toSalesOrder) }
+    return { ...res, data: adaptSalesListRows(res.data.map(toSalesOrder), { date: 'order_date' }) }
   },
 
   get: async (id: number) => {
     const res = await http.get<unknown, ApiResponse<SalesOrder>>(`/sales/orders/${id}`)
-    return { ...res, data: toSalesOrder(res.data) }
+    return { ...res, data: adaptSalesDocument<SalesOrder>(toSalesOrder(res.data), { dateFields: ['order_date'] }) }
   },
 
   create: (payload: CreateSalesOrderPayload) =>
-    http.post<unknown, ApiResponse<SalesOrder>>('/sales/orders', payload),
+    http.post<unknown, ApiResponse<SalesOrder>>('/sales/orders', adaptSalesPayload(payload, { dateField: 'order_date', sourceType: 'sales_quotation', sourceIdField: 'quotation_id' })),
 
   createFromQuotation: (quotationId: number) =>
     http.post<unknown, ApiResponse<SalesOrder>>(`/sales/orders/from-quotation/${quotationId}`),
 
   update: (id: number, payload: UpdateSalesOrderPayload) =>
-    http.patch<unknown, ApiResponse<SalesOrder>>(`/sales/orders/${id}`, payload),
+    http.patch<unknown, ApiResponse<SalesOrder>>(`/sales/orders/${id}`, adaptSalesPayload(payload, { dateField: 'order_date', sourceType: 'sales_quotation', sourceIdField: 'quotation_id' })),
 
   approve: (id: number) =>
     http.patch<unknown, ApiResponse<SalesOrder>>(`/sales/orders/${id}/approve`),
@@ -44,8 +46,8 @@ export const salesOrderApi = {
   confirm: (id: number) =>
     http.patch<unknown, ApiResponse<SalesOrder>>(`/sales/orders/${id}/confirm`),
 
-  cancel: (id: number) =>
-    http.patch<unknown, ApiResponse<SalesOrder>>(`/sales/orders/${id}/cancel`),
+  cancel: (id: number, reason: string) =>
+    http.patch<unknown, ApiResponse<SalesOrder>>(`/sales/orders/${id}/cancel`, { reason }),
 
   close: (id: number) =>
     http.patch<unknown, ApiResponse<SalesOrder>>(`/sales/orders/${id}/close`),

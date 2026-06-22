@@ -46,6 +46,9 @@ export interface DeliveryOrderLinePayload {
   description: string
   quantity: number
   warehouse_id?: number | null
+  sales_order_line_id?: number
+  source_line_type?: string
+  source_line_id?: number
 }
 
 export interface CreateDeliveryOrderPayload {

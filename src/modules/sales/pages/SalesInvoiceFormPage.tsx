@@ -23,6 +23,13 @@ import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { salesInvoiceSchema, type SalesInvoiceFormValues } from '../schemas/salesInvoiceSchema'
 import type { DocumentStatus } from '@/types/common.types'
 import { toDateInputValue } from '@/lib/utils'
+import { QueryErrorState } from '@/components/shared/feedback/QueryErrorState'
+import { ConfirmDialog } from '@/components/shared/feedback/ConfirmDialog'
+import { SourceDocumentPicker } from '../components/SourceDocumentPicker'
+import { Button } from '@/components/ui/button'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import type { SourceDocumentItem, SourceDocumentType } from '../services/sourceDocumentApi'
+import { validateSalesLines } from '../services/salesFormValidation'
 
 interface EditableLine {
   product_id: number | null
@@ -31,6 +38,12 @@ interface EditableLine {
   unit_price: number
   discount_percent: number
   tax_percent: number
+  sales_order_line_id?: number
+  delivery_order_line_id?: number
+  proforma_invoice_line_id?: number
+  warehouse_id?: number | null
+  source_line_type?: string
+  source_line_id?: number
 }
 
 const DEFAULT_LINE: EditableLine = { product_id: null, description: '', quantity: 1, unit_price: 0, discount_percent: 0, tax_percent: 0 }
@@ -47,11 +60,12 @@ export default function SalesInvoiceFormPage() {
   const { toast } = useToast()
   const { can } = usePermission()
 
-  const { data, isLoading } = useSalesInvoice(id ? Number(id) : undefined)
+  const query = useSalesInvoice(id ? Number(id) : undefined)
+  const { data, isLoading } = query
   const invoice = data?.data
   const { create, update, approve, post, void: voidInv } = useSalesInvoiceMutations()
 
-  const { control, getValues, register, handleSubmit, setValue, reset, formState: { errors, isSubmitting } } = useForm<SalesInvoiceFormValues>({
+  const { control, getValues, register, handleSubmit, setError, setValue, reset, formState: { errors, isSubmitting } } = useForm<SalesInvoiceFormValues>({
     resolver: zodResolver(salesInvoiceSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -59,7 +73,13 @@ export default function SalesInvoiceFormPage() {
   const paymentTermId = useWatch({ control, name: 'payment_term_id' })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const [lineErrors, setLineErrors] = useState<string[]>([])
   const [isVoidOpen, setVoidOpen] = useState(false)
+  const [isSourceOpen, setSourceOpen] = useState(false)
+  const [sourceType, setSourceType] = useState<SourceDocumentType>('delivery_order')
+  const [sourceIds, setSourceIds] = useState<{ sales_order_id?: number; delivery_order_id?: number; proforma_id?: number }>({})
+  const [depositAmount, setDepositAmount] = useState(0)
+  const [confirmAction, setConfirmAction] = useState<'approve' | 'post' | null>(null)
 
   const status = (invoice?.status ?? 'draft') as DocumentStatus
   const isEditable = isCreate || invoice?.status === 'draft'
@@ -128,33 +148,66 @@ export default function SalesInvoiceFormPage() {
   }
 
   const handleSaveDraft = handleSubmit(async (values) => {
+    const nextLineErrors = validateSalesLines(lines)
+    setLineErrors(nextLineErrors)
+    if (nextLineErrors.length > 0) return
     try {
+      const payload = { ...values, ...sourceIds, lines }
       if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines })
+        const res = await create.mutateAsync(payload)
         formDraft.clearDraft()
         toast.success('Invoice berhasil dibuat.')
         navigate(`/sales/invoices/${res.data.id}`)
       } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
+        await update.mutateAsync({ id: Number(id), payload })
         formDraft.clearDraft()
         toast.success('Invoice berhasil diperbarui.')
       }
-    } catch { toast.error('Gagal menyimpan Invoice.') }
+    } catch (error) {
+      applyApiValidationErrors(error, setError, { invoice_date: 'date', due_date: 'due_date' })
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan Invoice.'))
+    }
   })
+
+  const handleSourceSelect = (source: SourceDocumentItem) => {
+    if (typeof source.header.customer_id === 'number') setValue('customer_id', source.header.customer_id)
+    setSourceIds({
+      sales_order_id: source.source_type === 'sales_order' ? source.source_id : undefined,
+      delivery_order_id: source.source_type === 'delivery_order' ? source.source_id : undefined,
+      proforma_id: source.source_type === 'proforma_invoice' ? source.source_id : undefined,
+    })
+    setLines(source.lines.map((line) => ({
+      product_id: typeof line.product_id === 'number' ? line.product_id : null,
+      description: String(line.description ?? ''),
+      quantity: Number(line.remaining_quantity ?? line.quantity ?? 0),
+      unit_price: Number(line.unit_price ?? 0),
+      discount_percent: line.discount_type === 'percent' ? Number(line.discount_value ?? 0) : 0,
+      tax_percent: Number(line.tax_rate ?? 0),
+      sales_order_line_id: typeof line.sales_order_line_id === 'number' ? line.sales_order_line_id : undefined,
+      delivery_order_line_id: typeof line.delivery_order_line_id === 'number' ? line.delivery_order_line_id : undefined,
+      proforma_invoice_line_id: typeof line.proforma_invoice_line_id === 'number' ? line.proforma_invoice_line_id : undefined,
+      warehouse_id: typeof line.warehouse_id === 'number' ? line.warehouse_id : null,
+      source_line_type: String(line.source_line_type ?? ''),
+      source_line_id: Number(line.source_line_id ?? line.id),
+    })))
+    setLineErrors([])
+  }
 
   const handleApprove = async () => {
     try {
       await approve.mutateAsync(Number(id))
       formDraft.clearDraft()
       toast.success('Invoice berhasil di-approve.')
+      setConfirmAction(null)
     } catch { toast.error('Gagal approve invoice.') }
   }
 
   const handlePost = async () => {
     try {
-      await post.mutateAsync(Number(id))
+      await post.mutateAsync({ id: Number(id), appliedDownPaymentAmount: depositAmount || undefined })
       formDraft.clearDraft()
       toast.success('Invoice berhasil diposting.')
+      setConfirmAction(null)
     } catch { toast.error('Gagal memposting invoice.') }
   }
 
@@ -166,7 +219,7 @@ export default function SalesInvoiceFormPage() {
   }
 
   const actions: DocumentActionButton[] = []
-  if (isEditable && can('sales.invoices.create')) {
+  if (isEditable && can(isCreate ? 'sales.invoices.create' : 'sales.invoices.edit')) {
     actions.push({ id: 'save_draft', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
   }
   if (isEditable && formDraft.isRestored) {
@@ -174,10 +227,10 @@ export default function SalesInvoiceFormPage() {
   }
   if (!isCreate) {
     if (invoice?.status === 'draft' && can('sales.invoices.approve')) {
-      actions.push({ id: 'approve', label: 'Approve', variant: 'primary', onClick: () => void handleApprove(), isLoading: approve.isPending })
+      actions.push({ id: 'approve', label: 'Approve', variant: 'primary', onClick: () => setConfirmAction('approve'), isLoading: approve.isPending })
     }
     if (invoice?.status === 'approved' && can('sales.invoices.post')) {
-      actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
+      actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => setConfirmAction('post'), isLoading: post.isPending })
     }
     if (invoice?.status === 'posted' && !hasPostedDependences && can('sales.invoices.void')) {
       actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
@@ -254,6 +307,14 @@ export default function SalesInvoiceFormPage() {
     )
   }
 
+  if (!isCreate && query.isError) {
+    return (
+      <FormLayout title="Invoice Penjualan" breadcrumb={[{ label: 'Sales' }, { label: 'Invoice', path: '/sales/invoices' }, { label: 'Gagal dimuat' }]}>
+        <QueryErrorState error={query.error} onRetry={() => void query.refetch()} title="Invoice gagal dimuat" />
+      </FormLayout>
+    )
+  }
+
   return (
     <>
       <FormLayout
@@ -276,6 +337,19 @@ export default function SalesInvoiceFormPage() {
           )}
 
           <FormSection title="Header">
+            {isCreate && can('sales.invoices.create') && (
+              <div className="flex flex-wrap gap-2 md:col-span-2">
+                {([
+                  ['sales_order', 'Dari Sales Order'],
+                  ['delivery_order', 'Dari Delivery Order'],
+                  ['proforma_invoice', 'Dari Proforma'],
+                ] as const).map(([type, label]) => (
+                  <Button key={type} type="button" variant="outline" className="h-9 text-[13px]" onClick={() => { setSourceType(type); setSourceOpen(true) }}>
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            )}
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Customer <span className="text-red-500">*</span>
@@ -329,6 +403,23 @@ export default function SalesInvoiceFormPage() {
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
               <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
             </div>
+
+            {!isCreate && invoice?.status === 'approved' && Number(invoice.available_deposit_summary?.unapplied_total ?? 0) > 0 && (
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="invoice-deposit-amount" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
+                  Terapkan Deposit (tersedia {invoice.available_deposit_summary?.unapplied_total})
+                </Label>
+                <Input
+                  id="invoice-deposit-amount"
+                  type="number"
+                  min={0}
+                  max={invoice.available_deposit_summary?.unapplied_total}
+                  value={depositAmount}
+                  onChange={(event) => setDepositAmount(Number(event.target.value))}
+                  className="h-9 text-right text-[13px] tabular-nums"
+                />
+              </div>
+            )}
           </FormSection>
 
           <div>
@@ -338,11 +429,12 @@ export default function SalesInvoiceFormPage() {
               columns={columns}
               onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
               onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}
-              onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))}
+              onUpdate={(i, field, value) => { setLineErrors([]); setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l)) }}
               getSubtotal={lineBase}
               isReadOnly={!isEditable}
               addLabel="Tambah Item"
             />
+            {lineErrors.length > 0 && <div role="alert" className="mt-2 space-y-1 text-[11px] text-red-600">{lineErrors.map((message) => <p key={message}>{message}</p>)}</div>}
             <FormSummary
               subtotal={subtotal}
               taxAmount={taxAmount}
@@ -360,6 +452,26 @@ export default function SalesInvoiceFormPage() {
         onConfirm={(reason) => void handleVoid(reason)}
         documentNumber={invoice?.number ?? ''}
         isLoading={voidInv.isPending}
+      />
+      <SourceDocumentPicker
+        isOpen={isSourceOpen}
+        onClose={() => setSourceOpen(false)}
+        onSelect={handleSourceSelect}
+        targetType="sales.invoices"
+        sourceType={sourceType}
+        customerId={customerId}
+        title="Pilih Dokumen Sumber Invoice"
+      />
+      <ConfirmDialog
+        open={confirmAction !== null}
+        onOpenChange={(open) => !open && setConfirmAction(null)}
+        title={confirmAction === 'approve' ? 'Approve Invoice' : 'Post Invoice'}
+        description={confirmAction === 'post'
+          ? `Posting akan membentuk jurnal AR${depositAmount > 0 ? ` dan menerapkan deposit ${depositAmount}` : ''}.`
+          : 'Invoice yang disetujui siap diposting dan tidak lagi dapat diedit.'}
+        confirmLabel={confirmAction === 'approve' ? 'Approve' : 'Post Invoice'}
+        isLoading={approve.isPending || post.isPending}
+        onConfirm={() => void (confirmAction === 'approve' ? handleApprove() : handlePost())}
       />
     </>
   )
