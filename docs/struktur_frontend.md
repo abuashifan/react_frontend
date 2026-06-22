@@ -224,6 +224,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____phase-25-progress-report.md
 | | |____phase-25-completion-report.md   (Phase 25 — completion & validation report)
 | | |____phase-26-progress-report.md     (Phase 26 — slice progress; Slice A done)
+| | |____phase-26-completion-report.md   (Phase 26 — completion & validation report §17)
 | | |____phase-27-completion-report.md   (Phase 27 — 20/20 finding verified)
 | |____struktur_frontend.md
 |____.env.production.example   (Phase 24 — contoh VITE_API_BASE_URL produksi)
