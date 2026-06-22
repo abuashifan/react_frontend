@@ -1,4 +1,5 @@
 import { http } from '@/services/http'
+import { adaptSalesListRows } from './salesListAdapter'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type { SelectOption } from '@/types/common.types'
 import type {
@@ -9,8 +10,10 @@ import type {
 } from '../types/quotation.types'
 
 export const quotationApi = {
-  list: (params: SalesQuotationListParams) =>
-    http.get<unknown, PaginatedResponse<SalesQuotation>>('/sales/quotations', { params }),
+  list: async (params: SalesQuotationListParams) => {
+    const res = await http.get<unknown, PaginatedResponse<SalesQuotation>>('/sales/quotations', { params })
+    return { ...res, data: adaptSalesListRows(res.data, { date: 'quotation_date', expiry_date: 'valid_until' }) }
+  },
 
   get: (id: number) =>
     http.get<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}`),

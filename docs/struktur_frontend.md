@@ -675,7 +675,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____salesOrderApi.ts
 | | | | |____salesReceiptApi.ts
 | | | | |____salesReturnApi.ts
-| | | | |____sourceDocumentApi.ts
+| | | | |____salesListAdapter.ts          (Phase 28 — adapter DTO list sales: date/relation canonical)
+| | | |____sourceDocumentApi.ts
 | | | |____types/
 | | | | |____ar.types.ts
 | | | | |____customerDeposit.types.ts
