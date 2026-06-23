@@ -13,7 +13,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { usePurchaseRequest, usePurchaseRequestMutations } from '../hooks/usePurchaseRequestList'
+import { validatePurchaseLines } from '../services/purchaseFormValidation'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { purchaseRequestSchema, type PurchaseRequestFormValues } from '../schemas/purchaseRequestSchema'
@@ -43,16 +45,27 @@ export default function PurchaseRequestFormPage() {
   const pr = data?.data
   const { create, update, submit, approve, reject, cancel } = usePurchaseRequestMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<PurchaseRequestFormValues>({
+  const { control, getValues, register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<PurchaseRequestFormValues>({
     resolver: zodResolver(purchaseRequestSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const [lineErrors, setLineErrors] = useState<string[]>([])
 
   const status = (pr?.status ?? 'draft') as DocumentStatus
   const isEditable = isCreate || pr?.status === 'draft'
   const subtotal = lines.reduce((s, l) => s + lineSubtotal(l), 0)
+
+  const formDraft = usePersistentFormDraft<PurchaseRequestFormValues, EditableLine[]>({
+    draftKey: `purchase.request.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length ? draftLines : [{ ...DEFAULT_LINE }]),
+    enabled: isEditable,
+  })
 
   useEffect(() => {
     if (pr) {
@@ -67,13 +80,18 @@ export default function PurchaseRequestFormPage() {
   }, [pr, reset])
 
   const handleSave = handleSubmit(async (values) => {
+    const nextLineErrors = validatePurchaseLines(lines)
+    setLineErrors(nextLineErrors)
+    if (nextLineErrors.length > 0) return
     try {
       if (isCreate) {
         const res = await create.mutateAsync({ ...values, lines })
+        formDraft.clearDraft()
         toast.success('Purchase Request berhasil dibuat.')
         navigate(`/purchase/requests/${res.data.id}`)
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
+        formDraft.clearDraft()
         toast.success('Purchase Request berhasil diperbarui.')
       }
     } catch { toast.error('Gagal menyimpan Purchase Request.') }
@@ -189,11 +207,16 @@ export default function PurchaseRequestFormPage() {
             columns={columns}
             onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
             onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}
-            onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))}
+            onUpdate={(i, field, value) => { setLineErrors([]); setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l)) }}
             getSubtotal={lineSubtotal}
             isReadOnly={!isEditable}
             addLabel="Tambah Item"
           />
+          {lineErrors.length > 0 && (
+            <div role="alert" className="mt-2 space-y-1 text-[11px] text-red-600">
+              {lineErrors.map((message) => <p key={message}>{message}</p>)}
+            </div>
+          )}
           <FormSummary subtotal={subtotal} grandTotal={subtotal} />
         </div>
       </div>

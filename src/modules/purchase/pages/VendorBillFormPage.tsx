@@ -10,6 +10,7 @@ import { DocumentActionBar, type DocumentActionButton } from '@/components/share
 import { DocumentLockedBanner } from '@/components/shared/document/DocumentLockedBanner'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
@@ -17,6 +18,9 @@ import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { useVendorBill, useVendorBillMutations } from '../hooks/useVendorBillList'
+import { validatePurchaseLines } from '../services/purchaseFormValidation'
+import { SourceDocumentPicker } from '../components/SourceDocumentPicker'
+import type { PurchaseSourceDocumentItem } from '../services/sourceDocumentApi'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
@@ -35,12 +39,18 @@ interface EditableLine {
   unit_price: number
   discount_percent: number
   tax_percent: number
+  source_quantity?: number
+  goods_receipt_line_id?: number | null
 }
 
 const DEFAULT_LINE: EditableLine = { product_id: null, line_classification: 'inventory', fixed_asset_category_id: null, description: '', quantity: 1, unit_price: 0, discount_percent: 0, tax_percent: 0 }
 
 function lineBase(l: EditableLine) {
   return l.quantity * l.unit_price * (1 - l.discount_percent / 100)
+}
+
+function numberValue(value: unknown): number {
+  return Number(value ?? 0)
 }
 
 export default function VendorBillFormPage() {
@@ -62,7 +72,31 @@ export default function VendorBillFormPage() {
   const paymentTermId = useWatch({ control, name: 'payment_term_id' })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const [lineErrors, setLineErrors] = useState<string[]>([])
   const [isVoidOpen, setVoidOpen] = useState(false)
+  const [isSourcePickerOpen, setSourcePickerOpen] = useState(false)
+  const [sourceId, setSourceId] = useState<number | null>(null)
+  const [sourceNumber, setSourceNumber] = useState('')
+
+  const handleSourceSelect = (document: PurchaseSourceDocumentItem) => {
+    setSourceId(document.source_id)
+    setSourceNumber(document.number)
+    if (document.partner_id) setValue('vendor_id', document.partner_id)
+    setLines(document.lines.map((line) => ({
+      product_id: line.product_id == null ? null : numberValue(line.product_id),
+      line_classification: 'inventory' as VendorBillLineClassification,
+      fixed_asset_category_id: null,
+      description: String(line.description ?? ''),
+      quantity: numberValue(line.remaining_quantity),
+      source_quantity: numberValue(line.remaining_quantity),
+      unit_price: numberValue(line.unit_price),
+      discount_percent: 0,
+      tax_percent: 0,
+      goods_receipt_line_id: numberValue(line.goods_receipt_line_id ?? line.id),
+    })))
+    setLineErrors([])
+    setSourcePickerOpen(false)
+  }
 
   const status = (bill?.status ?? 'draft') as DocumentStatus
   const isEditable = isCreate || bill?.status === 'draft'
@@ -76,19 +110,29 @@ export default function VendorBillFormPage() {
     if (bill) {
       reset({ vendor_id: bill.vendor_id, date: toDateInputValue(bill.date), due_date: toDateInputValue(bill.due_date), payment_term_id: bill.payment_term_id, notes: bill.notes ?? '' })
       const timer = window.setTimeout(() => {
-        setLines(bill.lines.map((l) => ({ product_id: l.product_id, line_classification: l.line_classification ?? 'inventory', fixed_asset_category_id: l.fixed_asset_category_id ?? null, description: l.description, quantity: l.quantity, unit_price: l.unit_price, discount_percent: l.discount_percent, tax_percent: l.tax_percent })))
+        setSourceId(bill.goods_receipt_id ?? null)
+        setSourceNumber(bill.goods_receipt_number ?? '')
+        setLines(bill.lines.map((l) => ({ product_id: l.product_id, line_classification: l.line_classification ?? 'inventory', fixed_asset_category_id: l.fixed_asset_category_id ?? null, description: l.description, quantity: l.quantity, unit_price: l.unit_price, discount_percent: l.discount_percent, tax_percent: l.tax_percent, goods_receipt_line_id: l.goods_receipt_line_id })))
       }, 0)
       return () => window.clearTimeout(timer)
     }
   }, [bill, reset])
 
-  const formDraft = usePersistentFormDraft<VendorBillFormValues, EditableLine[]>({
+  const formDraft = usePersistentFormDraft<VendorBillFormValues, {
+    lines: EditableLine[]
+    sourceId: number | null
+    sourceNumber: string
+  }>({
     draftKey: `purchase.bill.${id ?? 'new'}`,
     control,
     getValues,
     reset,
-    extra: lines,
-    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [{ ...DEFAULT_LINE }]),
+    extra: { lines, sourceId, sourceNumber },
+    onRestoreExtra: (extra) => {
+      setLines(extra.lines?.length ? extra.lines : [{ ...DEFAULT_LINE }])
+      setSourceId(extra.sourceId ?? null)
+      setSourceNumber(extra.sourceNumber ?? '')
+    },
     enabled: isEditable,
   })
 
@@ -115,11 +159,21 @@ export default function VendorBillFormPage() {
       reset({ date: new Date().toISOString().slice(0, 10) })
       setLines([{ ...DEFAULT_LINE }])
     }
+    setSourceId(bill?.goods_receipt_id ?? null)
+    setSourceNumber(bill?.goods_receipt_number ?? '')
     formDraft.discardDraft()
     toast.success('Draft lokal dibuang.')
   }
 
   const handleSave = handleSubmit(async (values) => {
+    const nextLineErrors = validatePurchaseLines(lines)
+    lines.forEach((line, index) => {
+      if (line.source_quantity !== undefined && line.quantity > line.source_quantity) {
+        nextLineErrors.push(`Baris ${index + 1}: kuantitas melebihi sisa penerimaan.`)
+      }
+    })
+    setLineErrors(nextLineErrors)
+    if (nextLineErrors.length > 0) return
     const linePayloads = lines.map((l) => ({
       product_id: l.line_classification === 'fixed_asset' ? null : l.product_id,
       line_classification: l.line_classification,
@@ -129,15 +183,16 @@ export default function VendorBillFormPage() {
       unit_price: l.unit_price,
       discount_percent: l.discount_percent,
       tax_percent: l.tax_percent,
+      goods_receipt_line_id: l.goods_receipt_line_id,
     }))
     try {
       if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines: linePayloads })
+        const res = await create.mutateAsync({ ...values, goods_receipt_id: sourceId, lines: linePayloads })
         formDraft.clearDraft()
         toast.success('Tagihan vendor berhasil dibuat.')
         navigate(`/purchase/bills/${res.data.id}`)
       } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads } })
+        await update.mutateAsync({ id: Number(id), payload: { ...values, goods_receipt_id: sourceId, lines: linePayloads } })
         formDraft.clearDraft()
         toast.success('Tagihan vendor berhasil diperbarui.')
       }
@@ -248,6 +303,15 @@ export default function VendorBillFormPage() {
             />
           )}
           <FormSection title="Header">
+            {isCreate && (
+              <div className="flex flex-col gap-1 md:col-span-2">
+                <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Dari Penerimaan Barang</Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" variant="outline" className="h-9 text-[13px]" onClick={() => setSourcePickerOpen(true)}>Pilih Penerimaan</Button>
+                  {sourceNumber && <span className="text-[13px] font-medium text-[#5c9ead]">{sourceNumber}</span>}
+                </div>
+              </div>
+            )}
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Vendor <span className="text-red-500">*</span></Label>
               <SearchableSelect value={vendorId ?? null} onChange={(v) => setValue('vendor_id', v as number)} onSearch={(q) => kontakApi.search(q, 'supplier')} placeholder="Pilih vendor..." disabled={!isEditable} error={errors.vendor_id?.message} selectedOptions={bill?.vendor ? [{ value: bill.vendor.id, label: bill.vendor.name }] : []} />
@@ -282,14 +346,28 @@ export default function VendorBillFormPage() {
               items={lines} columns={columns}
               onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
               onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}
-              onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))}
+              onUpdate={(i, field, value) => { setLineErrors([]); setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l)) }}
               getSubtotal={lineBase} isReadOnly={!isEditable} addLabel="Tambah Item"
             />
+            {lineErrors.length > 0 && (
+              <div role="alert" className="mt-2 space-y-1 text-[11px] text-red-600">
+                {lineErrors.map((message) => <p key={message}>{message}</p>)}
+              </div>
+            )}
             <FormSummary subtotal={subtotal} taxAmount={taxAmount} grandTotal={grandTotal} paidAmount={bill?.paid_amount} balanceDue={bill?.balance_due} />
           </div>
         </div>
       </FormLayout>
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={bill?.number ?? ''} isLoading={voidBill.isPending} />
+      <SourceDocumentPicker
+        isOpen={isCreate && isSourcePickerOpen}
+        onClose={() => setSourcePickerOpen(false)}
+        onSelect={handleSourceSelect}
+        targetType="purchase.bills"
+        sourceType="goods_receipt"
+        vendorId={vendorId}
+        title="Pilih Penerimaan Barang"
+      />
     </>
   )
 }

@@ -8,6 +8,8 @@ import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatus
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
+import { QueryErrorState } from '@/components/shared/feedback/QueryErrorState'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { usePurchaseReturnList } from '../hooks/usePurchaseReturnList'
@@ -20,17 +22,20 @@ const STATUSES: PurchaseReturnStatus[] = ['draft', 'approved', 'posted', 'void']
 export default function PurchaseReturnListPage() {
   const navigate = useNavigate()
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState<25 | 50 | 100>(25)
+  const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<PurchaseReturnStatus | undefined>()
   const [filterVendor, setFilterVendor] = useState<number | null>(null)
 
-  const { data, isLoading, isFetching } = usePurchaseReturnList({
+  const { data, error, isError, isLoading, isFetching, refetch } = usePurchaseReturnList({
     page: page + 1,
-    per_page: 25,
+    per_page: pageSize,
+    search: search || undefined,
     status: filterStatus,
     vendor_id: filterVendor ?? undefined,
   })
 
-  const activeFilters = [filterStatus, filterVendor].filter(Boolean).length
+  const activeFilters = [search, filterStatus, filterVendor].filter(Boolean).length
   const columns: ColumnDef<PurchaseReturn>[] = [
     {
       id: 'number',
@@ -62,11 +67,19 @@ export default function PurchaseReturnListPage() {
   ]
 
   const sidebar = (
-    <FilterSidebar activeCount={activeFilters} onReset={() => { setFilterStatus(undefined); setFilterVendor(null) }}>
+    <FilterSidebar activeCount={activeFilters} onReset={() => { setSearch(''); setFilterStatus(undefined); setFilterVendor(null); setPage(0) }}>
+      <FilterSection title="Cari">
+        <Input
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(0) }}
+          placeholder="Nomor, vendor, sumber..."
+          className="h-8 text-[12px]"
+        />
+      </FilterSection>
       <FilterSection title="Status">
         {STATUSES.map((s) => (
           <label key={s} className="flex cursor-pointer items-center gap-2">
-            <Checkbox checked={filterStatus === s} onCheckedChange={(c) => setFilterStatus(c ? s : undefined)} />
+            <Checkbox checked={filterStatus === s} onCheckedChange={(c) => { setFilterStatus(c ? s : undefined); setPage(0) }} />
             <span className="text-[12px] capitalize text-[#334155]">{s}</span>
           </label>
         ))}
@@ -74,7 +87,7 @@ export default function PurchaseReturnListPage() {
       <FilterSection title="Vendor">
         <SearchableSelect
           value={filterVendor}
-          onChange={(v) => setFilterVendor(v)}
+          onChange={(v) => { setFilterVendor(v); setPage(0) }}
           onSearch={(q) => kontakApi.search(q, 'supplier')}
           placeholder="Semua vendor"
         />
@@ -95,17 +108,21 @@ export default function PurchaseReturnListPage() {
         </PermissionGuard>
       }
     >
-      <DataTable
-        data={data?.data ?? []}
-        columns={columns}
-        totalRows={data?.meta.total ?? 0}
-        isLoading={isLoading}
-        isFetching={isFetching}
-        pagination={{ pageIndex: page, pageSize: 25 }}
-        onPaginationChange={(p) => setPage(p.pageIndex)}
-        emptyTitle="Belum ada retur pembelian"
-        emptyDescription="Buat retur dari tagihan atau penerimaan barang."
-      />
+      {isError ? (
+        <QueryErrorState error={error} onRetry={() => void refetch()} title="Retur pembelian gagal dimuat" />
+      ) : (
+        <DataTable
+          data={data?.data ?? []}
+          columns={columns}
+          totalRows={data?.meta.total ?? 0}
+          isLoading={isLoading}
+          isFetching={isFetching}
+          pagination={{ pageIndex: page, pageSize }}
+          onPaginationChange={(p) => { setPage(p.pageIndex); setPageSize(p.pageSize) }}
+          emptyTitle="Belum ada retur pembelian"
+          emptyDescription="Buat retur dari tagihan atau penerimaan barang."
+        />
+      )}
     </WorkspaceLayout>
   )
 }

@@ -13,7 +13,9 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { formatCurrency } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { useVendorPayment, useVendorOpenBills, useVendorPaymentMutations } from '../hooks/useVendorPaymentList'
+import { validatePurchaseLines } from '../services/purchaseFormValidation'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { vendorPaymentSchema, type VendorPaymentFormValues } from '../schemas/vendorPaymentSchema'
@@ -40,10 +42,11 @@ export default function VendorPaymentFormPage() {
   const payment = data?.data
   const { create, post, void: voidPayment } = useVendorPaymentMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<VendorPaymentFormValues>({
+  const { control, getValues, register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<VendorPaymentFormValues>({
     resolver: zodResolver(vendorPaymentSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
+  const [lineErrors, setLineErrors] = useState<string[]>([])
 
   const vendorId = watch('vendor_id')
   const { data: vendorContextData } = useVendorOpenBills(isCreate ? vendorId : null)
@@ -51,6 +54,17 @@ export default function VendorPaymentFormPage() {
 
   const status = (payment?.status ?? 'draft') as DocumentStatus
   const totalAmount = billLines.reduce((s, l) => s + l.amount, 0)
+
+  // Draft header-only: alokasi bill di-derive ulang dari vendor open-bills dan
+  // dibersihkan saat vendor berubah, jadi tidak dipersist untuk menghindari
+  // konflik dengan efek reset-on-vendor-change.
+  const formDraft = usePersistentFormDraft<VendorPaymentFormValues, never>({
+    draftKey: `purchase.payment.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    enabled: isCreate,
+  })
 
   useEffect(() => {
     if (payment) {
@@ -72,14 +86,19 @@ export default function VendorPaymentFormPage() {
   const handleAddBill = (billId: number) => {
     const bill = openBills.find((b) => b.vendor_bill_id === billId)
     if (bill && !billLines.find((l) => l.vendor_bill_id === billId)) {
+      setLineErrors([])
       setBillLines((prev) => [...prev, { vendor_bill_id: bill.vendor_bill_id, bill_number: bill.bill_number, balance_due: bill.balance_due, amount: bill.balance_due }])
     }
   }
 
   const handleSave = handleSubmit(async (values) => {
+    const nextLineErrors = validatePurchaseLines(billLines, 'payment')
+    setLineErrors(nextLineErrors)
+    if (nextLineErrors.length > 0) return
     try {
       const lines: VendorPaymentLinePayload[] = billLines.map((l) => ({ vendor_bill_id: l.vendor_bill_id, amount: l.amount }))
       const res = await create.mutateAsync({ ...values, lines })
+      formDraft.clearDraft()
       toast.success('Pembayaran vendor berhasil dibuat.')
       navigate(`/purchase/payments/${res.data.id}`)
     } catch { toast.error('Gagal menyimpan pembayaran vendor.') }
@@ -203,6 +222,11 @@ export default function VendorPaymentFormPage() {
                 )}
               </table>
             </div>
+            {lineErrors.length > 0 && (
+              <div role="alert" className="mt-2 space-y-1 text-[11px] text-red-600">
+                {lineErrors.map((message) => <p key={message}>{message}</p>)}
+              </div>
+            )}
           </div>
         </div>
       </FormLayout>

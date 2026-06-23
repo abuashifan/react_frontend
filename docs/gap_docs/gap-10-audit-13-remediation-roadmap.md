@@ -987,12 +987,12 @@ Setelah phase:
 
 ## 10. Immediate Next Action
 
-Phase 24–29 telah selesai dan tervalidasi. Lanjutkan Phase 30 (AP subledger & reports):
+Phase 24–29 telah selesai dan tervalidasi. Lanjutkan Phase 30 (Purchase transaction contract):
 
 ```text
-docs/issue_docs/issue-33-phase-30-ap-subledger-reports.md (jika tersedia)
-docs/prompt/prompt-phase-30-ap-subledger-reports.md (jika tersedia)
+docs/issue_docs/issue-33-phase-30-purchase-transaction-contract.md
+docs/prompt/prompt-phase-30-purchase-transaction-contract.md
 ```
 
-Scope canonical berikutnya adalah A13-180..182 dkk (AP subledger dan reports),
-memetakan ulang pola adapter/cutoff/permission Phase 29 ke entity vendor/bill.
+Scope canonical berikutnya adalah A13-161..179 (kontrak transaksi Purchase),
+memetakan ulang pola adapter/draft/source/lifecycle Phase 28 ke entity Purchase.

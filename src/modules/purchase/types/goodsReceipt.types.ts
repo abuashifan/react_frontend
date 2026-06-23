@@ -8,6 +8,7 @@ export interface GoodsReceiptLine {
   quantity: number
   billed_quantity: number
   returned_quantity: number
+  purchase_order_line_id?: number | null
 }
 
 export interface GoodsReceipt {
@@ -42,6 +43,7 @@ export interface GoodsReceiptLinePayload {
   product_id?: number | null
   description: string
   quantity: number
+  purchase_order_line_id?: number | null
 }
 
 export interface CreateGoodsReceiptPayload {
@@ -49,5 +51,6 @@ export interface CreateGoodsReceiptPayload {
   date: string
   warehouse_id?: number | null
   notes?: string | null
+  purchase_order_id?: number | null
   lines: GoodsReceiptLinePayload[]
 }

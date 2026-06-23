@@ -7,8 +7,10 @@ import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
+import { QueryErrorState } from '@/components/shared/feedback/QueryErrorState'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
 import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
@@ -20,12 +22,14 @@ import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { VendorBill, VendorBillStatus } from '../types/vendorBill.types'
 
 const STATUSES: VendorBillStatus[] = ['draft', 'approved', 'posted', 'partially_paid', 'paid', 'void']
-const FILTER_HINT = 'Filter multi-select dan tanggal berlaku pada data halaman yang sedang dimuat.'
+const FILTER_HINT = 'Search, tanggal, vendor, dan status tunggal dikirim ke server. Multi-status disaring pada data termuat.'
 
 export default function VendorBillListPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState<25 | 50 | 100>(25)
+  const [search, setSearch] = useState('')
   const [filterStatuses, setFilterStatuses] = useState<VendorBillStatus[]>([])
   const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [filterVendor, setFilterVendor] = useState<number | null>(null)
@@ -34,10 +38,14 @@ export default function VendorBillListPage() {
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
   const { void: voidBill } = useVendorBillMutations()
 
-  const { data, isLoading, isFetching } = useVendorBillList({
+  const { data, error, isError, isLoading, isFetching, refetch } = useVendorBillList({
     page: page + 1,
-    per_page: 25,
+    per_page: pageSize,
+    search: search || undefined,
+    status: filterStatuses.length === 1 ? filterStatuses[0] : undefined,
     vendor_id: filterVendor ?? undefined,
+    date_from: dateRange.from || undefined,
+    date_to: dateRange.to || undefined,
   })
 
   const rows = data?.data ?? []
@@ -51,7 +59,7 @@ export default function VendorBillListPage() {
     [rows, filterStatuses, dateRange.from, dateRange.to],
   )
 
-  const activeFilters = [filterStatuses.length > 0, dateRange.from, dateRange.to, filterVendor].filter(Boolean).length
+  const activeFilters = [search, filterStatuses.length > 0, dateRange.from, dateRange.to, filterVendor].filter(Boolean).length
 
   const resetSelection = () => {
     setPage(0)
@@ -155,10 +163,19 @@ export default function VendorBillListPage() {
         setFilterStatuses([])
         setDateRange({ from: '', to: '' })
         setFilterVendor(null)
+        setSearch('')
         resetSelection()
       }}
       hint={FILTER_HINT}
     >
+      <FilterSection title="Cari">
+        <Input
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); resetSelection() }}
+          placeholder="Nomor, vendor, sumber..."
+          className="h-8 text-[12px]"
+        />
+      </FilterSection>
       <MultiCheckboxFilter
         title="Status"
         options={STATUSES.map((status) => ({ value: status, label: status.replace('_', ' ') }))}
@@ -175,7 +192,7 @@ export default function VendorBillListPage() {
           setDateRange(next)
           resetSelection()
         }}
-        note="Berlaku pada data halaman yang sedang dimuat."
+        note="Dikirim ke server sebelum pagination."
       />
       <FilterSection title="Vendor">
         <SearchableSelect
@@ -205,23 +222,28 @@ export default function VendorBillListPage() {
           </PermissionGuard>
         }
       >
-        <DataTable
-          data={visibleRows}
-          columns={columns}
-          totalRows={data?.meta.total ?? 0}
-          isLoading={isLoading}
-          isFetching={isFetching}
-          pagination={{ pageIndex: page, pageSize: 25 }}
-          onPaginationChange={(p) => {
-            setPage(p.pageIndex)
-            setSelectedRows([])
-          }}
-          selectedRows={selectedRows}
-          onRowSelect={setSelectedRows}
-          bulkActions={bulkActions}
-          emptyTitle="Belum ada tagihan vendor"
-          emptyDescription="Buat tagihan dari PO atau GR yang sudah diterima."
-        />
+        {isError ? (
+          <QueryErrorState error={error} onRetry={() => void refetch()} title="Tagihan vendor gagal dimuat" />
+        ) : (
+          <DataTable
+            data={visibleRows}
+            columns={columns}
+            totalRows={filterStatuses.length > 1 ? visibleRows.length : (data?.meta.total ?? 0)}
+            isLoading={isLoading}
+            isFetching={isFetching}
+            pagination={{ pageIndex: page, pageSize }}
+            onPaginationChange={(p) => {
+              setPage(p.pageIndex)
+              setPageSize(p.pageSize)
+              setSelectedRows([])
+            }}
+            selectedRows={selectedRows}
+            onRowSelect={setSelectedRows}
+            bulkActions={bulkActions}
+            emptyTitle="Belum ada tagihan vendor"
+            emptyDescription="Buat tagihan dari PO atau GR yang sudah diterima."
+          />
+        )}
       </WorkspaceLayout>
 
       <VoidConfirmDialog

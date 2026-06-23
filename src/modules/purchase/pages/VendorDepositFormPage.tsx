@@ -13,6 +13,7 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { formatCurrency } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { useVendorDeposit, useVendorDepositMutations } from '../hooks/useVendorDepositList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
@@ -32,12 +33,20 @@ export default function VendorDepositFormPage() {
   const deposit = data?.data
   const { create, post, void: voidDep } = useVendorDepositMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<VendorDepositFormValues>({
+  const { control, getValues, register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<VendorDepositFormValues>({
     resolver: zodResolver(vendorDepositSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
 
   const status = (deposit?.status ?? 'draft') as DocumentStatus
+
+  const formDraft = usePersistentFormDraft<VendorDepositFormValues, never>({
+    draftKey: `purchase.deposit.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    enabled: isCreate,
+  })
 
   useEffect(() => {
     if (deposit) {
@@ -48,6 +57,7 @@ export default function VendorDepositFormPage() {
   const handleSave = handleSubmit(async (values) => {
     try {
       const res = await create.mutateAsync(values)
+      formDraft.clearDraft()
       toast.success('Deposit vendor berhasil dibuat.')
       navigate(`/purchase/vendor-deposits/${res.data.id}`)
     } catch { toast.error('Gagal menyimpan deposit vendor.') }

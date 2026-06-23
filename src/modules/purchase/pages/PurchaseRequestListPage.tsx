@@ -8,6 +8,8 @@ import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatus
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
+import { QueryErrorState } from '@/components/shared/feedback/QueryErrorState'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { usePurchaseRequestList } from '../hooks/usePurchaseRequestList'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
@@ -18,11 +20,14 @@ const STATUSES: PurchaseRequestStatus[] = ['draft', 'submitted', 'approved', 're
 export default function PurchaseRequestListPage() {
   const navigate = useNavigate()
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState<25 | 50 | 100>(25)
+  const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<PurchaseRequestStatus | undefined>()
 
-  const { data, isLoading, isFetching } = usePurchaseRequestList({
+  const { data, error, isError, isLoading, isFetching, refetch } = usePurchaseRequestList({
     page: page + 1,
-    per_page: 25,
+    per_page: pageSize,
+    search: search || undefined,
     status: filterStatus,
   })
 
@@ -51,11 +56,19 @@ export default function PurchaseRequestListPage() {
   ]
 
   const sidebar = (
-    <FilterSidebar activeCount={filterStatus ? 1 : 0} onReset={() => setFilterStatus(undefined)}>
+    <FilterSidebar activeCount={[search, filterStatus].filter(Boolean).length} onReset={() => { setSearch(''); setFilterStatus(undefined); setPage(0) }}>
+      <FilterSection title="Cari">
+        <Input
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(0) }}
+          placeholder="Nomor, departemen, catatan..."
+          className="h-8 text-[12px]"
+        />
+      </FilterSection>
       <FilterSection title="Status">
         {STATUSES.map((s) => (
           <label key={s} className="flex cursor-pointer items-center gap-2">
-            <Checkbox checked={filterStatus === s} onCheckedChange={(c) => setFilterStatus(c ? s : undefined)} />
+            <Checkbox checked={filterStatus === s} onCheckedChange={(c) => { setFilterStatus(c ? s : undefined); setPage(0) }} />
             <span className="text-[12px] capitalize text-[#334155]">{s}</span>
           </label>
         ))}
@@ -76,17 +89,21 @@ export default function PurchaseRequestListPage() {
         </PermissionGuard>
       }
     >
-      <DataTable
-        data={data?.data ?? []}
-        columns={columns}
-        totalRows={data?.meta.total ?? 0}
-        isLoading={isLoading}
-        isFetching={isFetching}
-        pagination={{ pageIndex: page, pageSize: 25 }}
-        onPaginationChange={(p) => setPage(p.pageIndex)}
-        emptyTitle="Belum ada purchase request"
-        emptyDescription="Buat PR pertama untuk memulai proses pembelian."
-      />
+      {isError ? (
+        <QueryErrorState error={error} onRetry={() => void refetch()} title="Purchase request gagal dimuat" />
+      ) : (
+        <DataTable
+          data={data?.data ?? []}
+          columns={columns}
+          totalRows={data?.meta.total ?? 0}
+          isLoading={isLoading}
+          isFetching={isFetching}
+          pagination={{ pageIndex: page, pageSize }}
+          onPaginationChange={(p) => { setPage(p.pageIndex); setPageSize(p.pageSize) }}
+          emptyTitle="Belum ada purchase request"
+          emptyDescription="Buat PR pertama untuk memulai proses pembelian."
+        />
+      )}
     </WorkspaceLayout>
   )
 }

@@ -12,6 +12,7 @@ export interface PurchaseOrderLine {
   received_quantity: number
   billed_quantity: number
   returned_quantity: number
+  purchase_request_line_id?: number | null
 }
 
 export interface PurchaseOrder {
@@ -52,6 +53,7 @@ export interface PurchaseOrderLinePayload {
   quantity: number
   unit_price: number
   discount_percent?: number
+  purchase_request_line_id?: number | null
 }
 
 export interface CreatePurchaseOrderPayload {
@@ -60,6 +62,7 @@ export interface CreatePurchaseOrderPayload {
   payment_term_id?: number | null
   expected_delivery_date?: string | null
   notes?: string | null
+  purchase_request_id?: number | null
   lines: PurchaseOrderLinePayload[]
 }
 

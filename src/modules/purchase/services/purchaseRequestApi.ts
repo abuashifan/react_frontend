@@ -1,4 +1,6 @@
 import { http } from '@/services/http'
+import { adaptPurchaseListRows } from './purchaseListAdapter'
+import { adaptPurchaseDocument, adaptPurchasePayload } from './purchaseTransactionAdapter'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type {
   PurchaseRequest,
@@ -7,18 +9,24 @@ import type {
   UpdatePurchaseRequestPayload,
 } from '../types/purchaseRequest.types'
 
-export const purchaseRequestApi = {
-  list: (params: PurchaseRequestListParams) =>
-    http.get<unknown, PaginatedResponse<PurchaseRequest>>('/purchase/requests', { params }),
+const DATE_OPTS = { dateField: 'request_date', secondaryDateField: 'needed_date' }
 
-  get: (id: number) =>
-    http.get<unknown, ApiResponse<PurchaseRequest>>(`/purchase/requests/${id}`),
+export const purchaseRequestApi = {
+  list: async (params: PurchaseRequestListParams) => {
+    const res = await http.get<unknown, PaginatedResponse<PurchaseRequest>>('/purchase/requests', { params })
+    return { ...res, data: adaptPurchaseListRows(res.data, { date: 'request_date' }) }
+  },
+
+  get: async (id: number) => {
+    const res = await http.get<unknown, ApiResponse<PurchaseRequest>>(`/purchase/requests/${id}`)
+    return { ...res, data: adaptPurchaseDocument<PurchaseRequest>(res.data, DATE_OPTS) }
+  },
 
   create: (payload: CreatePurchaseRequestPayload) =>
-    http.post<unknown, ApiResponse<PurchaseRequest>>('/purchase/requests', payload),
+    http.post<unknown, ApiResponse<PurchaseRequest>>('/purchase/requests', adaptPurchasePayload(payload, DATE_OPTS)),
 
   update: (id: number, payload: UpdatePurchaseRequestPayload) =>
-    http.patch<unknown, ApiResponse<PurchaseRequest>>(`/purchase/requests/${id}`, payload),
+    http.patch<unknown, ApiResponse<PurchaseRequest>>(`/purchase/requests/${id}`, adaptPurchasePayload(payload, DATE_OPTS)),
 
   submit: (id: number) =>
     http.patch<unknown, ApiResponse<PurchaseRequest>>(`/purchase/requests/${id}/submit`),

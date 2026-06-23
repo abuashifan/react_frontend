@@ -1,4 +1,6 @@
 import { http } from '@/services/http'
+import { adaptPurchaseListRows } from './purchaseListAdapter'
+import { adaptPurchaseDocument, adaptPurchasePayload } from './purchaseTransactionAdapter'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type {
   VendorDeposit,
@@ -6,15 +8,21 @@ import type {
   CreateVendorDepositPayload,
 } from '../types/vendorDeposit.types'
 
-export const vendorDepositApi = {
-  list: (params: VendorDepositListParams) =>
-    http.get<unknown, PaginatedResponse<VendorDeposit>>('/purchase/vendor-deposits', { params }),
+const DATE_OPTS = { dateField: 'deposit_date' }
 
-  get: (id: number) =>
-    http.get<unknown, ApiResponse<VendorDeposit>>(`/purchase/vendor-deposits/${id}`),
+export const vendorDepositApi = {
+  list: async (params: VendorDepositListParams) => {
+    const res = await http.get<unknown, PaginatedResponse<VendorDeposit>>('/purchase/vendor-deposits', { params })
+    return { ...res, data: adaptPurchaseListRows(res.data, { date: 'deposit_date' }) }
+  },
+
+  get: async (id: number) => {
+    const res = await http.get<unknown, ApiResponse<VendorDeposit>>(`/purchase/vendor-deposits/${id}`)
+    return { ...res, data: adaptPurchaseDocument<VendorDeposit>(res.data, DATE_OPTS) }
+  },
 
   create: (payload: CreateVendorDepositPayload) =>
-    http.post<unknown, ApiResponse<VendorDeposit>>('/purchase/vendor-deposits', payload),
+    http.post<unknown, ApiResponse<VendorDeposit>>('/purchase/vendor-deposits', adaptPurchasePayload(payload, DATE_OPTS)),
 
   post: (id: number) =>
     http.patch<unknown, ApiResponse<VendorDeposit>>(`/purchase/vendor-deposits/${id}/post`),

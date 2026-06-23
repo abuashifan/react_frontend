@@ -8,12 +8,17 @@ import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/Li
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { useGoodsReceipt, useGoodsReceiptMutations } from '../hooks/useGoodsReceiptList'
+import { validatePurchaseLines } from '../services/purchaseFormValidation'
+import { SourceDocumentPicker } from '../components/SourceDocumentPicker'
+import type { PurchaseSourceDocumentItem } from '../services/sourceDocumentApi'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
@@ -25,15 +30,22 @@ interface EditableLine {
   description: string
   quantity: number
   billed_quantity?: number
+  source_quantity?: number
+  purchase_order_line_id?: number | null
 }
 
 const DEFAULT_LINE: EditableLine = { product_id: null, description: '', quantity: 1 }
 
 function lineSubtotal() { return 0 }
 
-function toGoodsReceiptLine(line: EditableLine): Omit<EditableLine, 'billed_quantity'> {
-  const { billed_quantity, ...editable } = line
+function numberValue(value: unknown): number {
+  return Number(value ?? 0)
+}
+
+function toGoodsReceiptLine(line: EditableLine) {
+  const { billed_quantity, source_quantity, ...editable } = line
   void billed_quantity
+  void source_quantity
   return editable
 }
 
@@ -48,27 +60,75 @@ export default function GoodsReceiptFormPage() {
   const gr = data?.data
   const { create, receive, cancel, void: voidGr } = useGoodsReceiptMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<GoodsReceiptFormValues>({
+  const { control, getValues, register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<GoodsReceiptFormValues>({
     resolver: zodResolver(goodsReceiptSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const [lineErrors, setLineErrors] = useState<string[]>([])
   const [isVoidOpen, setVoidOpen] = useState(false)
+  const [isSourcePickerOpen, setSourcePickerOpen] = useState(false)
+  const [sourceId, setSourceId] = useState<number | null>(null)
+  const [sourceNumber, setSourceNumber] = useState('')
 
   const status = (gr?.status ?? 'draft') as DocumentStatus
   const isEditable = isCreate || gr?.status === 'draft'
 
+  const formDraft = usePersistentFormDraft<GoodsReceiptFormValues, {
+    lines: EditableLine[]
+    sourceId: number | null
+    sourceNumber: string
+  }>({
+    draftKey: `purchase.goods-receipt.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: { lines, sourceId, sourceNumber },
+    onRestoreExtra: (extra) => {
+      setLines(extra.lines?.length ? extra.lines : [{ ...DEFAULT_LINE }])
+      setSourceId(extra.sourceId ?? null)
+      setSourceNumber(extra.sourceNumber ?? '')
+    },
+    enabled: isEditable,
+  })
+
   useEffect(() => {
     if (gr) {
       reset({ vendor_id: gr.vendor_id, date: gr.date, warehouse_id: gr.warehouse_id, notes: gr.notes ?? '' })
-      setLines(gr.lines.map((l) => ({ product_id: l.product_id, description: l.description, quantity: l.quantity, billed_quantity: l.billed_quantity })))
+      setLines(gr.lines.map((l) => ({ product_id: l.product_id, description: l.description, quantity: l.quantity, billed_quantity: l.billed_quantity, purchase_order_line_id: l.purchase_order_line_id })))
+      setSourceId(gr.purchase_order_id ?? null)
+      setSourceNumber(gr.purchase_order_number ?? '')
     }
   }, [gr, reset])
 
+  const handleSourceSelect = (document: PurchaseSourceDocumentItem) => {
+    setSourceId(document.source_id)
+    setSourceNumber(document.number)
+    setValue('vendor_id', document.partner_id ?? numberValue(document.header.vendor_id))
+    setLines(document.lines.map((line) => ({
+      product_id: line.product_id == null ? null : numberValue(line.product_id),
+      description: String(line.description ?? ''),
+      quantity: numberValue(line.remaining_quantity),
+      source_quantity: numberValue(line.remaining_quantity),
+      purchase_order_line_id: numberValue(line.purchase_order_line_id ?? line.id),
+    })))
+    setLineErrors([])
+    setSourcePickerOpen(false)
+  }
+
   const handleSave = handleSubmit(async (values) => {
+    const nextLineErrors = validatePurchaseLines(lines)
+    lines.forEach((line, index) => {
+      if (line.source_quantity !== undefined && line.quantity > line.source_quantity) {
+        nextLineErrors.push(`Baris ${index + 1}: kuantitas melebihi sisa PO.`)
+      }
+    })
+    setLineErrors(nextLineErrors)
+    if (nextLineErrors.length > 0) return
     try {
-      const res = await create.mutateAsync({ ...values, lines: lines.map(toGoodsReceiptLine) })
+      const res = await create.mutateAsync({ ...values, purchase_order_id: sourceId, lines: lines.map(toGoodsReceiptLine) })
+      formDraft.clearDraft()
       toast.success('Penerimaan barang berhasil dibuat.')
       navigate(`/purchase/goods-receipts/${res.data.id}`)
     } catch { toast.error('Gagal menyimpan penerimaan barang.') }
@@ -148,6 +208,15 @@ export default function GoodsReceiptFormPage() {
       >
         <div className="space-y-3">
           <FormSection title="Header">
+            {isCreate && (
+              <div className="flex flex-col gap-1 md:col-span-2">
+                <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Dari Purchase Order</Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" variant="outline" className="h-9 text-[13px]" onClick={() => setSourcePickerOpen(true)}>Pilih PO</Button>
+                  {sourceNumber && <span className="text-[13px] font-medium text-[#5c9ead]">{sourceNumber}</span>}
+                </div>
+              </div>
+            )}
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Vendor <span className="text-red-500">*</span></Label>
               <SearchableSelect
@@ -199,11 +268,16 @@ export default function GoodsReceiptFormPage() {
               columns={columns}
               onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
               onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}
-              onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))}
+              onUpdate={(i, field, value) => { setLineErrors([]); setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l)) }}
               getSubtotal={lineSubtotal}
               isReadOnly={!isEditable}
               addLabel="Tambah Item"
             />
+            {lineErrors.length > 0 && (
+              <div role="alert" className="mt-2 space-y-1 text-[11px] text-red-600">
+                {lineErrors.map((message) => <p key={message}>{message}</p>)}
+              </div>
+            )}
           </div>
         </div>
       </FormLayout>
@@ -214,6 +288,15 @@ export default function GoodsReceiptFormPage() {
         onConfirm={(reason) => void handleVoid(reason)}
         documentNumber={gr?.number ?? ''}
         isLoading={voidGr.isPending}
+      />
+      <SourceDocumentPicker
+        isOpen={isCreate && isSourcePickerOpen}
+        onClose={() => setSourcePickerOpen(false)}
+        onSelect={handleSourceSelect}
+        targetType="purchase.goods-receipts"
+        sourceType="purchase_order"
+        vendorId={watch('vendor_id')}
+        title="Pilih Purchase Order"
       />
     </>
   )

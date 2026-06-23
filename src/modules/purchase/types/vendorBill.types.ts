@@ -16,6 +16,8 @@ export interface VendorBillLine {
   tax_percent: number
   subtotal: number
   returned_quantity: number
+  goods_receipt_line_id?: number | null
+  purchase_order_line_id?: number | null
 }
 
 export interface VendorBill {
@@ -65,6 +67,7 @@ export interface VendorBillLinePayload {
   unit_price: number
   discount_percent?: number
   tax_percent?: number
+  goods_receipt_line_id?: number | null
 }
 
 export interface CreateVendorBillPayload {
@@ -73,6 +76,7 @@ export interface CreateVendorBillPayload {
   due_date?: string | null
   payment_term_id?: number | null
   notes?: string | null
+  goods_receipt_id?: number | null
   lines: VendorBillLinePayload[]
 }
 

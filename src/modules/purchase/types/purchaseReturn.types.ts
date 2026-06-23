@@ -8,6 +8,8 @@ export interface PurchaseReturnLine {
   quantity: number
   unit_price: number
   subtotal: number
+  vendor_bill_line_id?: number | null
+  goods_receipt_line_id?: number | null
 }
 
 export interface PurchaseReturn {
@@ -43,11 +45,15 @@ export interface PurchaseReturnLinePayload {
   description: string
   quantity: number
   unit_price: number
+  vendor_bill_line_id?: number | null
+  goods_receipt_line_id?: number | null
 }
 
 export interface CreatePurchaseReturnPayload {
   vendor_id: number
   date: string
   notes?: string | null
+  vendor_bill_id?: number | null
+  goods_receipt_id?: number | null
   lines: PurchaseReturnLinePayload[]
 }
