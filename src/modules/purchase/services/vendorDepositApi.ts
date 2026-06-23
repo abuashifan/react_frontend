@@ -30,8 +30,8 @@ export const vendorDepositApi = {
   void: (id: number, reason: string) =>
     http.patch<unknown, ApiResponse<VendorDeposit>>(`/purchase/vendor-deposits/${id}/void`, { reason }),
 
-  refund: (id: number) =>
-    http.patch<unknown, ApiResponse<VendorDeposit>>(`/purchase/vendor-deposits/${id}/refund`),
+  refund: (id: number, amount: number, reason?: string) =>
+    http.patch<unknown, ApiResponse<VendorDeposit>>(`/purchase/vendor-deposits/${id}/refund`, { amount, reason }),
 
   allocateToBill: (id: number, billId: number, amount: number) =>
     http.post<unknown, ApiResponse<VendorDeposit>>(`/purchase/vendor-deposits/${id}/allocate-to-bill/${billId}`, { amount }),

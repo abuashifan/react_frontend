@@ -22,6 +22,7 @@ import type { PurchaseSourceDocumentItem } from '../services/sourceDocumentApi'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
+import { accessUsersApi } from '@/modules/settings/services/accessApi'
 import { purchaseOrderSchema, type PurchaseOrderFormValues } from '../schemas/purchaseOrderSchema'
 import type { DocumentStatus } from '@/types/common.types'
 import { toDateInputValue } from '@/lib/utils'
@@ -133,7 +134,7 @@ export default function PurchaseOrderFormPage() {
 
   useEffect(() => {
     if (po) {
-      reset({ vendor_id: po.vendor_id, date: toDateInputValue(po.date), payment_term_id: po.payment_term_id, expected_delivery_date: toDateInputValue(po.expected_delivery_date), notes: po.notes ?? '' })
+      reset({ vendor_id: po.vendor_id, date: toDateInputValue(po.date), buyer_id: po.buyer_id, payment_term_id: po.payment_term_id, expected_delivery_date: toDateInputValue(po.expected_delivery_date), notes: po.notes ?? '' })
       setLines(po.lines.map((l) => ({
         product_id: l.product_id, description: l.description, quantity: l.quantity,
         unit_price: l.unit_price, discount_percent: l.discount_percent,
@@ -267,6 +268,18 @@ export default function PurchaseOrderFormPage() {
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
             <Input {...register('date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
             {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pembeli</Label>
+            <SearchableSelect
+              value={watch('buyer_id') ?? null}
+              onChange={(v) => setValue('buyer_id', v)}
+              onSearch={accessUsersApi.searchUsers}
+              placeholder="Pilih pembeli..."
+              disabled={!isEditable}
+              selectedOptions={po?.buyer ? [{ value: po.buyer.id, label: po.buyer.name }] : []}
+            />
           </div>
 
           <div className="flex flex-col gap-1">

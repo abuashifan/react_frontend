@@ -16,9 +16,13 @@ export interface PurchaseRequest {
   id: number
   number: string
   date: string
+  needed_date?: string | null
   department_id?: number | null
   department?: { id: number; name: string } | null
   requester_id?: number | null
+  requester?: { id: number; name: string } | null
+  project_id?: number | null
+  project?: { id: number; name: string } | null
   notes?: string | null
   status: PurchaseRequestStatus
   total_estimated: number
@@ -47,7 +51,10 @@ export interface PurchaseRequestLinePayload {
 
 export interface CreatePurchaseRequestPayload {
   date: string
+  needed_date?: string | null
+  requester_id?: number | null
   department_id?: number | null
+  project_id?: number | null
   notes?: string | null
   lines: PurchaseRequestLinePayload[]
 }

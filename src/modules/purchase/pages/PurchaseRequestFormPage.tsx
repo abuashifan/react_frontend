@@ -18,6 +18,8 @@ import { usePurchaseRequest, usePurchaseRequestMutations } from '../hooks/usePur
 import { validatePurchaseLines } from '../services/purchaseFormValidation'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
+import { proyekApi } from '@/modules/master-data/services/proyekApi'
+import { accessUsersApi } from '@/modules/settings/services/accessApi'
 import { purchaseRequestSchema, type PurchaseRequestFormValues } from '../schemas/purchaseRequestSchema'
 import type { DocumentStatus } from '@/types/common.types'
 
@@ -69,7 +71,7 @@ export default function PurchaseRequestFormPage() {
 
   useEffect(() => {
     if (pr) {
-      reset({ date: pr.date, department_id: pr.department_id, notes: pr.notes ?? '' })
+      reset({ date: pr.date, needed_date: pr.needed_date ?? undefined, requester_id: pr.requester_id, department_id: pr.department_id, project_id: pr.project_id, notes: pr.notes ?? '' })
       setLines(pr.lines.map((l) => ({
         product_id: l.product_id,
         description: l.description,
@@ -183,6 +185,24 @@ export default function PurchaseRequestFormPage() {
           </div>
 
           <div className="flex flex-col gap-1">
+            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal Dibutuhkan</Label>
+            <Input {...register('needed_date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
+            {errors.needed_date && <p className="text-[11px] text-red-500">{errors.needed_date.message}</p>}
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pemohon</Label>
+            <SearchableSelect
+              value={watch('requester_id') ?? null}
+              onChange={(v) => setValue('requester_id', v)}
+              onSearch={accessUsersApi.searchUsers}
+              placeholder="Pilih pemohon..."
+              disabled={!isEditable}
+              selectedOptions={pr?.requester ? [{ value: pr.requester.id, label: pr.requester.name }] : []}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Departemen</Label>
             <SearchableSelect
               value={watch('department_id') ?? null}
@@ -191,6 +211,18 @@ export default function PurchaseRequestFormPage() {
               placeholder="Pilih departemen..."
               disabled={!isEditable}
               selectedOptions={pr?.department ? [{ value: pr.department.id, label: pr.department.name }] : []}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Proyek</Label>
+            <SearchableSelect
+              value={watch('project_id') ?? null}
+              onChange={(v) => setValue('project_id', v)}
+              onSearch={proyekApi.search}
+              placeholder="Pilih proyek..."
+              disabled={!isEditable}
+              selectedOptions={pr?.project ? [{ value: pr.project.id, label: pr.project.name }] : []}
             />
           </div>
 

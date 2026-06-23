@@ -7,14 +7,18 @@ import { FormSection } from '@/components/shared/form/FormSection'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { ConfirmDialog } from '@/components/shared/feedback/ConfirmDialog'
 import { formatCurrency } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { useVendorDeposit, useVendorDepositMutations } from '../hooks/useVendorDepositList'
+import { useVendorOpenBills } from '../hooks/useVendorPaymentList'
+import { getApiErrorMessage } from '@/lib/apiError'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { vendorDepositSchema, type VendorDepositFormValues } from '../schemas/vendorDepositSchema'
@@ -31,14 +35,24 @@ export default function VendorDepositFormPage() {
 
   const { data, isLoading } = useVendorDeposit(id ? Number(id) : undefined)
   const deposit = data?.data
-  const { create, post, void: voidDep } = useVendorDepositMutations()
+  const { create, post, void: voidDep, refund, allocate } = useVendorDepositMutations()
 
   const { control, getValues, register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<VendorDepositFormValues>({
     resolver: zodResolver(vendorDepositSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
 
+  const [isRefundOpen, setRefundOpen] = useState(false)
+  const [refundAmount, setRefundAmount] = useState(0)
+  const [billId, setBillId] = useState<number | null>(null)
+  const [allocationAmount, setAllocationAmount] = useState(0)
+
   const status = (deposit?.status ?? 'draft') as DocumentStatus
+  const canAllocate = ['posted', 'partially_allocated'].includes(deposit?.status ?? '')
+  const vendorContext = useVendorOpenBills(canAllocate ? deposit?.vendor_id : null)
+  const openBills = vendorContext.data?.data?.open_bills ?? []
+  const selectedBill = openBills.find((bill) => bill.vendor_bill_id === billId)
+  const maxAllocation = Math.min(deposit?.remaining_amount ?? 0, selectedBill?.balance_due ?? deposit?.remaining_amount ?? 0)
 
   const formDraft = usePersistentFormDraft<VendorDepositFormValues, never>({
     draftKey: `purchase.deposit.${id ?? 'new'}`,
@@ -69,6 +83,23 @@ export default function VendorDepositFormPage() {
     toast.success('Deposit berhasil di-void.')
     setVoidOpen(false)
   }
+  const handleAllocate = async () => {
+    if (!billId || allocationAmount <= 0) return
+    try {
+      await allocate.mutateAsync({ depositId: Number(id), billId, amount: allocationAmount })
+      toast.success('Deposit berhasil dialokasikan ke tagihan.')
+      setBillId(null)
+      setAllocationAmount(0)
+    } catch (error) { toast.error(getApiErrorMessage(error, 'Alokasi deposit gagal.')) }
+  }
+  const handleRefund = async (reason?: string) => {
+    if (refundAmount <= 0) return
+    try {
+      await refund.mutateAsync({ id: Number(id), amount: refundAmount, reason })
+      toast.success('Refund deposit berhasil diproses.')
+      setRefundOpen(false)
+    } catch (error) { toast.error(getApiErrorMessage(error, 'Refund deposit gagal.')) }
+  }
 
   const actions: DocumentActionButton[] = []
   if (isCreate && can('purchase.deposits.create')) {
@@ -80,6 +111,17 @@ export default function VendorDepositFormPage() {
     }
     if (deposit?.status === 'posted' && can('purchase.deposits.void')) {
       actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
+    }
+    if (canAllocate && can('purchase.deposits.refund')) {
+      actions.push({
+        id: 'refund',
+        label: 'Refund',
+        variant: 'neutral',
+        onClick: () => {
+          if (refundAmount <= 0) setRefundAmount(deposit?.remaining_amount ?? 0)
+          setRefundOpen(true)
+        },
+      })
     }
   }
 
@@ -142,10 +184,52 @@ export default function VendorDepositFormPage() {
               </div>
             </FormSection>
           )}
+
+          {canAllocate && deposit && can('purchase.deposits.post') && (
+            <FormSection title="Alokasikan ke Tagihan">
+              <div className="flex flex-col gap-1">
+                <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tagihan Terbuka</Label>
+                <SearchableSelect
+                  value={billId}
+                  onChange={setBillId}
+                  onSearch={async (search) => openBills
+                    .filter((bill) => bill.bill_number.toLowerCase().includes(search.toLowerCase()))
+                    .map((bill) => ({ value: bill.vendor_bill_id, label: bill.bill_number, sublabel: formatCurrency(bill.balance_due) }))}
+                  placeholder="Pilih tagihan..."
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="deposit-allocation-amount" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jumlah Alokasi</Label>
+                <div className="flex gap-2">
+                  <Input id="deposit-allocation-amount" type="number" min={0} max={maxAllocation} value={allocationAmount} onChange={(event) => setAllocationAmount(Number(event.target.value))} className="h-9 text-right text-[13px] tabular-nums" />
+                  <Button type="button" onClick={() => void handleAllocate()} disabled={!billId || allocationAmount <= 0 || allocationAmount > maxAllocation || allocate.isPending} className="h-9 bg-[#5c9ead] px-3 text-[13px] hover:bg-[#4a8a9b]">Alokasikan</Button>
+                </div>
+              </div>
+            </FormSection>
+          )}
+
+          {canAllocate && deposit && can('purchase.deposits.refund') && (
+            <FormSection title="Refund Deposit">
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="deposit-refund-amount" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jumlah Refund</Label>
+                <Input id="deposit-refund-amount" type="number" min={0} max={deposit.remaining_amount} value={refundAmount} onChange={(event) => setRefundAmount(Number(event.target.value))} className="h-9 text-right text-[13px] tabular-nums" />
+              </div>
+            </FormSection>
+          )}
         </div>
       </FormLayout>
 
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={deposit?.number ?? ''} isLoading={voidDep.isPending} />
+      <ConfirmDialog
+        open={isRefundOpen}
+        onOpenChange={setRefundOpen}
+        title="Refund Deposit Vendor"
+        description={`Refund maksimal ${formatCurrency(deposit?.remaining_amount ?? 0)} ke akun kas/bank asal.`}
+        confirmLabel="Proses Refund"
+        requireReason
+        isLoading={refund.isPending}
+        onConfirm={(reason) => void handleRefund(reason)}
+      />
     </>
   )
 }

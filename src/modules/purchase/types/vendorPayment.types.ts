@@ -54,6 +54,18 @@ export interface OpenBillItem {
   balance_due: number
 }
 
+export interface AvailableDepositItem {
+  id: number
+  deposit_number: string
+  remaining_amount: number
+}
+
 export interface VendorContext {
+  vendor_id?: number
+  gross_ap_outstanding?: number
+  official_ap_balance?: number
+  unapplied_deposit_total?: number
+  net_vendor_exposure?: number
   open_bills: OpenBillItem[]
+  available_deposits?: AvailableDepositItem[]
 }

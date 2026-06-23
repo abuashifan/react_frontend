@@ -1,5 +1,6 @@
 import { http } from '@/services/http'
 import type { ApiResponse } from '@/types/api.types'
+import type { SelectOption } from '@/types/common.types'
 import type {
   CompanyUser, CompanyUserPermissions, AccessRole, Invitation, AuditEntry,
   PermissionCatalog, UpdateUserRolePayload, CreateRolePayload, UpdateRolePayload,
@@ -10,6 +11,17 @@ import type {
 export const accessUsersApi = {
   list: () => http.get<unknown, ApiResponse<CompanyUser[]>>('/access/company-users'),
   get: (id: number) => http.get<unknown, ApiResponse<CompanyUser>>(`/access/company-users/${id}`),
+
+  // Pencarian pengguna perusahaan untuk picker requester/buyer (value = user_id
+  // sesuai kontrak backend Purchase). Endpoint tidak punya param search, jadi
+  // difilter di klien.
+  searchUsers: async (query: string): Promise<SelectOption<number>[]> => {
+    const res = await http.get<unknown, ApiResponse<CompanyUser[]>>('/access/company-users')
+    const q = query.toLowerCase()
+    return res.data
+      .filter((user) => user.user_id != null && [user.name, user.email].some((label) => (label ?? '').toLowerCase().includes(q)))
+      .map((user) => ({ value: user.user_id, label: user.name ?? user.email ?? `User ${user.user_id}`, sublabel: user.email ?? undefined }))
+  },
   updateRole: (id: number, payload: UpdateUserRolePayload) =>
     http.patch<unknown, ApiResponse<CompanyUserPermissions>>(`/access/company-users/${id}/role`, payload),
   deactivate: (id: number) =>

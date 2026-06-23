@@ -166,6 +166,31 @@ export default function VendorPaymentFormPage() {
             </div>
           </FormSection>
 
+          {isCreate && vendorId && vendorContextData?.data && (
+            <div className="rounded-lg border border-[#d9e2e5] bg-white p-4">
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Konteks Vendor (AP)</p>
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[11px] text-[#64748b]">Total AP Terbuka</span>
+                  <span className="tabular-nums text-[13px] font-medium">{formatCurrency(vendorContextData.data.gross_ap_outstanding ?? 0)}</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[11px] text-[#64748b]">Deposit Tersedia</span>
+                  <span className="tabular-nums text-[13px] font-medium text-[#065F46]">{formatCurrency(vendorContextData.data.unapplied_deposit_total ?? 0)}</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[11px] text-[#64748b]">Eksposur Bersih</span>
+                  <span className="tabular-nums text-[13px] font-semibold text-[#991B1B]">{formatCurrency(vendorContextData.data.net_vendor_exposure ?? 0)}</span>
+                </div>
+              </div>
+              {(vendorContextData.data.available_deposits?.length ?? 0) > 0 && (
+                <p className="mt-2 text-[11px] text-[#64748b]">
+                  {vendorContextData.data.available_deposits?.length} deposit tersedia untuk dialokasikan via menu Deposit Vendor.
+                </p>
+              )}
+            </div>
+          )}
+
           <div>
             <div className="mb-2 flex items-center justify-between">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tagihan yang Dibayar</p>

@@ -19,7 +19,18 @@ export const vendorPaymentApi = {
 
   get: async (id: number) => {
     const res = await http.get<unknown, ApiResponse<VendorPayment>>(`/purchase/payments/${id}`)
-    return { ...res, data: adaptPurchaseDocument<VendorPayment>(res.data, DATE_OPTS) }
+    const doc = adaptPurchaseDocument<VendorPayment>(res.data, DATE_OPTS)
+    // Alokasi bill: ambil label nomor + sisa tagihan dari relasi vendor_bill yang
+    // dimuat backend, supaya detail tidak menampilkan kolom kosong (A13-169).
+    const lines = (doc.lines ?? []).map((line) => {
+      const bill = (line as { vendor_bill?: { bill_number?: string; balance_due?: number } }).vendor_bill
+      return {
+        ...line,
+        bill_number: line.bill_number ?? bill?.bill_number,
+        balance_due: line.balance_due ?? (bill?.balance_due != null ? Number(bill.balance_due) : undefined),
+      }
+    })
+    return { ...res, data: { ...doc, lines } }
   },
 
   create: (payload: CreateVendorPaymentPayload) =>

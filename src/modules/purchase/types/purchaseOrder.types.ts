@@ -21,6 +21,8 @@ export interface PurchaseOrder {
   date: string
   vendor_id: number
   vendor?: { id: number; code: string; name: string }
+  buyer_id?: number | null
+  buyer?: { id: number; name: string } | null
   payment_term_id?: number | null
   payment_term?: { id: number; name: string; days: number } | null
   expected_delivery_date?: string | null
@@ -59,6 +61,7 @@ export interface PurchaseOrderLinePayload {
 export interface CreatePurchaseOrderPayload {
   vendor_id: number
   date: string
+  buyer_id?: number | null
   payment_term_id?: number | null
   expected_delivery_date?: string | null
   notes?: string | null

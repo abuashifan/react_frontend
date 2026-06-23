@@ -24,6 +24,7 @@ import type { PurchaseSourceDocumentItem } from '../services/sourceDocumentApi'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
+import { accessUsersApi } from '@/modules/settings/services/accessApi'
 import { fixedAssetCategoryApi } from '@/modules/fixed-assets/services/fixedAssetCategoryApi'
 import { vendorBillSchema, type VendorBillFormValues } from '../schemas/vendorBillSchema'
 import type { DocumentStatus } from '@/types/common.types'
@@ -70,6 +71,7 @@ export default function VendorBillFormPage() {
   })
   const vendorId = useWatch({ control, name: 'vendor_id' })
   const paymentTermId = useWatch({ control, name: 'payment_term_id' })
+  const buyerId = useWatch({ control, name: 'buyer_id' })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
   const [lineErrors, setLineErrors] = useState<string[]>([])
@@ -108,7 +110,7 @@ export default function VendorBillFormPage() {
 
   useEffect(() => {
     if (bill) {
-      reset({ vendor_id: bill.vendor_id, date: toDateInputValue(bill.date), due_date: toDateInputValue(bill.due_date), payment_term_id: bill.payment_term_id, notes: bill.notes ?? '' })
+      reset({ vendor_id: bill.vendor_id, date: toDateInputValue(bill.date), due_date: toDateInputValue(bill.due_date), buyer_id: bill.buyer_id, payment_term_id: bill.payment_term_id, notes: bill.notes ?? '' })
       const timer = window.setTimeout(() => {
         setSourceId(bill.goods_receipt_id ?? null)
         setSourceNumber(bill.goods_receipt_number ?? '')
@@ -142,6 +144,7 @@ export default function VendorBillFormPage() {
         vendor_id: bill.vendor_id,
         date: toDateInputValue(bill.date),
         due_date: toDateInputValue(bill.due_date),
+        buyer_id: bill.buyer_id,
         payment_term_id: bill.payment_term_id,
         notes: bill.notes ?? '',
       })
@@ -324,6 +327,11 @@ export default function VendorBillFormPage() {
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jatuh Tempo</Label>
               <Input {...register('due_date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
+              {errors.due_date && <p className="text-[11px] text-red-500">{errors.due_date.message}</p>}
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pembeli</Label>
+              <SearchableSelect value={buyerId ?? null} onChange={(v) => setValue('buyer_id', v)} onSearch={accessUsersApi.searchUsers} placeholder="Pilih pembeli..." disabled={!isEditable} selectedOptions={bill?.buyer ? [{ value: bill.buyer.id, label: bill.buyer.name }] : []} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Syarat Pembayaran</Label>

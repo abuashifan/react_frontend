@@ -27,6 +27,8 @@ export interface VendorBill {
   due_date?: string | null
   vendor_id: number
   vendor?: { id: number; code: string; name: string }
+  buyer_id?: number | null
+  buyer?: { id: number; name: string } | null
   payment_term_id?: number | null
   payment_term?: { id: number; name: string; days: number } | null
   notes?: string | null
@@ -74,6 +76,7 @@ export interface CreateVendorBillPayload {
   vendor_id: number
   date: string
   due_date?: string | null
+  buyer_id?: number | null
   payment_term_id?: number | null
   notes?: string | null
   goods_receipt_id?: number | null
