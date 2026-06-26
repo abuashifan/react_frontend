@@ -2,6 +2,7 @@ import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type {
   PurchaseRequest,
+  RawPurchaseRequest,
   PurchaseRequestListParams,
   CreatePurchaseRequestPayload,
   UpdatePurchaseRequestPayload,
@@ -9,10 +10,10 @@ import type {
 
 export const purchaseRequestApi = {
   list: (params: PurchaseRequestListParams) =>
-    http.get<unknown, PaginatedResponse<PurchaseRequest>>('/purchase/requests', { params }),
+    http.get<unknown, PaginatedResponse<RawPurchaseRequest>>('/purchase/requests', { params }),
 
   get: (id: number) =>
-    http.get<unknown, ApiResponse<PurchaseRequest>>(`/purchase/requests/${id}`),
+    http.get<unknown, ApiResponse<RawPurchaseRequest>>(`/purchase/requests/${id}`),
 
   create: (payload: CreatePurchaseRequestPayload) =>
     http.post<unknown, ApiResponse<PurchaseRequest>>('/purchase/requests', payload),

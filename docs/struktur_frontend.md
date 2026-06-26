@@ -177,6 +177,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____prompt-phase-28-sales-transaction-contract.md
 | | |____prompt-phase-29-ar-subledger-reports.md
 | | |____prompt-phase-30-purchase-transaction-contract.md
+| | |____prompt-phase-30-completion-agent.md
 | | |____prompt-phase-31-ap-subledger-reports.md
 | | |____prompt-phase-32-inventory-integrity-workflow.md
 | | |____prompt-phase-33-fixed-assets-runtime-core.md
@@ -240,6 +241,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____shared/
 | | | |____PermissionGuard.tsx
 | | | |____document/
+| | | | |____ConfirmDialog.tsx
 | | | | |____DocumentActionBar.tsx
 | | | | |____DocumentLockedBanner.tsx
 | | | | |____documentEditPolicy.ts
@@ -565,6 +567,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____purchaseRequestApi.ts
 | | | | |____purchaseReturnApi.ts
 | | | | |____vendorBillApi.ts
+| | | | |____vendorBillAdapter.ts
+| | | | |____vendorBillSourceApi.ts
 | | | | |____vendorDepositApi.ts
 | | | | |____vendorPaymentApi.ts
 | | | |____types/

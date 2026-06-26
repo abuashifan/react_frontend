@@ -27,6 +27,35 @@ export interface PurchaseRequest {
   updated_at: string
 }
 
+export interface RawPurchaseRequestLine {
+  id: number
+  product_id: number | null
+  product?: { id: number; product_code: string; product_name: string } | null
+  description: string
+  quantity: number | string
+  unit_id?: number | null
+  unit?: { id: number; name: string } | null
+  estimated_unit_price: number | string
+  subtotal: number | string
+}
+
+export interface RawPurchaseRequest {
+  id: number
+  request_number: string
+  request_date: string
+  needed_date?: string | null
+  department_id?: number | null
+  department?: { id: number; name: string } | null
+  requester_id?: number | null
+  requester?: { id: number; name: string } | null
+  notes?: string | null
+  status: PurchaseRequestStatus
+  estimated_total: number | string
+  lines: RawPurchaseRequestLine[]
+  created_at: string
+  updated_at: string
+}
+
 export interface PurchaseRequestListParams {
   page: number
   per_page: number
@@ -42,11 +71,11 @@ export interface PurchaseRequestLinePayload {
   description: string
   quantity: number
   unit_id?: number | null
-  estimated_price?: number
+  estimated_unit_price?: number
 }
 
 export interface CreatePurchaseRequestPayload {
-  date: string
+  request_date: string
   department_id?: number | null
   notes?: string | null
   lines: PurchaseRequestLinePayload[]

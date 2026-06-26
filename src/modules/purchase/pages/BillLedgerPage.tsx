@@ -26,7 +26,7 @@ export default function BillLedgerPage() {
           onChange={(v) => setSelectedBill(v)}
           onSearch={async (q) => {
             const res = await vendorBillApi.list({ page: 1, per_page: 10, search: q })
-            return res.data.map((b) => ({ value: b.id, label: b.number, sublabel: b.vendor?.name }))
+            return res.data.map((b) => ({ value: b.id, label: b.bill_number, sublabel: b.vendor?.name }))
           }}
           placeholder="Cari nomor bill..."
         />

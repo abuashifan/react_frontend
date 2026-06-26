@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { vendorPaymentApi } from '../services/vendorPaymentApi'
+import { fromVendorPaymentResponse } from '../services/vendorPaymentAdapter'
 import type { VendorPaymentListParams, CreateVendorPaymentPayload } from '../types/vendorPayment.types'
 
 const QK = {
@@ -9,7 +10,7 @@ const QK = {
 }
 
 export function useVendorPaymentList(params: VendorPaymentListParams) {
-  return useQuery({ queryKey: QK.list(params), queryFn: () => vendorPaymentApi.list(params) })
+  return useQuery({ queryKey: QK.list(params), queryFn: () => vendorPaymentApi.list(params), select: (res) => ({ ...res, data: res.data.map(fromVendorPaymentResponse) }) })
 }
 
 export function useVendorPayment(id?: number) {
@@ -17,6 +18,7 @@ export function useVendorPayment(id?: number) {
     queryKey: QK.detail(id!),
     queryFn: () => vendorPaymentApi.get(id!),
     enabled: !!id,
+    select: (res) => ({ ...res, data: fromVendorPaymentResponse(res.data) }),
   })
 }
 

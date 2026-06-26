@@ -14,6 +14,7 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePurchaseOrder, usePurchaseOrderMutations } from '../hooks/usePurchaseOrderList'
+import { toPurchaseOrderPayload } from '../services/purchaseOrderAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
@@ -23,6 +24,7 @@ import { toDateInputValue } from '@/lib/utils'
 
 interface EditableLine {
   product_id: number | null
+  product?: { id: number; code: string; name: string } | null
   description: string
   quantity: number
   unit_price: number
@@ -31,7 +33,7 @@ interface EditableLine {
   billed_quantity?: number
 }
 
-const DEFAULT_LINE: EditableLine = { product_id: null, description: '', quantity: 1, unit_price: 0, discount_percent: 0 }
+const DEFAULT_LINE: EditableLine = { product_id: null, product: null, description: '', quantity: 1, unit_price: 0, discount_percent: 0 }
 
 function lineSubtotal(l: EditableLine) {
   return l.quantity * l.unit_price * (1 - l.discount_percent / 100)
@@ -84,7 +86,10 @@ export default function PurchaseOrderFormPage() {
     if (po) {
       reset({ vendor_id: po.vendor_id, date: toDateInputValue(po.date), payment_term_id: po.payment_term_id, expected_delivery_date: toDateInputValue(po.expected_delivery_date), notes: po.notes ?? '' })
       setLines(po.lines.map((l) => ({
-        product_id: l.product_id, description: l.description, quantity: l.quantity,
+        product_id: l.product_id,
+        product: l.product ?? null,
+        description: l.description,
+        quantity: l.quantity,
         unit_price: l.unit_price, discount_percent: l.discount_percent,
         received_quantity: l.received_quantity, billed_quantity: l.billed_quantity,
       })))
@@ -93,7 +98,7 @@ export default function PurchaseOrderFormPage() {
 
   const handleSave = handleSubmit(async (values) => {
     try {
-      const payload = { ...values, lines: lines.map(toPurchaseOrderLine) }
+      const payload = toPurchaseOrderPayload(values, lines.map(toPurchaseOrderLine))
       if (isCreate) {
         const res = await create.mutateAsync(payload)
         toast.success('Purchase Order berhasil dibuat.')
@@ -129,7 +134,15 @@ export default function PurchaseOrderFormPage() {
     {
       id: 'product', header: 'Produk', width: 200,
       render: ({ item, isReadOnly, onUpdate }) => (
-        <SearchableSelect value={item.product_id} onChange={(v) => onUpdate('product_id', v)} onSearch={produkApi.search} placeholder="Pilih produk..." disabled={isReadOnly} size="sm" />
+        <SearchableSelect
+          value={item.product_id}
+          onChange={(v) => onUpdate('product_id', v)}
+          onSearch={produkApi.search}
+          placeholder="Pilih produk..."
+          disabled={isReadOnly}
+          size="sm"
+          selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []}
+        />
       ),
     },
     {

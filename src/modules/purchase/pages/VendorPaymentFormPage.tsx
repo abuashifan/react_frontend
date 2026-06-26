@@ -14,6 +14,7 @@ import { formatCurrency } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { useVendorPayment, useVendorOpenBills, useVendorPaymentMutations } from '../hooks/useVendorPaymentList'
+import { toVendorPaymentPayload } from '../services/vendorPaymentAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { vendorPaymentSchema, type VendorPaymentFormValues } from '../schemas/vendorPaymentSchema'
@@ -79,7 +80,7 @@ export default function VendorPaymentFormPage() {
   const handleSave = handleSubmit(async (values) => {
     try {
       const lines: VendorPaymentLinePayload[] = billLines.map((l) => ({ vendor_bill_id: l.vendor_bill_id, amount: l.amount }))
-      const res = await create.mutateAsync({ ...values, lines })
+      const res = await create.mutateAsync({ ...toVendorPaymentPayload(values), lines })
       toast.success('Pembayaran vendor berhasil dibuat.')
       navigate(`/purchase/payments/${res.data.id}`)
     } catch { toast.error('Gagal menyimpan pembayaran vendor.') }

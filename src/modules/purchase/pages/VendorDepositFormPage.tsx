@@ -14,6 +14,7 @@ import { formatCurrency } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { useVendorDeposit, useVendorDepositMutations } from '../hooks/useVendorDepositList'
+import { toVendorDepositPayload } from '../services/vendorDepositAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { vendorDepositSchema, type VendorDepositFormValues } from '../schemas/vendorDepositSchema'
@@ -47,7 +48,7 @@ export default function VendorDepositFormPage() {
 
   const handleSave = handleSubmit(async (values) => {
     try {
-      const res = await create.mutateAsync(values)
+      const res = await create.mutateAsync(toVendorDepositPayload(values))
       toast.success('Deposit vendor berhasil dibuat.')
       navigate(`/purchase/vendor-deposits/${res.data.id}`)
     } catch { toast.error('Gagal menyimpan deposit vendor.') }

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { vendorDepositApi } from '../services/vendorDepositApi'
+import { fromVendorDepositResponse } from '../services/vendorDepositAdapter'
 import type { VendorDepositListParams, CreateVendorDepositPayload } from '../types/vendorDeposit.types'
 
 const QK = {
@@ -8,7 +9,7 @@ const QK = {
 }
 
 export function useVendorDepositList(params: VendorDepositListParams) {
-  return useQuery({ queryKey: QK.list(params), queryFn: () => vendorDepositApi.list(params) })
+  return useQuery({ queryKey: QK.list(params), queryFn: () => vendorDepositApi.list(params), select: (res) => ({ ...res, data: res.data.map(fromVendorDepositResponse) }) })
 }
 
 export function useVendorDeposit(id?: number) {
@@ -16,6 +17,7 @@ export function useVendorDeposit(id?: number) {
     queryKey: QK.detail(id!),
     queryFn: () => vendorDepositApi.get(id!),
     enabled: !!id,
+    select: (res) => ({ ...res, data: fromVendorDepositResponse(res.data) }),
   })
 }
 

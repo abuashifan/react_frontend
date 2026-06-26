@@ -2,6 +2,7 @@ import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type {
   VendorPayment,
+  RawVendorPayment,
   VendorPaymentListParams,
   CreateVendorPaymentPayload,
   VendorContext,
@@ -9,10 +10,10 @@ import type {
 
 export const vendorPaymentApi = {
   list: (params: VendorPaymentListParams) =>
-    http.get<unknown, PaginatedResponse<VendorPayment>>('/purchase/payments', { params }),
+    http.get<unknown, PaginatedResponse<RawVendorPayment>>('/purchase/payments', { params }),
 
   get: (id: number) =>
-    http.get<unknown, ApiResponse<VendorPayment>>(`/purchase/payments/${id}`),
+    http.get<unknown, ApiResponse<RawVendorPayment>>(`/purchase/payments/${id}`),
 
   create: (payload: CreateVendorPaymentPayload) =>
     http.post<unknown, ApiResponse<VendorPayment>>('/purchase/payments', payload),

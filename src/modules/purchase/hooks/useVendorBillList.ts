@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { vendorBillApi } from '../services/vendorBillApi'
+import { fromVendorBillResponse } from '../services/vendorBillAdapter'
 import type { VendorBillListParams, CreateVendorBillPayload, UpdateVendorBillPayload } from '../types/vendorBill.types'
 
 const QK = {
@@ -8,7 +9,11 @@ const QK = {
 }
 
 export function useVendorBillList(params: VendorBillListParams) {
-  return useQuery({ queryKey: QK.list(params), queryFn: () => vendorBillApi.list(params) })
+  return useQuery({
+    queryKey: QK.list(params),
+    queryFn: () => vendorBillApi.list(params),
+    select: (res) => ({ ...res, data: res.data.map(fromVendorBillResponse) }),
+  })
 }
 
 export function useVendorBill(id?: number) {
@@ -16,6 +21,7 @@ export function useVendorBill(id?: number) {
     queryKey: QK.detail(id!),
     queryFn: () => vendorBillApi.get(id!),
     enabled: !!id,
+    select: (res) => ({ ...res, data: fromVendorBillResponse(res.data) }),
   })
 }
 

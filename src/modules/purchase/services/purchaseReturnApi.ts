@@ -2,16 +2,17 @@ import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type {
   PurchaseReturn,
+  RawPurchaseReturn,
   PurchaseReturnListParams,
   CreatePurchaseReturnPayload,
 } from '../types/purchaseReturn.types'
 
 export const purchaseReturnApi = {
   list: (params: PurchaseReturnListParams) =>
-    http.get<unknown, PaginatedResponse<PurchaseReturn>>('/purchase/returns', { params }),
+    http.get<unknown, PaginatedResponse<RawPurchaseReturn>>('/purchase/returns', { params }),
 
   get: (id: number) =>
-    http.get<unknown, ApiResponse<PurchaseReturn>>(`/purchase/returns/${id}`),
+    http.get<unknown, ApiResponse<RawPurchaseReturn>>(`/purchase/returns/${id}`),
 
   create: (payload: CreatePurchaseReturnPayload) =>
     http.post<unknown, ApiResponse<PurchaseReturn>>('/purchase/returns', payload),

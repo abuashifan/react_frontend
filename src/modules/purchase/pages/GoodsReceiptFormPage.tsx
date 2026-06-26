@@ -14,6 +14,7 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { useGoodsReceipt, useGoodsReceiptMutations } from '../hooks/useGoodsReceiptList'
+import { toGoodsReceiptPayload } from '../services/goodsReceiptAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
@@ -22,12 +23,13 @@ import type { DocumentStatus } from '@/types/common.types'
 
 interface EditableLine {
   product_id: number | null
+  product?: { id: number; code: string; name: string } | null
   description: string
   quantity: number
   billed_quantity?: number
 }
 
-const DEFAULT_LINE: EditableLine = { product_id: null, description: '', quantity: 1 }
+const DEFAULT_LINE: EditableLine = { product_id: null, product: null, description: '', quantity: 1 }
 
 function lineSubtotal() { return 0 }
 
@@ -62,13 +64,19 @@ export default function GoodsReceiptFormPage() {
   useEffect(() => {
     if (gr) {
       reset({ vendor_id: gr.vendor_id, date: gr.date, warehouse_id: gr.warehouse_id, notes: gr.notes ?? '' })
-      setLines(gr.lines.map((l) => ({ product_id: l.product_id, description: l.description, quantity: l.quantity, billed_quantity: l.billed_quantity })))
+      setLines(gr.lines.map((l) => ({
+        product_id: l.product_id,
+        product: l.product ?? null,
+        description: l.description,
+        quantity: l.quantity,
+        billed_quantity: l.billed_quantity,
+      })))
     }
   }, [gr, reset])
 
   const handleSave = handleSubmit(async (values) => {
     try {
-      const res = await create.mutateAsync({ ...values, lines: lines.map(toGoodsReceiptLine) })
+      const res = await create.mutateAsync(toGoodsReceiptPayload(values, lines.map(toGoodsReceiptLine)))
       toast.success('Penerimaan barang berhasil dibuat.')
       navigate(`/purchase/goods-receipts/${res.data.id}`)
     } catch { toast.error('Gagal menyimpan penerimaan barang.') }
@@ -108,7 +116,15 @@ export default function GoodsReceiptFormPage() {
     {
       id: 'product', header: 'Produk', width: 200,
       render: ({ item, isReadOnly, onUpdate }) => (
-        <SearchableSelect value={item.product_id} onChange={(v) => onUpdate('product_id', v)} onSearch={produkApi.search} placeholder="Pilih produk..." disabled={isReadOnly} size="sm" />
+        <SearchableSelect
+          value={item.product_id}
+          onChange={(v) => onUpdate('product_id', v)}
+          onSearch={produkApi.search}
+          placeholder="Pilih produk..."
+          disabled={isReadOnly}
+          size="sm"
+          selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []}
+        />
       ),
     },
     {

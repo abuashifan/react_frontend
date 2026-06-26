@@ -36,6 +36,42 @@ export interface PurchaseOrder {
   updated_at: string
 }
 
+export interface RawPurchaseOrderLine {
+  id: number
+  product_id: number | null
+  product?: { id: number; product_code: string; product_name: string } | null
+  description: string
+  quantity: number | string
+  unit_price: number | string
+  discount_percent: number | string
+  subtotal: number | string
+  received_quantity: number | string
+  billed_quantity: number | string
+  returned_quantity: number | string
+}
+
+export interface RawPurchaseOrder {
+  id: number
+  order_number: string
+  order_date: string
+  vendor_id: number
+  vendor?: { id: number; contact_code: string; name: string } | null
+  payment_term_id?: number | null
+  payment_term?: { id: number; name: string; days: number } | null
+  expected_date?: string | null
+  notes?: string | null
+  status: PurchaseOrderStatus
+  subtotal: number | string
+  discount_amount: number | string
+  tax_amount: number | string
+  grand_total: number | string
+  lines: RawPurchaseOrderLine[]
+  purchase_request_id?: number | null
+  purchase_request?: { id: number; request_number: string } | null
+  created_at: string
+  updated_at: string
+}
+
 export interface PurchaseOrderListParams {
   page: number
   per_page: number
@@ -56,9 +92,9 @@ export interface PurchaseOrderLinePayload {
 
 export interface CreatePurchaseOrderPayload {
   vendor_id: number
-  date: string
+  order_date: string
   payment_term_id?: number | null
-  expected_delivery_date?: string | null
+  expected_date?: string | null
   notes?: string | null
   lines: PurchaseOrderLinePayload[]
 }

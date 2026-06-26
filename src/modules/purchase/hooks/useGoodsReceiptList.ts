@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { goodsReceiptApi } from '../services/goodsReceiptApi'
+import { fromGoodsReceiptResponse } from '../services/goodsReceiptAdapter'
 import type { GoodsReceiptListParams, CreateGoodsReceiptPayload } from '../types/goodsReceipt.types'
 
 const QK = {
@@ -8,7 +9,11 @@ const QK = {
 }
 
 export function useGoodsReceiptList(params: GoodsReceiptListParams) {
-  return useQuery({ queryKey: QK.list(params), queryFn: () => goodsReceiptApi.list(params) })
+  return useQuery({
+    queryKey: QK.list(params),
+    queryFn: () => goodsReceiptApi.list(params),
+    select: (res) => ({ ...res, data: res.data.map(fromGoodsReceiptResponse) }),
+  })
 }
 
 export function useGoodsReceipt(id?: number) {
@@ -16,6 +21,7 @@ export function useGoodsReceipt(id?: number) {
     queryKey: QK.detail(id!),
     queryFn: () => goodsReceiptApi.get(id!),
     enabled: !!id,
+    select: (res) => ({ ...res, data: fromGoodsReceiptResponse(res.data) }),
   })
 }
 

@@ -1,17 +1,18 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, AlertTriangle } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
+import { EmptyState } from '@/components/shared/feedback/EmptyState'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
-import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { useVendorBillList, useVendorBillMutations } from '../hooks/useVendorBillList'
@@ -20,12 +21,14 @@ import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { VendorBill, VendorBillStatus } from '../types/vendorBill.types'
 
 const STATUSES: VendorBillStatus[] = ['draft', 'approved', 'posted', 'partially_paid', 'paid', 'void']
-const FILTER_HINT = 'Filter multi-select dan tanggal berlaku pada data halaman yang sedang dimuat.'
 
 export default function VendorBillListPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState<25 | 50 | 100>(25)
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState('')
   const [filterStatuses, setFilterStatuses] = useState<VendorBillStatus[]>([])
   const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [filterVendor, setFilterVendor] = useState<number | null>(null)
@@ -34,24 +37,28 @@ export default function VendorBillListPage() {
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
   const { void: voidBill } = useVendorBillMutations()
 
-  const { data, isLoading, isFetching } = useVendorBillList({
+  // Debounce input pencarian agar tidak refetch tiap ketukan.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSearch(searchInput.trim())
+      setPage(0)
+    }, 350)
+    return () => window.clearTimeout(timer)
+  }, [searchInput])
+
+  const { data, isLoading, isFetching, isError, refetch } = useVendorBillList({
     page: page + 1,
-    per_page: 25,
+    per_page: pageSize,
+    search: search || undefined,
+    status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
     vendor_id: filterVendor ?? undefined,
+    date_from: dateRange.from || undefined,
+    date_to: dateRange.to || undefined,
   })
 
   const rows = data?.data ?? []
-  const visibleRows = useMemo(
-    () =>
-      rows.filter((bill) => {
-        const matchesStatus = filterStatuses.length === 0 || filterStatuses.includes(bill.status)
-        const matchesDate = isDateInRange(bill.date, dateRange.from, dateRange.to)
-        return matchesStatus && matchesDate
-      }),
-    [rows, filterStatuses, dateRange.from, dateRange.to],
-  )
 
-  const activeFilters = [filterStatuses.length > 0, dateRange.from, dateRange.to, filterVendor].filter(Boolean).length
+  const activeFilters = [search, filterStatuses.length > 0, dateRange.from, dateRange.to, filterVendor].filter(Boolean).length
 
   const resetSelection = () => {
     setPage(0)
@@ -66,7 +73,7 @@ export default function VendorBillListPage() {
       variant: 'destructive',
       permission: 'purchase.bills.void',
       onClick: (ids) => {
-        const eligible = visibleRows.filter((bill) => ids.includes(String(bill.id)) && bill.status !== 'void')
+        const eligible = rows.filter((bill) => ids.includes(String(bill.id)) && bill.status !== 'void')
         if (eligible.length === 0) {
           toast.warning('Dokumen yang dipilih tidak bisa di-void.')
           return
@@ -78,7 +85,7 @@ export default function VendorBillListPage() {
   ]
 
   const handleBulkVoid = async (reason: string) => {
-    const selectedBills = visibleRows.filter((bill) => bulkVoidIds.includes(String(bill.id)))
+    const selectedBills = rows.filter((bill) => bulkVoidIds.includes(String(bill.id)))
     if (selectedBills.length === 0) {
       toast.warning('Tidak ada tagihan vendor valid untuk di-void.')
       setBulkVoidOpen(false)
@@ -152,13 +159,21 @@ export default function VendorBillListPage() {
     <FilterSidebar
       activeCount={activeFilters}
       onReset={() => {
+        setSearchInput('')
         setFilterStatuses([])
         setDateRange({ from: '', to: '' })
         setFilterVendor(null)
         resetSelection()
       }}
-      hint={FILTER_HINT}
     >
+      <FilterSection title="Cari">
+        <Input
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Nomor bill, vendor..."
+          className="h-8 text-[13px]"
+        />
+      </FilterSection>
       <MultiCheckboxFilter
         title="Status"
         options={STATUSES.map((status) => ({ value: status, label: status.replace('_', ' ') }))}
@@ -175,7 +190,6 @@ export default function VendorBillListPage() {
           setDateRange(next)
           resetSelection()
         }}
-        note="Berlaku pada data halaman yang sedang dimuat."
       />
       <FilterSection title="Vendor">
         <SearchableSelect
@@ -205,23 +219,37 @@ export default function VendorBillListPage() {
           </PermissionGuard>
         }
       >
-        <DataTable
-          data={visibleRows}
-          columns={columns}
-          totalRows={data?.meta.total ?? 0}
-          isLoading={isLoading}
-          isFetching={isFetching}
-          pagination={{ pageIndex: page, pageSize: 25 }}
-          onPaginationChange={(p) => {
-            setPage(p.pageIndex)
-            setSelectedRows([])
-          }}
-          selectedRows={selectedRows}
-          onRowSelect={setSelectedRows}
-          bulkActions={bulkActions}
-          emptyTitle="Belum ada tagihan vendor"
-          emptyDescription="Buat tagihan dari PO atau GR yang sudah diterima."
-        />
+        {isError ? (
+          <EmptyState
+            icon={AlertTriangle}
+            title="Gagal memuat tagihan vendor"
+            description="Terjadi kesalahan saat mengambil data. Periksa koneksi lalu coba lagi."
+            action={
+              <Button variant="outline" className="h-8 px-3 text-[13px]" onClick={() => void refetch()}>
+                Coba Lagi
+              </Button>
+            }
+          />
+        ) : (
+          <DataTable
+            data={rows}
+            columns={columns}
+            totalRows={data?.meta.total ?? 0}
+            isLoading={isLoading}
+            isFetching={isFetching}
+            pagination={{ pageIndex: page, pageSize }}
+            onPaginationChange={(p) => {
+              setPage(p.pageIndex)
+              setPageSize(p.pageSize)
+              setSelectedRows([])
+            }}
+            selectedRows={selectedRows}
+            onRowSelect={setSelectedRows}
+            bulkActions={bulkActions}
+            emptyTitle="Belum ada tagihan vendor"
+            emptyDescription="Buat tagihan dari PO atau GR yang sudah diterima."
+          />
+        )}
       </WorkspaceLayout>
 
       <VoidConfirmDialog
@@ -234,7 +262,7 @@ export default function VendorBillListPage() {
         onConfirm={(reason) => void handleBulkVoid(reason)}
         documentNumber={
           bulkVoidIds.length === 1
-            ? (visibleRows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
+            ? (rows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
             : `${bulkVoidIds.length} dokumen terpilih`
         }
         isLoading={voidBill.isPending}

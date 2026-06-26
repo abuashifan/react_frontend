@@ -1,7 +1,7 @@
 # Prompt — Phase 30: Purchase Transaction Contract
 
 **Phase**: 30  
-**Status**: Planned  
+**Status**: In Progress  
 **Referensi utama**: `../issue_docs/issue-33-phase-30-purchase-transaction-contract.md`  
 **Spec canonical**: `../praproduction_docs/spec-37-audit-13-remediation.md`  
 **Roadmap canonical**: `../gap_docs/gap-10-audit-13-remediation-roadmap.md`  
@@ -89,3 +89,38 @@ Manual checks:
 - draft persistence intact;
 - return flow obeys control;
 - no regression in shell/navigation.
+
+---
+
+## 5. Progress Implementasi (Vendor Bill)
+
+Status per 2026-06-26. Resource lain belum dimulai.
+
+| Step | Finding | Status | Keterangan |
+|---|---|---|---|
+| 1 | A13-161/162 | ✅ Done | `vendorBillAdapter.ts`: request `bill_date`/`discount_type`+`value`/`tax_rate`; response `bill_number`→`number`, `product_name`, `contact_code`, totals |
+| 2 | A13-176/177/178/179 | ✅ Done | List server-side search/status(CSV)/date/per_page; error+retry state; backend `applyListStatus` CSV-aware + test |
+| 3 | A13-163 | ✅ Done | `validateVendorBillLines` (Zod): produk/kategori, deskripsi, qty>0, harga≥0; error nested per row |
+| 4 | A13-165 | ✅ Done | `vendorBillSourceApi.ts`: cari PO/GR eligible, preview sisa qty; tombol eksplisit (bukan immediate-POST) |
+| 5 | A13-167 | ✅ Done | `ConfirmDialog.tsx` (shared); approve & post lewat dialog rangkum dampak |
+| 6 | A13-171/162-followup | ⏳ | Field hilang + **gap runtime: label produk per-line tidak preload** (lihat §6) |
+| 7 | A13-172 | ⏳ | Cross-date: `due_date ≥ bill_date` |
+| 8 | A13-174 | ⏳ | Error/not-found detail + map field error backend ke form |
+| 9 | A13-166 | ⏳ | Permission guard |
+| 10 | A13-168 | ⏳ | Vendor deposit workflow (apply/refund + applied deposit saat post) |
+| 11 | A13-175 | ⏳ | Accessibility (label `htmlFor`, accessible name) |
+
+Setelah Vendor Bill tuntas → replikasi pola adapter ke 6 resource lain (A13-161/162 masih open untuk PR/PO/GR/Deposit/Payment/Return).
+
+---
+
+## 6. Gap Runtime Ditemukan Saat Playwright (2026-06-26)
+
+### GAP-30-001 — Label produk per-line tidak preload di detail/edit
+
+**Finding terkait**: A13-162 follow-up (response adapter sudah benar, tapi rendering belum)  
+**Ditemukan**: validasi Playwright Step 1–5, bill detail company 2  
+**Gejala**: Data produk per-line dari adapter (`line.product.name`) terbawa ke state `lines`, tapi `SearchableSelect` pada kolom produk di `LineItemsTable` **tidak diberi prop `selectedOptions`** — sehingga saat form dimuat ulang (edit/detail), dropdown tampil kosong meski data ada.  
+**Penyebab**: `VendorBillFormPage.tsx` memetakan `bill.lines` ke `EditableLine` (sudah dapat `product_id`), tapi `SearchableSelect` di kolom `product` tidak menerima `selectedOptions=[{ value: l.product_id, label: l.product.name }]`.  
+**Acceptance**: di detail/edit bill, nama produk tampil di tiap baris tanpa perlu user mengetik ulang.  
+**Fix**: tambah `selectedOptions` ke `SearchableSelect` produk dan kategori-aset per-line (digabung ke Langkah 6 A13-171).

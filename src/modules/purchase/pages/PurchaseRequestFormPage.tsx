@@ -14,6 +14,7 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePurchaseRequest, usePurchaseRequestMutations } from '../hooks/usePurchaseRequestList'
+import { toPurchaseRequestPayload } from '../services/purchaseRequestAdapter'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { purchaseRequestSchema, type PurchaseRequestFormValues } from '../schemas/purchaseRequestSchema'
@@ -21,12 +22,13 @@ import type { DocumentStatus } from '@/types/common.types'
 
 interface EditableLine {
   product_id: number | null
+  product?: { id: number; code: string; name: string } | null
   description: string
   quantity: number
   estimated_price: number
 }
 
-const DEFAULT_LINE: EditableLine = { product_id: null, description: '', quantity: 1, estimated_price: 0 }
+const DEFAULT_LINE: EditableLine = { product_id: null, product: null, description: '', quantity: 1, estimated_price: 0 }
 
 function lineSubtotal(l: EditableLine) {
   return l.quantity * l.estimated_price
@@ -59,6 +61,7 @@ export default function PurchaseRequestFormPage() {
       reset({ date: pr.date, department_id: pr.department_id, notes: pr.notes ?? '' })
       setLines(pr.lines.map((l) => ({
         product_id: l.product_id,
+        product: l.product ?? null,
         description: l.description,
         quantity: l.quantity,
         estimated_price: l.estimated_price,
@@ -68,12 +71,13 @@ export default function PurchaseRequestFormPage() {
 
   const handleSave = handleSubmit(async (values) => {
     try {
+      const payload = toPurchaseRequestPayload(values, lines.map(({ product, ...line }) => line))
       if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines })
+        const res = await create.mutateAsync(payload)
         toast.success('Purchase Request berhasil dibuat.')
         navigate(`/purchase/requests/${res.data.id}`)
       } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
+        await update.mutateAsync({ id: Number(id), payload })
         toast.success('Purchase Request berhasil diperbarui.')
       }
     } catch { toast.error('Gagal menyimpan Purchase Request.') }
@@ -117,7 +121,15 @@ export default function PurchaseRequestFormPage() {
     {
       id: 'product', header: 'Produk', width: 200,
       render: ({ item, isReadOnly, onUpdate }) => (
-        <SearchableSelect value={item.product_id} onChange={(v) => onUpdate('product_id', v)} onSearch={produkApi.search} placeholder="Pilih produk..." disabled={isReadOnly} size="sm" />
+        <SearchableSelect
+          value={item.product_id}
+          onChange={(v) => onUpdate('product_id', v)}
+          onSearch={produkApi.search}
+          placeholder="Pilih produk..."
+          disabled={isReadOnly}
+          size="sm"
+          selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []}
+        />
       ),
     },
     {

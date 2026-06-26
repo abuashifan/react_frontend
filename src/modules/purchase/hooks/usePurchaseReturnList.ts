@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { purchaseReturnApi } from '../services/purchaseReturnApi'
+import { fromPurchaseReturnResponse } from '../services/purchaseReturnAdapter'
 import type { PurchaseReturnListParams, CreatePurchaseReturnPayload } from '../types/purchaseReturn.types'
 
 const QK = {
@@ -8,7 +9,7 @@ const QK = {
 }
 
 export function usePurchaseReturnList(params: PurchaseReturnListParams) {
-  return useQuery({ queryKey: QK.list(params), queryFn: () => purchaseReturnApi.list(params) })
+  return useQuery({ queryKey: QK.list(params), queryFn: () => purchaseReturnApi.list(params), select: (res) => ({ ...res, data: res.data.map(fromPurchaseReturnResponse) }) })
 }
 
 export function usePurchaseReturn(id?: number) {
@@ -16,6 +17,7 @@ export function usePurchaseReturn(id?: number) {
     queryKey: QK.detail(id!),
     queryFn: () => purchaseReturnApi.get(id!),
     enabled: !!id,
+    select: (res) => ({ ...res, data: fromPurchaseReturnResponse(res.data) }),
   })
 }
 

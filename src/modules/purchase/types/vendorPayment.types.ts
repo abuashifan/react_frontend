@@ -24,6 +24,30 @@ export interface VendorPayment {
   updated_at: string
 }
 
+export interface RawVendorPaymentLine {
+  id: number
+  vendor_bill_id: number
+  vendor_bill?: { id: number; bill_number: string } | null
+  amount: number | string
+  balance_due?: number | string
+}
+
+export interface RawVendorPayment {
+  id: number
+  payment_number: string
+  payment_date: string
+  vendor_id: number
+  vendor?: { id: number; contact_code?: string; contact_number?: string; code?: string; name: string } | null
+  cash_bank_account_id: number
+  cash_bank_account?: { id: number; account_code?: string; account_name?: string; code?: string; name?: string } | null
+  amount: number | string
+  notes?: string | null
+  status: VendorPaymentStatus
+  lines: RawVendorPaymentLine[]
+  created_at: string
+  updated_at: string
+}
+
 export interface VendorPaymentListParams {
   page: number
   per_page: number
@@ -41,7 +65,7 @@ export interface VendorPaymentLinePayload {
 
 export interface CreateVendorPaymentPayload {
   vendor_id: number
-  date: string
+  payment_date: string
   cash_bank_account_id: number
   amount: number
   notes?: string | null

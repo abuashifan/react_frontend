@@ -15,6 +15,7 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePurchaseReturn, usePurchaseReturnMutations } from '../hooks/usePurchaseReturnList'
+import { toPurchaseReturnPayload } from '../services/purchaseReturnAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { purchaseReturnSchema, type PurchaseReturnFormValues } from '../schemas/purchaseReturnSchema'
@@ -22,12 +23,13 @@ import type { DocumentStatus } from '@/types/common.types'
 
 interface EditableLine {
   product_id: number | null
+  product?: { id: number; code: string; name: string } | null
   description: string
   quantity: number
   unit_price: number
 }
 
-const DEFAULT_LINE: EditableLine = { product_id: null, description: '', quantity: 1, unit_price: 0 }
+const DEFAULT_LINE: EditableLine = { product_id: null, product: null, description: '', quantity: 1, unit_price: 0 }
 
 function lineSubtotal(l: EditableLine) {
   return l.quantity * l.unit_price
@@ -58,13 +60,13 @@ export default function PurchaseReturnFormPage() {
   useEffect(() => {
     if (ret) {
       reset({ vendor_id: ret.vendor_id, date: ret.date, notes: ret.notes ?? '' })
-      setLines(ret.lines.map((l) => ({ product_id: l.product_id, description: l.description, quantity: l.quantity, unit_price: l.unit_price })))
+      setLines(ret.lines.map((l) => ({ product_id: l.product_id, product: l.product ?? null, description: l.description, quantity: l.quantity, unit_price: l.unit_price })))
     }
   }, [ret, reset])
 
   const handleSave = handleSubmit(async (values) => {
     try {
-      await create.mutateAsync({ ...values, lines })
+      await create.mutateAsync(toPurchaseReturnPayload(values, lines.map(({ product, ...line }) => line)))
       toast.success('Retur pembelian berhasil dibuat.')
     } catch { toast.error('Gagal menyimpan retur pembelian.') }
   })
@@ -94,7 +96,7 @@ export default function PurchaseReturnFormPage() {
   }
 
   const columns: LineItemColumn<EditableLine>[] = [
-    { id: 'product', header: 'Produk', width: 200, render: ({ item, isReadOnly, onUpdate }) => <SearchableSelect value={item.product_id} onChange={(v) => onUpdate('product_id', v)} onSearch={produkApi.search} placeholder="Pilih produk..." disabled={isReadOnly} size="sm" /> },
+    { id: 'product', header: 'Produk', width: 200, render: ({ item, isReadOnly, onUpdate }) => <SearchableSelect value={item.product_id} onChange={(v) => onUpdate('product_id', v)} onSearch={produkApi.search} placeholder="Pilih produk..." disabled={isReadOnly} size="sm" selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []} /> },
     { id: 'description', header: 'Deskripsi', width: 200, render: ({ item, isReadOnly, onUpdate }) => <Input value={item.description} onChange={(e) => onUpdate('description', e.target.value)} disabled={isReadOnly} placeholder="Deskripsi..." className="h-8 text-[12px]" /> },
     { id: 'quantity', header: 'Qty', width: 80, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <Input type="number" value={item.quantity} onChange={(e) => onUpdate('quantity', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} /> },
     { id: 'unit_price', header: 'Harga', width: 120, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <Input type="number" value={item.unit_price} onChange={(e) => onUpdate('unit_price', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} /> },

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { purchaseRequestApi } from '../services/purchaseRequestApi'
+import { fromPurchaseRequestResponse } from '../services/purchaseRequestAdapter'
 import type { PurchaseRequestListParams, CreatePurchaseRequestPayload, UpdatePurchaseRequestPayload } from '../types/purchaseRequest.types'
 
 const QK = {
@@ -8,7 +9,11 @@ const QK = {
 }
 
 export function usePurchaseRequestList(params: PurchaseRequestListParams) {
-  return useQuery({ queryKey: QK.list(params), queryFn: () => purchaseRequestApi.list(params) })
+  return useQuery({
+    queryKey: QK.list(params),
+    queryFn: () => purchaseRequestApi.list(params),
+    select: (res) => ({ ...res, data: res.data.map(fromPurchaseRequestResponse) }),
+  })
 }
 
 export function usePurchaseRequest(id?: number) {
@@ -16,6 +21,7 @@ export function usePurchaseRequest(id?: number) {
     queryKey: QK.detail(id!),
     queryFn: () => purchaseRequestApi.get(id!),
     enabled: !!id,
+    select: (res) => ({ ...res, data: fromPurchaseRequestResponse(res.data) }),
   })
 }
 
