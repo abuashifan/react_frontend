@@ -7,6 +7,7 @@ import { FormSection } from '@/components/shared/form/FormSection'
 import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
+import { ConfirmDialog } from '@/components/shared/document/ConfirmDialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -14,10 +15,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { useStockMovement, useStockMovementMutations } from '../hooks/useStockMovementList'
-import { stockMovementSchema, type StockMovementFormValues } from '../schemas/stockMovementSchema'
+import { stockMovementSchema, stockMovementLineSchema, type StockMovementFormValues } from '../schemas/stockMovementSchema'
 import type { DocumentStatus } from '@/types/common.types'
 import type { StockMovementType } from '../types/stockMovement.types'
 import { toDateInputValue } from '@/lib/utils'
@@ -48,16 +50,19 @@ export default function StockMovementFormPage() {
   const movement = data?.data
   const { create, post, void: voidMovement } = useStockMovementMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<StockMovementFormValues>({
+  const { register, handleSubmit, setValue, watch, getValues, control, reset, formState: { errors, isSubmitting } } = useForm<StockMovementFormValues>({
     resolver: zodResolver(stockMovementSchema),
     defaultValues: { movement_date: new Date().toISOString().slice(0, 10), movement_type: 'adjustment_in' },
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const [lineErrors, setLineErrors] = useState<Record<number, Partial<Record<keyof EditableLine, string>>>>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
+  const [isPostConfirmOpen, setPostConfirmOpen] = useState(false)
 
+  // Existing movement drafts are read-only — backend has no update endpoint for movements.
   const status = (movement?.status ?? 'draft') as DocumentStatus
-  const isEditable = isCreate || movement?.status === 'draft'
+  const isEditable = isCreate
 
   useEffect(() => {
     if (movement) {
@@ -76,7 +81,39 @@ export default function StockMovementFormPage() {
     }
   }, [movement, reset])
 
+  const formDraft = usePersistentFormDraft<StockMovementFormValues, EditableLine[]>({
+    draftKey: 'inventory.stock-movement.new',
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [{ ...DEFAULT_LINE }]),
+    enabled: isCreate,
+  })
+
+  const validateLines = (): boolean => {
+    const errors: Record<number, Partial<Record<keyof EditableLine, string>>> = {}
+    let valid = true
+    lines.forEach((l, i) => {
+      const result = stockMovementLineSchema.safeParse(l)
+      if (!result.success) {
+        valid = false
+        const fieldErrors: Partial<Record<keyof EditableLine, string>> = {}
+        result.error.issues.forEach((e) => {
+          const field = e.path[0] as keyof EditableLine
+          if (!fieldErrors[field]) fieldErrors[field] = e.message
+        })
+        errors[i] = fieldErrors
+      }
+    })
+    setLineErrors(errors)
+    return valid
+  }
+
   const handleSave = handleSubmit(async (values) => {
+    if (lines.length === 0) { toast.error('Tambahkan minimal satu item.'); return }
+    if (!validateLines()) { toast.error('Periksa kembali item yang belum lengkap.'); return }
+
     try {
       const linePayloads = lines.map((l) => ({
         product_id: l.product_id!,
@@ -85,6 +122,7 @@ export default function StockMovementFormPage() {
         unit_cost: l.unit_cost || null,
       }))
       const res = await create.mutateAsync({ ...values, movement_type: values.movement_type as StockMovementType, lines: linePayloads })
+      formDraft.clearDraft()
       toast.success('Mutasi stok berhasil dibuat.')
       navigate(`/inventory/movements/${res.data.id}`)
     } catch { toast.error('Gagal menyimpan mutasi stok.') }
@@ -102,9 +140,40 @@ export default function StockMovementFormPage() {
   }
 
   const columns: LineItemColumn<EditableLine>[] = [
-    { id: 'product', header: 'Produk', width: 200, render: ({ item, isReadOnly, onUpdate }) => <SearchableSelect value={item.product_id} onChange={(v) => onUpdate('product_id', v)} onSearch={produkApi.search} placeholder="Pilih produk..." disabled={isReadOnly} size="sm" /> },
-    { id: 'warehouse', header: 'Gudang', width: 160, render: ({ item, isReadOnly, onUpdate }) => <SearchableSelect value={item.warehouse_id} onChange={(v) => onUpdate('warehouse_id', v)} onSearch={gudangApi.search} placeholder="Pilih gudang..." disabled={isReadOnly} size="sm" /> },
-    { id: 'quantity', header: 'Qty', width: 90, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <Input type="number" value={item.quantity} onChange={(e) => onUpdate('quantity', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} /> },
+    {
+      id: 'product',
+      header: 'Produk',
+      width: 200,
+      render: ({ item, index, isReadOnly, onUpdate }) => (
+        <div>
+          <SearchableSelect value={item.product_id} onChange={(v) => { onUpdate('product_id', v); setLineErrors((prev) => { const n = { ...prev }; delete n[index]; return n }) }} onSearch={produkApi.search} placeholder="Pilih produk..." disabled={isReadOnly} size="sm" />
+          {lineErrors[index]?.product_id && <p className="mt-0.5 text-[10px] text-red-500">{lineErrors[index].product_id}</p>}
+        </div>
+      ),
+    },
+    {
+      id: 'warehouse',
+      header: 'Gudang',
+      width: 160,
+      render: ({ item, index, isReadOnly, onUpdate }) => (
+        <div>
+          <SearchableSelect value={item.warehouse_id} onChange={(v) => { onUpdate('warehouse_id', v); setLineErrors((prev) => { const n = { ...prev }; delete n[index]; return n }) }} onSearch={gudangApi.search} placeholder="Pilih gudang..." disabled={isReadOnly} size="sm" />
+          {lineErrors[index]?.warehouse_id && <p className="mt-0.5 text-[10px] text-red-500">{lineErrors[index].warehouse_id}</p>}
+        </div>
+      ),
+    },
+    {
+      id: 'quantity',
+      header: 'Qty',
+      width: 90,
+      align: 'right',
+      render: ({ item, index, isReadOnly, onUpdate }) => (
+        <div>
+          <Input type="number" value={item.quantity} onChange={(e) => { onUpdate('quantity', Number(e.target.value)); setLineErrors((prev) => { const n = { ...prev }; if (n[index]) { const f = { ...n[index] }; delete f.quantity; n[index] = f } return n }) }} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} step="any" />
+          {lineErrors[index]?.quantity && <p className="mt-0.5 text-[10px] text-red-500">{lineErrors[index].quantity}</p>}
+        </div>
+      ),
+    },
     { id: 'unit_cost', header: 'Harga Satuan', width: 120, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <Input type="number" value={item.unit_cost} onChange={(e) => onUpdate('unit_cost', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} /> },
   ]
 
@@ -112,9 +181,12 @@ export default function StockMovementFormPage() {
   if (isCreate && can('inventory.movements.create')) {
     actions.push({ id: 'save', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
   }
+  if (isCreate && formDraft.isRestored) {
+    actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: () => { reset({ movement_date: new Date().toISOString().slice(0, 10), movement_type: 'adjustment_in' }); setLines([{ ...DEFAULT_LINE }]); formDraft.discardDraft(); toast.success('Draft lokal dibuang.') } })
+  }
   if (!isCreate) {
     if (movement?.status === 'draft' && can('inventory.movements.post')) {
-      actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
+      actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => setPostConfirmOpen(true) })
     }
     if (movement?.status === 'posted' && can('inventory.movements.void')) {
       actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
@@ -174,13 +246,24 @@ export default function StockMovementFormPage() {
             <LineItemsTable
               items={lines} columns={columns}
               onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
-              onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}
+              onRemove={(i) => { setLines((prev) => prev.filter((_, idx) => idx !== i)); setLineErrors((prev) => { const n: typeof prev = {}; Object.keys(prev).forEach((k) => { const ki = Number(k); if (ki !== i) n[ki > i ? ki - 1 : ki] = prev[ki] }); return n }) }}
               onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))}
               isReadOnly={!isEditable} addLabel="Tambah Item"
             />
           </div>
         </div>
       </FormLayout>
+
+      <ConfirmDialog
+        isOpen={isPostConfirmOpen}
+        onClose={() => setPostConfirmOpen(false)}
+        onConfirm={() => { setPostConfirmOpen(false); void handlePost() }}
+        title="Posting Mutasi Stok"
+        description={`Posting mutasi ${movement?.number ?? ''} akan memperbarui saldo stok secara permanen.`}
+        confirmLabel="Post"
+        isLoading={post.isPending}
+      />
+
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={movement?.number ?? ''} isLoading={voidMovement.isPending} />
     </>
   )

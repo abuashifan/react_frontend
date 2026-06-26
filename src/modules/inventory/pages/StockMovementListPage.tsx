@@ -1,16 +1,19 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, RefreshCw } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
+import { EmptyState } from '@/components/shared/feedback/EmptyState'
 import { formatNumber, formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
@@ -29,13 +32,32 @@ const MOVEMENT_TYPES: { value: StockMovementType; label: string }[] = [
   { value: 'opening_stock', label: 'Stok Awal' },
   { value: 'opname_in', label: 'Opname Masuk' },
   { value: 'opname_out', label: 'Opname Keluar' },
+  { value: 'transfer_in', label: 'Transfer Masuk' },
+  { value: 'transfer_out', label: 'Transfer Keluar' },
 ]
-const FILTER_HINT = 'Filter multi-select dan tanggal berlaku pada data halaman yang sedang dimuat.'
+
+// Label untuk tipe legacy dari data lama.
+const LEGACY_TYPE_LABELS: Record<string, string> = {
+  adjustment: 'Penyesuaian',
+  purchase_return: 'Retur Pembelian',
+  sales_return: 'Retur Penjualan',
+  delivery_order: 'Pengiriman',
+  goods_receipt: 'Penerimaan',
+  opening: 'Stok Awal',
+}
+
+function getMovementTypeLabel(type: string): string {
+  const found = MOVEMENT_TYPES.find((item) => item.value === type)
+  if (found) return found.label
+  return LEGACY_TYPE_LABELS[type] ?? type
+}
 
 export default function StockMovementListPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
+  const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
+  const [search, setSearch] = useState('')
   const [filterStatuses, setFilterStatuses] = useState<StockMovementStatus[]>([])
   const [filterTypes, setFilterTypes] = useState<StockMovementType[]>([])
   const [dateRange, setDateRange] = useState({ from: '', to: '' })
@@ -45,19 +67,20 @@ export default function StockMovementListPage() {
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
   const { void: voidMovement } = useStockMovementMutations()
 
-  const { data, isLoading, isFetching } = useStockMovementList({
+  const { data, isLoading, isFetching, isError, refetch } = useStockMovementList({
     page: page + 1,
-    per_page: 25,
+    per_page: perPage,
+    search: search || undefined,
     warehouse_id: filterWarehouse ?? undefined,
-    status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
-    movement_type: filterTypes.length > 0 ? filterTypes.join(',') : undefined,
+    status: filterStatuses.length > 0 ? filterStatuses.join(',') as StockMovementStatus : undefined,
+    movement_type: filterTypes.length > 0 ? filterTypes.join(',') as StockMovementType : undefined,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
   })
 
   const rows = data?.data ?? []
 
-  const activeFilters = [filterStatuses.length > 0, filterTypes.length > 0, dateRange.from, dateRange.to, filterWarehouse].filter(Boolean).length
+  const activeFilters = [filterStatuses.length > 0, filterTypes.length > 0, dateRange.from, dateRange.to, filterWarehouse, search].filter(Boolean).length
 
   const resetSelection = () => {
     setPage(0)
@@ -130,10 +153,7 @@ export default function StockMovementListPage() {
       id: 'type',
       header: 'Tipe',
       size: 160,
-      cell: ({ original }) => {
-        const found = MOVEMENT_TYPES.find((item) => item.value === original.movement_type)
-        return found?.label ?? original.movement_type
-      },
+      cell: ({ original }) => getMovementTypeLabel(original.movement_type),
     },
     { id: 'warehouse', header: 'Gudang', size: 140, cell: ({ original }) => original.warehouse?.name ?? '-' },
     {
@@ -162,10 +182,18 @@ export default function StockMovementListPage() {
         setFilterTypes([])
         setDateRange({ from: '', to: '' })
         setFilterWarehouse(null)
+        setSearch('')
         resetSelection()
       }}
-      hint={FILTER_HINT}
     >
+      <FilterSection title="Cari">
+        <Input
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); resetSelection() }}
+          placeholder="Nomor, sumber..."
+          className="h-8 text-[12px]"
+        />
+      </FilterSection>
       <FilterSection title="Gudang">
         <SearchableSelect
           value={filterWarehouse}
@@ -203,8 +231,17 @@ export default function StockMovementListPage() {
           setDateRange(next)
           resetSelection()
         }}
-        note="Berlaku pada data halaman yang sedang dimuat."
       />
+      <FilterSection title="Baris per halaman">
+        <Select value={String(perPage)} onValueChange={(v) => { setPerPage(Number(v) as 25 | 50 | 100); resetSelection() }}>
+          <SelectTrigger className="h-8 text-[12px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="25">25</SelectItem>
+            <SelectItem value="50">50</SelectItem>
+            <SelectItem value="100">100</SelectItem>
+          </SelectContent>
+        </Select>
+      </FilterSection>
     </FilterSidebar>
   )
 
@@ -222,23 +259,35 @@ export default function StockMovementListPage() {
           </PermissionGuard>
         }
       >
-        <DataTable
-          data={rows}
-          columns={columns}
-          totalRows={data?.meta.total ?? 0}
-          isLoading={isLoading}
-          isFetching={isFetching}
-          pagination={{ pageIndex: page, pageSize: 25 }}
-          onPaginationChange={(p) => {
-            setPage(p.pageIndex)
-            setSelectedRows([])
-          }}
-          selectedRows={selectedRows}
-          onRowSelect={setSelectedRows}
-          bulkActions={bulkActions}
-          emptyTitle="Belum ada mutasi stok"
-          emptyDescription="Mutasi stok dibuat otomatis dari transaksi atau secara manual."
-        />
+        {isError ? (
+          <EmptyState
+            title="Gagal memuat mutasi stok"
+            description="Terjadi kesalahan saat mengambil data. Periksa koneksi dan coba lagi."
+            action={
+              <Button variant="outline" className="h-8 px-3 text-[13px]" onClick={() => void refetch()}>
+                <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Coba Lagi
+              </Button>
+            }
+          />
+        ) : (
+          <DataTable
+            data={rows}
+            columns={columns}
+            totalRows={data?.meta.total ?? 0}
+            isLoading={isLoading}
+            isFetching={isFetching}
+            pagination={{ pageIndex: page, pageSize: perPage }}
+            onPaginationChange={(p) => {
+              setPage(p.pageIndex)
+              setSelectedRows([])
+            }}
+            selectedRows={selectedRows}
+            onRowSelect={setSelectedRows}
+            bulkActions={bulkActions}
+            emptyTitle="Belum ada mutasi stok"
+            emptyDescription="Mutasi stok dibuat otomatis dari transaksi atau secara manual."
+          />
+        )}
       </WorkspaceLayout>
 
       <VoidConfirmDialog

@@ -6,12 +6,14 @@ import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
+import { ConfirmDialog } from '@/components/shared/document/ConfirmDialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { formatNumber, formatDate } from '@/lib/utils'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { useStockOpname, useStockOpnameMutations } from '../hooks/useStockOpnameList'
@@ -30,32 +32,48 @@ export default function StockOpnameFormPage() {
   const opname = data?.data
   const { create, generateLines, updateLine, markCounted, finalize, void: voidOpname } = useStockOpnameMutations()
 
-  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<StockOpnameFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<StockOpnameFormValues>({
     resolver: zodResolver(stockOpnameSchema),
     defaultValues: { opname_date: new Date().toISOString().slice(0, 10) },
   })
 
   const [isVoidOpen, setVoidOpen] = useState(false)
+  const [isGenerateConfirmOpen, setGenerateConfirmOpen] = useState(false)
+  const [isFinalizeConfirmOpen, setFinalizeConfirmOpen] = useState(false)
   const [lineInputs, setLineInputs] = useState<Record<number, { qty: string; reason: string }>>({})
 
+  // Only initialize lineInputs for lines that aren't already being edited
+  // This prevents saving one line from resetting other in-progress inputs (A13-203)
   useEffect(() => {
     if (opname?.lines) {
-      const inputs: Record<number, { qty: string; reason: string }> = {}
-      opname.lines.forEach((l) => {
-        inputs[l.id] = {
-          qty: l.physical_quantity != null ? String(l.physical_quantity) : '',
-          reason: '',
-        }
+      setLineInputs((prev) => {
+        const inputs: Record<number, { qty: string; reason: string }> = {}
+        opname.lines.forEach((l) => {
+          inputs[l.id] = prev[l.id] ?? {
+            qty: l.physical_quantity != null ? String(l.physical_quantity) : '',
+            reason: '',
+          }
+        })
+        return inputs
       })
-      setLineInputs(inputs)
     }
   }, [opname?.lines])
 
   const status = (opname?.status ?? 'draft') as DocumentStatus
 
+  // Persistent draft for create form only (A13-193)
+  const formDraft = usePersistentFormDraft<StockOpnameFormValues, null>({
+    draftKey: 'inventory.stock-opname.new',
+    control,
+    getValues,
+    reset,
+    enabled: isCreate,
+  })
+
   const handleCreate = handleSubmit(async (values) => {
     try {
       const res = await create.mutateAsync(values)
+      formDraft.clearDraft()
       toast.success('Opname berhasil dibuat.')
       navigate(`/inventory/opnames/${res.data.id}`)
     } catch { toast.error('Gagal membuat opname.') }
@@ -78,6 +96,16 @@ export default function StockOpnameFormPage() {
   }
 
   const handleMarkCounted = async () => {
+    // Validate that all lines have been physically counted (A13-199)
+    const uncounted = (opname?.lines ?? []).filter((l) => {
+      const input = lineInputs[l.id]
+      const qty = input ? parseFloat(input.qty) : NaN
+      return l.physical_quantity == null && (isNaN(qty) || input?.qty === '')
+    })
+    if (uncounted.length > 0) {
+      toast.error(`${uncounted.length} item belum diisi qty fisiknya. Harap simpan semua item terlebih dahulu.`)
+      return
+    }
     try { await markCounted.mutateAsync(Number(id)); toast.success('Opname ditandai selesai dihitung.') }
     catch { toast.error('Gagal mark counted.') }
   }
@@ -93,24 +121,26 @@ export default function StockOpnameFormPage() {
     setVoidOpen(false)
   }
 
+  const existingLinesCount = opname?.lines?.length ?? 0
+
   const actions: DocumentActionButton[] = []
-  if (isCreate && can('inventory.opnames.create')) {
+  if (isCreate && can('inventory.opname.create')) {
     actions.push({ id: 'save', label: 'Buat Opname', variant: 'primary', onClick: () => void handleCreate(), isLoading: isSubmitting })
   }
+  if (isCreate && formDraft.isRestored) {
+    actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: () => { reset({ opname_date: new Date().toISOString().slice(0, 10) }); formDraft.discardDraft(); toast.success('Draft lokal dibuang.') } })
+  }
   if (!isCreate) {
-    if (opname?.status === 'draft' && can('inventory.opnames.edit')) {
-      actions.push({ id: 'generate', label: 'Generate Lines', variant: 'secondary', onClick: () => void handleGenerateLines(), isLoading: generateLines.isPending })
+    if (opname?.status === 'draft' && can('inventory.opname.edit')) {
+      actions.push({ id: 'generate', label: 'Generate Lines', variant: 'secondary', onClick: () => setGenerateConfirmOpen(true), isLoading: generateLines.isPending })
     }
-    if (opname?.status === 'draft' && (opname.lines?.length ?? 0) > 0 && can('inventory.opnames.edit')) {
+    if (opname?.status === 'draft' && existingLinesCount > 0 && can('inventory.opname.edit')) {
       actions.push({ id: 'counted', label: 'Tandai Selesai Hitung', variant: 'secondary', onClick: () => void handleMarkCounted(), isLoading: markCounted.isPending })
     }
-    if (opname?.status === 'counted' && can('inventory.opnames.finalize')) {
-      actions.push({ id: 'finalize', label: 'Finalisasi', variant: 'primary', onClick: () => void handleFinalize(), isLoading: finalize.isPending })
+    if (opname?.status === 'counted' && can('inventory.opname.finalize')) {
+      actions.push({ id: 'finalize', label: 'Finalisasi', variant: 'primary', onClick: () => setFinalizeConfirmOpen(true) })
     }
-    if (['draft', 'counted'].includes(opname?.status ?? '') && can('inventory.opnames.void')) {
-      actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
-    }
-    if (opname?.status === 'finalized' && can('inventory.opnames.void')) {
+    if (['draft', 'counted', 'finalized'].includes(opname?.status ?? '') && can('inventory.opname.void')) {
       actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
     }
   }
@@ -163,11 +193,11 @@ export default function StockOpnameFormPage() {
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
-                  Item ({opname?.lines?.length ?? 0} produk)
+                  Item ({existingLinesCount} produk)
                 </p>
               </div>
 
-              {(opname?.lines?.length ?? 0) === 0 ? (
+              {existingLinesCount === 0 ? (
                 <div className="rounded-lg border border-dashed border-[#cbd5e1] bg-[#f8fafc] p-8 text-center">
                   <p className="text-[13px] text-[#64748b]">Belum ada lines. Klik "Generate Lines" untuk mengisi stok dari gudang.</p>
                 </div>
@@ -250,6 +280,31 @@ export default function StockOpnameFormPage() {
           )}
         </div>
       </FormLayout>
+
+      {/* A13-198: Confirm before generating lines when existing lines exist */}
+      <ConfirmDialog
+        isOpen={isGenerateConfirmOpen}
+        onClose={() => setGenerateConfirmOpen(false)}
+        onConfirm={() => { setGenerateConfirmOpen(false); void handleGenerateLines() }}
+        title="Generate Lines"
+        description={existingLinesCount > 0
+          ? `Regenerasi lines akan menghapus ${existingLinesCount} hitungan yang sudah ada. Lanjutkan?`
+          : 'Generate lines dari stok gudang saat ini?'}
+        confirmLabel="Generate"
+        isLoading={generateLines.isPending}
+      />
+
+      {/* A13-202: Confirm before finalizing */}
+      <ConfirmDialog
+        isOpen={isFinalizeConfirmOpen}
+        onClose={() => setFinalizeConfirmOpen(false)}
+        onConfirm={() => { setFinalizeConfirmOpen(false); void handleFinalize() }}
+        title="Finalisasi Opname"
+        description={`Finalisasi opname ${opname?.number ?? ''} akan memposting penyesuaian stok berdasarkan selisih hitungan secara permanen.`}
+        confirmLabel="Finalisasi"
+        isLoading={finalize.isPending}
+      />
+
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={opname?.number ?? ''} isLoading={voidOpname.isPending} />
     </>
   )

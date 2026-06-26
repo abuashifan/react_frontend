@@ -1,16 +1,19 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, RefreshCw } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
+import { EmptyState } from '@/components/shared/feedback/EmptyState'
 import { formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
@@ -19,12 +22,13 @@ import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { StockOpname, StockOpnameStatus } from '../types/stockOpname.types'
 
 const STATUSES: StockOpnameStatus[] = ['draft', 'counted', 'finalized', 'void']
-const FILTER_HINT = 'Filter multi-select dan tanggal berlaku pada data halaman yang sedang dimuat.'
 
 export default function StockOpnameListPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
+  const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
+  const [search, setSearch] = useState('')
   const [filterStatuses, setFilterStatuses] = useState<StockOpnameStatus[]>([])
   const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [filterWarehouse, setFilterWarehouse] = useState<number | null>(null)
@@ -33,18 +37,19 @@ export default function StockOpnameListPage() {
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
   const { void: voidOpname } = useStockOpnameMutations()
 
-  const { data, isLoading, isFetching } = useStockOpnameList({
+  const { data, isLoading, isFetching, isError, refetch } = useStockOpnameList({
     page: page + 1,
-    per_page: 25,
+    per_page: perPage,
+    search: search || undefined,
     warehouse_id: filterWarehouse ?? undefined,
-    status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
+    status: filterStatuses.length > 0 ? filterStatuses.join(',') as StockOpnameStatus : undefined,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
   })
 
   const rows = data?.data ?? []
 
-  const activeFilters = [filterStatuses.length > 0, dateRange.from, dateRange.to, filterWarehouse].filter(Boolean).length
+  const activeFilters = [filterStatuses.length > 0, dateRange.from, dateRange.to, filterWarehouse, search].filter(Boolean).length
 
   const resetSelection = () => {
     setPage(0)
@@ -57,7 +62,7 @@ export default function StockOpnameListPage() {
       label: 'Void Terpilih',
       icon: <Trash2 className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'inventory.opnames.void',
+      permission: 'inventory.opname.void',
       onClick: (ids) => {
         const eligible = rows.filter((opname) => ids.includes(String(opname.id)) && opname.status !== 'void')
         if (eligible.length === 0) {
@@ -119,7 +124,12 @@ export default function StockOpnameListPage() {
       header: 'Jumlah Item',
       size: 110,
       meta: { className: 'tabular-nums text-right' },
-      cell: ({ original }) => original.lines?.length ?? '-',
+      cell: ({ original }) => {
+        // lines_count dari withCount('lines') di backend; fallback ke lines.length.
+        const raw = original as StockOpname & { lines_count?: number }
+        const count = raw.lines_count ?? original.lines?.length
+        return count != null ? count : '-'
+      },
     },
     {
       id: 'counted_at',
@@ -137,10 +147,18 @@ export default function StockOpnameListPage() {
         setFilterStatuses([])
         setDateRange({ from: '', to: '' })
         setFilterWarehouse(null)
+        setSearch('')
         resetSelection()
       }}
-      hint={FILTER_HINT}
     >
+      <FilterSection title="Cari">
+        <Input
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); resetSelection() }}
+          placeholder="Nomor opname..."
+          className="h-8 text-[12px]"
+        />
+      </FilterSection>
       <FilterSection title="Gudang">
         <SearchableSelect
           value={filterWarehouse}
@@ -169,8 +187,17 @@ export default function StockOpnameListPage() {
           setDateRange(next)
           resetSelection()
         }}
-        note="Berlaku pada data halaman yang sedang dimuat."
       />
+      <FilterSection title="Baris per halaman">
+        <Select value={String(perPage)} onValueChange={(v) => { setPerPage(Number(v) as 25 | 50 | 100); resetSelection() }}>
+          <SelectTrigger className="h-8 text-[12px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="25">25</SelectItem>
+            <SelectItem value="50">50</SelectItem>
+            <SelectItem value="100">100</SelectItem>
+          </SelectContent>
+        </Select>
+      </FilterSection>
     </FilterSidebar>
   )
 
@@ -181,30 +208,42 @@ export default function StockOpnameListPage() {
         breadcrumb={[{ label: 'Inventori' }, { label: 'Opname' }]}
         sidebar={sidebar}
         action={
-          <PermissionGuard permission="inventory.opnames.create">
+          <PermissionGuard permission="inventory.opname.create">
             <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/inventory/opnames/create')}>
               <Plus className="mr-1 h-3.5 w-3.5" /> Buat Opname
             </Button>
           </PermissionGuard>
         }
       >
-        <DataTable
-          data={rows}
-          columns={columns}
-          totalRows={data?.meta.total ?? 0}
-          isLoading={isLoading}
-          isFetching={isFetching}
-          pagination={{ pageIndex: page, pageSize: 25 }}
-          onPaginationChange={(p) => {
-            setPage(p.pageIndex)
-            setSelectedRows([])
-          }}
-          selectedRows={selectedRows}
-          onRowSelect={setSelectedRows}
-          bulkActions={bulkActions}
-          emptyTitle="Belum ada opname stok"
-          emptyDescription="Buat opname untuk menghitung stok fisik di gudang."
-        />
+        {isError ? (
+          <EmptyState
+            title="Gagal memuat opname stok"
+            description="Terjadi kesalahan saat mengambil data. Periksa koneksi dan coba lagi."
+            action={
+              <Button variant="outline" className="h-8 px-3 text-[13px]" onClick={() => void refetch()}>
+                <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Coba Lagi
+              </Button>
+            }
+          />
+        ) : (
+          <DataTable
+            data={rows}
+            columns={columns}
+            totalRows={data?.meta.total ?? 0}
+            isLoading={isLoading}
+            isFetching={isFetching}
+            pagination={{ pageIndex: page, pageSize: perPage }}
+            onPaginationChange={(p) => {
+              setPage(p.pageIndex)
+              setSelectedRows([])
+            }}
+            selectedRows={selectedRows}
+            onRowSelect={setSelectedRows}
+            bulkActions={bulkActions}
+            emptyTitle="Belum ada opname stok"
+            emptyDescription="Buat opname untuk menghitung stok fisik di gudang."
+          />
+        )}
       </WorkspaceLayout>
 
       <VoidConfirmDialog
