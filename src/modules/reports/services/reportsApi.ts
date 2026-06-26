@@ -1,3 +1,4 @@
+import axios from 'axios'
 import { http } from '@/services/http'
 import type { ApiResponse } from '@/types/api.types'
 import type {
@@ -14,13 +15,14 @@ import type {
   CashFlowAccount,
   FinancialSummaryReport,
   AgingReport,
-  ReconciliationReport,
   StockBalanceReportLine,
   StockMovementReportLine,
   StockCardReport,
   ValuationReportLine,
   LowStockReportLine,
 } from '../types/reports.types'
+import { adaptApiResponse, adaptApAgingResponse, adaptReconciliationReport } from '@/modules/purchase/services/apAdapters'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 // ---------------------------------------------------------------------------
 // Adapter boundary (Audit-12 A12-12).
@@ -187,6 +189,20 @@ function adaptResponse<T>(res: ApiResponse<unknown>, adapt: (raw: Raw) => T): Ap
   return { ...res, data: adapt(asRecord(res.data)) }
 }
 
+async function getRawApiResponse<T>(path: string, params: ReportParams): Promise<ApiResponse<T>> {
+  const { token, activeCompanyId } = useAuthStore.getState()
+  const response = await axios.get<ApiResponse<T>>(`${import.meta.env.VITE_API_BASE_URL}/api${path}`, {
+    params,
+    headers: {
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(activeCompanyId ? { 'X-Company-ID': String(activeCompanyId) } : {}),
+    },
+  })
+
+  return response.data
+}
+
 export const reportsApi = {
   generalLedger: (params: ReportParams) =>
     http.get<unknown, ApiResponse<GeneralLedgerReport>>('/reports/general-ledger', { params }),
@@ -220,16 +236,16 @@ export const reportsApi = {
     http.get<unknown, ApiResponse<AgingReport>>('/sales/ar/aging', { params }),
 
   apAging: (params: ReportParams) =>
-    http.get<unknown, ApiResponse<AgingReport>>('/purchase/ap/aging', { params }),
+    http.get<unknown, ApiResponse<unknown>>('/purchase/ap/aging', { params }).then((response) => adaptApiResponse(response, adaptApAgingResponse)),
 
   reconciliationAr: (params: ReportParams) =>
-    http.get<unknown, ApiResponse<ReconciliationReport>>('/reports/reconciliation/ar', { params }),
+    getRawApiResponse('/reports/reconciliation/ar', params).then((response) => adaptResponse(response, (raw) => adaptReconciliationReport(asRecord(raw), 'ar'))),
 
   reconciliationAp: (params: ReportParams) =>
-    http.get<unknown, ApiResponse<ReconciliationReport>>('/reports/reconciliation/ap', { params }),
+    getRawApiResponse('/reports/reconciliation/ap', params).then((response) => adaptResponse(response, (raw) => adaptReconciliationReport(asRecord(raw), 'ap'))),
 
   reconciliationInventory: (params: ReportParams) =>
-    http.get<unknown, ApiResponse<ReconciliationReport>>('/reports/reconciliation/inventory', { params }),
+    getRawApiResponse('/reports/reconciliation/inventory', params).then((response) => adaptResponse(response, (raw) => adaptReconciliationReport(asRecord(raw), 'inventory'))),
 
   stockBalances: (params: ReportParams) =>
     http.get<unknown, ApiResponse<StockBalanceReportLine[]>>('/inventory/reports/stock-balances', { params }),

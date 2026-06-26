@@ -11,6 +11,13 @@ export interface StockBalanceWarehouse {
   name: string | null
 }
 
+export interface StockBalancePolicy {
+  allow_negative_stock: boolean
+  stock_precision: number
+  cost_precision: number
+  amount_precision: number
+}
+
 export interface StockBalance {
   id: number
   product_id: number

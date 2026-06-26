@@ -65,10 +65,10 @@ Bagian ini melacak status artefak dokumentasi remediation, bukan status implemen
 | Completion report Phase 29 | `../tracking/phase-29-completion-report.md` atau lokasi yang dipilih | ⏳ Belum dibuat | Dibuat setelah Phase 29 selesai |
 | Issue Phase 30 | `../issue_docs/issue-33-phase-30-purchase-transaction-contract.md` | ✅ Ada | Issue detail Phase 30 |
 | Prompt Phase 30 | `../prompt/prompt-phase-30-purchase-transaction-contract.md` | ✅ Ada | Checklist implementasi Phase 30 |
-| Completion report Phase 30 | `../tracking/phase-30-completion-report.md` atau lokasi yang dipilih | ⏳ Belum dibuat | Dibuat setelah Phase 30 selesai |
+| Completion report Phase 30 | `../tracking/phase-30-completion-report.md` atau lokasi yang dipilih | ✅ Ada | Phase 30 selesai dan divalidasi |
 | Issue Phase 31 | `../issue_docs/issue-34-phase-31-ap-subledger-reports.md` | ✅ Ada | Issue detail Phase 31 |
 | Prompt Phase 31 | `../prompt/prompt-phase-31-ap-subledger-reports.md` | ✅ Ada | Checklist implementasi Phase 31 |
-| Completion report Phase 31 | `../tracking/phase-31-completion-report.md` atau lokasi yang dipilih | ⏳ Belum dibuat | Dibuat setelah Phase 31 selesai |
+| Completion report Phase 31 | `../tracking/phase-31-completion-report.md` atau lokasi yang dipilih | ✅ Ada | Phase 31 selesai dan divalidasi |
 | Issue Phase 32 | `../issue_docs/issue-35-phase-32-inventory-integrity-workflow.md` | ✅ Ada | Issue detail Phase 32 |
 | Prompt Phase 32 | `../prompt/prompt-phase-32-inventory-integrity-workflow.md` | ✅ Ada | Checklist implementasi Phase 32 |
 | Completion report Phase 32 | `../tracking/phase-32-completion-report.md` atau lokasi yang dipilih | ⏳ Belum dibuat | Dibuat setelah Phase 32 selesai |

@@ -217,6 +217,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____prompt-phase-22-select-date-edit-mode-ux.md
 | | |____prompt-phase-23-tabs-ribbon-lint-cleanup.md
 | |____tracking/
+| | |____phase-30-completion-report.md
+| | |____phase-31-completion-report.md
 | | |____2026-06-16-route-tabs-datatable-fixes.md
 | | |____2026-06-16-workspace-document-number-alias-fix.md
 | |____struktur_frontend.md

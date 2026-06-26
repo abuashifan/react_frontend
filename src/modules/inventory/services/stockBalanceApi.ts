@@ -1,6 +1,6 @@
 import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
-import type { StockBalance, StockBalanceListParams } from '../types/stockBalance.types'
+import type { StockBalance, StockBalanceListParams, StockBalancePolicy } from '../types/stockBalance.types'
 
 interface StockBalanceApiProduct {
   id: number
@@ -31,6 +31,20 @@ interface StockBalanceApiItem {
   updated_at?: string | null
 }
 
+interface StockBalanceReportResponse {
+  rows?: unknown
+  policy?: Partial<StockBalancePolicy> | null
+}
+
+function defaultPolicy(): StockBalancePolicy {
+  return {
+    allow_negative_stock: false,
+    stock_precision: 4,
+    cost_precision: 6,
+    amount_precision: 2,
+  }
+}
+
 function toNumber(value: unknown, fallback = 0): number {
   const next = typeof value === 'number' ? value : Number(value)
   return Number.isFinite(next) ? next : fallback
@@ -44,8 +58,28 @@ function extractRows(payload: unknown): StockBalanceApiItem[] {
   if (Array.isArray(root.data)) return root.data as StockBalanceApiItem[]
   if (!root.data || typeof root.data !== 'object') return []
 
+  const reportLike = root.data as StockBalanceReportResponse
+  if (Array.isArray(reportLike.rows)) return reportLike.rows as StockBalanceApiItem[]
+
   const nested = root.data as { data?: unknown }
   return Array.isArray(nested.data) ? (nested.data as StockBalanceApiItem[]) : []
+}
+
+function extractPolicy(payload: unknown): StockBalancePolicy {
+  if (!payload || typeof payload !== 'object') {
+    return defaultPolicy()
+  }
+
+  const root = payload as { data?: unknown }
+  const source = root.data && typeof root.data === 'object' ? (root.data as StockBalanceReportResponse) : (payload as StockBalanceReportResponse)
+  const policy = source.policy ?? {}
+
+  return {
+    allow_negative_stock: Boolean(policy.allow_negative_stock ?? false),
+    stock_precision: Number.isFinite(Number(policy.stock_precision)) ? Number(policy.stock_precision) : defaultPolicy().stock_precision,
+    cost_precision: Number.isFinite(Number(policy.cost_precision)) ? Number(policy.cost_precision) : defaultPolicy().cost_precision,
+    amount_precision: Number.isFinite(Number(policy.amount_precision)) ? Number(policy.amount_precision) : defaultPolicy().amount_precision,
+  }
 }
 
 function normalizeStockBalance(item: StockBalanceApiItem): StockBalance {
@@ -102,21 +136,24 @@ function paginate<T>(items: T[], page: number, perPage: 25 | 50 | 100): Paginate
 }
 
 export const stockBalanceApi = {
-  list: async (params: StockBalanceListParams): Promise<PaginatedResponse<StockBalance>> => {
-    const response = await http.get<unknown, ApiResponse<unknown>>('/inventory/stock-balances', {
+  list: async (params: StockBalanceListParams): Promise<PaginatedResponse<StockBalance> & { policy: StockBalancePolicy }> => {
+    const response = await http.get<unknown, ApiResponse<unknown>>('/inventory/reports/stock-balances', {
       params: {
         product_id: params.product_id,
         warehouse_id: params.warehouse_id,
-        has_stock: params.has_stock ? 1 : undefined,
+        include_zero: params.has_stock ? 0 : 1,
       },
     })
 
     const rows = extractRows(response.data).map(normalizeStockBalance)
-    return paginate(rows, params.page, params.per_page)
+    return {
+      ...paginate(rows, params.page, params.per_page),
+      policy: extractPolicy(response.data),
+    }
   },
 
-  get: async (productId: number, warehouseId: number): Promise<ApiResponse<StockBalance | null>> => {
-    const response = await http.get<unknown, ApiResponse<unknown>>('/inventory/stock-balances', {
+  get: async (productId: number, warehouseId: number): Promise<ApiResponse<StockBalance | null> & { policy: StockBalancePolicy }> => {
+    const response = await http.get<unknown, ApiResponse<unknown>>('/inventory/reports/stock-balances', {
       params: {
         product_id: productId,
         warehouse_id: warehouseId,
@@ -131,6 +168,7 @@ export const stockBalanceApi = {
       success: true,
       message: 'Stock balance retrieved successfully',
       data: found ? normalizeStockBalance(found) : null,
+      policy: extractPolicy(response.data),
     }
   },
 }

@@ -1,10 +1,18 @@
 export interface ApVendorSummary {
   vendor_id: number
   vendor_name: string
-  total_payable: number
-  overdue_amount: number
-  deposit_balance: number
-  open_bill_count: number
+  debit: number
+  credit: number
+  balance: number
+  gross_ap_outstanding: number
+  official_ap_balance: number
+  unapplied_deposit_total: number
+  net_vendor_exposure: number
+  ap_accounts: {
+    account_id: number
+    account_code: string
+    account_name: string
+  }[]
 }
 
 export interface ApAgingRow {
@@ -25,6 +33,13 @@ export interface ApReconciliationRow {
   gl_balance: number
   ap_balance: number
   difference: number
+}
+
+export interface ApReconciliationSummary {
+  subsidiary_balance: number
+  gl_ap_balance: number
+  difference: number
+  is_reconciled: boolean
 }
 
 export interface ApLedgerEntry {

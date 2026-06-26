@@ -4,18 +4,16 @@ import { useApAging } from '../hooks/useApData'
 
 export default function ApAgingPage() {
   const { data, isLoading } = useApAging()
-  const rows = data?.data ?? []
-
-  const totals = rows.reduce(
-    (acc, r) => ({ current: acc.current + r.current, days_1_30: acc.days_1_30 + r.days_1_30, days_31_60: acc.days_31_60 + r.days_31_60, days_61_90: acc.days_61_90 + r.days_61_90, days_over_90: acc.days_over_90 + r.days_over_90, total: acc.total + r.total }),
-    { current: 0, days_1_30: 0, days_31_60: 0, days_61_90: 0, days_over_90: 0, total: 0 }
-  )
+  const report = data?.data
+  const rows = report?.lines ?? []
+  const totals = report?.totals ?? { current: 0, days_1_30: 0, days_31_60: 0, days_61_90: 0, days_over_90: 0, total: 0 }
 
   return (
     <WorkspaceLayout
       title="AP Aging"
       breadcrumb={[{ label: 'Pembelian' }, { label: 'AP' }, { label: 'Aging' }]}
     >
+      {report && <p className="mb-3 text-[12px] text-[#64748b]">As of {report.as_of_date}</p>}
       <div className="overflow-hidden rounded-lg border border-[#d9e2e5] bg-white">
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse text-[13px]">
@@ -35,21 +33,21 @@ export default function ApAgingPage() {
                 <tr><td colSpan={7} className="px-3 py-8 text-center text-[#94a3b8]">Memuat data...</td></tr>
               ) : rows.length === 0 ? (
                 <tr><td colSpan={7} className="px-3 py-8 text-center text-[#94a3b8]">Tidak ada data aging</td></tr>
-              ) : rows.map((row) => (
-                <tr key={row.vendor_id} className="border-b border-[#f1f5f9] last:border-b-0 hover:bg-[#f8fbfc]">
-                  <td className="px-3 py-2.5 font-medium text-[#334155]">{row.vendor_name}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(row.current)}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(row.days_1_30)}</td>
+              ) : rows.map((line) => (
+                <tr key={line.contact_id} className="border-b border-[#f1f5f9] last:border-b-0 hover:bg-[#f8fbfc]">
+                  <td className="px-3 py-2.5 font-medium text-[#334155]">{line.contact_name}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(line.buckets.current)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(line.buckets.days_1_30)}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums">
-                    <span className={row.days_31_60 > 0 ? 'text-amber-600' : ''}>{formatCurrency(row.days_31_60)}</span>
+                    <span className={line.buckets.days_31_60 > 0 ? 'text-amber-600' : ''}>{formatCurrency(line.buckets.days_31_60)}</span>
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums">
-                    <span className={row.days_61_90 > 0 ? 'font-semibold text-orange-600' : ''}>{formatCurrency(row.days_61_90)}</span>
+                    <span className={line.buckets.days_61_90 > 0 ? 'font-semibold text-orange-600' : ''}>{formatCurrency(line.buckets.days_61_90)}</span>
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums">
-                    <span className={row.days_over_90 > 0 ? 'font-semibold text-red-600' : ''}>{formatCurrency(row.days_over_90)}</span>
+                    <span className={line.buckets.days_over_90 > 0 ? 'font-semibold text-red-600' : ''}>{formatCurrency(line.buckets.days_over_90)}</span>
                   </td>
-                  <td className="px-3 py-2.5 text-right tabular-nums font-semibold">{formatCurrency(row.total)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums font-semibold">{formatCurrency(line.buckets.total)}</td>
                 </tr>
               ))}
             </tbody>

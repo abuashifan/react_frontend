@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -11,7 +11,6 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
-import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
 import { formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
@@ -38,18 +37,12 @@ export default function StockOpnameListPage() {
     page: page + 1,
     per_page: 25,
     warehouse_id: filterWarehouse ?? undefined,
+    status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
+    date_from: dateRange.from || undefined,
+    date_to: dateRange.to || undefined,
   })
 
   const rows = data?.data ?? []
-  const visibleRows = useMemo(
-    () =>
-      rows.filter((opname) => {
-        const matchesStatus = filterStatuses.length === 0 || filterStatuses.includes(opname.status)
-        const matchesDate = isDateInRange(opname.opname_date, dateRange.from, dateRange.to)
-        return matchesStatus && matchesDate
-      }),
-    [rows, filterStatuses, dateRange.from, dateRange.to],
-  )
 
   const activeFilters = [filterStatuses.length > 0, dateRange.from, dateRange.to, filterWarehouse].filter(Boolean).length
 
@@ -66,7 +59,7 @@ export default function StockOpnameListPage() {
       variant: 'destructive',
       permission: 'inventory.opnames.void',
       onClick: (ids) => {
-        const eligible = visibleRows.filter((opname) => ids.includes(String(opname.id)) && opname.status !== 'void')
+        const eligible = rows.filter((opname) => ids.includes(String(opname.id)) && opname.status !== 'void')
         if (eligible.length === 0) {
           toast.warning('Dokumen yang dipilih tidak bisa di-void.')
           return
@@ -78,7 +71,7 @@ export default function StockOpnameListPage() {
   ]
 
   const handleBulkVoid = async (reason: string) => {
-    const selectedOpnames = visibleRows.filter((opname) => bulkVoidIds.includes(String(opname.id)))
+    const selectedOpnames = rows.filter((opname) => bulkVoidIds.includes(String(opname.id)))
     if (selectedOpnames.length === 0) {
       toast.warning('Tidak ada opname stok valid untuk di-void.')
       setBulkVoidOpen(false)
@@ -196,7 +189,7 @@ export default function StockOpnameListPage() {
         }
       >
         <DataTable
-          data={visibleRows}
+          data={rows}
           columns={columns}
           totalRows={data?.meta.total ?? 0}
           isLoading={isLoading}
@@ -224,7 +217,7 @@ export default function StockOpnameListPage() {
         onConfirm={(reason) => void handleBulkVoid(reason)}
         documentNumber={
           bulkVoidIds.length === 1
-            ? (visibleRows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
+            ? (rows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
             : `${bulkVoidIds.length} dokumen terpilih`
         }
         isLoading={voidOpname.isPending}

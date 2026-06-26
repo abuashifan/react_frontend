@@ -16,6 +16,7 @@ export default function StockBalanceDetailPage() {
   )
 
   const balance = data?.data
+  const policy = data?.policy
 
   if (isLoading) {
     return (
@@ -113,6 +114,17 @@ export default function StockBalanceDetailPage() {
             <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Nilai Total</span>
             <span className="text-[13px] tabular-nums font-semibold text-[#334155]">{formatNumber(balance.total_value, 2)}</span>
           </div>
+          {policy && (
+            <div className="flex flex-col gap-0.5 md:col-span-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kebijakan Stok Negatif</span>
+              <span className="text-[13px] text-[#334155]">
+                {policy.allow_negative_stock ? 'Diizinkan' : 'Dibatasi'}
+                <span className="ml-2 text-[#64748b]">
+                  (precision stok {policy.stock_precision}, biaya {policy.cost_precision}, nilai {policy.amount_precision})
+                </span>
+              </span>
+            </div>
+          )}
         </FormSection>
       </div>
     </FormLayout>

@@ -21,6 +21,8 @@ export default function StockBalanceListPage() {
     warehouse_id: warehouseId ?? undefined,
   })
 
+  const policy = data?.policy
+
   const columns: ColumnDef<StockBalance>[] = [
     {
       id: 'product',
@@ -116,6 +118,12 @@ export default function StockBalanceListPage() {
       breadcrumb={[{ label: 'Inventori' }, { label: 'Saldo Stok' }]}
       sidebar={sidebar}
     >
+      {policy && (
+        <div className="mb-3 rounded-lg border border-[#d9e2e5] bg-[#f8fafc] px-3 py-2 text-[12px] text-[#475569]">
+          Kebijakan stok negatif: <span className="font-semibold text-[#334155]">{policy.allow_negative_stock ? 'Diizinkan' : 'Dibatasi'}</span>
+          <span className="ml-2 text-[#64748b]">Precision stok {policy.stock_precision} / biaya {policy.cost_precision} / nilai {policy.amount_precision}</span>
+        </div>
+      )}
       <DataTable
         data={data?.data ?? []}
         columns={columns}

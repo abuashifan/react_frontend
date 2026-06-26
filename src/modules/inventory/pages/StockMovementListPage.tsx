@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -11,7 +11,6 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
-import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
 import { formatNumber, formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
@@ -50,19 +49,13 @@ export default function StockMovementListPage() {
     page: page + 1,
     per_page: 25,
     warehouse_id: filterWarehouse ?? undefined,
+    status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
+    movement_type: filterTypes.length > 0 ? filterTypes.join(',') : undefined,
+    date_from: dateRange.from || undefined,
+    date_to: dateRange.to || undefined,
   })
 
   const rows = data?.data ?? []
-  const visibleRows = useMemo(
-    () =>
-      rows.filter((movement) => {
-        const matchesStatus = filterStatuses.length === 0 || filterStatuses.includes(movement.status)
-        const matchesType = filterTypes.length === 0 || filterTypes.includes(movement.movement_type)
-        const matchesDate = isDateInRange(movement.movement_date, dateRange.from, dateRange.to)
-        return matchesStatus && matchesType && matchesDate
-      }),
-    [rows, filterStatuses, filterTypes, dateRange.from, dateRange.to],
-  )
 
   const activeFilters = [filterStatuses.length > 0, filterTypes.length > 0, dateRange.from, dateRange.to, filterWarehouse].filter(Boolean).length
 
@@ -79,7 +72,7 @@ export default function StockMovementListPage() {
       variant: 'destructive',
       permission: 'inventory.movements.void',
       onClick: (ids) => {
-        const eligible = visibleRows.filter((movement) => ids.includes(String(movement.id)) && movement.status !== 'void')
+        const eligible = rows.filter((movement) => ids.includes(String(movement.id)) && movement.status !== 'void')
         if (eligible.length === 0) {
           toast.warning('Dokumen yang dipilih tidak bisa di-void.')
           return
@@ -91,7 +84,7 @@ export default function StockMovementListPage() {
   ]
 
   const handleBulkVoid = async (reason: string) => {
-    const selectedMovements = visibleRows.filter((movement) => bulkVoidIds.includes(String(movement.id)))
+    const selectedMovements = rows.filter((movement) => bulkVoidIds.includes(String(movement.id)))
     if (selectedMovements.length === 0) {
       toast.warning('Tidak ada mutasi stok valid untuk di-void.')
       setBulkVoidOpen(false)
@@ -230,7 +223,7 @@ export default function StockMovementListPage() {
         }
       >
         <DataTable
-          data={visibleRows}
+          data={rows}
           columns={columns}
           totalRows={data?.meta.total ?? 0}
           isLoading={isLoading}
@@ -258,7 +251,7 @@ export default function StockMovementListPage() {
         onConfirm={(reason) => void handleBulkVoid(reason)}
         documentNumber={
           bulkVoidIds.length === 1
-            ? (visibleRows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
+            ? (rows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
             : `${bulkVoidIds.length} dokumen terpilih`
         }
         isLoading={voidMovement.isPending}
