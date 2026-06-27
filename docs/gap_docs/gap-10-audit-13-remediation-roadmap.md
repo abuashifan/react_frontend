@@ -77,10 +77,10 @@ Bagian ini melacak status artefak dokumentasi remediation, bukan status implemen
 | Completion report Phase 33 | `../tracking/phase-33-completion-report.md` atau lokasi yang dipilih | ✅ Ada | Phase 33 selesai dan divalidasi |
 | Issue Phase 34 | `../issue_docs/issue-37-phase-34-fixed-assets-lifecycle-reports.md` | ✅ Ada | Issue detail Phase 34 |
 | Prompt Phase 34 | `../prompt/prompt-phase-34-fixed-assets-lifecycle-reports.md` | ✅ Ada | Checklist implementasi Phase 34 |
-| Completion report Phase 34 | `../tracking/phase-34-completion-report.md` atau lokasi yang dipilih | ⏳ Belum dibuat | Dibuat setelah Phase 34 selesai |
+| Completion report Phase 34 | `../tracking/phase-34-completion-report.md` atau lokasi yang dipilih | ✅ Ada | Phase 34 selesai dan divalidasi |
 | Issue Phase 35 | `../issue_docs/issue-38-phase-35-period-end-processing.md` | ✅ Ada | Issue detail Phase 35 |
 | Prompt Phase 35 | `../prompt/prompt-phase-35-period-end-processing.md` | ✅ Ada | Checklist implementasi Phase 35 |
-| Completion report Phase 35 | `../tracking/phase-35-completion-report.md` atau lokasi yang dipilih | ⏳ Belum dibuat | Dibuat setelah Phase 35 selesai |
+| Completion report Phase 35 | `../tracking/phase-35-completion-report.md` atau lokasi yang dipilih | ✅ Ada | Phase 35 selesai dan divalidasi |
 | Issue Phase 36 | `../issue_docs/issue-39-phase-36-financial-operational-reports.md` | ✅ Ada | Issue detail Phase 36 |
 | Prompt Phase 36 | `../prompt/prompt-phase-36-financial-operational-reports.md` | ✅ Ada | Checklist implementasi Phase 36 |
 | Completion report Phase 36 | `../tracking/phase-36-completion-report.md` atau lokasi yang dipilih | ⏳ Belum dibuat | Dibuat setelah Phase 36 selesai |

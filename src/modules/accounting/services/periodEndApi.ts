@@ -23,10 +23,15 @@ export interface PeriodEndRun {
 export interface PeriodEndChecklistItem {
   key: string
   label?: string
-  status: 'ok' | 'warning' | 'error' | 'pending' | string
+  status: 'ok' | 'warning' | 'error' | 'pending' | 'passed' | 'blocking' | 'ready' | 'zero_lines' | 'idempotent' | 'not_applicable' | string
   message?: string | null
   count?: number | null
   blocking?: boolean
+}
+
+export interface PeriodEndIssue {
+  code: string
+  message: string
 }
 
 export interface PeriodEndChecklist {
@@ -35,8 +40,8 @@ export interface PeriodEndChecklist {
   period_month?: number
   status: PeriodEndStatusCode
   can_run: boolean
-  blocking_errors: string[]
-  warnings: string[]
+  blocking_errors: PeriodEndIssue[]
+  warnings: PeriodEndIssue[]
   items: PeriodEndChecklistItem[]
   routines?: Record<string, unknown>
   accounting_period?: Record<string, unknown> | null
