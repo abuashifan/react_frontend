@@ -71,10 +71,23 @@ export const capitalizeFixedAssetSchema = z.object({
 export const disposeFixedAssetSchema = z.object({
   disposal_date: z.string().min(1, 'Tanggal disposal wajib diisi'),
   disposal_type: z.enum(['sale', 'write_off', 'scrap', 'lost']),
-  disposed_quantity: z.coerce.number().min(1, 'Qty disposal minimal 1'),
+  disposed_quantity: z.coerce.number().positive('Qty disposal harus lebih besar dari 0'),
   proceeds_amount: optionalNumber,
   cash_bank_account_id: optionalNumber,
   receivable_account_id: optionalNumber,
+}).superRefine((values, ctx) => {
+  const hasProceeds = (values.proceeds_amount ?? 0) > 0
+  const hasCashBank = values.cash_bank_account_id !== null && values.cash_bank_account_id !== undefined
+  const hasReceivable = values.receivable_account_id !== null && values.receivable_account_id !== undefined
+
+  if (hasProceeds && hasCashBank === hasReceivable) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['cash_bank_account_id'], message: 'Pilih tepat satu akun penerimaan jika proceeds diisi' })
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['receivable_account_id'], message: 'Pilih tepat satu akun penerimaan jika proceeds diisi' })
+  }
+
+  if (!hasProceeds && (hasCashBank || hasReceivable)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['proceeds_amount'], message: 'Akun penerimaan hanya boleh diisi jika proceeds ada' })
+  }
 })
 
 export type FixedAssetFormValues = z.infer<typeof fixedAssetSchema>

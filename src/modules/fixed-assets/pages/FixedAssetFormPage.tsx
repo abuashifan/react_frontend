@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import type { Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -47,7 +47,7 @@ const STATUS_LABEL: Record<FixedAssetStatus, string> = {
   draft: 'Draft',
   capitalized: 'Dikapitalisasi',
   active: 'Aktif',
-  fully_depreciated: 'Terdepresiasi',
+  fully_depreciated: 'Terdepresiasi Penuh',
   partially_disposed: 'Sebagian Disposal',
   disposed: 'Disposed',
 }
@@ -120,7 +120,7 @@ export default function FixedAssetFormPage() {
   const isEditable = isCreate || (!hasPostedDepreciation && !['disposed', 'partially_disposed', 'fully_depreciated'].includes(status))
   const isFinancialLocked = !isCreate && ['capitalized', 'active'].includes(status)
   const canCapitalize = !isCreate && status === 'draft'
-  const canDispose = !isCreate && ['active', 'capitalized', 'partially_disposed'].includes(status)
+  const canDispose = !isCreate && ['active', 'capitalized', 'partially_disposed', 'fully_depreciated'].includes(status)
 
   const {
     control,
@@ -149,12 +149,48 @@ export default function FixedAssetFormPage() {
     defaultValues: {
       disposal_date: new Date().toISOString().slice(0, 10),
       disposal_type: 'sale',
-      disposed_quantity: Number(asset?.remaining_quantity ?? asset?.quantity ?? 1),
+      disposed_quantity: 1,
       proceeds_amount: null,
       cash_bank_account_id: null,
       receivable_account_id: null,
     },
   })
+
+  const disposedQuantityValue = disposeForm.watch('disposed_quantity')
+  const proceedsAmountValue = disposeForm.watch('proceeds_amount')
+
+  useEffect(() => {
+    if (!disposeOpen || !asset) return
+
+    disposeForm.reset({
+      disposal_date: new Date().toISOString().slice(0, 10),
+      disposal_type: 'sale',
+      disposed_quantity: 1,
+      proceeds_amount: null,
+      cash_bank_account_id: null,
+      receivable_account_id: null,
+    })
+  }, [asset, disposeOpen, disposeForm])
+
+  const disposalPreview = useMemo(() => {
+    const disposedQuantity = Number(disposedQuantityValue ?? asset?.remaining_quantity ?? asset?.quantity ?? 0)
+    const proceedsAmount = Number(proceedsAmountValue ?? 0)
+    const remainingQuantity = Number(asset?.remaining_quantity ?? asset?.quantity ?? 0)
+
+    if (!asset || remainingQuantity <= 0 || disposedQuantity <= 0) return null
+
+    const ratio = Math.min(disposedQuantity / remainingQuantity, 1)
+    const cost = Number(asset.acquisition_cost ?? 0) * ratio
+    const accumulated = Number(asset.accumulated_depreciation ?? 0) * ratio
+    const netBookValue = cost - accumulated
+
+    return {
+      cost,
+      accumulated,
+      netBookValue,
+      gainLoss: proceedsAmount - netBookValue,
+    }
+  }, [asset, disposedQuantityValue, proceedsAmountValue])
 
   const handleSave = handleSubmit(async (values) => {
     try {
@@ -592,7 +628,7 @@ export default function FixedAssetFormPage() {
               </div>
               <div className="flex flex-col gap-1">
                 <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Qty Disposal <span className="text-red-500">*</span></Label>
-                <Input {...disposeForm.register('disposed_quantity')} type="number" min="1" className="h-9 text-[13px] tabular-nums" />
+                <Input {...disposeForm.register('disposed_quantity')} type="number" min="0.0001" step="0.0001" className="h-9 text-[13px] tabular-nums" />
               </div>
               <div className="flex flex-col gap-1">
                 <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Proceeds</Label>
@@ -630,4 +666,31 @@ export default function FixedAssetFormPage() {
       </Dialog>
     </>
   )
+              {proceedsAmountValue ? (
+                <p className="md:col-span-2 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-[12px] text-sky-800">
+                  Isi tepat satu akun penerimaan jika proceeds diisi. Akun kas/bank dan piutang tidak boleh dipakai bersamaan.
+                </p>
+              ) : null}
+              {disposalPreview ? (
+                <div className="md:col-span-2 grid grid-cols-1 gap-2 md:grid-cols-4">
+                  <div className="rounded-lg border border-[#d9e2e5] bg-[#f8fbfc] p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Cost</p>
+                    <p className="mt-1 text-[13px] font-semibold tabular-nums text-[#24323a]">{formatCurrency(disposalPreview.cost)}</p>
+                  </div>
+                  <div className="rounded-lg border border-[#d9e2e5] bg-[#f8fbfc] p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Accum Dep</p>
+                    <p className="mt-1 text-[13px] font-semibold tabular-nums text-[#24323a]">{formatCurrency(disposalPreview.accumulated)}</p>
+                  </div>
+                  <div className="rounded-lg border border-[#d9e2e5] bg-[#f8fbfc] p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">NBV</p>
+                    <p className="mt-1 text-[13px] font-semibold tabular-nums text-[#24323a]">{formatCurrency(disposalPreview.netBookValue)}</p>
+                  </div>
+                  <div className="rounded-lg border border-[#d9e2e5] bg-[#f8fbfc] p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Gain/Loss</p>
+                    <p className={cn('mt-1 text-[13px] font-semibold tabular-nums', disposalPreview.gainLoss >= 0 ? 'text-emerald-700' : 'text-red-700')}>
+                      {formatCurrency(disposalPreview.gainLoss)}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
 }
