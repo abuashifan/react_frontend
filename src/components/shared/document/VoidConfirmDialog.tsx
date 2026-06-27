@@ -66,10 +66,11 @@ export function VoidConfirmDialog({
         </AlertDialogHeader>
 
         <div>
-          <label className="mb-1.5 block text-[11px] font-semibold uppercase text-[#64748b]">
+          <label htmlFor="void-confirm-reason" className="mb-1.5 block text-[11px] font-semibold uppercase text-[#64748b]">
             Alasan void <span className="text-[#ef4444]">*</span>
           </label>
           <Textarea
+            id="void-confirm-reason"
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             placeholder="Masukkan alasan void..."

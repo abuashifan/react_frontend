@@ -7,7 +7,7 @@ import type { ColumnDef } from '@/components/shared/table/DataTable'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/useToast'
 import { ConfirmDialog } from '@/components/shared/document/ConfirmDialog'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
@@ -137,11 +137,15 @@ export default function UsersPage() {
 
       <Dialog open={!!roleDialogUser} onOpenChange={(o) => !o && setRoleDialogUser(null)}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle className="text-[15px]">Ubah Peran — {roleDialogUser?.name ?? roleDialogUser?.email}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-[15px]">Ubah Peran — {roleDialogUser?.name ?? roleDialogUser?.email}</DialogTitle>
+            <DialogDescription className="text-[13px] text-[#64748b]">Pilih peran yang akan dipakai untuk pengguna ini.</DialogDescription>
+          </DialogHeader>
           <div className="space-y-3 pt-1">
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Peran</Label>
+              <Label htmlFor="settings-users-role-id" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Peran</Label>
               <select
+                id="settings-users-role-id"
                 value={selectedRoleId ?? ''}
                 onChange={(e) => setSelectedRoleId(e.target.value ? Number(e.target.value) : null)}
                 className="h-9 rounded-md border border-input bg-background px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-ring"

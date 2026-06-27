@@ -157,9 +157,9 @@ export default function CompanySettingsPage() {
           <FormSection title="Modul Aktif">
             {MODULE_LABELS.map(({ key, label }) => (
               <div key={key} className="flex items-center justify-between rounded-md border border-[#e2e8f0] p-3 md:col-span-1">
-                <span className="text-[13px] text-[#1e2d35]">{label}</span>
-                <PermissionGuard permission="settings.company.edit" fallback={<Switch checked={!!modules[key]} disabled />}>
-                  <Switch checked={!!modules[key]} onCheckedChange={(v) => void handleToggleModule(key, v)} disabled={updateModules.isPending} />
+                <Label htmlFor={`company-settings-module-${String(key)}`} className="text-[13px] text-[#1e2d35]">{label}</Label>
+                <PermissionGuard permission="settings.company.edit" fallback={<Switch id={`company-settings-module-${String(key)}`} checked={!!modules[key]} disabled />}>
+                  <Switch id={`company-settings-module-${String(key)}`} checked={!!modules[key]} onCheckedChange={(v) => void handleToggleModule(key, v)} disabled={updateModules.isPending} />
                 </PermissionGuard>
               </div>
             ))}

@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/useToast'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { cn } from '@/lib/utils'
@@ -173,16 +173,19 @@ export default function RolesPage() {
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle className="text-[15px]">Buat Peran Baru</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-[15px]">Buat Peran Baru</DialogTitle>
+            <DialogDescription className="text-[13px] text-[#64748b]">Buat peran baru lalu atur izin aksesnya di panel editor.</DialogDescription>
+          </DialogHeader>
           <form onSubmit={(e) => void handleCreate(e)} className="space-y-3 pt-1">
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Nama Peran <span className="text-red-500">*</span></Label>
-              <Input {...createForm.register('name')} className="h-9 text-[13px]" placeholder="mis. Staf Penjualan" />
+              <Label htmlFor="settings-roles-create-name" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Nama Peran <span className="text-red-500">*</span></Label>
+              <Input id="settings-roles-create-name" {...createForm.register('name')} className="h-9 text-[13px]" placeholder="mis. Staf Penjualan" />
               {createForm.formState.errors.name && <p className="text-[11px] text-red-500">{createForm.formState.errors.name.message}</p>}
             </div>
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Deskripsi</Label>
-              <Textarea {...createForm.register('description')} className="resize-none text-[13px]" rows={2} placeholder="Deskripsi singkat peran (opsional)" />
+              <Label htmlFor="settings-roles-create-description" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Deskripsi</Label>
+              <Textarea id="settings-roles-create-description" {...createForm.register('description')} className="resize-none text-[13px]" rows={2} placeholder="Deskripsi singkat peran (opsional)" />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setCreateOpen(false)} className="h-9 text-[13px]">Batal</Button>

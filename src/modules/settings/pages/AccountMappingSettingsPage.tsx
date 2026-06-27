@@ -49,8 +49,10 @@ export default function AccountMappingSettingsPage() {
         <FormSection title="Pemetaan Akun Otomatis">
           {mappings.map((mapping) => (
             <div key={mapping.key} className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">{mapping.label}</Label>
+              <Label htmlFor={`settings-account-mapping-${mapping.key}`} className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">{mapping.label}</Label>
               <SearchableSelect
+                triggerId={`settings-account-mapping-${mapping.key}`}
+                triggerAriaLabel={mapping.label}
                 value={getAccountId(mapping.key)}
                 onChange={(val) => setLocalValues((prev) => ({ ...prev, [mapping.key]: val as number | null }))}
                 onSearch={(q) => coaApi.search(q)}

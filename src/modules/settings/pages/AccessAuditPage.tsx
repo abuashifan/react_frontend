@@ -3,6 +3,7 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { DataTable } from '@/components/shared/table/DataTable'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { useAccessAudit } from '../hooks/useAccessManagement'
 import type { AuditEntry, AuditListParams } from '../types/access.types'
 
@@ -29,16 +30,16 @@ export default function AccessAuditPage() {
     <WorkspaceLayout title="Audit Akses" breadcrumb={[{ label: 'Pengaturan' }, { label: 'Audit Akses' }]}>
       <div className="mb-3 flex flex-wrap items-end gap-2">
         <div className="flex flex-col gap-1">
-          <span className="text-[11px] text-[#64748b]">Aksi</span>
-          <Input placeholder="Cari aksi..." value={filters.action ?? ''} onChange={(e) => setFilters((f) => ({ ...f, action: e.target.value || undefined }))} className="h-8 w-48 text-[12px]" />
+          <Label htmlFor="settings-access-audit-action" className="text-[11px] text-[#64748b]">Aksi</Label>
+          <Input id="settings-access-audit-action" placeholder="Cari aksi..." value={filters.action ?? ''} onChange={(e) => setFilters((f) => ({ ...f, action: e.target.value || undefined }))} className="h-8 w-48 text-[12px]" />
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-[11px] text-[#64748b]">Dari</span>
-          <Input type="date" value={filters.date_from ?? ''} onChange={(e) => setFilters((f) => ({ ...f, date_from: e.target.value || undefined }))} className="h-8 w-40 text-[12px]" />
+          <Label htmlFor="settings-access-audit-date-from" className="text-[11px] text-[#64748b]">Dari</Label>
+          <Input id="settings-access-audit-date-from" type="date" value={filters.date_from ?? ''} onChange={(e) => setFilters((f) => ({ ...f, date_from: e.target.value || undefined }))} className="h-8 w-40 text-[12px]" />
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-[11px] text-[#64748b]">Sampai</span>
-          <Input type="date" value={filters.date_to ?? ''} onChange={(e) => setFilters((f) => ({ ...f, date_to: e.target.value || undefined }))} className="h-8 w-40 text-[12px]" />
+          <Label htmlFor="settings-access-audit-date-to" className="text-[11px] text-[#64748b]">Sampai</Label>
+          <Input id="settings-access-audit-date-to" type="date" value={filters.date_to ?? ''} onChange={(e) => setFilters((f) => ({ ...f, date_to: e.target.value || undefined }))} className="h-8 w-40 text-[12px]" />
         </div>
       </div>
       <DataTable

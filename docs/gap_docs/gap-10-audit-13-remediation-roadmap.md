@@ -892,6 +892,22 @@ Exit:
 - tidak ada native destructive confirm pada workflow yang sudah memiliki dialog pattern;
 - lint tidak mendapat warning baru.
 
+Catatan progres 2026-06-27:
+
+- Shared `SearchableSelect` sudah mendukung `triggerId` dan `triggerAriaLabel`.
+- Surface settings yang memakai `SearchableSelect` sudah memakai identifier/label trigger eksplisit pada pengaturan transaksi dan pemetaan akun.
+- Sweep accessibility Phase 38 sudah merapikan label/programmatic association, dialog description, dan destructive confirmation consistency pada representative settings/access pages berikut:
+  - `/settings/users`
+  - `/settings/invitations`
+  - `/settings/roles`
+  - `/settings/audit`
+  - `/settings/preferences`
+- Yang belum selesai di Phase 38 saat ini:
+  - viewport polish lintas modul pada short/mobile viewport;
+  - consistency sweep lintas modul di luar representative settings/access slice;
+  - penutupan sisa temuan P2/P3 yang belum diverifikasi ulang;
+  - validation gate penuh Phase 38, termasuk lint/build/playwright phase-wide setelah blocker repo-wide yang tidak terkait selesai atau dipisahkan jelas.
+
 ---
 
 ### Phase 39 — Full Regression, Data Repair, and Audit Closure

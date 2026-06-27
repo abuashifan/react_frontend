@@ -10,8 +10,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/useToast'
+import { ConfirmDialog } from '@/components/shared/document/ConfirmDialog'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { formatDate, cn } from '@/lib/utils'
 import { useInvitations, useInvitationMutations, useAccessRoles } from '../hooks/useAccessManagement'
@@ -36,6 +37,7 @@ export default function InvitationsPage() {
   const { data: rolesData } = useAccessRoles()
   const { create, resend, revoke } = useInvitationMutations()
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [revokeTarget, setRevokeTarget] = useState<Invitation | null>(null)
 
   const invitations = data?.data ?? []
   const roles = rolesData?.data ?? []
@@ -58,7 +60,6 @@ export default function InvitationsPage() {
   }
 
   const handleRevoke = async (inv: Invitation) => {
-    if (!confirm(`Batalkan undangan untuk ${inv.email}?`)) return
     try { await revoke.mutateAsync(inv.id); toast.success('Undangan dibatalkan.') }
     catch { toast.error('Gagal membatalkan undangan.') }
   }
@@ -85,7 +86,7 @@ export default function InvitationsPage() {
               <Button type="button" size="sm" variant="ghost" onClick={() => void handleResend(original)} className="h-7 text-[11px] text-[#326273]">Kirim Ulang</Button>
             </PermissionGuard>
             <PermissionGuard permission="access.invitations.revoke" fallback={null}>
-              <Button type="button" size="sm" variant="ghost" onClick={() => void handleRevoke(original)} className="h-7 text-[11px] text-red-500 hover:text-red-600">Batalkan</Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setRevokeTarget(original)} className="h-7 text-[11px] text-red-500 hover:text-red-600">Batalkan</Button>
             </PermissionGuard>
           </div>
         )
@@ -118,16 +119,20 @@ export default function InvitationsPage() {
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle className="text-[15px]">Kirim Undangan</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-[15px]">Kirim Undangan</DialogTitle>
+            <DialogDescription className="text-[13px] text-[#64748b]">Masukkan email dan peran tujuan sebelum mengirim undangan.</DialogDescription>
+          </DialogHeader>
           <form onSubmit={(e) => void handleCreate(e)} className="space-y-3 pt-1">
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Email <span className="text-red-500">*</span></Label>
-              <Input {...form.register('email')} type="email" className="h-9 text-[13px]" placeholder="nama@perusahaan.com" />
+              <Label htmlFor="settings-invitations-email" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Email <span className="text-red-500">*</span></Label>
+              <Input id="settings-invitations-email" {...form.register('email')} type="email" className="h-9 text-[13px]" placeholder="nama@perusahaan.com" />
               {form.formState.errors.email && <p className="text-[11px] text-red-500">{form.formState.errors.email.message}</p>}
             </div>
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Peran</Label>
+              <Label htmlFor="settings-invitations-role-id" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Peran</Label>
               <select
+                id="settings-invitations-role-id"
                 value={form.watch('role_id') ?? ''}
                 onChange={(e) => form.setValue('role_id', e.target.value ? Number(e.target.value) : null)}
                 className="h-9 rounded-md border border-input bg-background px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-ring"
@@ -143,6 +148,22 @@ export default function InvitationsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        isOpen={!!revokeTarget}
+        onClose={() => setRevokeTarget(null)}
+        onConfirm={() => {
+          if (!revokeTarget) return
+          const invitation = revokeTarget
+          setRevokeTarget(null)
+          void handleRevoke(invitation)
+        }}
+        title="Batalkan Undangan"
+        description={revokeTarget ? `Batalkan undangan untuk ${revokeTarget.email}? Pengguna tidak akan bisa menerima undangan ini lagi.` : ''}
+        confirmLabel="Batalkan Undangan"
+        variant="destructive"
+        isLoading={revoke.isPending}
+      />
     </WorkspaceLayout>
   )
 }

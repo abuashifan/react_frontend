@@ -10,6 +10,8 @@ interface SearchableSelectBaseProps {
   disabled?: boolean
   error?: string
   label?: string
+  triggerId?: string
+  triggerAriaLabel?: string
   size?: 'sm' | 'md'
   selectedOptions?: SelectOption<number>[]
 }
@@ -41,6 +43,8 @@ export function SearchableSelect({
   disabled,
   error,
   label,
+  triggerId,
+  triggerAriaLabel,
   size = 'md',
   selectedOptions = [],
 }: SearchableSelectProps) {
@@ -174,10 +178,12 @@ export function SearchableSelect({
       <Popover open={open} onOpenChange={handleOpen}>
         <PopoverTrigger asChild>
           <button
+            id={triggerId}
             type="button"
             disabled={disabled}
             aria-expanded={open}
             aria-haspopup="listbox"
+            aria-label={triggerAriaLabel ?? label ?? placeholder}
             className={cn(
               'flex w-full items-center justify-between rounded-md border bg-white px-2.5 text-left',
               'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5c9ead]/30',
