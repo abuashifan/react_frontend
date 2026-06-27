@@ -24,9 +24,9 @@ export default function FixedAssetDepreciationReportPage() {
       action={
         <div className="flex flex-wrap items-center gap-2">
           <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Dari</Label>
-          <Input type="month" value={periodFrom} onChange={(event) => setPeriodFrom(event.target.value)} className="h-8 w-[135px] text-[13px] tabular-nums" />
+          <Input type="month" value={periodFrom} max={currentPeriod} onChange={(event) => setPeriodFrom(event.target.value)} className="h-8 w-[135px] text-[13px] tabular-nums" />
           <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Sampai</Label>
-          <Input type="month" value={periodTo} onChange={(event) => setPeriodTo(event.target.value)} className="h-8 w-[135px] text-[13px] tabular-nums" />
+          <Input type="month" value={periodTo} max={currentPeriod} onChange={(event) => setPeriodTo(event.target.value)} className="h-8 w-[135px] text-[13px] tabular-nums" />
           <select value={mode} onChange={(event) => setMode(event.target.value as 'detail' | 'yearly_summary')} className="h-8 rounded-md border border-[#d9e2e5] bg-white px-2 text-[13px]">
             <option value="detail">Detail</option>
             <option value="yearly_summary">Yearly Summary</option>

@@ -22,10 +22,13 @@ export const coaApi = {
   deactivate: (id: number) =>
     http.patch<unknown, ApiResponse<void>>(`/master-data/chart-of-accounts/${id}/deactivate`),
 
-  search: async (query: string): Promise<SelectOption<number>[]> => {
+  search: async (
+    query: string,
+    filters: Partial<Pick<CoaListParams, 'account_type' | 'is_active' | 'is_cash_bank'>> = {},
+  ): Promise<SelectOption<number>[]> => {
     const res = await http.get<unknown, PaginatedResponse<Coa>>(
       '/master-data/chart-of-accounts',
-      { params: { search: query, per_page: 10 } },
+      { params: { search: query, per_page: 10, ...filters } },
     )
     return res.data.map((a) => ({
       value: a.id,

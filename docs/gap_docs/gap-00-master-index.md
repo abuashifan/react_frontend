@@ -27,6 +27,7 @@ Source aktif tambahan:
 | GAP-08 | Transaction document number DTO mismatch | 🟠 High | [gap-08-transaction-dto-number-contract.md](gap-08-transaction-dto-number-contract.md) |
 | GAP-09 | Audit-12 UX/workflow/filter/tabs/reports fixes | 🔴 Critical | [gap-09-audit-12-ux-workflow-fixes.md](gap-09-audit-12-ux-workflow-fixes.md) |
 | GAP-10 | Audit-13 full remediation lintas frontend/backend | 🔴 Critical | [gap-10-audit-13-remediation-roadmap.md](gap-10-audit-13-remediation-roadmap.md) |
+| GAP-11 | State-only navigation shell — ribbon/menu masih mengubah browser URL | 🟡 Medium | [gap-11-state-only-navigation-shell.md](gap-11-state-only-navigation-shell.md) |
 
 ---
 

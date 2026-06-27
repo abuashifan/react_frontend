@@ -47,6 +47,57 @@ const ACCOUNT_FIELDS: { name: AccountFieldName; label: string }[] = [
   { name: 'disposal_loss_account_id', label: 'Akun Rugi Disposal' },
 ]
 
+type AccountSearchType = 'asset' | 'expense' | 'revenue'
+
+type AccountOptionSource = FixedAssetCategory['asset_account']
+
+const ACCOUNT_SEARCHERS: Record<AccountFieldName, AccountSearchType> = {
+  asset_account_id: 'asset',
+  accumulated_depreciation_account_id: 'asset',
+  depreciation_expense_account_id: 'expense',
+  clearing_account_id: 'asset',
+  disposal_gain_account_id: 'revenue',
+  disposal_loss_account_id: 'expense',
+}
+
+const getAccountRelation = (category: FixedAssetCategory | null, field: AccountFieldName): AccountOptionSource => {
+  if (!category) return null
+
+  switch (field) {
+    case 'asset_account_id':
+      return category.asset_account ?? null
+    case 'accumulated_depreciation_account_id':
+      return category.accumulated_depreciation_account ?? null
+    case 'depreciation_expense_account_id':
+      return category.depreciation_expense_account ?? null
+    case 'clearing_account_id':
+      return category.clearing_account ?? null
+    case 'disposal_gain_account_id':
+      return category.disposal_gain_account ?? null
+    case 'disposal_loss_account_id':
+      return category.disposal_loss_account ?? null
+    default:
+      return null
+  }
+}
+
+const getAccountLabel = (account: AccountOptionSource): string => {
+  if (!account) return ''
+
+  const code = account.account_code ?? ''
+  const name = account.account_name ?? account.name ?? ''
+  return code && name ? `${code} - ${name}` : name || code
+}
+
+const getSelectedAccountOptions = (account: AccountOptionSource) => {
+  if (!account) return []
+
+  return [{ value: account.id, label: getAccountLabel(account), sublabel: account.account_code ?? undefined }]
+}
+
+const searchAccountsByType = (accountType: AccountSearchType) => (query: string) =>
+  coaApi.search(query, { account_type: accountType, is_active: true })
+
 function defaultValues(): FixedAssetCategoryFormValues {
   return {
     code: '',
@@ -264,8 +315,9 @@ export default function FixedAssetCategoryPage() {
                       <SearchableSelect
                         value={typeof field.value === 'number' ? field.value : null}
                         onChange={field.onChange}
-                        onSearch={coaApi.search}
+                        onSearch={searchAccountsByType(ACCOUNT_SEARCHERS[name])}
                         placeholder="Pilih akun..."
+                        selectedOptions={getSelectedAccountOptions(getAccountRelation(editingItem, name))}
                       />
                     </div>
                   )}

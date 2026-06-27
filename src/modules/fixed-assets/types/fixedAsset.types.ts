@@ -22,6 +22,64 @@ export interface AccountSummary {
   name?: string
 }
 
+export interface FixedAssetJournalReference {
+  id: number
+  journal_number?: string | null
+  status?: string | null
+  journal_date?: string | null
+}
+
+export interface FixedAssetAcquisitionRecord {
+  id: number
+  source_type?: string | null
+  source_id?: number | null
+  source_line_id?: number | null
+  vendor_id?: number | null
+  acquisition_date?: string | null
+  quantity?: AmountValue
+  amount?: AmountValue
+  capitalized_amount?: AmountValue
+  journal_entry_id?: number | null
+  journal_entry?: FixedAssetJournalReference | null
+}
+
+export interface FixedAssetScheduleRecord {
+  id: number
+  period?: string | null
+  status?: string | null
+  depreciation_amount?: AmountValue
+  accumulated_depreciation_after?: AmountValue
+  net_book_value_after?: AmountValue
+  journal_entry_id?: number | null
+  journal_entry?: FixedAssetJournalReference | null
+}
+
+export interface FixedAssetDisposalRecord {
+  id: number
+  disposal_number?: string | null
+  disposal_date?: string | null
+  disposal_type?: DisposalType | string | null
+  disposed_quantity?: AmountValue
+  disposal_net_book_value?: AmountValue
+  proceeds_amount?: AmountValue
+  gain_loss_amount?: AmountValue
+  journal_entry_id?: number | null
+  journal_entry?: FixedAssetJournalReference | null
+}
+
+export interface FixedAssetTransactionRecord {
+  id: number
+  transaction_type?: string | null
+  transaction_date?: string | null
+  period?: string | null
+  amount?: AmountValue
+  quantity?: AmountValue
+  source_type?: string | null
+  source_id?: number | null
+  journal_entry_id?: number | null
+  journal_entry?: FixedAssetJournalReference | null
+}
+
 export interface FixedAssetCategory {
   id: number
   code: string
@@ -79,6 +137,10 @@ export interface FixedAsset {
   source_id?: number | null
   capitalized_at?: string | null
   disposed_at?: string | null
+  acquisitions?: FixedAssetAcquisitionRecord[]
+  schedules?: FixedAssetScheduleRecord[]
+  disposals?: FixedAssetDisposalRecord[]
+  transactions?: FixedAssetTransactionRecord[]
   created_at?: string
   updated_at?: string
 }

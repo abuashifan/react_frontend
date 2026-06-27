@@ -34,6 +34,15 @@ import {
 } from '../schemas/fixedAssetSchema'
 import type { FixedAsset, FixedAssetStatus } from '../types/fixedAsset.types'
 
+function HistoryEmpty({ message }: { message: string }) {
+  return <p className="text-[12px] text-[#94a3b8]">{message}</p>
+}
+
+function JournalRef({ id, number }: { id?: number | null; number?: string | null }) {
+  if (!id && !number) return <span className="text-[#94a3b8]">-</span>
+  return <span className="tabular-nums text-[#24323a]">{number ?? `Jurnal #${id}`}</span>
+}
+
 const STATUS_LABEL: Record<FixedAssetStatus, string> = {
   draft: 'Draft',
   capitalized: 'Dikapitalisasi',
@@ -107,7 +116,9 @@ export default function FixedAssetFormPage() {
 
   const formValues = useMemo(() => mapAssetToForm(asset), [asset])
   const status = asset?.status ?? 'draft'
-  const isEditable = isCreate || !['disposed', 'partially_disposed', 'fully_depreciated'].includes(status)
+  const hasPostedDepreciation = (asset?.schedules ?? []).some((schedule) => schedule.status === 'posted')
+  const isEditable = isCreate || (!hasPostedDepreciation && !['disposed', 'partially_disposed', 'fully_depreciated'].includes(status))
+  const isFinancialLocked = !isCreate && ['capitalized', 'active'].includes(status)
   const canCapitalize = !isCreate && status === 'draft'
   const canDispose = !isCreate && ['active', 'capitalized', 'partially_disposed'].includes(status)
 
@@ -229,7 +240,9 @@ export default function FixedAssetFormPage() {
         title={isCreate ? 'Buat Aktiva Tetap' : 'Aktiva Tetap'}
         documentNumber={asset?.asset_number ?? asset?.number}
         readOnly={!isEditable}
-        readOnlyReason="Aktiva sudah dilepas/terdepresiasi penuh sehingga hanya dapat dilihat."
+        readOnlyReason={hasPostedDepreciation
+          ? 'Aktiva dengan depresiasi yang sudah diposting hanya dapat dilihat.'
+          : 'Aktiva sudah dilepas/terdepresiasi penuh sehingga hanya dapat dilihat.'}
         breadcrumb={[{ label: 'Aktiva Tetap', path: '/fixed-assets' }, { label: isCreate ? 'Buat Aktiva' : (asset?.asset_number ?? '') }]}
         bottomBar={bottomBar}
       >
@@ -251,7 +264,7 @@ export default function FixedAssetFormPage() {
                     onChange={field.onChange}
                     onSearch={fixedAssetCategoryApi.search}
                     placeholder="Pilih kategori aktiva..."
-                    disabled={!isEditable}
+                    disabled={!isEditable || isFinancialLocked}
                     error={errors.fixed_asset_category_id?.message}
                     selectedOptions={asset?.category ? [{ value: asset.category.id, label: asset.category.name, sublabel: asset.category.code }] : []}
                   />
@@ -265,19 +278,25 @@ export default function FixedAssetFormPage() {
           </FormSection>
 
           <FormSection title="Perolehan">
+            {isFinancialLocked && (
+              <p className="md:col-span-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
+                Field finansial dikunci setelah kapitalisasi. Gunakan workflow koreksi/penyesuaian bila perlu mengubah nilai perolehan, kategori, atau umur manfaat.
+              </p>
+            )}
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal Perolehan <span className="text-red-500">*</span></Label>
-              <Input {...register('acquisition_date')} type="date" disabled={!isEditable} className="h-9 text-[13px] tabular-nums" />
+              <Input {...register('acquisition_date')} type="date" disabled={!isEditable || isFinancialLocked} className="h-9 text-[13px] tabular-nums" />
               {errors.acquisition_date && <p className="text-[11px] text-red-500">{errors.acquisition_date.message}</p>}
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Nilai Perolehan <span className="text-red-500">*</span></Label>
-              <Input {...register('acquisition_cost')} type="number" min="0" disabled={!isEditable} className="h-9 text-[13px] tabular-nums" />
+              <Input {...register('acquisition_cost')} type="number" min="0" disabled={!isEditable || isFinancialLocked} className="h-9 text-[13px] tabular-nums" />
               {errors.acquisition_cost && <p className="text-[11px] text-red-500">{errors.acquisition_cost.message}</p>}
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Qty</Label>
-              <Input {...register('quantity')} type="number" min="0" disabled={!isEditable} className="h-9 text-[13px] tabular-nums" />
+              <Input {...register('quantity')} type="number" min="0" disabled={!isEditable || isFinancialLocked} className="h-9 text-[13px] tabular-nums" />
+              {errors.quantity && <p className="text-[11px] text-red-500">{errors.quantity.message}</p>}
             </div>
             <Controller
               control={control}
@@ -304,11 +323,12 @@ export default function FixedAssetFormPage() {
           <FormSection title="Depresiasi">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal Mulai Pakai</Label>
-              <Input {...register('service_start_date')} type="date" disabled={!isEditable} className="h-9 text-[13px] tabular-nums" />
+              <Input {...register('service_start_date')} type="date" disabled={!isEditable || isFinancialLocked} className="h-9 text-[13px] tabular-nums" />
+              {errors.service_start_date && <p className="text-[11px] text-red-500">{errors.service_start_date.message}</p>}
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Umur Manfaat</Label>
-              <select {...register('useful_life_years')} disabled={!isEditable} className="h-9 rounded-md border border-[#d9e2e5] bg-white px-2 text-[13px] tabular-nums">
+              <select {...register('useful_life_years')} disabled={!isEditable || isFinancialLocked} className="h-9 rounded-md border border-[#d9e2e5] bg-white px-2 text-[13px] tabular-nums">
                 <option value="">Default kategori</option>
                 <option value="4">4 tahun</option>
                 <option value="8">8 tahun</option>
@@ -319,7 +339,8 @@ export default function FixedAssetFormPage() {
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Nilai Residu</Label>
-              <Input {...register('salvage_value')} type="number" min="0" disabled={!isEditable} className="h-9 text-[13px] tabular-nums" />
+              <Input {...register('salvage_value')} type="number" min="0" disabled={!isEditable || isFinancialLocked} className="h-9 text-[13px] tabular-nums" />
+              {errors.salvage_value && <p className="text-[11px] text-red-500">{errors.salvage_value.message}</p>}
             </div>
             <div className="grid grid-cols-1 gap-2 md:col-span-2 md:grid-cols-3">
               <div className="rounded-lg border border-[#d9e2e5] bg-[#f8fbfc] p-3">
@@ -355,6 +376,152 @@ export default function FixedAssetFormPage() {
               <span className="text-[13px] tabular-nums text-[#24323a]">{asset?.remaining_quantity ?? '-'}</span>
             </div>
           </FormSection>
+
+          {!isCreate && asset && (
+            <FormSection title="Riwayat Asset">
+              <div className="space-y-2 md:col-span-2">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akuisisi</p>
+                  {(asset.acquisitions?.length ?? 0) === 0 ? (
+                    <HistoryEmpty message="Belum ada riwayat akuisisi." />
+                  ) : (
+                    <div className="mt-2 overflow-x-auto rounded-lg border border-[#d9e2e5]">
+                      <table className="w-full text-[12px]">
+                        <thead>
+                          <tr className="bg-[#f8fbfc] text-left text-[#64748b]">
+                            <th className="px-3 py-2 font-semibold">Tanggal</th>
+                            <th className="px-3 py-2 font-semibold">Source</th>
+                            <th className="px-3 py-2 text-right font-semibold">Qty</th>
+                            <th className="px-3 py-2 text-right font-semibold">Amount</th>
+                            <th className="px-3 py-2 text-right font-semibold">Capitalized</th>
+                            <th className="px-3 py-2 font-semibold">Jurnal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {asset.acquisitions?.map((record) => (
+                            <tr key={record.id} className="border-t border-[#eef2f6]">
+                              <td className="px-3 py-2 tabular-nums text-[#24323a]">{record.acquisition_date ? formatDate(record.acquisition_date) : '-'}</td>
+                              <td className="px-3 py-2 text-[#24323a]">{record.source_type ? `${record.source_type} #${record.source_id ?? '-'}` : '-'}</td>
+                              <td className="px-3 py-2 text-right tabular-nums text-[#24323a]">{record.quantity ?? '-'}</td>
+                              <td className="px-3 py-2 text-right tabular-nums text-[#24323a]">{formatCurrency(record.amount)}</td>
+                              <td className="px-3 py-2 text-right tabular-nums text-[#24323a]">{formatCurrency(record.capitalized_amount)}</td>
+                              <td className="px-3 py-2"><JournalRef id={record.journal_entry_id} number={record.journal_entry?.journal_number} /></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jadwal Depresiasi</p>
+                  {(asset.schedules?.length ?? 0) === 0 ? (
+                    <HistoryEmpty message="Belum ada jadwal depresiasi/amortisasi." />
+                  ) : (
+                    <div className="mt-2 overflow-x-auto rounded-lg border border-[#d9e2e5]">
+                      <table className="w-full text-[12px]">
+                        <thead>
+                          <tr className="bg-[#f8fbfc] text-left text-[#64748b]">
+                            <th className="px-3 py-2 font-semibold">Periode</th>
+                            <th className="px-3 py-2 font-semibold">Status</th>
+                            <th className="px-3 py-2 text-right font-semibold">Depresiasi</th>
+                            <th className="px-3 py-2 text-right font-semibold">Akumulasi</th>
+                            <th className="px-3 py-2 text-right font-semibold">NBV</th>
+                            <th className="px-3 py-2 font-semibold">Jurnal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {asset.schedules?.map((record) => (
+                            <tr key={record.id} className="border-t border-[#eef2f6]">
+                              <td className="px-3 py-2 tabular-nums text-[#24323a]">{record.period ?? '-'}</td>
+                              <td className="px-3 py-2 text-[#24323a]">{record.status ?? '-'}</td>
+                              <td className="px-3 py-2 text-right tabular-nums text-[#24323a]">{formatCurrency(record.depreciation_amount)}</td>
+                              <td className="px-3 py-2 text-right tabular-nums text-[#24323a]">{formatCurrency(record.accumulated_depreciation_after)}</td>
+                              <td className="px-3 py-2 text-right tabular-nums text-[#24323a]">{formatCurrency(record.net_book_value_after)}</td>
+                              <td className="px-3 py-2"><JournalRef id={record.journal_entry_id} number={record.journal_entry?.journal_number} /></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Disposal</p>
+                  {(asset.disposals?.length ?? 0) === 0 ? (
+                    <HistoryEmpty message="Belum ada riwayat disposal." />
+                  ) : (
+                    <div className="mt-2 overflow-x-auto rounded-lg border border-[#d9e2e5]">
+                      <table className="w-full text-[12px]">
+                        <thead>
+                          <tr className="bg-[#f8fbfc] text-left text-[#64748b]">
+                            <th className="px-3 py-2 font-semibold">Nomor</th>
+                            <th className="px-3 py-2 font-semibold">Tanggal</th>
+                            <th className="px-3 py-2 font-semibold">Tipe</th>
+                            <th className="px-3 py-2 text-right font-semibold">Qty</th>
+                            <th className="px-3 py-2 text-right font-semibold">NBV</th>
+                            <th className="px-3 py-2 text-right font-semibold">Proceeds</th>
+                            <th className="px-3 py-2 text-right font-semibold">Gain/Loss</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {asset.disposals?.map((record) => (
+                            <tr key={record.id} className="border-t border-[#eef2f6]">
+                              <td className="px-3 py-2 tabular-nums text-[#24323a]">{record.disposal_number ?? '-'}</td>
+                              <td className="px-3 py-2 tabular-nums text-[#24323a]">{record.disposal_date ? formatDate(record.disposal_date) : '-'}</td>
+                              <td className="px-3 py-2 text-[#24323a]">{record.disposal_type ?? '-'}</td>
+                              <td className="px-3 py-2 text-right tabular-nums text-[#24323a]">{record.disposed_quantity ?? '-'}</td>
+                              <td className="px-3 py-2 text-right tabular-nums text-[#24323a]">{formatCurrency(record.disposal_net_book_value)}</td>
+                              <td className="px-3 py-2 text-right tabular-nums text-[#24323a]">{formatCurrency(record.proceeds_amount)}</td>
+                              <td className="px-3 py-2 text-right tabular-nums text-[#24323a]">{formatCurrency(record.gain_loss_amount)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Transaksi</p>
+                  {(asset.transactions?.length ?? 0) === 0 ? (
+                    <HistoryEmpty message="Belum ada audit trail transaksi asset." />
+                  ) : (
+                    <div className="mt-2 overflow-x-auto rounded-lg border border-[#d9e2e5]">
+                      <table className="w-full text-[12px]">
+                        <thead>
+                          <tr className="bg-[#f8fbfc] text-left text-[#64748b]">
+                            <th className="px-3 py-2 font-semibold">Tanggal</th>
+                            <th className="px-3 py-2 font-semibold">Tipe</th>
+                            <th className="px-3 py-2 font-semibold">Periode</th>
+                            <th className="px-3 py-2 text-right font-semibold">Qty</th>
+                            <th className="px-3 py-2 text-right font-semibold">Amount</th>
+                            <th className="px-3 py-2 font-semibold">Source</th>
+                            <th className="px-3 py-2 font-semibold">Jurnal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {asset.transactions?.map((record) => (
+                            <tr key={record.id} className="border-t border-[#eef2f6]">
+                              <td className="px-3 py-2 tabular-nums text-[#24323a]">{record.transaction_date ? formatDate(record.transaction_date) : '-'}</td>
+                              <td className="px-3 py-2 text-[#24323a]">{record.transaction_type ?? '-'}</td>
+                              <td className="px-3 py-2 tabular-nums text-[#24323a]">{record.period ?? '-'}</td>
+                              <td className="px-3 py-2 text-right tabular-nums text-[#24323a]">{record.quantity ?? '-'}</td>
+                              <td className="px-3 py-2 text-right tabular-nums text-[#24323a]">{formatCurrency(record.amount)}</td>
+                              <td className="px-3 py-2 text-[#24323a]">{record.source_type ? `${record.source_type} #${record.source_id ?? '-'}` : '-'}</td>
+                              <td className="px-3 py-2"><JournalRef id={record.journal_entry_id} number={record.journal_entry?.journal_number} /></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </FormSection>
+          )}
         </div>
       </FormLayout>
 

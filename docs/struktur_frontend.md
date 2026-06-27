@@ -84,6 +84,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____gap-08-transaction-dto-number-contract.md
 | | |____gap-09-audit-12-ux-workflow-fixes.md
 | | |____gap-10-audit-13-remediation-roadmap.md
+| | |____gap-11-state-only-navigation-shell.md
 | |____issue_docs/
 | | |____issue-01-permission-keys.md
 | | |____issue-02-ribbon-paths.md
@@ -219,6 +220,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | |____tracking/
 | | |____phase-30-completion-report.md
 | | |____phase-31-completion-report.md
+| | |____phase-33-completion-report.md
 | | |____2026-06-16-route-tabs-datatable-fixes.md
 | | |____2026-06-16-workspace-document-number-alias-fix.md
 | |____struktur_frontend.md

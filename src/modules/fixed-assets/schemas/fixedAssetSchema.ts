@@ -30,6 +30,18 @@ export const fixedAssetSchema = z.object({
   project_id: optionalNumber,
   source_type: z.string().nullable().optional(),
   source_id: optionalNumber,
+}).superRefine((values, ctx) => {
+  if (values.quantity !== null && values.quantity !== undefined && values.quantity <= 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['quantity'], message: 'Qty harus lebih besar dari 0' })
+  }
+
+  if (values.service_start_date && values.acquisition_date && values.service_start_date < values.acquisition_date) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['service_start_date'], message: 'Tanggal mulai pakai tidak boleh sebelum tanggal perolehan' })
+  }
+
+  if (values.salvage_value !== null && values.salvage_value !== undefined && values.salvage_value > values.acquisition_cost) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['salvage_value'], message: 'Nilai residu tidak boleh melebihi nilai perolehan' })
+  }
 })
 
 export const fixedAssetCategorySchema = z.object({
