@@ -1,12 +1,40 @@
 import { Link } from 'react-router-dom'
 import { CalendarDays, Calendar, ArrowRight } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
+import { useFiscalYearStatus, usePeriodLockStatus } from '@/modules/accounting/hooks/useFiscalYear'
+import { formatDate } from '@/lib/utils'
 
 export default function AccountingPeriodPage() {
+  const { data: fiscalYearData, isLoading: fiscalYearLoading } = useFiscalYearStatus()
+  const { data: periodLockData, isLoading: periodLockLoading } = usePeriodLockStatus()
+
+  const fiscalYear = fiscalYearData?.data?.active_fiscal_year
+  const currentLockUntil = periodLockData?.data?.active_fiscal_year?.lock_until ?? null
+
   return (
     <WorkspaceLayout title="Periode Akuntansi" breadcrumb={[{ label: 'Pengaturan' }, { label: 'Periode Akuntansi' }]}>
       <div className="space-y-3">
         <p className="text-[13px] text-[#64748b]">Kelola tahun fiskal dan kunci periode akuntansi melalui modul Buku Besar.</p>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="rounded-lg border border-[#e2e8f0] bg-white p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tahun Fiskal Aktif</p>
+            <p className="mt-1 text-[15px] font-semibold text-[#1e2d35]">
+              {fiscalYearLoading ? 'Memuat...' : fiscalYear?.year ?? '-'}
+            </p>
+            <p className="mt-1 text-[12px] text-[#64748b]">
+              {fiscalYear?.start_date && fiscalYear?.end_date ? `${formatDate(fiscalYear.start_date)} – ${formatDate(fiscalYear.end_date)}` : 'Belum ada tahun fiskal aktif.'}
+            </p>
+          </div>
+          <div className="rounded-lg border border-[#e2e8f0] bg-white p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Status Lock</p>
+            <p className="mt-1 text-[15px] font-semibold text-[#1e2d35]">
+              {periodLockLoading ? 'Memuat...' : currentLockUntil ? 'Terkunci' : 'Terbuka'}
+            </p>
+            <p className="mt-1 text-[12px] text-[#64748b]">
+              {currentLockUntil ? `Posting diblokir sampai ${formatDate(currentLockUntil)}.` : 'Tidak ada period lock aktif.'}
+            </p>
+          </div>
+        </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <Link to="/accounting/fiscal-years" className="group flex items-center gap-4 rounded-lg border border-[#e2e8f0] bg-white p-4 transition hover:border-[#5c9ead] hover:shadow-sm">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#f0f9fc]">

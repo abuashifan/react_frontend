@@ -9,8 +9,10 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/useToast'
+import { ConfirmDialog } from '@/components/shared/document/ConfirmDialog'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { formatDate, cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { useCompanyUsers, useCompanyUserMutations, useAccessRoles } from '../hooks/useAccessManagement'
 import type { CompanyUser, CompanyUserStatus } from '../types/access.types'
 
@@ -26,16 +28,31 @@ export default function UsersPage() {
   const { data, isLoading } = useCompanyUsers()
   const { data: rolesData } = useAccessRoles()
   const { updateRole, deactivate, reactivate, remove } = useCompanyUserMutations()
+  const currentUserId = useAuthStore((state) => state.user?.id ?? null)
 
   const [roleDialogUser, setRoleDialogUser] = useState<CompanyUser | null>(null)
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null)
+  const [confirmUser, setConfirmUser] = useState<CompanyUser | null>(null)
+  const [confirmAction, setConfirmAction] = useState<'deactivate' | 'remove' | null>(null)
 
   const users = data?.data ?? []
   const roles = rolesData?.data ?? []
+  const activeManagerCount = users.filter((u) => u.status === 'active' && ['owner', 'admin'].includes(u.role ?? '')).length
 
   const openRoleDialog = (u: CompanyUser) => {
     setRoleDialogUser(u)
     setSelectedRoleId(u.role_id ?? null)
+  }
+
+  const isProtectedUser = (u: CompanyUser) => {
+    const isCurrentUser = currentUserId !== null && u.user_id === currentUserId
+    const isSoleManager = u.status === 'active' && ['owner', 'admin'].includes(u.role ?? '') && activeManagerCount === 1
+    return isCurrentUser || isSoleManager
+  }
+
+  const openConfirm = (u: CompanyUser, action: 'deactivate' | 'remove') => {
+    setConfirmUser(u)
+    setConfirmAction(action)
   }
 
   const handleSaveRole = async () => {
@@ -54,12 +71,6 @@ export default function UsersPage() {
     } catch { toast.error('Gagal mengubah status pengguna.') }
   }
 
-  const handleRemove = async (u: CompanyUser) => {
-    if (!confirm(`Hapus ${u.name ?? u.email} dari perusahaan ini? Akses akan dicabut.`)) return
-    try { await remove.mutateAsync(u.id); toast.success('Pengguna dihapus dari perusahaan.') }
-    catch { toast.error('Gagal menghapus pengguna.') }
-  }
-
   const columns: ColumnDef<CompanyUser>[] = [
     { id: 'name', header: 'Nama', size: 180, cell: ({ original }) => <span className="font-medium text-[#24323a] text-[13px]">{original.name ?? '-'}</span> },
     { id: 'email', header: 'Email', size: 220, cell: ({ original }) => <span className="text-[13px]">{original.email ?? '-'}</span> },
@@ -76,16 +87,25 @@ export default function UsersPage() {
       id: 'actions', header: '', size: 240,
       cell: ({ original }) => (
         <div className="flex items-center gap-1">
+          {isProtectedUser(original) ? <span className="rounded-full border border-[#d9e2e5] px-2 py-0.5 text-[10px] font-semibold text-[#64748b]">Dilindungi</span> : null}
           <PermissionGuard permission="access.users.manage" fallback={null}>
-            <Button type="button" size="sm" variant="ghost" onClick={() => openRoleDialog(original)} className="h-7 text-[11px] text-[#326273]">Ubah Peran</Button>
+            {!isProtectedUser(original) && (
+              <Button type="button" size="sm" variant="ghost" onClick={() => openRoleDialog(original)} className="h-7 text-[11px] text-[#326273]">Ubah Peran</Button>
+            )}
           </PermissionGuard>
           <PermissionGuard permission="access.users.deactivate" fallback={null}>
-            <Button type="button" size="sm" variant="ghost" onClick={() => void handleToggle(original)} className="h-7 text-[11px]">
-              {original.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'}
-            </Button>
+            {original.status === 'active' ? (
+              isProtectedUser(original) ? null : (
+                <Button type="button" size="sm" variant="ghost" onClick={() => openConfirm(original, 'deactivate')} className="h-7 text-[11px]">Nonaktifkan</Button>
+              )
+            ) : (
+              <Button type="button" size="sm" variant="ghost" onClick={() => void handleToggle(original)} className="h-7 text-[11px]">Aktifkan</Button>
+            )}
           </PermissionGuard>
           <PermissionGuard permission="access.users.remove" fallback={null}>
-            <Button type="button" size="sm" variant="ghost" onClick={() => void handleRemove(original)} className="h-7 text-[11px] text-red-500 hover:text-red-600">Hapus</Button>
+            {!isProtectedUser(original) && (
+              <Button type="button" size="sm" variant="ghost" onClick={() => openConfirm(original, 'remove')} className="h-7 text-[11px] text-red-500 hover:text-red-600">Hapus</Button>
+            )}
           </PermissionGuard>
         </div>
       ),
@@ -139,6 +159,39 @@ export default function UsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        isOpen={!!confirmUser && !!confirmAction}
+        onClose={() => {
+          setConfirmUser(null)
+          setConfirmAction(null)
+        }}
+        onConfirm={() => {
+          if (!confirmUser || !confirmAction) return
+          const user = confirmUser
+          const action = confirmAction
+          setConfirmUser(null)
+          setConfirmAction(null)
+          void (async () => {
+            try {
+              if (action === 'deactivate') {
+                await deactivate.mutateAsync(user.id)
+                toast.success('Pengguna dinonaktifkan.')
+              } else {
+                await remove.mutateAsync(user.id)
+                toast.success('Pengguna dihapus dari perusahaan.')
+              }
+            } catch {
+              toast.error(action === 'deactivate' ? 'Gagal menonaktifkan pengguna.' : 'Gagal menghapus pengguna.')
+            }
+          })()
+        }}
+        title={confirmAction === 'remove' ? 'Hapus Pengguna' : 'Nonaktifkan Pengguna'}
+        description={confirmUser ? `${confirmAction === 'remove' ? 'Hapus' : 'Nonaktifkan'} ${confirmUser.name ?? confirmUser.email ?? 'pengguna ini'}? Akses perusahaan akan ${confirmAction === 'remove' ? 'dicabut' : 'dimatikan'}.` : ''}
+        confirmLabel={confirmAction === 'remove' ? 'Hapus' : 'Nonaktifkan'}
+        variant={confirmAction === 'remove' ? 'destructive' : 'primary'}
+        isLoading={deactivate.isPending || remove.isPending}
+      />
     </WorkspaceLayout>
   )
 }

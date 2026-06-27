@@ -94,8 +94,8 @@ export default function TransactionSettingsPage() {
       <div className="space-y-4">
         <FormSection title="Alur Kerja Dokumen">
           <div className="flex flex-col gap-1 md:col-span-2">
-            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Mode Alur Kerja</Label>
-            <select value={acc.transaction_workflow_mode ?? 'draft_then_post'} onChange={(e) => set('transaction_workflow_mode', e.target.value as WorkflowMode)} className="h-9 rounded-md border border-input bg-background px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-ring">
+            <Label htmlFor="transaction-settings-workflow-mode" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Mode Alur Kerja</Label>
+            <select id="transaction-settings-workflow-mode" value={acc.transaction_workflow_mode ?? 'draft_then_post'} onChange={(e) => set('transaction_workflow_mode', e.target.value as WorkflowMode)} className="h-9 rounded-md border border-input bg-background px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-ring">
               {WORKFLOW_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
             <p className="text-[11px] text-[#94a3b8]">{WORKFLOW_OPTIONS.find((o) => o.value === (acc.transaction_workflow_mode ?? 'draft_then_post'))?.hint}</p>
@@ -106,10 +106,10 @@ export default function TransactionSettingsPage() {
           {BEHAVIOR_TOGGLES.map(({ key, label, hint }) => (
             <div key={key} className="flex items-center justify-between gap-3 rounded-md border border-[#e2e8f0] p-3">
               <div>
-                <p className="text-[13px] text-[#1e2d35]">{label}</p>
+                <Label htmlFor={`transaction-settings-${String(key)}`} className="text-[13px] text-[#1e2d35]">{label}</Label>
                 {hint && <p className="text-[11px] text-[#94a3b8]">{hint}</p>}
               </div>
-              <Switch checked={!!acc[key]} onCheckedChange={(v) => set(key, v)} />
+              <Switch id={`transaction-settings-${String(key)}`} checked={!!acc[key]} onCheckedChange={(v) => set(key, v)} />
             </div>
           ))}
         </FormSection>
@@ -117,20 +117,20 @@ export default function TransactionSettingsPage() {
         <FormSection title="Aturan Tanggal">
           {DATE_TOGGLES.map(({ key, label }) => (
             <div key={key} className="flex items-center justify-between gap-3 rounded-md border border-[#e2e8f0] p-3">
-              <span className="text-[13px] text-[#1e2d35]">{label}</span>
-              <Switch checked={!!acc[key]} onCheckedChange={(v) => set(key, v)} />
+              <Label htmlFor={`transaction-settings-${String(key)}`} className="text-[13px] text-[#1e2d35]">{label}</Label>
+              <Switch id={`transaction-settings-${String(key)}`} checked={!!acc[key]} onCheckedChange={(v) => set(key, v)} />
             </div>
           ))}
           {acc.allow_backdated_transactions && (
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Maks. Hari Mundur</Label>
-              <Input type="number" min={0} max={3650} value={acc.max_backdate_days ?? 0} onChange={(e) => set('max_backdate_days', Number(e.target.value))} className="h-9 text-[13px] tabular-nums" />
+              <Label htmlFor="transaction-settings-max-backdate-days" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Maks. Hari Mundur</Label>
+              <Input id="transaction-settings-max-backdate-days" type="number" min={0} max={3650} value={acc.max_backdate_days ?? 0} onChange={(e) => set('max_backdate_days', Number(e.target.value))} className="h-9 text-[13px] tabular-nums" />
             </div>
           )}
           {acc.allow_future_transactions && (
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Maks. Hari Maju</Label>
-              <Input type="number" min={0} max={3650} value={acc.max_future_days ?? 0} onChange={(e) => set('max_future_days', Number(e.target.value))} className="h-9 text-[13px] tabular-nums" />
+              <Label htmlFor="transaction-settings-max-future-days" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Maks. Hari Maju</Label>
+              <Input id="transaction-settings-max-future-days" type="number" min={0} max={3650} value={acc.max_future_days ?? 0} onChange={(e) => set('max_future_days', Number(e.target.value))} className="h-9 text-[13px] tabular-nums" />
             </div>
           )}
         </FormSection>

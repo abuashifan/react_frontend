@@ -99,16 +99,16 @@ export default function CompanySettingsPage() {
         <TabsContent value="profil">
           <FormSection title="Identitas Perusahaan">
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Nama Perusahaan</Label>
-              <Input value={company?.name ?? '-'} readOnly className="h-9 bg-[#f8fafc] text-[13px]" />
+              <Label htmlFor="company-settings-name" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Nama Perusahaan</Label>
+              <Input id="company-settings-name" value={company?.name ?? '-'} readOnly className="h-9 bg-[#f8fafc] text-[13px]" />
             </div>
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Nama Legal</Label>
-              <Input value={company?.legal_name ?? '-'} readOnly className="h-9 bg-[#f8fafc] text-[13px]" />
+              <Label htmlFor="company-settings-legal-name" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Nama Legal</Label>
+              <Input id="company-settings-legal-name" value={company?.legal_name ?? '-'} readOnly className="h-9 bg-[#f8fafc] text-[13px]" />
             </div>
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kode</Label>
-              <Input value={company?.code ?? '-'} readOnly className="h-9 bg-[#f8fafc] text-[13px]" />
+              <Label htmlFor="company-settings-code" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kode</Label>
+              <Input id="company-settings-code" value={company?.code ?? '-'} readOnly className="h-9 bg-[#f8fafc] text-[13px]" />
             </div>
             <div className="md:col-span-2 rounded-md border border-[#e2e8f0] bg-[#f8fafc] p-3 text-[11px] text-[#64748b]">
               Profil perusahaan dikelola di level akun. Hubungi administrator untuk mengubah identitas perusahaan.
@@ -120,8 +120,8 @@ export default function CompanySettingsPage() {
         <TabsContent value="akuntansi">
           <FormSection title="Pengaturan Akuntansi">
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Mata Uang Dasar</Label>
-              <select value={accounting.base_currency ?? 'IDR'} onChange={(e) => setAccounting((a) => ({ ...a, base_currency: e.target.value }))} className="h-9 rounded-md border border-input bg-background px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-ring">
+              <Label htmlFor="company-settings-base-currency" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Mata Uang Dasar</Label>
+              <select id="company-settings-base-currency" value={accounting.base_currency ?? 'IDR'} onChange={(e) => setAccounting((a) => ({ ...a, base_currency: e.target.value }))} className="h-9 rounded-md border border-input bg-background px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-ring">
                 <option value="IDR">IDR — Rupiah</option>
                 <option value="USD">USD — US Dollar</option>
                 <option value="EUR">EUR — Euro</option>
@@ -129,18 +129,18 @@ export default function CompanySettingsPage() {
               </select>
             </div>
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Metode Pembulatan</Label>
-              <select value={accounting.rounding_method ?? 'half_up'} onChange={(e) => setAccounting((a) => ({ ...a, rounding_method: e.target.value as RoundingMethod }))} className="h-9 rounded-md border border-input bg-background px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-ring">
+              <Label htmlFor="company-settings-rounding-method" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Metode Pembulatan</Label>
+              <select id="company-settings-rounding-method" value={accounting.rounding_method ?? 'half_up'} onChange={(e) => setAccounting((a) => ({ ...a, rounding_method: e.target.value as RoundingMethod }))} className="h-9 rounded-md border border-input bg-background px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-ring">
                 {ROUNDING_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Presisi Nilai (desimal)</Label>
-              <Input type="number" min={0} max={6} value={accounting.amount_precision ?? 0} onChange={(e) => setAccounting((a) => ({ ...a, amount_precision: Number(e.target.value) }))} className="h-9 text-[13px] tabular-nums" />
+              <Label htmlFor="company-settings-amount-precision" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Presisi Nilai (desimal)</Label>
+              <Input id="company-settings-amount-precision" type="number" min={0} max={6} value={accounting.amount_precision ?? 0} onChange={(e) => setAccounting((a) => ({ ...a, amount_precision: Number(e.target.value) }))} className="h-9 text-[13px] tabular-nums" />
             </div>
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Presisi Kuantitas (desimal)</Label>
-              <Input type="number" min={0} max={8} value={accounting.quantity_precision ?? 0} onChange={(e) => setAccounting((a) => ({ ...a, quantity_precision: Number(e.target.value) }))} className="h-9 text-[13px] tabular-nums" />
+              <Label htmlFor="company-settings-quantity-precision" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Presisi Kuantitas (desimal)</Label>
+              <Input id="company-settings-quantity-precision" type="number" min={0} max={8} value={accounting.quantity_precision ?? 0} onChange={(e) => setAccounting((a) => ({ ...a, quantity_precision: Number(e.target.value) }))} className="h-9 text-[13px] tabular-nums" />
             </div>
           </FormSection>
           <PermissionGuard permission="settings.company.edit" fallback={null}>
