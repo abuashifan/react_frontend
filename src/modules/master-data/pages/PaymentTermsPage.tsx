@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/useToast'
 import { usePaymentTermsList, usePaymentTermsMutations } from '../hooks/useSimpleLists'
 import { paymentTermsSchema, type PaymentTermsFormValues } from '../schemas/paymentTermsSchema'
@@ -149,6 +149,7 @@ export default function PaymentTermsPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-[15px]">{editingItem ? 'Edit Syarat Pembayaran' : 'Tambah Syarat Pembayaran'}</DialogTitle>
+            <DialogDescription className="text-[13px] text-[#64748b]">Lengkapi nama dan jumlah hari jatuh tempo syarat pembayaran.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 pt-1">
             <div className="flex flex-col gap-1">

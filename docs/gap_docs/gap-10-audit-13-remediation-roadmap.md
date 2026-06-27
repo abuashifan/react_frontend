@@ -296,8 +296,11 @@ vendor/bin/pint --test
 | 37 | Settings, Access Safety, Dashboard, and Router | A13-001..003, 258..270 | 24–36 |
 | 38 | Cross-Cutting UX, Accessibility, and Consistency | Finding P2/P3 lintas modul | 25–37 |
 | 39 | Full Regression, Data Repair, and Audit Closure | A13-001..280 | 24–38 |
+| 40 | Account Mapping Defaults & Fixed-Asset COA Completion | Improvement (non-A13) | 25 |
 
 Phase boleh dipecah menjadi sub-phase kecil, tetapi dependency dan acceptance tidak boleh dilewati.
+
+Phase 40 adalah perbaikan tambahan di luar 280 finding Audit-13. Sesuai keputusan user, phase ini didokumentasikan inline di GAP-10 saja — tidak membuat issue/prompt/spec terpisah.
 
 ---
 
@@ -902,11 +905,17 @@ Catatan progres 2026-06-27:
   - `/settings/roles`
   - `/settings/audit`
   - `/settings/preferences`
+Lanjutan 2026-06-27 (dialog semantics sweep):
+
+- Seluruh dialog (`Dialog`/`AlertDialog`) di app kini memiliki `DialogDescription`/`AlertDialogDescription` — sebelumnya 12 dialog tanpa deskripsi (memicu warning aria-describedby Radix + a11y gap). File yang diperbaiki: `SessionWarningDialog`, `PeriodEndPage` (reopen), `FixedAssetFormPage` (kapitalisasi), `FixedAssetCategoryPage`, `PaymentTermsPage`, `GudangPage`, `KategoriProdukPage`, `DepartemenPage`, `ProyekPage`, `SatuanPage`, `OpeningBalanceBatchPage` (preview), `SourceDocumentPicker`. Verifikasi: `tsc` bersih untuk semua file ini; daftar error non-lucide tidak bertambah dari baseline (acceptance "dialog semantics dan copy konsisten" terpenuhi).
+- Asesmen `SearchableSelect` tanpa `triggerId`/`triggerAriaLabel` (≈120 instance / ≈50 file): BUKAN unlabeled critical control — tiap instance punya `<Label>` visual di sampingnya dan tombolnya mendapat accessible name dari placeholder deskriptif (fallback `aria-label`). Peningkatan ke asosiasi programatik (`htmlFor`↔`triggerId`) adalah refinement P3 berskala besar, lebih tepat dikerjakan sebagai pass tersendiri dengan verifikasi a11y/Playwright runtime.
+
 - Yang belum selesai di Phase 38 saat ini:
-  - viewport polish lintas modul pada short/mobile viewport;
+  - asosiasi programatik label↔SearchableSelect lintas modul (P3, lihat asesmen di atas);
+  - viewport polish lintas modul pada short/mobile viewport (butuh runtime/Playwright);
   - consistency sweep lintas modul di luar representative settings/access slice;
   - penutupan sisa temuan P2/P3 yang belum diverifikasi ulang;
-  - validation gate penuh Phase 38, termasuk lint/build/playwright phase-wide setelah blocker repo-wide yang tidak terkait selesai atau dipisahkan jelas.
+  - validation gate penuh Phase 38, termasuk lint/build/playwright phase-wide — TERBLOKIR di environment ini (lucide-react typings, hermes-parser hilang → eslint mati, error TS pre-existing di modul lain; `tsc -b` & `npm run lint` tidak hijau repo-wide). Per-file `tsc`/`vite transform` dipakai sebagai pengganti sementara.
 
 ---
 
@@ -935,6 +944,64 @@ Exit akhir:
 - seluruh route utama bebas crash/stack leak;
 - accounting and inventory reconciliation fixture seimbang;
 - Audit-13 ditandai fixes verified.
+
+---
+
+### Phase 40 — Account Mapping Defaults & Fixed-Asset COA Completion
+
+Status: Backend & frontend selesai (2026-06-27).
+
+Hasil verifikasi backend (2026-06-27):
+
+- 19/19 mapping wajib resolve ke akun nyata bertipe benar (cek otomatis terhadap COA template baru);
+- 3 mapping wajib yang sebelumnya gagal (`fixed_assets.cost`, `accumulated_depreciation`, `disposal_gain`) kini resolve; yang sebelumnya salah-akun (`depreciation_expense` dulu "Beban Transportasi", `disposal_loss`, `clearing`, `cash_bank.bank_admin_fee`) kini benar;
+- test backend terkait lulus: Demo seeder, AccountMappingService, AccountMappingHealth, FixedAssetServiceLifecycle, OpeningStockMapping, OpeningBalance (total 28 test);
+- pembersihan orphan key aktif di `syncDefaultMappingsFromConfig()`.
+
+Frontend (2026-06-27): Onboarding Step 3 (`Step3AccountMapping.tsx`) diubah jadi mode review — fetch mapping auto-terisi via `onboardingApi.listAccountMappings()` (TanStack Query), tampilkan per modul dengan akun terpilih (label preloaded via `SearchableSelect.selectedOptions`), boleh lanjut tanpa mengubah apa pun, edit bersifat opsional (hanya perubahan yang dikirim ke `PATCH /account-mappings`), peringatan non-blocking bila ada mapping wajib kosong. `tsc` bersih untuk file ini; `vite` mentransform semua modul tanpa error. Catatan env: `npm run build` (tsc -b) dan eslint gagal repo-wide karena masalah environment pre-existing (lucide-react typings, hermes-parser, error TS di modul lain), bukan akibat perubahan ini.
+
+Sifat: improvement di luar Audit-13. Dokumentasi inline GAP-10 saja, tanpa issue/prompt/spec terpisah (keputusan user).
+
+Tujuan:
+
+- account mapping tidak lagi dibuat manual oleh user; semua mapping (wajib & opsional) terisi otomatis dari default begitu COA tersedia;
+- melengkapi akun Aset Tetap di template COA agar default mapping resolve ke akun yang benar secara akuntansi (Opsi B);
+- tetap memberi akses edit mapping untuk entitas unik (default untuk semua, edit untuk yang butuh).
+
+Akar masalah:
+
+- `AccountMappingStorageService::syncDefaultMappingsFromConfig()` sudah mengisi `account_id` dari `default_account_codes`, tetapi default `fixed_assets.*` menunjuk kode yang tidak ada di COA (1500/1510/1590/7200) atau salah arti (depreciation_expense→6150 "Beban Transportasi", disposal_loss→6160 "Adm Bank", clearing→1150 "Perlengkapan");
+- template COA "trading" tidak punya akun aset tetap murni (tanah/gedung/kendaraan/software) beserta akumulasi dan beban penyusutan/amortisasi serta laba/rugi pelepasan;
+- key usang dari skema lama (`cash.bank`, `purchase.payable`, `sales.receivable`) menumpuk di tabel karena sync tidak pernah menghapus orphan.
+
+Scope backend (dikerjakan dulu):
+
+1. COA template ([`TradingCompanyAccountingCycleSeeder::chartOfAccounts()`]): hapus 1210/1220 lama, tambah blok Aset Tetap —
+   - 1500 Tanah (tidak disusutkan);
+   - 1510 Bangunan / Gedung + 1511 Akumulasi Penyusutan Bangunan;
+   - 1520 Peralatan Kantor + 1521 Akumulasi Penyusutan Peralatan;
+   - 1530 Kendaraan + 1531 Akumulasi Penyusutan Kendaraan;
+   - 1590 Aset Tetap Dalam Penyelesaian (Clearing);
+   - 1600 Perangkat Lunak / Software + 1601 Akumulasi Amortisasi Software;
+   - 6171 Beban Penyusutan Bangunan, 6172 Beban Penyusutan Peralatan, 6173 Beban Penyusutan Kendaraan (beban penyusutan dipisah per kategori, dipasang per Kategori Aset Tetap), 6175 Beban Amortisasi Software;
+   - 7200 Laba Pelepasan Aset Tetap, 8200 Rugi Pelepasan Aset Tetap;
+   - 6170 Beban Penyusutan umum dipertahankan sebagai fallback global.
+2. `config/account_mappings.php`: perbaiki default `fixed_assets.*` (cost→1520, accumulated_depreciation→1521, depreciation_expense→6170, accumulated_amortization→1601, amortization_expense→6175, disposal_gain→7200, disposal_loss→8200, clearing→1590) dan utamakan `cash_bank.bank_admin_fee`→6160.
+3. `AccountMappingStorageService::syncDefaultMappingsFromConfig()`: tambah langkah hapus baris yang `mapping_key`-nya bukan key resmi config (pembersihan orphan otomatis).
+
+Scope frontend (menyusul):
+
+4. Onboarding Step 3 (Account Mapping) diubah dari form-kosong-wajib-isi → mode review: tampilkan mapping yang sudah auto-terisi, boleh lanjut tanpa mengubah apa pun, tetap bisa diedit. Halaman Settings → Account Mapping tetap menjadi tempat override untuk entitas unik.
+
+Catatan data: hanya menyentuh template seeder + config + service; tidak memutasi tenant live. Company dummy yang sudah ada tidak di-backfill (keputusan user).
+
+Exit:
+
+- semua mapping wajib resolve ke akun nyata yang benar tanpa input manual user;
+- akun aset tetap (tanah/gedung/peralatan/kendaraan/software) tersedia di COA beserta akumulasi, beban, dan laba/rugi pelepasan;
+- tidak ada key mapping usang tersisa setelah sync;
+- mapping tetap dapat diedit lewat Settings;
+- (frontend) Step 3 tidak lagi memaksa user mengisi mapping dari nol.
 
 ---
 
@@ -1021,3 +1088,123 @@ Scope teknis Phase 24:
 5. jangan mencampur phase ini dengan adapter transaksi.
 
 Setelah Phase 24 lulus dan divalidasi, lanjut Phase 25 karena Master Data dan Account Mapping adalah dependency untuk Accounting, transaksi, Fixed Assets, dan Period-End.
+
+---
+
+## 11. Phase 38 Validation — Checklist `SearchableSelect` Label Association
+
+Section khusus untuk melacak validasi Phase 38 pada seluruh dropdown `SearchableSelect`.
+
+### Lingkungan verifikasi (runtime TERSEDIA)
+
+- `npx playwright test` (test runner bawaan) **tidak** dipakai — browser bawaan Playwright tidak terunduh.
+- Verifikasi runtime memakai **chromium sistem** + library `playwright` lewat script Node:
+  `chromium.launch({ headless: true, executablePath: '/usr/bin/chromium', args: ['--no-sandbox'] })`.
+- Dev server: backend `:8000` dan frontend `:5173` (login `admin@example.com` / `password`, pilih **company 2**).
+- `eslint` & `npm run build` penuh tetap terblokir (hermes-parser hilang, lucide typings) → gunakan per-file `tsc` untuk static check.
+
+### Yang diperiksa per instance
+
+1. **A11y**: tombol `SearchableSelect` punya accessible name yang benar — tambah `triggerId` + `triggerAriaLabel`, dan `<Label htmlFor>` terasosiasi (bukan sekadar fallback placeholder).
+2. **Runtime**: buka halaman di company 2, pastikan tidak ada console error baru dan dropdown bisa dibuka via keyboard.
+3. **Static**: `tsc` bersih untuk file yang disentuh.
+
+### Legenda
+
+`[ ]` belum · `[x]` selesai & terverifikasi · angka `(n)` = jumlah instance `SearchableSelect` di file itu.
+
+Progress: **3 / 102 instance** selesai (60 file; 57 file tersisa).
+
+### Accounting (2)
+
+- [ ] `accounting/pages/FiscalYearPage.tsx` (1)
+- [ ] `accounting/pages/JournalFormPage.tsx` (1)
+
+### Cash & Bank (9)
+
+- [ ] `cash-bank/pages/BankReconciliationFormPage.tsx` (1)
+- [ ] `cash-bank/pages/BankTransferFormPage.tsx` (2)
+- [ ] `cash-bank/pages/CashPaymentFormPage.tsx` (3)
+- [ ] `cash-bank/pages/CashReceiptFormPage.tsx` (3)
+
+### Fixed Assets (8)
+
+- [ ] `fixed-assets/pages/FixedAssetCategoryPage.tsx` (1)
+- [ ] `fixed-assets/pages/FixedAssetFormPage.tsx` (6)
+- [ ] `fixed-assets/pages/FixedAssetListPage.tsx` (1)
+
+### Inventory (10)
+
+- [ ] `inventory/pages/StockAdjustmentFormPage.tsx` (3)
+- [ ] `inventory/pages/StockAdjustmentListPage.tsx` (1)
+- [ ] `inventory/pages/StockBalanceListPage.tsx` (1)
+- [ ] `inventory/pages/StockMovementFormPage.tsx` (2)
+- [ ] `inventory/pages/StockMovementListPage.tsx` (1)
+- [ ] `inventory/pages/StockOpnameFormPage.tsx` (1)
+- [ ] `inventory/pages/StockOpnameListPage.tsx` (1)
+
+### Master Data (10)
+
+- [ ] `master-data/pages/AccountMappingPage.tsx` (1)
+- [ ] `master-data/pages/CoaFormPage.tsx` (1)
+- [ ] `master-data/pages/KontakFormPage.tsx` (1)
+- [ ] `master-data/pages/ProdukFormPage.tsx` (6)
+- [ ] `master-data/pages/ProdukListPage.tsx` (1)
+
+### Onboarding (1)
+
+- [x] `onboarding/components/steps/Step3AccountMapping.tsx` (1) — selesai (Phase 40)
+
+### Opening Balance (1)
+
+- [ ] `opening-balance/pages/OpeningBalanceBatchPage.tsx` (1)
+
+### Purchase (28)
+
+- [ ] `purchase/pages/BillLedgerPage.tsx` (1)
+- [ ] `purchase/pages/GoodsReceiptFormPage.tsx` (3)
+- [ ] `purchase/pages/GoodsReceiptListPage.tsx` (1)
+- [ ] `purchase/pages/PurchaseOrderFormPage.tsx` (3)
+- [ ] `purchase/pages/PurchaseOrderListPage.tsx` (1)
+- [ ] `purchase/pages/PurchaseRequestFormPage.tsx` (2)
+- [ ] `purchase/pages/PurchaseReturnFormPage.tsx` (2)
+- [ ] `purchase/pages/PurchaseReturnListPage.tsx` (1)
+- [ ] `purchase/pages/VendorBillFormPage.tsx` (5)
+- [ ] `purchase/pages/VendorBillListPage.tsx` (1)
+- [ ] `purchase/pages/VendorDepositFormPage.tsx` (2)
+- [ ] `purchase/pages/VendorDepositListPage.tsx` (1)
+- [ ] `purchase/pages/VendorLedgerPage.tsx` (1)
+- [ ] `purchase/pages/VendorPaymentFormPage.tsx` (3)
+- [ ] `purchase/pages/VendorPaymentListPage.tsx` (1)
+
+### Sales (31)
+
+- [ ] `sales/pages/ArAgingPage.tsx` (1)
+- [ ] `sales/pages/ArSummaryPage.tsx` (1)
+- [ ] `sales/pages/CustomerDepositFormPage.tsx` (2)
+- [ ] `sales/pages/CustomerDepositListPage.tsx` (1)
+- [ ] `sales/pages/CustomerLedgerPage.tsx` (1)
+- [ ] `sales/pages/DeliveryOrderFormPage.tsx` (3)
+- [ ] `sales/pages/DeliveryOrderListPage.tsx` (1)
+- [ ] `sales/pages/InvoiceLedgerPage.tsx` (1)
+- [ ] `sales/pages/ProformaFormPage.tsx` (2)
+- [ ] `sales/pages/ProformaListPage.tsx` (1)
+- [ ] `sales/pages/QuotationFormPage.tsx` (2)
+- [ ] `sales/pages/QuotationListPage.tsx` (1)
+- [ ] `sales/pages/SalesInvoiceFormPage.tsx` (3)
+- [ ] `sales/pages/SalesInvoiceListPage.tsx` (1)
+- [ ] `sales/pages/SalesOrderFormPage.tsx` (3)
+- [ ] `sales/pages/SalesOrderListPage.tsx` (1)
+- [ ] `sales/pages/SalesReceiptFormPage.tsx` (2)
+- [ ] `sales/pages/SalesReceiptListPage.tsx` (1)
+- [ ] `sales/pages/SalesReturnFormPage.tsx` (2)
+- [ ] `sales/pages/SalesReturnListPage.tsx` (1)
+
+### Settings (2)
+
+- [x] `settings/pages/AccountMappingSettingsPage.tsx` (1) — selesai (Phase 38 settings sweep)
+- [x] `settings/pages/TransactionSettingsPage.tsx` (1) — selesai (Phase 38 settings sweep)
+
+### Catatan dialog semantics (sudah selesai, di luar checklist di atas)
+
+12 dialog telah diberi `DialogDescription`/`AlertDialogDescription` — lihat "Catatan progres" pada Phase 38 §7.

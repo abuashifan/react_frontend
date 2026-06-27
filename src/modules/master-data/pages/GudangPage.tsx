@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/useToast'
 import { useGudangList, useGudangMutations } from '../hooks/useSimpleLists'
 import { gudangSchema, type GudangFormValues } from '../schemas/gudangSchema'
@@ -154,6 +154,7 @@ export default function GudangPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-[15px]">{editingItem ? 'Edit Gudang' : 'Tambah Gudang'}</DialogTitle>
+            <DialogDescription className="text-[13px] text-[#64748b]">Lengkapi nama dan detail gudang.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 pt-1">
             <div className="flex flex-col gap-1">

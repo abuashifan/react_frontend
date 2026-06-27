@@ -3,6 +3,7 @@ import { AlertTriangle } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -48,9 +49,9 @@ export function SessionWarningDialog({
         </DialogHeader>
 
         <div className="py-4">
-          <p className="text-[13px] text-[#64748b] mb-3">
+          <DialogDescription className="text-[13px] text-[#64748b] mb-3">
             Karena tidak ada aktivitas, Anda akan keluar otomatis demi keamanan.
-          </p>
+          </DialogDescription>
           <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[#64748b]">
             Waktu tersisa
           </p>

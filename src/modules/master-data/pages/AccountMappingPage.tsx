@@ -30,9 +30,9 @@ export default function AccountMappingPage() {
         const vals: Record<string, number | null> = {}
         const opts: Record<string, SelectOption<number>[]> = {}
         mappings.forEach((m) => {
-          vals[m.key] = m.account_id
-          if (m.account) {
-            opts[m.key] = [{ value: m.account.id, label: m.account.name, sublabel: m.account.code }]
+          vals[m.mapping_key] = m.account_id
+          if (m.account_id !== null && m.account_name !== null) {
+            opts[m.mapping_key] = [{ value: m.account_id, label: m.account_name, sublabel: m.account_code ?? undefined }]
           }
         })
         setLocalValues(vals)
@@ -60,7 +60,7 @@ export default function AccountMappingPage() {
     try {
       await Promise.all(
         mappings.map((m) =>
-          update.mutateAsync({ key: m.key, payload: { account_id: localValues[m.key] ?? null } }),
+          update.mutateAsync({ key: m.mapping_key, payload: { account_id: localValues[m.mapping_key] ?? null } }),
         ),
       )
       toast.success('Semua mapping akun berhasil disimpan.')
@@ -110,20 +110,20 @@ export default function AccountMappingPage() {
       ) : (
         <FormSection title="Mapping Akun Default" columns={2}>
           {mappings.map((mapping) => (
-            <div key={mapping.key} className="flex flex-col gap-1">
+            <div key={mapping.mapping_key} className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
-                {mapping.label}
+                {mapping.label ?? mapping.mapping_key}
               </Label>
               <SearchableSelect
-                value={localValues[mapping.key] ?? null}
+                value={localValues[mapping.mapping_key] ?? null}
                 onChange={(value) => {
-                  const opts = selectedOptions[mapping.key] ?? []
+                  const opts = selectedOptions[mapping.mapping_key] ?? []
                   const opt = opts.find((o) => o.value === value) ?? null
-                  handleChange(mapping.key, value, opt)
+                  handleChange(mapping.mapping_key, value, opt)
                 }}
                 onSearch={handleSearchWithOption}
                 placeholder="Pilih akun..."
-                selectedOptions={selectedOptions[mapping.key] ?? []}
+                selectedOptions={selectedOptions[mapping.mapping_key] ?? []}
               />
             </div>
           ))}

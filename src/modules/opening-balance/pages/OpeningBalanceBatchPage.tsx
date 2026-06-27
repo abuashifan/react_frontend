@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { useToast } from '@/hooks/useToast'
 import { coaApi } from '@/modules/master-data/services/coaApi'
@@ -239,7 +239,7 @@ export default function OpeningBalanceBatchPage() {
 
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle className="text-[15px]">Preview Saldo Awal</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-[15px]">Preview Saldo Awal</DialogTitle><DialogDescription className="text-[13px] text-[#64748b]">Tinjau ringkasan saldo awal sebelum diposting.</DialogDescription></DialogHeader>
           {preview && (
             <div className="space-y-3 text-[13px]">
               <div className="space-y-1 rounded-md border border-[#e2e8f0] bg-[#f8fafc] p-3 text-[12px]">

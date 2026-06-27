@@ -1,8 +1,12 @@
 export interface AccountMapping {
-  key: string
-  label: string
+  mapping_key: string
+  module: string
+  label: string | null
   account_id: number | null
-  account?: { id: number; code: string; name: string }
+  is_required: boolean
+  account_code: string | null
+  account_name: string | null
+  settings_section: string | null
 }
 
 export interface UpdateAccountMappingPayload {

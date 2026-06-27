@@ -18,7 +18,7 @@ export default function AccountMappingSettingsPage() {
   const mappings = data?.data ?? []
   const getAccountId = (key: string): number | null => {
     if (key in localValues) return localValues[key]
-    return mappings.find((m) => m.key === key)?.account_id ?? null
+    return mappings.find((m) => m.mapping_key === key)?.account_id ?? null
   }
 
   const handleSave = async () => {
@@ -47,19 +47,26 @@ export default function AccountMappingSettingsPage() {
           Perubahan pemetaan akun akan mempengaruhi entri jurnal otomatis untuk semua transaksi baru. Pastikan akun yang dipilih sudah benar sebelum menyimpan.
         </div>
         <FormSection title="Pemetaan Akun Otomatis">
-          {mappings.map((mapping) => (
-            <div key={mapping.key} className="flex flex-col gap-1">
-              <Label htmlFor={`settings-account-mapping-${mapping.key}`} className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">{mapping.label}</Label>
-              <SearchableSelect
-                triggerId={`settings-account-mapping-${mapping.key}`}
-                triggerAriaLabel={mapping.label}
-                value={getAccountId(mapping.key)}
-                onChange={(val) => setLocalValues((prev) => ({ ...prev, [mapping.key]: val as number | null }))}
-                onSearch={(q) => coaApi.search(q)}
-                placeholder="Pilih akun..."
-              />
-            </div>
-          ))}
+          {mappings.map((mapping) => {
+            const presetOption = mapping.account_id !== null && mapping.account_name !== null
+              ? [{ value: mapping.account_id, label: mapping.account_name, sublabel: mapping.account_code ?? undefined }]
+              : []
+            const fieldLabel = mapping.label ?? mapping.mapping_key
+            return (
+              <div key={mapping.mapping_key} className="flex flex-col gap-1">
+                <Label htmlFor={`settings-account-mapping-${mapping.mapping_key}`} className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">{fieldLabel}</Label>
+                <SearchableSelect
+                  triggerId={`settings-account-mapping-${mapping.mapping_key}`}
+                  triggerAriaLabel={fieldLabel}
+                  value={getAccountId(mapping.mapping_key)}
+                  selectedOptions={presetOption}
+                  onChange={(val) => setLocalValues((prev) => ({ ...prev, [mapping.mapping_key]: val as number | null }))}
+                  onSearch={(q) => coaApi.search(q)}
+                  placeholder="Pilih akun..."
+                />
+              </div>
+            )
+          })}
         </FormSection>
         <div className="flex justify-end">
           <Button type="button" onClick={() => void handleSave()} disabled={saving || Object.keys(localValues).length === 0} className="h-9 bg-[#5c9ead] px-6 text-[13px] hover:bg-[#4a8a9b]">

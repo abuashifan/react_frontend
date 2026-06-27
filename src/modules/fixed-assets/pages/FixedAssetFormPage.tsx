@@ -9,7 +9,7 @@ import { FixedBottomBar } from '@/components/shared/layout/FixedBottomBar'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -565,6 +565,7 @@ export default function FixedAssetFormPage() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-[15px]">Kapitalisasi Aktiva</DialogTitle>
+            <DialogDescription className="text-[13px] text-[#64748b]">Tetapkan nilai dan tanggal kapitalisasi sebelum aktiva dicatat ke buku besar.</DialogDescription>
           </DialogHeader>
           <form onSubmit={capitalizeForm.handleSubmit(handleCapitalize)} className="space-y-3">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

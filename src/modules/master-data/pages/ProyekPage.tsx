@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/useToast'
 import { useProyekList, useProyekMutations } from '../hooks/useSimpleLists'
 import { proyekSchema, type ProyekFormValues } from '../schemas/proyekSchema'
@@ -206,6 +206,7 @@ export default function ProyekPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-[15px]">{editingItem ? 'Edit Proyek' : 'Tambah Proyek'}</DialogTitle>
+            <DialogDescription className="text-[13px] text-[#64748b]">Lengkapi nama, kode, dan detail proyek.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 pt-1">
             <div className="flex flex-col gap-1">

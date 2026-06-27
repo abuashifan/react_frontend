@@ -8,7 +8,7 @@ import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/useToast'
 import { useSatuanList, useSatuanMutations } from '../hooks/useSimpleLists'
 import { satuanSchema, type SatuanFormValues } from '../schemas/satuanSchema'
@@ -140,6 +140,7 @@ export default function SatuanPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-[15px]">{editingItem ? 'Edit Satuan' : 'Tambah Satuan'}</DialogTitle>
+            <DialogDescription className="text-[13px] text-[#64748b]">Lengkapi nama dan kode satuan.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 pt-1">
             <div className="flex flex-col gap-1">

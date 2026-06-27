@@ -8,6 +8,17 @@ interface AccountSearchResult {
   account_name: string
 }
 
+/** Bentuk respons canonical `/master-data/account-mappings` (lihat AccountMappingStorageService::list). */
+export interface OnboardingAccountMapping {
+  mapping_key: string
+  module: string
+  label: string | null
+  account_id: number | null
+  is_required: boolean
+  account_code: string | null
+  account_name: string | null
+}
+
 /**
  * Setup wizard — source of truth backend ada di `/setup/*`
  * (app/Modules/Setup/Routes/api.php). `finalize` melakukan `validateAll`
@@ -33,6 +44,13 @@ export const onboardingApi = {
       { params: { search: query, per_page: 10 } },
     )
     return res.data.map((a) => ({ value: a.id, label: a.account_name, sublabel: a.account_code }))
+  },
+
+  listAccountMappings: async (): Promise<OnboardingAccountMapping[]> => {
+    const res = await http.get<unknown, ApiResponse<OnboardingAccountMapping[]>>(
+      '/master-data/account-mappings',
+    )
+    return res.data
   },
 
   updateAccountMapping: (key: string, accountId: number) =>

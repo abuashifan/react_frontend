@@ -4,7 +4,7 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ConfirmDialog } from '@/components/shared/document/ConfirmDialog'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -278,6 +278,7 @@ export default function PeriodEndPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-[15px]">Buka Kembali Periode</DialogTitle>
+            <DialogDescription className="text-[13px] text-[#64748b]">Buka kembali periode akuntansi yang sudah ditutup. Tindakan ini tercatat di audit trail.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">

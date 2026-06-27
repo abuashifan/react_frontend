@@ -8,7 +8,7 @@ import { DataTable } from '@/components/shared/table/DataTable'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/useToast'
@@ -249,6 +249,7 @@ export default function FixedAssetCategoryPage() {
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle className="text-[15px]">{editingItem ? 'Edit Kategori Aktiva' : 'Tambah Kategori Aktiva'}</DialogTitle>
+            <DialogDescription className="text-[13px] text-[#64748b]">Atur akun aset, akumulasi penyusutan, dan beban untuk kategori aktiva ini.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-1">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

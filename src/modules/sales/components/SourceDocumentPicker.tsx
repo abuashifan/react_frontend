@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Search } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
@@ -57,6 +57,7 @@ export function SourceDocumentPicker({
       <DialogContent className="max-h-[calc(100dvh-48px)] sm:max-w-lg flex flex-col gap-0 p-0">
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-[#f1f5f9]">
           <DialogTitle className="text-[15px]">{title}</DialogTitle>
+          <DialogDescription className="text-[13px] text-[#64748b]">Pilih dokumen sumber yang akan dijadikan dasar transaksi ini.</DialogDescription>
         </DialogHeader>
 
         <div className="px-4 py-3 border-b border-[#f1f5f9]">
