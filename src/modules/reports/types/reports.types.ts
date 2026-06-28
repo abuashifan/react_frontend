@@ -15,6 +15,7 @@ export interface ReportParams extends DateRangeParams {
   project_id?: number
   warehouse_id?: number
   include_zero_balance?: boolean
+  only_difference?: boolean
   page?: number
   per_page?: number
 }
@@ -391,6 +392,8 @@ export interface AccountLedgerReport {
   period_totals: { debit: number; credit: number; movement_balance: number }
   ending_balance: number
   lines: AccountLedgerLine[]
+  total_lines: number
+  truncated: boolean
 }
 
 // NOTE: Transaction list report (/reports/transactions) dan export PDF/Excel

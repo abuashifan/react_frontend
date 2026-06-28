@@ -123,6 +123,11 @@ export default function AccountLedgerPage() {
 
         {isError && <ReportError onRetry={() => refetch()} />}
 
+        {!isLoading && !isError && report && report.truncated && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-[12px] text-amber-800">
+            Menampilkan {report.lines.length.toLocaleString()} dari {report.total_lines.toLocaleString()} baris. Gunakan filter tanggal yang lebih sempit untuk melihat data lengkap.
+          </div>
+        )}
         {!isLoading && !isError && report && (
           <div className="space-y-3">
             {/* Account header */}

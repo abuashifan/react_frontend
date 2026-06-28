@@ -83,7 +83,7 @@ Bagian ini melacak status artefak dokumentasi remediation, bukan status implemen
 | Completion report Phase 35 | `../tracking/phase-35-completion-report.md` atau lokasi yang dipilih | ✅ Ada | Phase 35 selesai dan divalidasi |
 | Issue Phase 36 | `../issue_docs/issue-39-phase-36-financial-operational-reports.md` | ✅ Ada | Issue detail Phase 36 |
 | Prompt Phase 36 | `../prompt/prompt-phase-36-financial-operational-reports.md` | ✅ Ada | Checklist implementasi Phase 36 |
-| Completion report Phase 36 | `../tracking/phase-36-completion-report.md` atau lokasi yang dipilih | ⏳ Belum dibuat | Dibuat setelah Phase 36 selesai dan divalidasi |
+| Completion report Phase 36 | `../tracking/phase-36-completion-report.md` atau lokasi yang dipilih | ⏳ Pending | Step 3 selesai 2026-06-28; A13-241 (additional filters) masih open |
 | Issue Phase 37 | `../issue_docs/issue-40-phase-37-settings-access-dashboard-router.md` | ✅ Ada | Issue detail Phase 37 |
 | Prompt Phase 37 | `../prompt/prompt-phase-37-settings-access-dashboard-router.md` | ✅ Ada | Checklist implementasi Phase 37 |
 | Completion report Phase 37 | `../tracking/phase-37-completion-report.md` atau lokasi yang dipilih | ✅ Ada | Phase 37 selesai dan divalidasi |
@@ -841,16 +841,19 @@ Catatan progres 2026-06-28 (Step 2):
 - **A13-251** — `role="tablist"` + `role="tab"` + `aria-selected` ditambahkan ke tab Rekonsiliasi, Laporan Stok, dan Analisis Inventori.
 - `tsc --noEmit --skipLibCheck` lulus 0 error untuk semua file yang diubah.
 
-Yang belum selesai di Phase 36:
+Catatan progres 2026-06-28 (Step 3 — backend fixes + remaining frontend):
 
-- **A13-241** — filter analitik tambahan (dimension/entity/account/warehouse) — butuh kontrol UI baru dan validasi apa yang backend support;
-- **A13-243** — klasifikasi Arus Kas (operating/investing/financing) — akar masalah di backend CashFlowService;
-- **A13-244** — account picker + drill-down Buku Besar — fitur besar, butuh endpoint `/reports/account-ledger/{account}`;
-- **A13-246** — scope rekonsiliasi GRNI dan deposit — shape response berbeda, butuh adapter + tabel UI tersendiri;
-- **A13-248** — print/export workflow — backend belum menyediakan endpoint export;
-- **A13-250** — konsistensi label Neraca (section key dari backend harus dikonfirmasi live);
-- **A13-252** — pagination/volume — backend decision diperlukan;
-- **A13-253** — alert contract min_stock/unit — backend perlu mengirim field tersebut.
+- **A13-243** — DONE: `CashFlowService::getSectionedCashFlow()` sudah ada sejak sebelumnya; migration `2026_06_28_000002_add_cash_flow_section_to_chart_of_accounts.php` menambah kolom `cash_flow_section` di COA; response sudah menyertakan `sections`; frontend `adaptCashFlow()` diperbaiki untuk memetakan `sections` ke `CashFlowReport` — sebelumnya field ini di-drop oleh adapter; feature test baru `test_sections_classify_cash_flows_by_contra_account_cash_flow_section` ditambahkan dan lulus (7/7 CashFlowReportTest). CashFlowPage kini menampilkan tabel klasifikasi operating/investing/financing.
+- **A13-244** — DONE: Endpoint `/reports/account-ledger/{account}` sudah ada; `AccountLedgerPage` sudah lengkap dengan account picker + date range + dept/project filter + tabel transaksi running balance.
+- **A13-246** — DONE: Backend dan frontend sudah ada — 6 tab reconciliation (AR/AP/Inventory/GRNI/Customer Deposits/Vendor Deposits); ReconciliationReportTest 9/9 lulus.
+- **A13-248** — CLOSED (intentional): Export tidak diimplementasikan; didokumentasikan di `reports.types.ts` bahwa endpoint tidak tersedia (sesuai keputusan audit).
+- **A13-250** — DONE: Backend `BalanceSheetService::buildSections()` sudah menggunakan label Indonesia (`Aset`, `Kewajiban`, `Ekuitas`, `Laba / Rugi Tahun Berjalan`); frontend `adaptBalanceSheet()` membaca `s.label` — label konsisten.
+- **A13-252** — DONE: `AccountLedgerDetailService` ditambah `MAX_LINES = 2000`; response kini menyertakan `total_lines` dan `truncated`; frontend `AccountLedgerPage` menampilkan banner peringatan jika `truncated = true`. Endpoint lain (GL summary, aging) bounded oleh COA/entitas — tidak butuh hard cap.
+- **A13-253** — DONE: `InventoryAlertReportService::lowStock()` sudah mengirim `min_stock` (per-produk) dan `unit`; adapter frontend sudah memetakannya ke `LowStockReportLine`.
+
+- **A13-241** — DONE 2026-06-28: Filter dimensi dept+proyek sudah ada di semua laporan finansial (GL/TB/PL/BS) via `ReportFilterParameter` prop `dimensions`; `include_zero_balance` checkbox ditambahkan ke GL dan Trial Balance; `only_difference` checkbox ditambahkan ke Rekonsiliasi; `ReportParams` diperluas dengan `only_difference`; `ExtraFilterConfig` prop baru di `ReportFilterParameter` (non-breaking). tsc bersih.
+
+**Phase 36 selesai** — semua A13-232..253 tertutup (A13-244/246/248 sudah ada sebelumnya; A13-248 intentionally not implemented).
 
 ---
 

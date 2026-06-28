@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { proyekApi } from '@/modules/master-data/services/proyekApi'
@@ -14,6 +15,11 @@ export interface DimensionFilterConfig {
   warehouse?: boolean
 }
 
+export interface ExtraFilterConfig {
+  include_zero_balance?: boolean
+  only_difference?: boolean
+}
+
 interface Props {
   params: ReportParams
   onChange: (p: Partial<ReportParams>) => void
@@ -21,14 +27,16 @@ interface Props {
   mode?: 'range' | 'as_of_date'
   isLoading?: boolean
   dimensions?: DimensionFilterConfig
+  extras?: ExtraFilterConfig
 }
 
-export function ReportFilterParameter({ params, onChange, onSubmit, mode = 'range', isLoading, dimensions }: Props) {
+export function ReportFilterParameter({ params, onChange, onSubmit, mode = 'range', isLoading, dimensions, extras }: Props) {
   const searchDept = useCallback((q: string) => departemenApi.search(q), [])
   const searchProject = useCallback((q: string) => proyekApi.search(q), [])
   const searchWarehouse = useCallback((q: string) => gudangApi.search(q), [])
 
   const hasDimensions = dimensions && (dimensions.department || dimensions.project || dimensions.warehouse)
+  const hasExtras = extras && (extras.include_zero_balance || extras.only_difference)
 
   return (
     <div className="rounded-lg border border-[#e2e8f0] bg-white p-4">
@@ -97,6 +105,31 @@ export function ReportFilterParameter({ params, onChange, onSubmit, mode = 'rang
           {isLoading ? 'Memuat...' : 'Tampilkan'}
         </Button>
       </div>
+
+      {hasExtras && (
+        <div className="mt-3 flex flex-wrap gap-4 border-t border-[#f1f5f9] pt-3">
+          {extras.include_zero_balance && (
+            <label htmlFor="report-include-zero" className="flex cursor-pointer items-center gap-2 text-[12px] text-[#475569]">
+              <Checkbox
+                id="report-include-zero"
+                checked={Boolean(params.include_zero_balance)}
+                onCheckedChange={(v) => onChange({ include_zero_balance: v === true ? true : undefined })}
+              />
+              Tampilkan akun dengan saldo nol
+            </label>
+          )}
+          {extras.only_difference && (
+            <label htmlFor="report-only-diff" className="flex cursor-pointer items-center gap-2 text-[12px] text-[#475569]">
+              <Checkbox
+                id="report-only-diff"
+                checked={Boolean(params.only_difference)}
+                onCheckedChange={(v) => onChange({ only_difference: v === true ? true : undefined })}
+              />
+              Hanya tampilkan selisih
+            </label>
+          )}
+        </div>
+      )}
     </div>
   )
 }

@@ -142,6 +142,12 @@ function adaptBalanceSheet(raw: Raw): BalanceSheetReport {
   }
 }
 
+function adaptCashFlowSection(raw: unknown): import('../types/reports.types').CashFlowSection | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+  const r = raw as Raw
+  return { cash_in: num(r.cash_in), cash_out: num(r.cash_out), net: num(r.net) }
+}
+
 function adaptCashFlow(raw: Raw): CashFlowReport {
   const s = asRecord(raw.summary)
   const accounts: CashFlowAccount[] = asArray(raw.accounts).map((a) => ({
@@ -156,6 +162,7 @@ function adaptCashFlow(raw: Raw): CashFlowReport {
     ending_balance: num(a.ending_balance),
     is_active: Boolean(a.is_active),
   }))
+  const rawSections = raw.sections && typeof raw.sections === 'object' && !Array.isArray(raw.sections) ? (raw.sections as Raw) : null
   return {
     summary: {
       opening_cash_balance: num(s.opening_cash_balance),
@@ -166,6 +173,12 @@ function adaptCashFlow(raw: Raw): CashFlowReport {
     },
     accounts,
     no_cash_accounts: Boolean(asRecord(raw.notes).no_cash_accounts),
+    sections: rawSections ? {
+      operating: adaptCashFlowSection(rawSections.operating),
+      investing: adaptCashFlowSection(rawSections.investing),
+      financing: adaptCashFlowSection(rawSections.financing),
+      unclassified: adaptCashFlowSection(rawSections.unclassified),
+    } : undefined,
   }
 }
 
@@ -376,6 +389,8 @@ function adaptAccountLedger(raw: Raw): AccountLedgerReport {
     period_totals: { debit: num(period.debit), credit: num(period.credit), movement_balance: num(period.movement_balance) },
     ending_balance: num(raw.ending_balance),
     lines,
+    total_lines: raw.total_lines != null ? num(raw.total_lines) : lines.length,
+    truncated: Boolean(raw.truncated),
   }
 }
 
