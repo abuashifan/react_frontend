@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportFilterParameter } from '../components/ReportFilterParameter'
 import { ReportCompactBar } from '../components/ReportCompactBar'
+import { ReportError } from '../components/ReportError'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import type { ReportParams, ReportSection } from '../types/reports.types'
@@ -34,11 +35,11 @@ function PLSection({ section }: { section: ReportSection }) {
 }
 
 export default function ProfitLossPage() {
-  const [params, setParams] = useState<ReportParams>({ date_from: firstOfMonth, date_to: today })
+  const [params, setParams] = useState<ReportParams>({ start_date: firstOfMonth, end_date: today })
   const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
   const [showFilter, setShowFilter] = useState(true)
 
-  const { data, isLoading } = useQuery({ queryKey: ['reports', 'profit-loss', activeParams], queryFn: () => reportsApi.profitLoss(activeParams!), enabled: !!activeParams })
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['reports', 'profit-loss', activeParams], queryFn: () => reportsApi.profitLoss(activeParams!), enabled: !!activeParams })
   const report = data?.data
   const sections = report?.sections ?? []
   const net = report?.totals.net_profit_or_loss ?? 0
@@ -47,10 +48,11 @@ export default function ProfitLossPage() {
   return (
     <WorkspaceLayout title="Laba Rugi" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Laba Rugi' }]}>
       <div className="space-y-4">
-        {showFilter ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} />
+        {showFilter ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} />
           : <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} />}
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
-        {report && (
+        {isError && <ReportError onRetry={() => refetch()} />}
+        {!isLoading && !isError && report && (
           <div className="overflow-auto rounded-lg border border-[#e2e8f0]">
             <table className="w-full">
               <colgroup><col /><col className="w-40" /></colgroup>

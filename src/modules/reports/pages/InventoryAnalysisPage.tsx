@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportFilterParameter } from '../components/ReportFilterParameter'
 import { ReportCompactBar } from '../components/ReportCompactBar'
+import { ReportError } from '../components/ReportError'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import type { ReportParams } from '../types/reports.types'
@@ -18,25 +19,28 @@ export default function InventoryAnalysisPage() {
   const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
   const [showFilter, setShowFilter] = useState(true)
 
-  const { data: valData, isLoading: loadingVal } = useQuery({ queryKey: ['reports', 'valuation', activeParams], queryFn: () => reportsApi.valuation(activeParams!), enabled: !!activeParams && tab === 'valuation' })
-  const { data: lowData, isLoading: loadingLow } = useQuery({ queryKey: ['reports', 'low-stock', activeParams], queryFn: () => reportsApi.lowStock(activeParams!), enabled: !!activeParams && tab === 'low_stock' })
-  const { data: negData, isLoading: loadingNeg } = useQuery({ queryKey: ['reports', 'negative-stock', activeParams], queryFn: () => reportsApi.negativeStock(activeParams!), enabled: !!activeParams && tab === 'negative_stock' })
+  const { data: valData, isLoading: loadingVal, isError: errVal, refetch: refetchVal } = useQuery({ queryKey: ['reports', 'valuation', activeParams], queryFn: () => reportsApi.valuation(activeParams!), enabled: !!activeParams && tab === 'valuation' })
+  const { data: lowData, isLoading: loadingLow, isError: errLow, refetch: refetchLow } = useQuery({ queryKey: ['reports', 'low-stock', activeParams], queryFn: () => reportsApi.lowStock(activeParams!), enabled: !!activeParams && tab === 'low_stock' })
+  const { data: negData, isLoading: loadingNeg, isError: errNeg, refetch: refetchNeg } = useQuery({ queryKey: ['reports', 'negative-stock', activeParams], queryFn: () => reportsApi.negativeStock(activeParams!), enabled: !!activeParams && tab === 'negative_stock' })
   const isLoading = loadingVal || loadingLow || loadingNeg
+  const isError = errVal || errLow || errNeg
+  const refetch = tab === 'valuation' ? refetchVal : tab === 'low_stock' ? refetchLow : refetchNeg
   const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false) }
 
   return (
     <WorkspaceLayout title="Analisis Inventori" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Analisis Inventori' }]}>
       <div className="space-y-4">
-        <div className="flex gap-2">
+        <div role="tablist" aria-label="Tab Analisis Inventori" className="flex gap-2">
           {(['valuation', 'low_stock', 'negative_stock'] as AnalysisTab[]).map((t) => (
-            <button key={t} type="button" onClick={() => setTab(t)} className={`rounded-full px-3 py-1 text-[12px] font-medium transition-colors ${tab === t ? 'bg-[#5c9ead] text-white' : 'bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]'}`}>{TAB_LABELS[t]}</button>
+            <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`rounded-full px-3 py-1 text-[12px] font-medium transition-colors ${tab === t ? 'bg-[#5c9ead] text-white' : 'bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]'}`}>{TAB_LABELS[t]}</button>
           ))}
         </div>
         {showFilter ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} mode="as_of_date" isLoading={isLoading} />
           : <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} mode="as_of_date" />}
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
+        {isError && <ReportError onRetry={() => refetch()} />}
 
-        {tab === 'valuation' && valData?.data && (
+        {!isLoading && !isError && tab === 'valuation' && valData?.data && (
           <div className="overflow-auto rounded-lg border border-[#e2e8f0]">
             <table className="w-full text-[12px]">
               <thead className="bg-[#f8fafc]"><tr>
@@ -63,7 +67,7 @@ export default function InventoryAnalysisPage() {
           </div>
         )}
 
-        {(tab === 'low_stock' || tab === 'negative_stock') && (lowData?.data ?? negData?.data) && (
+        {!isLoading && !isError && (tab === 'low_stock' || tab === 'negative_stock') && (lowData?.data ?? negData?.data) && (
           <div className="overflow-auto rounded-lg border border-[#e2e8f0]">
             <table className="w-full text-[12px]">
               <thead className="bg-[#f8fafc]"><tr>

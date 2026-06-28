@@ -1,4 +1,5 @@
-import type { LucideIcon } from 'lucide-react'
+import type { FC, SVGProps } from 'react'
+type LucideIcon = FC<SVGProps<SVGSVGElement> & { size?: number | string; strokeWidth?: number | string }>
 import {
   FileQuestion, ShoppingCart, Truck, FileOutput, Receipt,
   Banknote, RotateCcw, BookOpen, ClipboardList, Package, PackageCheck,
@@ -131,12 +132,17 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     path: '/reports',
     ribbonItems: [
       { id: 'general-ledger', label: 'Buku Besar', icon: BookMarked, path: '/reports/general-ledger', permission: 'reports.view' },
+      { id: 'account-ledger', label: 'Buku Besar per Akun', icon: BookOpen, path: '/reports/account-ledger', permission: 'reports.view' },
       { id: 'trial-balance', label: 'Trial Balance', icon: Scale, path: '/reports/trial-balance', permission: 'reports.view' },
       { id: 'profit-loss', label: 'Laba Rugi', icon: TrendingUp, path: '/reports/profit-loss', permission: 'reports.view' },
       { id: 'balance-sheet', label: 'Neraca', icon: LayoutGrid, path: '/reports/balance-sheet', permission: 'reports.view' },
       { id: 'cash-flow', label: 'Arus Kas', icon: Droplets, path: '/reports/cash-flow', permission: 'reports.view' },
       { id: 'ar-aging', label: 'AR Aging', icon: Clock, path: '/reports/ar-aging', permission: 'reports.view' },
       { id: 'ap-aging', label: 'AP Aging', icon: Clock, path: '/reports/ap-aging', permission: 'reports.view' },
+      { id: 'financial-summary', label: 'Ringkasan Keuangan', icon: BarChart3, path: '/reports/financial-summary', permission: 'reports.view' },
+      { id: 'reconciliation', label: 'Rekonsiliasi', icon: RefreshCcw, path: '/reports/reconciliation', permission: 'reports.view' },
+      { id: 'stock', label: 'Laporan Stok', icon: Package, path: '/reports/stock', permission: 'inventory.reports.view' },
+      { id: 'inventory-analysis', label: 'Analisis Inventori', icon: Archive, path: '/reports/inventory-analysis', permission: 'inventory.reports.view' },
     ],
   },
   {

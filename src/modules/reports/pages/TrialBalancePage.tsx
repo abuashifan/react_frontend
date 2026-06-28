@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportFilterParameter } from '../components/ReportFilterParameter'
 import { ReportCompactBar } from '../components/ReportCompactBar'
+import { ReportError } from '../components/ReportError'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import type { ReportParams } from '../types/reports.types'
@@ -11,11 +12,11 @@ const today = new Date().toISOString().slice(0, 10)
 const firstOfMonth = today.slice(0, 8) + '01'
 
 export default function TrialBalancePage() {
-  const [params, setParams] = useState<ReportParams>({ date_from: firstOfMonth, date_to: today })
+  const [params, setParams] = useState<ReportParams>({ start_date: firstOfMonth, end_date: today })
   const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
   const [showFilter, setShowFilter] = useState(true)
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['reports', 'trial-balance', activeParams],
     queryFn: () => reportsApi.trialBalance(activeParams!),
     enabled: !!activeParams,
@@ -30,11 +31,12 @@ export default function TrialBalancePage() {
     <WorkspaceLayout title="Neraca Saldo" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Neraca Saldo' }]}>
       <div className="space-y-4">
         {showFilter
-          ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} />
+          ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} />
           : <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} />
         }
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
-        {report && (
+        {isError && <ReportError onRetry={() => refetch()} />}
+        {!isLoading && !isError && report && (
           <div className="overflow-auto rounded-lg border border-[#e2e8f0]">
             <table className="w-full text-[12px]">
               <thead className="bg-[#f8fafc]">
@@ -77,6 +79,13 @@ export default function TrialBalancePage() {
                     <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.ending_debit)}</td>
                     <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.ending_credit)}</td>
                   </tr>
+                  {!totals.is_balanced && (
+                    <tr>
+                      <td colSpan={8} className="px-3 py-1.5 text-[12px] font-medium text-red-600">
+                        ⚠ Tidak seimbang — selisih: {formatCurrency(totals.difference)}
+                      </td>
+                    </tr>
+                  )}
                 </tfoot>
               )}
             </table>

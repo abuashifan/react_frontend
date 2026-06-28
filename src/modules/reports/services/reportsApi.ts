@@ -20,6 +20,12 @@ import type {
   StockCardReport,
   ValuationReportLine,
   LowStockReportLine,
+  GrniReconciliationReport,
+  GrniReconciliationLine,
+  DepositReconciliationReport,
+  DepositReconciliationLine,
+  AccountLedgerReport,
+  AccountLedgerLine,
 } from '../types/reports.types'
 import { adaptApiResponse, adaptApAgingResponse, adaptReconciliationReport } from '@/modules/purchase/services/apAdapters'
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -185,6 +191,206 @@ function adaptFinancialSummary(raw: Raw): FinancialSummaryReport {
   }
 }
 
+// General Ledger — backend: { accounts: [{ account, opening_balance,
+// period_totals, ending_balance }] }. Shape lama membaca `accounts[].lines`
+// dan crash (A13-232). Di sini diratakan ke ringkasan per akun.
+function adaptGeneralLedger(raw: Raw): GeneralLedgerReport {
+  return {
+    accounts: asArray(raw.accounts).map((row) => {
+      const account = asRecord(row.account)
+      const period = asRecord(row.period_totals)
+      const opening = asRecord(row.opening_balance)
+      return {
+        account_id: num(account.id),
+        account_code: str(account.account_code),
+        account_name: str(account.account_name),
+        account_type: str(account.account_type),
+        normal_balance: str(account.normal_balance),
+        opening_balance: num(opening.balance),
+        period_debit: num(period.debit),
+        period_credit: num(period.credit),
+        ending_balance: num(row.ending_balance),
+      }
+    }),
+  }
+}
+
+// AR aging — backend: { as_of_date, buckets, customers: [{ customer_id,
+// customer_name, buckets, total }] }. UI membaca lines/totals (A13-235).
+function adaptAgingBucket(bucket: Raw) {
+  return {
+    current: num(bucket.current),
+    days_1_30: num(bucket['1_30']),
+    days_31_60: num(bucket['31_60']),
+    days_61_90: num(bucket['61_90']),
+    days_over_90: num(bucket.over_90),
+    total: num(bucket.current) + num(bucket['1_30']) + num(bucket['31_60']) + num(bucket['61_90']) + num(bucket.over_90),
+  }
+}
+
+function adaptArAging(raw: Raw): AgingReport {
+  return {
+    as_of_date: str(raw.as_of_date),
+    lines: asArray(raw.customers).map((c) => ({
+      contact_id: num(c.customer_id),
+      contact_name: str(c.customer_name),
+      buckets: adaptAgingBucket(asRecord(c.buckets)),
+    })),
+    totals: adaptAgingBucket(asRecord(raw.buckets)),
+  }
+}
+
+// Inventory reports — backend membungkus baris dalam objek { filters, rows,
+// totals }. UI lama memanggil `.map()` pada objek dan crash (A13-237/238).
+function adaptStockBalances(raw: Raw): StockBalanceReportLine[] {
+  return asArray(raw.rows).map((r) => {
+    const product = asRecord(r.product)
+    const warehouse = asRecord(r.warehouse)
+    return {
+      product_id: num(product.id),
+      product_code: str(product.code),
+      product_name: str(product.name),
+      warehouse_id: num(warehouse.id),
+      warehouse_name: str(warehouse.name),
+      unit: str(r.unit),
+      qty_on_hand: num(r.quantity_on_hand),
+      avg_cost: num(r.average_cost),
+      total_value: num(r.total_value),
+    }
+  })
+}
+
+function adaptStockMovements(raw: Raw): StockMovementReportLine[] {
+  return asArray(raw.rows).map((r) => {
+    const product = asRecord(r.product)
+    const warehouse = asRecord(r.warehouse)
+    return {
+      date: str(r.movement_date),
+      movement_number: str(r.movement_number),
+      movement_type: str(r.movement_type),
+      product_id: num(product.id),
+      product_name: str(product.name),
+      warehouse_name: str(warehouse.name),
+      qty_in: num(r.quantity_in),
+      qty_out: num(r.quantity_out),
+      unit_cost: num(r.unit_cost),
+      total_cost: num(r.total_cost),
+    }
+  })
+}
+
+function adaptValuation(raw: Raw): ValuationReportLine[] {
+  return asArray(raw.rows).map((r) => ({
+    product_id: num(r.product_id),
+    product_code: str(r.product_code),
+    product_name: str(r.product_name),
+    unit: str(r.unit),
+    qty_on_hand: num(r.quantity_on_hand),
+    avg_cost: num(r.average_cost),
+    total_value: num(r.total_value),
+  }))
+}
+
+function adaptGrni(raw: Raw): GrniReconciliationReport {
+  const summary = asRecord(raw.summary)
+  const data: GrniReconciliationLine[] = asArray(raw.data).map((r) => ({
+    goods_receipt_id: num(r.goods_receipt_id),
+    receipt_number: str(r.receipt_number),
+    receipt_date: str(r.receipt_date),
+    vendor_id: r.vendor_id == null ? null : num(r.vendor_id),
+    vendor_name: r.vendor_name == null ? null : str(r.vendor_name),
+    product_id: r.product_id == null ? null : num(r.product_id),
+    product_name: r.product_name == null ? null : str(r.product_name),
+    received_quantity: num(r.received_quantity),
+    billed_quantity: num(r.billed_quantity),
+    outstanding_quantity: num(r.outstanding_quantity),
+    estimated_outstanding_amount: num(r.estimated_outstanding_amount),
+    grni_gl_balance_related: num(r.grni_gl_balance_related),
+    difference: num(r.difference),
+    status: str(r.status) === 'mismatch' ? 'mismatch' : 'matched',
+  }))
+  return {
+    summary: {
+      total_outstanding_quantity: num(summary.total_outstanding_quantity),
+      total_estimated_outstanding_amount: num(summary.total_estimated_outstanding_amount),
+      total_grni_gl_balance_related: num(summary.total_grni_gl_balance_related),
+      mismatch_count: num(summary.mismatch_count),
+    },
+    data,
+  }
+}
+
+function adaptDeposits(raw: Raw, contactKey: 'customer' | 'vendor'): DepositReconciliationReport {
+  const summary = asRecord(raw.summary)
+  const idKey = `${contactKey}_id`
+  const numKey = `${contactKey}_number`
+  const nameKey = `${contactKey}_name`
+  const data: DepositReconciliationLine[] = asArray(raw.data).map((r) => ({
+    contact_id: num(r[idKey]),
+    contact_number: str(r[numKey]),
+    contact_name: r[nameKey] == null ? null : str(r[nameKey]),
+    deposit_id: num(r.deposit_id),
+    deposit_number: str(r.deposit_number),
+    deposit_date: r.deposit_date == null ? null : str(r.deposit_date),
+    amount: num(r.amount),
+    allocated_amount: num(r.allocated_amount),
+    remaining_amount: num(r.remaining_amount),
+    status: str(r.status),
+  }))
+  return {
+    summary: {
+      total_deposit: num(summary.total_deposit),
+      total_allocated: num(summary.total_allocated),
+      total_unapplied: num(summary.total_unapplied),
+    },
+    data,
+  }
+}
+
+function adaptAccountLedger(raw: Raw): AccountLedgerReport {
+  const account = asRecord(raw.account)
+  const opening = asRecord(raw.opening_balance)
+  const period = asRecord(raw.period_totals)
+  const lines: AccountLedgerLine[] = asArray(raw.lines).map((l) => ({
+    journal_entry_id: num(l.journal_entry_id),
+    journal_entry_line_id: num(l.journal_entry_line_id),
+    journal_number: str(l.journal_number),
+    journal_date: str(l.journal_date),
+    description: l.description == null ? null : str(l.description),
+    debit: num(l.debit),
+    credit: num(l.credit),
+    running_balance: num(l.running_balance),
+    source_type: l.source_type == null ? null : str(l.source_type),
+    source_number: l.source_number == null ? null : str(l.source_number),
+  }))
+  return {
+    account: {
+      id: num(account.id),
+      account_code: str(account.account_code),
+      account_name: str(account.account_name),
+      account_type: str(account.account_type),
+      normal_balance: str(account.normal_balance),
+      is_active: Boolean(account.is_active),
+    },
+    opening_balance: { debit: num(opening.debit), credit: num(opening.credit), balance: num(opening.balance) },
+    period_totals: { debit: num(period.debit), credit: num(period.credit), movement_balance: num(period.movement_balance) },
+    ending_balance: num(raw.ending_balance),
+    lines,
+  }
+}
+
+function adaptAlertRows(raw: Raw): LowStockReportLine[] {
+  return asArray(raw.rows).map((r) => ({
+    product_id: num(r.product_id),
+    product_code: str(r.product_code),
+    product_name: str(r.product_name),
+    warehouse_name: str(r.warehouse_name),
+    qty_on_hand: num(r.quantity_on_hand),
+    min_stock: r.min_stock == null ? null : num(r.min_stock),
+    unit: str(r.unit),
+  }))
+}
+
 function adaptResponse<T>(res: ApiResponse<unknown>, adapt: (raw: Raw) => T): ApiResponse<T> {
   return { ...res, data: adapt(asRecord(res.data)) }
 }
@@ -205,7 +411,9 @@ async function getRawApiResponse<T>(path: string, params: ReportParams): Promise
 
 export const reportsApi = {
   generalLedger: (params: ReportParams) =>
-    http.get<unknown, ApiResponse<GeneralLedgerReport>>('/reports/general-ledger', { params }),
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/general-ledger', { params })
+      .then((res) => adaptResponse(res, adaptGeneralLedger)),
 
   trialBalance: (params: ReportParams) =>
     http
@@ -233,7 +441,9 @@ export const reportsApi = {
       .then((res) => adaptResponse(res, adaptFinancialSummary)),
 
   arAging: (params: ReportParams) =>
-    http.get<unknown, ApiResponse<AgingReport>>('/sales/ar/aging', { params }),
+    http
+      .get<unknown, ApiResponse<unknown>>('/sales/ar/aging', { params })
+      .then((res) => adaptResponse(res, adaptArAging)),
 
   apAging: (params: ReportParams) =>
     http.get<unknown, ApiResponse<unknown>>('/purchase/ap/aging', { params }).then((response) => adaptApiResponse(response, adaptApAgingResponse)),
@@ -248,20 +458,46 @@ export const reportsApi = {
     getRawApiResponse('/reports/reconciliation/inventory', params).then((response) => adaptResponse(response, (raw) => adaptReconciliationReport(asRecord(raw), 'inventory'))),
 
   stockBalances: (params: ReportParams) =>
-    http.get<unknown, ApiResponse<StockBalanceReportLine[]>>('/inventory/reports/stock-balances', { params }),
+    http
+      .get<unknown, ApiResponse<unknown>>('/inventory/reports/stock-balances', { params })
+      .then((res) => adaptResponse(res, adaptStockBalances)),
 
   stockMovements: (params: ReportParams) =>
-    http.get<unknown, ApiResponse<StockMovementReportLine[]>>('/inventory/reports/stock-movements', { params }),
+    http
+      .get<unknown, ApiResponse<unknown>>('/inventory/reports/stock-movements', { params })
+      .then((res) => adaptResponse(res, adaptStockMovements)),
 
   stockCard: (params: ReportParams & { product_id?: number; warehouse_id?: number }) =>
     http.get<unknown, ApiResponse<StockCardReport>>('/inventory/reports/stock-card', { params }),
 
   valuation: (params: ReportParams) =>
-    http.get<unknown, ApiResponse<ValuationReportLine[]>>('/inventory/reports/valuation', { params }),
+    http
+      .get<unknown, ApiResponse<unknown>>('/inventory/reports/valuation', { params })
+      .then((res) => adaptResponse(res, adaptValuation)),
 
   lowStock: (params: ReportParams) =>
-    http.get<unknown, ApiResponse<LowStockReportLine[]>>('/inventory/reports/low-stock', { params }),
+    http
+      .get<unknown, ApiResponse<unknown>>('/inventory/reports/low-stock', { params })
+      .then((res) => adaptResponse(res, adaptAlertRows)),
 
   negativeStock: (params: ReportParams) =>
-    http.get<unknown, ApiResponse<LowStockReportLine[]>>('/inventory/reports/negative-stock', { params }),
+    http
+      .get<unknown, ApiResponse<unknown>>('/inventory/reports/negative-stock', { params })
+      .then((res) => adaptResponse(res, adaptAlertRows)),
+
+  reconciliationGrni: (params: ReportParams) =>
+    getRawApiResponse('/reports/reconciliation/grni', params)
+      .then((res) => adaptResponse(res, adaptGrni)),
+
+  reconciliationCustomerDeposits: (params: ReportParams) =>
+    getRawApiResponse('/reports/reconciliation/customer-deposits', params)
+      .then((res) => adaptResponse(res, (raw) => adaptDeposits(raw, 'customer'))),
+
+  reconciliationVendorDeposits: (params: ReportParams) =>
+    getRawApiResponse('/reports/reconciliation/vendor-deposits', params)
+      .then((res) => adaptResponse(res, (raw) => adaptDeposits(raw, 'vendor'))),
+
+  accountLedger: (accountId: number, params: ReportParams) =>
+    getRawApiResponse(`/reports/account-ledger/${accountId}`, params)
+      .then((res) => adaptResponse(res, adaptAccountLedger)),
 }

@@ -94,7 +94,7 @@ export default function PeriodEndPage() {
     try {
       await mutations.run.mutateAsync()
       toast.success('Proses akhir periode dijalankan.')
-      setRunOpen(false)
+      setRunConfirmOpen(false)
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Gagal menjalankan akhir periode.'))
     }

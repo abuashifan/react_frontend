@@ -591,6 +591,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____pages/
 | | | | |____ApAgingReportPage.tsx
 | | | | |____ArAgingReportPage.tsx
+| | | | |____AccountLedgerPage.tsx
 | | | | |____BalanceSheetPage.tsx
 | | | | |____CashFlowPage.tsx
 | | | | |____FinancialSummaryPage.tsx

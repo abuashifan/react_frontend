@@ -655,18 +655,6 @@ export default function FixedAssetFormPage() {
                   </div>
                 )}
               />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" className="h-8 text-[13px]" onClick={() => setDisposeOpen(false)}>Batal</Button>
-              <Button type="submit" className="h-8 bg-red-600 text-[13px] hover:bg-red-700" disabled={mutations.dispose.isPending}>
-                {mutations.dispose.isPending ? 'Memproses...' : 'Disposal'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
-  )
               {proceedsAmountValue ? (
                 <p className="md:col-span-2 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-[12px] text-sky-800">
                   Isi tepat satu akun penerimaan jika proceeds diisi. Akun kas/bank dan piutang tidak boleh dipakai bersamaan.
@@ -694,4 +682,16 @@ export default function FixedAssetFormPage() {
                   </div>
                 </div>
               ) : null}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" className="h-8 text-[13px]" onClick={() => setDisposeOpen(false)}>Batal</Button>
+              <Button type="submit" className="h-8 bg-red-600 text-[13px] hover:bg-red-700" disabled={mutations.dispose.isPending}>
+                {mutations.dispose.isPending ? 'Memproses...' : 'Disposal'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
 }

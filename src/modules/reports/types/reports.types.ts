@@ -1,7 +1,11 @@
 // Common report params
+//
+// Canonical filter names match the backend report requests
+// (App\Http\Requests\Concerns\HasReportDateFilters): start_date/end_date for
+// ranged reports, as_of_date for point-in-time reports (A13-233/A13-234).
 export interface DateRangeParams {
-  date_from?: string
-  date_to?: string
+  start_date?: string
+  end_date?: string
   as_of_date?: string
 }
 
@@ -9,39 +13,33 @@ export interface ReportParams extends DateRangeParams {
   account_id?: number
   department_id?: number
   project_id?: number
+  warehouse_id?: number
   include_zero_balance?: boolean
   page?: number
   per_page?: number
 }
 
 // General Ledger
-export interface GeneralLedgerLine {
-  date: string
-  journal_number?: string | null
-  description?: string | null
-  debit: number
-  credit: number
-  balance: number
+//
+// Backend (App\Services\Reports\GeneralLedgerQueryService::getLedger) mengembalikan
+// ringkasan per akun: { accounts: [{ account, opening_balance, period_totals,
+// ending_balance }] } TANPA `lines`. Rincian transaksi per akun (drill-down)
+// memakai endpoint terpisah /reports/account-ledger/{account} (A13-244, fase
+// berikutnya). Shape lama dengan `group.lines` adalah penyebab crash A13-232.
+export interface GeneralLedgerAccountSummary {
   account_id: number
   account_code: string
   account_name: string
-}
-
-export interface GeneralLedgerGroup {
-  account_id: number
-  account_code: string
-  account_name: string
+  account_type: string
+  normal_balance: string
   opening_balance: number
-  total_debit: number
-  total_credit: number
-  closing_balance: number
-  lines: GeneralLedgerLine[]
+  period_debit: number
+  period_credit: number
+  ending_balance: number
 }
 
 export interface GeneralLedgerReport {
-  date_from: string
-  date_to: string
-  accounts: GeneralLedgerGroup[]
+  accounts: GeneralLedgerAccountSummary[]
 }
 
 // ---------------------------------------------------------------------------
@@ -158,10 +156,22 @@ export interface CashFlowAccount {
   is_active: boolean
 }
 
+export interface CashFlowSection {
+  cash_in: number
+  cash_out: number
+  net: number
+}
+
 export interface CashFlowReport {
   summary: CashFlowSummary
   accounts: CashFlowAccount[]
   no_cash_accounts: boolean
+  sections?: {
+    operating?: CashFlowSection
+    investing?: CashFlowSection
+    financing?: CashFlowSection
+    unclassified?: CashFlowSection
+  }
 }
 
 // Financial Summary — backend: { profit_loss, balance_sheet, cash_flow }
@@ -238,6 +248,8 @@ export interface StockBalanceReportLine {
   total_value: number
 }
 
+// Backend stock-movements report tidak membawa running balance per baris
+// (itu tugas kartu stok / A13-245); yang tersedia unit_cost & total_cost.
 export interface StockMovementReportLine {
   date: string
   movement_number: string
@@ -247,7 +259,8 @@ export interface StockMovementReportLine {
   warehouse_name: string
   qty_in: number
   qty_out: number
-  qty_balance: number
+  unit_cost: number
+  total_cost: number
 }
 
 export interface StockCardLine {
@@ -293,6 +306,91 @@ export interface LowStockReportLine {
   qty_on_hand: number
   min_stock?: number | null
   unit: string
+}
+
+// GRNI Reconciliation — /reports/reconciliation/grni
+// Per-GRN line: outstanding qty barang yang diterima tapi belum di-invoice
+export interface GrniReconciliationLine {
+  goods_receipt_id: number
+  receipt_number: string
+  receipt_date: string
+  vendor_id: number | null
+  vendor_name: string | null
+  product_id: number | null
+  product_name: string | null
+  received_quantity: number
+  billed_quantity: number
+  outstanding_quantity: number
+  estimated_outstanding_amount: number
+  grni_gl_balance_related: number
+  difference: number
+  status: 'matched' | 'mismatch'
+}
+
+export interface GrniReconciliationReport {
+  summary: {
+    total_outstanding_quantity: number
+    total_estimated_outstanding_amount: number
+    total_grni_gl_balance_related: number
+    mismatch_count: number
+  }
+  data: GrniReconciliationLine[]
+}
+
+// Deposit Reconciliation — /reports/reconciliation/customer-deposits & vendor-deposits
+// Unapplied deposit yang belum dialokasikan ke invoice
+export interface DepositReconciliationLine {
+  contact_id: number
+  contact_number: string
+  contact_name: string | null
+  deposit_id: number
+  deposit_number: string
+  deposit_date: string | null
+  amount: number
+  allocated_amount: number
+  remaining_amount: number
+  status: string
+}
+
+export interface DepositReconciliationReport {
+  summary: {
+    total_deposit: number
+    total_allocated: number
+    total_unapplied: number
+  }
+  data: DepositReconciliationLine[]
+}
+
+// Account Ledger — /reports/account-ledger/{account}
+// Rincian transaksi per akun dengan running balance (A13-244)
+export interface AccountLedgerAccount {
+  id: number
+  account_code: string
+  account_name: string
+  account_type: string
+  normal_balance: string
+  is_active: boolean
+}
+
+export interface AccountLedgerLine {
+  journal_entry_id: number
+  journal_entry_line_id: number
+  journal_number: string
+  journal_date: string
+  description: string | null
+  debit: number
+  credit: number
+  running_balance: number
+  source_type: string | null
+  source_number: string | null
+}
+
+export interface AccountLedgerReport {
+  account: AccountLedgerAccount
+  opening_balance: { debit: number; credit: number; balance: number }
+  period_totals: { debit: number; credit: number; movement_balance: number }
+  ending_balance: number
+  lines: AccountLedgerLine[]
 }
 
 // NOTE: Transaction list report (/reports/transactions) dan export PDF/Excel

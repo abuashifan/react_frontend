@@ -83,7 +83,7 @@ Bagian ini melacak status artefak dokumentasi remediation, bukan status implemen
 | Completion report Phase 35 | `../tracking/phase-35-completion-report.md` atau lokasi yang dipilih | ✅ Ada | Phase 35 selesai dan divalidasi |
 | Issue Phase 36 | `../issue_docs/issue-39-phase-36-financial-operational-reports.md` | ✅ Ada | Issue detail Phase 36 |
 | Prompt Phase 36 | `../prompt/prompt-phase-36-financial-operational-reports.md` | ✅ Ada | Checklist implementasi Phase 36 |
-| Completion report Phase 36 | `../tracking/phase-36-completion-report.md` atau lokasi yang dipilih | ⏳ Belum dibuat | Dibuat setelah Phase 36 selesai |
+| Completion report Phase 36 | `../tracking/phase-36-completion-report.md` atau lokasi yang dipilih | ⏳ Belum dibuat | Dibuat setelah Phase 36 selesai dan divalidasi |
 | Issue Phase 37 | `../issue_docs/issue-40-phase-37-settings-access-dashboard-router.md` | ✅ Ada | Issue detail Phase 37 |
 | Prompt Phase 37 | `../prompt/prompt-phase-37-settings-access-dashboard-router.md` | ✅ Ada | Checklist implementasi Phase 37 |
 | Completion report Phase 37 | `../tracking/phase-37-completion-report.md` atau lokasi yang dipilih | ✅ Ada | Phase 37 selesai dan divalidasi |
@@ -825,6 +825,32 @@ Exit:
 - filter response membuktikan period diterapkan;
 - totals sama dengan backend tests;
 - reconciliation mismatch terlihat.
+
+Catatan progres 2026-06-28 (Step 1):
+
+- A13-232/233/234/235/236/237/238 — adapters canonical selesai; crash dan filter mismatch diperbaiki di `reportsApi.ts` dan `reports.types.ts`.
+
+Catatan progres 2026-06-28 (Step 2):
+
+- **A13-239** — Error state + retry (`ReportError` shared component) ditambahkan ke semua 11 page laporan. Query error tidak lagi menghasilkan blank state — pesan informatif + tombol "Coba Lagi" ditampilkan.
+- **A13-240** — `htmlFor`/`id` programatik disambungkan di `ReportFilterParameter` untuk semua mode filter.
+- **A13-242** — Warning `⚠ Tidak seimbang — selisih: ...` ditampilkan di footer Trial Balance (tfoot row) dan sebagai banner di atas Neraca jika `is_balanced === false`.
+- **A13-245** — Tab "Kartu Stok" ditambahkan ke `StockReportPage` dengan filter product_id + date range; menggunakan endpoint `/inventory/reports/stock-card` yang sudah ada.
+- **A13-247** — Ribbon laporan dilengkapi 4 item yang sebelumnya hilang: Ringkasan Keuangan, Rekonsiliasi, Laporan Stok, Analisis Inventori.
+- **A13-249** — Permission inventory di ribbon diperbaiki: `inventory.reports.view` (bukan `reports.view`) untuk Laporan Stok dan Analisis Inventori.
+- **A13-251** — `role="tablist"` + `role="tab"` + `aria-selected` ditambahkan ke tab Rekonsiliasi, Laporan Stok, dan Analisis Inventori.
+- `tsc --noEmit --skipLibCheck` lulus 0 error untuk semua file yang diubah.
+
+Yang belum selesai di Phase 36:
+
+- **A13-241** — filter analitik tambahan (dimension/entity/account/warehouse) — butuh kontrol UI baru dan validasi apa yang backend support;
+- **A13-243** — klasifikasi Arus Kas (operating/investing/financing) — akar masalah di backend CashFlowService;
+- **A13-244** — account picker + drill-down Buku Besar — fitur besar, butuh endpoint `/reports/account-ledger/{account}`;
+- **A13-246** — scope rekonsiliasi GRNI dan deposit — shape response berbeda, butuh adapter + tabel UI tersendiri;
+- **A13-248** — print/export workflow — backend belum menyediakan endpoint export;
+- **A13-250** — konsistensi label Neraca (section key dari backend harus dikonfirmasi live);
+- **A13-252** — pagination/volume — backend decision diperlukan;
+- **A13-253** — alert contract min_stock/unit — backend perlu mengirim field tersebut.
 
 ---
 

@@ -4,7 +4,8 @@ import {
   Database, BookMarked, Banknote,
   ShoppingCart, ShoppingBag, Boxes, Building, FileBarChart2, Settings,
 } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import type { FC, SVGProps } from 'react'
+type LucideIcon = FC<SVGProps<SVGSVGElement> & { size?: number | string; strokeWidth?: number | string }>
 import {
   DropdownMenu,
   DropdownMenuContent,

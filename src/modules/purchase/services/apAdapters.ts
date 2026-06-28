@@ -120,15 +120,16 @@ function adaptBillLedgerMovement(movement: RawMovement): BillLedgerEntry {
   }
 }
 
-export function adaptApAgingResponse(raw: RawAgingResponse): AgingReport {
+export function adaptApAgingResponse(raw: unknown): AgingReport {
+  const r = raw as RawAgingResponse
   return {
-    as_of_date: str(raw.as_of_date),
-    lines: (raw.vendors ?? []).map((vendor) => ({
+    as_of_date: str(r.as_of_date),
+    lines: (r.vendors ?? []).map((vendor) => ({
       contact_id: num(vendor.vendor_id),
       contact_name: str(vendor.vendor_name),
       buckets: adaptAgingBucket(vendor.buckets),
     })),
-    totals: adaptAgingBucket(raw.buckets),
+    totals: adaptAgingBucket(r.buckets),
   }
 }
 
@@ -136,32 +137,35 @@ export function adaptApVendorSummaryResponse(raw: unknown): ApVendorSummary[] {
   return Array.isArray(raw) ? raw.map((row) => adaptVendorSummaryRow(row as RawVendorSummary)) : []
 }
 
-export function adaptVendorLedgerResponse(raw: RawLedgerResponse): ApLedgerResponse {
-  const entries = (raw.movements ?? []).map(adaptLedgerMovement)
+export function adaptVendorLedgerResponse(raw: unknown): ApLedgerResponse {
+  const r = raw as RawLedgerResponse
+  const entries = (r.movements ?? []).map(adaptLedgerMovement)
   return {
-    vendor_id: num(raw.vendor_id),
-    vendor_name: str(raw.movements?.[0]?.vendor_name),
+    vendor_id: num(r.vendor_id),
+    vendor_name: str(r.movements?.[0]?.vendor_name),
     entries,
     ending_balance: entries.at(-1)?.running_balance ?? 0,
   }
 }
 
-export function adaptBillLedgerResponse(raw: RawLedgerResponse): BillLedgerResponse {
-  const entries = (raw.movements ?? []).map(adaptBillLedgerMovement)
+export function adaptBillLedgerResponse(raw: unknown): BillLedgerResponse {
+  const r = raw as RawLedgerResponse
+  const entries = (r.movements ?? []).map(adaptBillLedgerMovement)
   return {
-    bill_id: num(raw.bill_id),
-    bill_number: str(raw.movements?.[0]?.document_number),
+    bill_id: num(r.bill_id),
+    bill_number: str(r.movements?.[0]?.document_number),
     entries,
     ending_balance: entries.at(-1)?.running_balance ?? 0,
   }
 }
 
-export function adaptApReconciliationSummary(raw: RawRecord): ApReconciliationSummary {
+export function adaptApReconciliationSummary(raw: unknown): ApReconciliationSummary {
+  const r = raw as RawRecord
   return {
-    subsidiary_balance: num(raw.subsidiary_balance),
-    gl_ap_balance: num(raw.gl_ap_balance),
-    difference: num(raw.difference),
-    is_reconciled: Boolean(raw.is_reconciled),
+    subsidiary_balance: num(r.subsidiary_balance),
+    gl_ap_balance: num(r.gl_ap_balance),
+    difference: num(r.difference),
+    is_reconciled: Boolean(r.is_reconciled),
   }
 }
 

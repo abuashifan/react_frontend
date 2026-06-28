@@ -1,5 +1,6 @@
 import { Flame, ShoppingCart, Briefcase, Factory, FileText } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import type { FC, SVGProps } from 'react'
+type LucideIcon = FC<SVGProps<SVGSVGElement> & { size?: number | string; strokeWidth?: number | string }>
 
 // ─── Account Mapping ──────────────────────────────────────────────────────────
 

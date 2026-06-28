@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportFilterParameter } from '../components/ReportFilterParameter'
 import { ReportCompactBar } from '../components/ReportCompactBar'
+import { ReportError } from '../components/ReportError'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import type { ReportParams } from '../types/reports.types'
@@ -14,7 +15,7 @@ export default function ArAgingReportPage() {
   const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
   const [showFilter, setShowFilter] = useState(true)
 
-  const { data, isLoading } = useQuery({ queryKey: ['reports', 'ar-aging', activeParams], queryFn: () => reportsApi.arAging(activeParams!), enabled: !!activeParams })
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['reports', 'ar-aging', activeParams], queryFn: () => reportsApi.arAging(activeParams!), enabled: !!activeParams })
   const report = data?.data
   const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false) }
 
@@ -24,7 +25,8 @@ export default function ArAgingReportPage() {
         {showFilter ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} mode="as_of_date" isLoading={isLoading} />
           : <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} mode="as_of_date" />}
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
-        {report && (
+        {isError && <ReportError onRetry={() => refetch()} />}
+        {!isLoading && !isError && report && (
           <div className="overflow-auto rounded-lg border border-[#e2e8f0]">
             <table className="w-full text-[12px]">
               <thead className="bg-[#f8fafc]">

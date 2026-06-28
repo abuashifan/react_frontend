@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportFilterParameter } from '../components/ReportFilterParameter'
 import { ReportCompactBar } from '../components/ReportCompactBar'
+import { ReportError } from '../components/ReportError'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import type { ReportParams, ReportSection } from '../types/reports.types'
@@ -37,7 +38,7 @@ export default function BalanceSheetPage() {
   const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
   const [showFilter, setShowFilter] = useState(true)
 
-  const { data, isLoading } = useQuery({ queryKey: ['reports', 'balance-sheet', activeParams], queryFn: () => reportsApi.balanceSheet(activeParams!), enabled: !!activeParams })
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['reports', 'balance-sheet', activeParams], queryFn: () => reportsApi.balanceSheet(activeParams!), enabled: !!activeParams })
   const report = data?.data
   const sections = report?.sections ?? []
   const totals = report?.totals
@@ -49,10 +50,17 @@ export default function BalanceSheetPage() {
   return (
     <WorkspaceLayout title="Neraca" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Neraca' }]}>
       <div className="space-y-4">
-        {showFilter ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} mode="as_of_date" isLoading={isLoading} />
+        {showFilter ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} mode="as_of_date" isLoading={isLoading} dimensions={{ department: true, project: true }} />
           : <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} mode="as_of_date" />}
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
-        {report && totals && (
+        {isError && <ReportError onRetry={() => refetch()} />}
+        {!isLoading && !isError && report && totals && (
+          <div className="space-y-3">
+          {!totals.is_balanced && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-[12px] font-medium text-red-700">
+              ⚠ Neraca tidak seimbang — selisih: {formatCurrency(totals.difference)}
+            </div>
+          )}
           <div className="grid gap-4 lg:grid-cols-2">
             {/* ASET */}
             <div className="overflow-auto rounded-lg border border-[#e2e8f0]">
@@ -91,6 +99,7 @@ export default function BalanceSheetPage() {
                 </tbody>
               </table>
             </div>
+          </div>
           </div>
         )}
       </div>

@@ -23,6 +23,7 @@ export interface CoaListParams {
   search?: string
   account_type?: CoaType
   is_active?: boolean
+  is_cash_bank?: boolean
 }
 
 export interface CreateCoaPayload {
