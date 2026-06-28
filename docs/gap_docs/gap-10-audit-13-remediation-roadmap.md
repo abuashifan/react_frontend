@@ -556,6 +556,11 @@ Exit:
 - mismatch terlihat jelas;
 - ledger running balance benar.
 
+Temuan baru dari validasi runtime Phase 38 (2026-06-28):
+
+- **A13-N29a — AR Aging page crash** — `ArAgingPage` melempar `TypeError: rows.reduce is not a function` (jatuh ke ErrorBoundary). Akar masalah: respons canonical `/sales/ar/aging` berbentuk objek `{ buckets, total, customers[] }`, tetapi frontend memperlakukan `data.data` sebagai array; param tanggal juga salah (`as_of` vs backend `as_of_date`). Perbaikan: adapter di `arApi.aging` memetakan `customers[].buckets` → `ArAgingRow[]` dan mengirim `as_of_date`; tipe baru `ArAgingApiResponse`/`ArAgingBuckets`/`ArAgingCustomer`. **Status: DONE** — divalidasi runtime (0 console error, halaman render; sebelumnya 6 error + crash).
+- **A13-N29b — Stock balance report 500 (transient)** — saat batch validasi, `/inventory/stock-balances` sempat memunculkan 1× HTTP 500 di console. Investigasi: tidak reproducible (3× percobaan berturut semuanya 200; `/api/inventory/reports/stock-balances` mengembalikan data valid). Disimpulkan cold-start/race sesaat, bukan defect kode. Domain sebenarnya Inventory (Phase 32), dicatat di sini sesuai keputusan user. **Status: DONE** (investigated, no code change).
+
 ---
 
 ### Phase 30 — Purchase Transaction Contract
@@ -1113,43 +1118,61 @@ Section khusus untuk melacak validasi Phase 38 pada seluruh dropdown `Searchable
 
 `[ ]` belum · `[x]` selesai & terverifikasi · angka `(n)` = jumlah instance `SearchableSelect` di file itu.
 
-Progress: **3 / 102 instance** selesai (60 file; 57 file tersisa).
+Progress: **60 file divalidasi runtime (2026-06-28)** — lihat "Hasil Validasi Runtime" di bawah.
+
+### Hasil Validasi Runtime (2026-06-28)
+
+Metode: Playwright + chromium sistem (`/usr/bin/chromium`), login `admin@example.com` → company 2, 57 file dikunjungi via route, diperiksa di viewport **1180** dan **390** (mobile).
+
+Verdict:
+
+- **Overflow horizontal: 0** di SEMUA halaman pada 1180 maupun 390 → acceptance Phase 38 "tidak ada root overflow pada matrix" **TERPENUHI**.
+- **Accessible name: setiap `SearchableSelect` punya nama** (dari placeholder deskriptif, mis. "Pilih vendor…", "Pilih akun bank…") → "tidak ada unlabeled critical control" **TERPENUHI**. `triggerId`/`htmlFor` (asosiasi programatik) masih belum dipasang = refinement P3, bukan blocker.
+- **Console error: bersih** kecuali 2 halaman (bug non-a11y, lihat di bawah).
+
+Pengecualian / tindak lanjut:
+
+1. ~~**AccountMappingPage** — 37 select ber-accessible-name identik~~ → ✅ **FIXED 2026-06-28**: `triggerId`+`triggerAriaLabel`+`<Label htmlFor>` per mapping; runtime mengonfirmasi 37 nama unik & terasosiasi.
+2. ~~StockBalanceListPage — 500~~ → ✅ **2026-06-28**: tidak reproducible (transient cold-start; 3× attempt = 200). Dicatat sbg A13-N29b (DONE).
+3. ~~ArAgingPage — crash `rows.reduce`~~ → ✅ **FIXED 2026-06-28**: adapter `arApi.aging` (object→rows) + param `as_of_date`. Dicatat sbg A13-N29a (DONE), divalidasi runtime.
+4. Minor: selector akun baris-jurnal/line di JournalForm, CashPayment/Receipt, CustomerDeposit/SalesReceipt memakai "Pilih akun…" generik — opsional dipertegas.
+
 
 ### Accounting (2)
 
-- [ ] `accounting/pages/FiscalYearPage.tsx` (1)
-- [ ] `accounting/pages/JournalFormPage.tsx` (1)
+- [x] `accounting/pages/FiscalYearPage.tsx` (1)
+- [x] `accounting/pages/JournalFormPage.tsx` (1)
 
 ### Cash & Bank (9)
 
-- [ ] `cash-bank/pages/BankReconciliationFormPage.tsx` (1)
-- [ ] `cash-bank/pages/BankTransferFormPage.tsx` (2)
-- [ ] `cash-bank/pages/CashPaymentFormPage.tsx` (3)
-- [ ] `cash-bank/pages/CashReceiptFormPage.tsx` (3)
+- [x] `cash-bank/pages/BankReconciliationFormPage.tsx` (1)
+- [x] `cash-bank/pages/BankTransferFormPage.tsx` (2)
+- [x] `cash-bank/pages/CashPaymentFormPage.tsx` (3)
+- [x] `cash-bank/pages/CashReceiptFormPage.tsx` (3)
 
 ### Fixed Assets (8)
 
-- [ ] `fixed-assets/pages/FixedAssetCategoryPage.tsx` (1)
-- [ ] `fixed-assets/pages/FixedAssetFormPage.tsx` (6)
-- [ ] `fixed-assets/pages/FixedAssetListPage.tsx` (1)
+- [x] `fixed-assets/pages/FixedAssetCategoryPage.tsx` (1)
+- [x] `fixed-assets/pages/FixedAssetFormPage.tsx` (6)
+- [x] `fixed-assets/pages/FixedAssetListPage.tsx` (1)
 
 ### Inventory (10)
 
-- [ ] `inventory/pages/StockAdjustmentFormPage.tsx` (3)
-- [ ] `inventory/pages/StockAdjustmentListPage.tsx` (1)
-- [ ] `inventory/pages/StockBalanceListPage.tsx` (1)
-- [ ] `inventory/pages/StockMovementFormPage.tsx` (2)
-- [ ] `inventory/pages/StockMovementListPage.tsx` (1)
-- [ ] `inventory/pages/StockOpnameFormPage.tsx` (1)
-- [ ] `inventory/pages/StockOpnameListPage.tsx` (1)
+- [x] `inventory/pages/StockAdjustmentFormPage.tsx` (3)
+- [x] `inventory/pages/StockAdjustmentListPage.tsx` (1)
+- [x] `inventory/pages/StockBalanceListPage.tsx` (1) — ✅ 500 transient, tidak reproducible (A13-N29b, DONE)
+- [x] `inventory/pages/StockMovementFormPage.tsx` (2)
+- [x] `inventory/pages/StockMovementListPage.tsx` (1)
+- [x] `inventory/pages/StockOpnameFormPage.tsx` (1)
+- [x] `inventory/pages/StockOpnameListPage.tsx` (1)
 
 ### Master Data (10)
 
-- [ ] `master-data/pages/AccountMappingPage.tsx` (1)
-- [ ] `master-data/pages/CoaFormPage.tsx` (1)
-- [ ] `master-data/pages/KontakFormPage.tsx` (1)
-- [ ] `master-data/pages/ProdukFormPage.tsx` (6)
-- [ ] `master-data/pages/ProdukListPage.tsx` (1)
+- [x] `master-data/pages/AccountMappingPage.tsx` (1) — ✅ FIXED 2026-06-28: triggerId+htmlFor per mapping; 37 select kini ber-accessible-name unik ("Akun Piutang" dst), hasId=true, divalidasi runtime
+- [x] `master-data/pages/CoaFormPage.tsx` (1)
+- [x] `master-data/pages/KontakFormPage.tsx` (1)
+- [x] `master-data/pages/ProdukFormPage.tsx` (6)
+- [x] `master-data/pages/ProdukListPage.tsx` (1)
 
 ### Onboarding (1)
 
@@ -1157,48 +1180,48 @@ Progress: **3 / 102 instance** selesai (60 file; 57 file tersisa).
 
 ### Opening Balance (1)
 
-- [ ] `opening-balance/pages/OpeningBalanceBatchPage.tsx` (1)
+- [x] `opening-balance/pages/OpeningBalanceBatchPage.tsx` (1)
 
 ### Purchase (28)
 
-- [ ] `purchase/pages/BillLedgerPage.tsx` (1)
-- [ ] `purchase/pages/GoodsReceiptFormPage.tsx` (3)
-- [ ] `purchase/pages/GoodsReceiptListPage.tsx` (1)
-- [ ] `purchase/pages/PurchaseOrderFormPage.tsx` (3)
-- [ ] `purchase/pages/PurchaseOrderListPage.tsx` (1)
-- [ ] `purchase/pages/PurchaseRequestFormPage.tsx` (2)
-- [ ] `purchase/pages/PurchaseReturnFormPage.tsx` (2)
-- [ ] `purchase/pages/PurchaseReturnListPage.tsx` (1)
-- [ ] `purchase/pages/VendorBillFormPage.tsx` (5)
-- [ ] `purchase/pages/VendorBillListPage.tsx` (1)
-- [ ] `purchase/pages/VendorDepositFormPage.tsx` (2)
-- [ ] `purchase/pages/VendorDepositListPage.tsx` (1)
-- [ ] `purchase/pages/VendorLedgerPage.tsx` (1)
-- [ ] `purchase/pages/VendorPaymentFormPage.tsx` (3)
-- [ ] `purchase/pages/VendorPaymentListPage.tsx` (1)
+- [x] `purchase/pages/BillLedgerPage.tsx` (1)
+- [x] `purchase/pages/GoodsReceiptFormPage.tsx` (3)
+- [x] `purchase/pages/GoodsReceiptListPage.tsx` (1)
+- [x] `purchase/pages/PurchaseOrderFormPage.tsx` (3)
+- [x] `purchase/pages/PurchaseOrderListPage.tsx` (1)
+- [x] `purchase/pages/PurchaseRequestFormPage.tsx` (2)
+- [x] `purchase/pages/PurchaseReturnFormPage.tsx` (2)
+- [x] `purchase/pages/PurchaseReturnListPage.tsx` (1)
+- [x] `purchase/pages/VendorBillFormPage.tsx` (5)
+- [x] `purchase/pages/VendorBillListPage.tsx` (1)
+- [x] `purchase/pages/VendorDepositFormPage.tsx` (2)
+- [x] `purchase/pages/VendorDepositListPage.tsx` (1)
+- [x] `purchase/pages/VendorLedgerPage.tsx` (1)
+- [x] `purchase/pages/VendorPaymentFormPage.tsx` (3)
+- [x] `purchase/pages/VendorPaymentListPage.tsx` (1)
 
 ### Sales (31)
 
-- [ ] `sales/pages/ArAgingPage.tsx` (1)
-- [ ] `sales/pages/ArSummaryPage.tsx` (1)
-- [ ] `sales/pages/CustomerDepositFormPage.tsx` (2)
-- [ ] `sales/pages/CustomerDepositListPage.tsx` (1)
-- [ ] `sales/pages/CustomerLedgerPage.tsx` (1)
-- [ ] `sales/pages/DeliveryOrderFormPage.tsx` (3)
-- [ ] `sales/pages/DeliveryOrderListPage.tsx` (1)
-- [ ] `sales/pages/InvoiceLedgerPage.tsx` (1)
-- [ ] `sales/pages/ProformaFormPage.tsx` (2)
-- [ ] `sales/pages/ProformaListPage.tsx` (1)
-- [ ] `sales/pages/QuotationFormPage.tsx` (2)
-- [ ] `sales/pages/QuotationListPage.tsx` (1)
-- [ ] `sales/pages/SalesInvoiceFormPage.tsx` (3)
-- [ ] `sales/pages/SalesInvoiceListPage.tsx` (1)
-- [ ] `sales/pages/SalesOrderFormPage.tsx` (3)
-- [ ] `sales/pages/SalesOrderListPage.tsx` (1)
-- [ ] `sales/pages/SalesReceiptFormPage.tsx` (2)
-- [ ] `sales/pages/SalesReceiptListPage.tsx` (1)
-- [ ] `sales/pages/SalesReturnFormPage.tsx` (2)
-- [ ] `sales/pages/SalesReturnListPage.tsx` (1)
+- [x] `sales/pages/ArAgingPage.tsx` (1) — ✅ FIXED crash `rows.reduce` via adapter (A13-N29a, DONE)
+- [x] `sales/pages/ArSummaryPage.tsx` (1)
+- [x] `sales/pages/CustomerDepositFormPage.tsx` (2)
+- [x] `sales/pages/CustomerDepositListPage.tsx` (1)
+- [x] `sales/pages/CustomerLedgerPage.tsx` (1)
+- [x] `sales/pages/DeliveryOrderFormPage.tsx` (3)
+- [x] `sales/pages/DeliveryOrderListPage.tsx` (1)
+- [x] `sales/pages/InvoiceLedgerPage.tsx` (1)
+- [x] `sales/pages/ProformaFormPage.tsx` (2)
+- [x] `sales/pages/ProformaListPage.tsx` (1)
+- [x] `sales/pages/QuotationFormPage.tsx` (2)
+- [x] `sales/pages/QuotationListPage.tsx` (1)
+- [x] `sales/pages/SalesInvoiceFormPage.tsx` (3)
+- [x] `sales/pages/SalesInvoiceListPage.tsx` (1)
+- [x] `sales/pages/SalesOrderFormPage.tsx` (3)
+- [x] `sales/pages/SalesOrderListPage.tsx` (1)
+- [x] `sales/pages/SalesReceiptFormPage.tsx` (2)
+- [x] `sales/pages/SalesReceiptListPage.tsx` (1)
+- [x] `sales/pages/SalesReturnFormPage.tsx` (2)
+- [x] `sales/pages/SalesReturnListPage.tsx` (1)
 
 ### Settings (2)
 

@@ -20,6 +20,31 @@ export interface ArAgingRow {
   total: number
 }
 
+/** Bentuk bucket canonical dari backend ARAgingService. */
+export interface ArAgingBuckets {
+  current: number
+  '1_30': number
+  '31_60': number
+  '61_90': number
+  over_90: number
+}
+
+export interface ArAgingCustomer {
+  customer_id: number
+  customer_name: string
+  customer_code?: string
+  buckets: ArAgingBuckets
+  total: number
+}
+
+/** Respons canonical `/sales/ar/aging` (objek, bukan array). */
+export interface ArAgingApiResponse {
+  as_of_date: string
+  buckets: ArAgingBuckets
+  total: number
+  customers: ArAgingCustomer[]
+}
+
 export interface ArReconciliationRow {
   account_code: string
   account_name: string

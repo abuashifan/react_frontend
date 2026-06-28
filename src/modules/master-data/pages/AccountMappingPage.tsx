@@ -109,24 +109,30 @@ export default function AccountMappingPage() {
         </div>
       ) : (
         <FormSection title="Mapping Akun Default" columns={2}>
-          {mappings.map((mapping) => (
-            <div key={mapping.mapping_key} className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
-                {mapping.label ?? mapping.mapping_key}
-              </Label>
-              <SearchableSelect
-                value={localValues[mapping.mapping_key] ?? null}
-                onChange={(value) => {
-                  const opts = selectedOptions[mapping.mapping_key] ?? []
-                  const opt = opts.find((o) => o.value === value) ?? null
-                  handleChange(mapping.mapping_key, value, opt)
-                }}
-                onSearch={handleSearchWithOption}
-                placeholder="Pilih akun..."
-                selectedOptions={selectedOptions[mapping.mapping_key] ?? []}
-              />
-            </div>
-          ))}
+          {mappings.map((mapping) => {
+            const fieldId = `account-mapping-${mapping.mapping_key}`
+            const fieldLabel = mapping.label ?? mapping.mapping_key
+            return (
+              <div key={mapping.mapping_key} className="flex flex-col gap-1">
+                <Label htmlFor={fieldId} className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
+                  {fieldLabel}
+                </Label>
+                <SearchableSelect
+                  triggerId={fieldId}
+                  triggerAriaLabel={fieldLabel}
+                  value={localValues[mapping.mapping_key] ?? null}
+                  onChange={(value) => {
+                    const opts = selectedOptions[mapping.mapping_key] ?? []
+                    const opt = opts.find((o) => o.value === value) ?? null
+                    handleChange(mapping.mapping_key, value, opt)
+                  }}
+                  onSearch={handleSearchWithOption}
+                  placeholder="Pilih akun..."
+                  selectedOptions={selectedOptions[mapping.mapping_key] ?? []}
+                />
+              </div>
+            )
+          })}
         </FormSection>
       )}
     </WorkspaceLayout>
