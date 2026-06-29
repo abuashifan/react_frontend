@@ -351,6 +351,23 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____services/
 | | | | |____authApi.ts
 | | | | |____companyApi.ts
+| | |____budget/
+| | | |____components/
+| | | | |____BudgetApprovalActions.tsx
+| | | | |____BudgetConsolidationTable.tsx
+| | | | |____BudgetLineEditor.tsx
+| | | | |____BudgetStatusBadge.tsx
+| | | |____pages/
+| | | | |____BudgetComparisonPage.tsx
+| | | | |____BudgetPeriodDetailPage.tsx
+| | | | |____BudgetPeriodFormPage.tsx
+| | | | |____BudgetPeriodListPage.tsx
+| | | | |____BudgetSubmissionPage.tsx
+| | | |____routes.tsx
+| | | |____services/
+| | | | |____budgetApi.ts
+| | | |____types/
+| | | | |____budget.types.ts
 | | |____cash-bank/
 | | | |____hooks/
 | | | | |____useCashBankList.ts

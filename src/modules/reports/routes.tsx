@@ -16,6 +16,7 @@ const ReconciliationPage = lazy(() => import('./pages/ReconciliationPage'))
 const StockReportPage = lazy(() => import('./pages/StockReportPage'))
 const InventoryAnalysisPage = lazy(() => import('./pages/InventoryAnalysisPage'))
 const AccountLedgerPage = lazy(() => import('./pages/AccountLedgerPage'))
+const BudgetComparisonPage = lazy(() => import('@/modules/budget/pages/BudgetComparisonPage'))
 
 const wrap = (element: ReactElement) => (
   <ProtectedRoute permission="reports.view">{element}</ProtectedRoute>
@@ -35,5 +36,6 @@ export const reportsRoutes: RouteObject[] = [
   { path: '/reports/stock', element: wrap(<StockReportPage />) },
   { path: '/reports/inventory-analysis', element: wrap(<InventoryAnalysisPage />) },
   { path: '/reports/account-ledger', element: wrap(<AccountLedgerPage />) },
+  { path: '/reports/budget/comparison', element: wrap(<BudgetComparisonPage />) },
   // /reports/transactions dihapus — tidak ada route backend (Audit-12 A12-15).
 ]

@@ -16,6 +16,7 @@ import { cashBankRoutes } from '@/modules/cash-bank/routes'
 import { fixedAssetRoutes } from '@/modules/fixed-assets/routes'
 import { reportsRoutes } from '@/modules/reports/routes'
 import { settingsRoutes } from '@/modules/settings/routes'
+import { budgetRoutes } from '@/modules/budget/routes'
 import { openingBalanceRoutes } from '@/modules/opening-balance/routes'
 
 const initialEntry = `${window.location.pathname}${window.location.search}${window.location.hash}`
@@ -61,6 +62,7 @@ export const router = createMemoryRouter([
   ...cashBankRoutes,
   ...fixedAssetRoutes,
   ...reportsRoutes,
+  ...budgetRoutes,
   ...settingsRoutes,
   { path: '/403', element: <ForbiddenPage /> },
   { path: '/500', element: <ServerErrorPage /> },

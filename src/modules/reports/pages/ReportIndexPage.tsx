@@ -24,6 +24,10 @@ const INVENTORY_REPORTS: ReportCard[] = [
   { title: 'Analisis Inventori', description: 'Valuasi, stok rendah, dan stok negatif', path: '/reports/inventory-analysis' },
 ]
 
+const BUDGET_REPORTS: ReportCard[] = [
+  { title: 'Realisasi vs Anggaran', description: 'Perbandingan realisasi transaksi vs anggaran yang disetujui', path: '/reports/budget/comparison' },
+]
+
 // Catatan: "Daftar Transaksi" (/reports/transactions) disembunyikan karena
 // route backend belum ada (Audit-12 A12-15). Tambahkan kembali setelah
 // endpoint backend tersedia.
@@ -57,6 +61,7 @@ export default function ReportIndexPage() {
           <Section title="Laporan Keuangan" cards={FINANCIAL_REPORTS} navigate={navigate} />
           <Section title="Buku Besar & Subledger" cards={LEDGER_REPORTS} navigate={navigate} />
           <Section title="Persediaan" cards={INVENTORY_REPORTS} navigate={navigate} />
+          <Section title="Anggaran" cards={BUDGET_REPORTS} navigate={navigate} />
         </div>
       </WorkspaceLayout>
     </PermissionGuard>
