@@ -11,7 +11,6 @@ import { coaApi } from '@/modules/master-data/services/coaApi'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { proyekApi } from '@/modules/master-data/services/proyekApi'
 import { formatCurrency } from '@/lib/utils'
-import type { SelectOption } from '@/types/common.types'
 import type { ReportParams } from '../types/reports.types'
 
 const today = new Date().toISOString().slice(0, 10)
@@ -19,7 +18,6 @@ const firstOfMonth = today.slice(0, 8) + '01'
 
 export default function AccountLedgerPage() {
   const [accountId, setAccountId] = useState<number | null>(null)
-  const [accountOption, setAccountOption] = useState<SelectOption<number> | null>(null)
   const [startDate, setStartDate] = useState(firstOfMonth)
   const [endDate, setEndDate] = useState(today)
   const [deptId, setDeptId] = useState<number | null>(null)
@@ -67,7 +65,7 @@ export default function AccountLedgerPage() {
                 triggerId="account-ledger-account"
                 triggerAriaLabel="Pilih akun"
                 value={accountId}
-                onChange={(val, opt) => { setAccountId(val); setAccountOption(opt ?? null) }}
+                onChange={(val) => { setAccountId(val) }}
                 onSearch={handleSearch}
                 placeholder="Cari akun..."
                 size="sm"

@@ -1,11 +1,15 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportFilterParameter } from '../components/ReportFilterParameter'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
+import { TablePagination } from '@/components/shared/table/TablePagination'
+import type { PaginationState } from '@/components/shared/table/TablePagination'
+import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
+import { exportCsv } from '@/lib/exportCsv'
 import type { ReportParams } from '../types/reports.types'
 
 const today = new Date().toISOString().slice(0, 10)
@@ -15,6 +19,7 @@ export default function TrialBalancePage() {
   const [params, setParams] = useState<ReportParams>({ start_date: firstOfMonth, end_date: today })
   const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
   const [showFilter, setShowFilter] = useState(true)
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['reports', 'trial-balance', activeParams],
@@ -22,10 +27,19 @@ export default function TrialBalancePage() {
     enabled: !!activeParams,
   })
   const report = data?.data
-  const accounts = report?.accounts ?? []
+  const allAccounts = report?.accounts ?? []
   const totals = report?.totals
 
-  const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false) }
+  const pagedAccounts = useMemo(() => {
+    const start = pagination.pageIndex * pagination.pageSize
+    return allAccounts.slice(start, start + pagination.pageSize)
+  }, [allAccounts, pagination])
+
+  const handleSubmit = () => {
+    setActiveParams({ ...params })
+    setShowFilter(false)
+    setPagination((p) => ({ ...p, pageIndex: 0 }))
+  }
 
   return (
     <WorkspaceLayout title="Neraca Saldo" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Neraca Saldo' }]}>
@@ -36,6 +50,22 @@ export default function TrialBalancePage() {
         }
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
         {isError && <ReportError onRetry={() => refetch()} />}
+        {!isLoading && !isError && report && allAccounts.length > 0 && (
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-[12px]"
+              onClick={() => exportCsv(
+                `neraca-saldo-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
+                ['Kode', 'Akun', 'Debit Awal', 'Kredit Awal', 'Debit Periode', 'Kredit Periode', 'Debit Akhir', 'Kredit Akhir'],
+                allAccounts.map((a) => [a.account_code, a.account_name, a.opening_debit, a.opening_credit, a.period_debit, a.period_credit, a.ending_debit, a.ending_credit])
+              )}
+            >
+              Export CSV
+            </Button>
+          </div>
+        )}
         {!isLoading && !isError && report && (
           <div className="overflow-auto rounded-lg border border-[#e2e8f0]">
             <table className="w-full text-[12px]">
@@ -52,7 +82,7 @@ export default function TrialBalancePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f1f5f9]">
-                {accounts.map((l) => (
+                {pagedAccounts.map((l) => (
                   <tr key={l.account_id} className="hover:bg-[#f8fafc]">
                     <td className="px-3 py-1.5 text-[#64748b]">{l.account_code}</td>
                     <td className="px-3 py-1.5 text-[#1e293b]">{l.account_name}</td>
@@ -64,7 +94,7 @@ export default function TrialBalancePage() {
                     <td className="px-3 py-1.5 text-right tabular-nums font-medium">{l.ending_credit ? formatCurrency(l.ending_credit) : '-'}</td>
                   </tr>
                 ))}
-                {accounts.length === 0 && (
+                {allAccounts.length === 0 && (
                   <tr><td colSpan={8} className="py-8 text-center text-[#94a3b8]">Tidak ada saldo akun pada periode ini.</td></tr>
                 )}
               </tbody>
@@ -89,6 +119,9 @@ export default function TrialBalancePage() {
                 </tfoot>
               )}
             </table>
+            {allAccounts.length > 0 && (
+              <TablePagination pagination={pagination} totalRows={allAccounts.length} onChange={setPagination} isFetching={isLoading} />
+            )}
           </div>
         )}
       </div>

@@ -193,7 +193,6 @@ export default function ReconciliationPage() {
 
   const isSubledgerType = activeType === 'ar' || activeType === 'ap' || activeType === 'inventory'
   const isGrniType = activeType === 'grni'
-  const isDepositType = activeType === 'customer_deposits' || activeType === 'vendor_deposits'
 
   const fetchFn = activeType === 'ar'
     ? reportsApi.reconciliationAr

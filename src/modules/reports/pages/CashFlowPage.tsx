@@ -4,8 +4,10 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportFilterParameter } from '../components/ReportFilterParameter'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
+import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
+import { exportCsv } from '@/lib/exportCsv'
 import type { CashFlowSection, ReportParams } from '../types/reports.types'
 
 const today = new Date().toISOString().slice(0, 10)
@@ -53,6 +55,22 @@ export default function CashFlowPage() {
         {!isLoading && !isError && report && report.no_cash_accounts && (
           <div className="rounded-lg border border-[#e2e8f0] bg-[#f8fafc] py-8 text-center text-[13px] text-[#64748b]">
             Belum ada akun kas/bank yang ditandai. Atur akun kas/bank di Bagan Akun terlebih dahulu.
+          </div>
+        )}
+        {!isLoading && !isError && report && !report.no_cash_accounts && summary && accounts.length > 0 && (
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-[12px]"
+              onClick={() => exportCsv(
+                `arus-kas-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
+                ['Akun', 'Saldo Awal', 'Kas Masuk', 'Kas Keluar', 'Arus Bersih', 'Saldo Akhir'],
+                accounts.map((a) => [a.account_name, a.opening_balance, a.cash_in, a.cash_out, a.net_cash_flow, a.ending_balance])
+              )}
+            >
+              Export CSV
+            </Button>
           </div>
         )}
         {!isLoading && !isError && report && !report.no_cash_accounts && summary && (

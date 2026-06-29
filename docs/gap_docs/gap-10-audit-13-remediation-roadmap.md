@@ -846,14 +846,15 @@ Catatan progres 2026-06-28 (Step 3 — backend fixes + remaining frontend):
 - **A13-243** — DONE: `CashFlowService::getSectionedCashFlow()` sudah ada sejak sebelumnya; migration `2026_06_28_000002_add_cash_flow_section_to_chart_of_accounts.php` menambah kolom `cash_flow_section` di COA; response sudah menyertakan `sections`; frontend `adaptCashFlow()` diperbaiki untuk memetakan `sections` ke `CashFlowReport` — sebelumnya field ini di-drop oleh adapter; feature test baru `test_sections_classify_cash_flows_by_contra_account_cash_flow_section` ditambahkan dan lulus (7/7 CashFlowReportTest). CashFlowPage kini menampilkan tabel klasifikasi operating/investing/financing.
 - **A13-244** — DONE: Endpoint `/reports/account-ledger/{account}` sudah ada; `AccountLedgerPage` sudah lengkap dengan account picker + date range + dept/project filter + tabel transaksi running balance.
 - **A13-246** — DONE: Backend dan frontend sudah ada — 6 tab reconciliation (AR/AP/Inventory/GRNI/Customer Deposits/Vendor Deposits); ReconciliationReportTest 9/9 lulus.
-- **A13-248** — CLOSED (intentional): Export tidak diimplementasikan; didokumentasikan di `reports.types.ts` bahwa endpoint tidak tersedia (sesuai keputusan audit).
+- **A13-248** — DONE 2026-06-29: CSV export client-side untuk semua laporan utama (GL, Trial Balance, Laba Rugi, Neraca, Arus Kas) via `src/lib/exportCsv.ts`. Tombol "Export CSV" muncul setelah laporan di-load; tidak butuh endpoint backend baru — data sudah ada di client.
 - **A13-250** — DONE: Backend `BalanceSheetService::buildSections()` sudah menggunakan label Indonesia (`Aset`, `Kewajiban`, `Ekuitas`, `Laba / Rugi Tahun Berjalan`); frontend `adaptBalanceSheet()` membaca `s.label` — label konsisten.
-- **A13-252** — DONE: `AccountLedgerDetailService` ditambah `MAX_LINES = 2000`; response kini menyertakan `total_lines` dan `truncated`; frontend `AccountLedgerPage` menampilkan banner peringatan jika `truncated = true`. Endpoint lain (GL summary, aging) bounded oleh COA/entitas — tidak butuh hard cap.
+- **A13-252** — DONE 2026-06-29: Client-side pagination via `TablePagination` component ditambahkan ke GL dan Trial Balance (default 50 per halaman). `AccountLedger` per-baris sudah bounded di backend.
 - **A13-253** — DONE: `InventoryAlertReportService::lowStock()` sudah mengirim `min_stock` (per-produk) dan `unit`; adapter frontend sudah memetakannya ke `LowStockReportLine`.
 
-- **A13-241** — DONE 2026-06-28: Filter dimensi dept+proyek sudah ada di semua laporan finansial (GL/TB/PL/BS) via `ReportFilterParameter` prop `dimensions`; `include_zero_balance` checkbox ditambahkan ke GL dan Trial Balance; `only_difference` checkbox ditambahkan ke Rekonsiliasi; `ReportParams` diperluas dengan `only_difference`; `ExtraFilterConfig` prop baru di `ReportFilterParameter` (non-breaking). tsc bersih.
+- **A13-241** — DONE 2026-06-29: Filter dimensi dept+proyek di semua laporan finansial (GL/TB/PL/BS/CF/AccountLedger) via `ReportFilterParameter` prop `dimensions={{ department, project }}`; warehouse filter di StockReportPage; `include_zero_balance` checkbox di GL dan Trial Balance; `ExtraFilterConfig` prop baru (non-breaking). tsc 0 error.
+- **A13-243** — DONE 2026-06-29: Migration `2026_06_28_000002_add_cash_flow_section_to_chart_of_accounts.php` menambah kolom; `CashFlowService::getSectionedCashFlow()` mengklasifikasikan arus kas per contra-account section (operating/investing/financing/unclassified) proporsional; CashFlowPage menampilkan tabel klasifikasi 3 seksi + KPI cards.
 
-**Phase 36 selesai** — semua A13-232..253 tertutup (A13-244/246/248 sudah ada sebelumnya; A13-248 intentionally not implemented).
+**Phase 36 selesai** — semua A13-232..253 tertutup. tsc 0 error.
 
 ---
 
