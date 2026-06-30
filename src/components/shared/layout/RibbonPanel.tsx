@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom'
 import { useTabStore } from '@/stores/useTabStore'
 import { usePermission } from '@/hooks/usePermission'
 import { useToast } from '@/hooks/useToast'
@@ -48,7 +47,6 @@ function RibbonItemButton({
 }
 
 export function RibbonPanel() {
-  const navigate = useNavigate()
   const {
     activeModule,
     activePrimaryTabId,
@@ -85,7 +83,6 @@ export function RibbonPanel() {
       return
     }
 
-    navigate(item.path)
     closeRibbon()
   }
 

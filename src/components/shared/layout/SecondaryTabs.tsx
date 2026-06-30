@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { useTabStore } from '@/stores/useTabStore'
 import { cn } from '@/lib/utils'
@@ -8,7 +7,6 @@ interface SecondaryTabsProps {
 }
 
 export function SecondaryTabs({ top }: SecondaryTabsProps) {
-  const navigate = useNavigate()
   const {
     primaryTabs,
     activePrimaryTabId,
@@ -26,25 +24,12 @@ export function SecondaryTabs({ top }: SecondaryTabsProps) {
   const tabs = secondaryTabs[primaryTabId] ?? []
   const activeId = activeSecondaryTabId[primaryTabId]
 
-  function activateTab(tabId: string, path: string) {
+  function activateTab(tabId: string) {
     setActiveSecondaryTab(primaryTabId, tabId)
-    navigate(path)
   }
 
   function closeTab(tabId: string) {
-    const closingIndex = tabs.findIndex((tab) => tab.id === tabId)
-    const nextTabs = tabs.filter((tab) => tab.id !== tabId)
-    const fallbackTab =
-      nextTabs[Math.max(closingIndex - 1, 0)] ??
-      nextTabs.find((tab) => tab.pinned) ??
-      nextTabs[0]
-    const shouldNavigate = activeId === tabId
-
     closeSecondaryTab(primaryTabId, tabId)
-
-    if (shouldNavigate && fallbackTab) {
-      navigate(fallbackTab.path)
-    }
   }
 
   return (
@@ -60,11 +45,11 @@ export function SecondaryTabs({ top }: SecondaryTabsProps) {
             role="tab"
             tabIndex={0}
             aria-selected={isActive}
-            onClick={() => activateTab(tab.id, tab.path)}
+            onClick={() => activateTab(tab.id)}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault()
-                activateTab(tab.id, tab.path)
+                activateTab(tab.id)
               }
             }}
             className={cn(

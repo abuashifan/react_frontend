@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { useTabStore } from '@/stores/useTabStore'
 import { cn } from '@/lib/utils'
@@ -8,46 +7,21 @@ interface PrimaryTabsProps {
 }
 
 export function PrimaryTabs({ top }: PrimaryTabsProps) {
-  const navigate = useNavigate()
   const {
     primaryTabs,
     activePrimaryTabId,
-    secondaryTabs,
-    activeSecondaryTabId,
     setActivePrimaryTab,
     closePrimaryTab,
   } = useTabStore()
 
   if (primaryTabs.length === 0) return null
 
-  function pathForPrimaryTab(tabId: string): string {
-    if (tabId === 'dashboard') return '/'
-
-    const tab = primaryTabs.find((primaryTab) => primaryTab.id === tabId)
-    const activeSecondaryId = activeSecondaryTabId[tabId]
-    const activeSecondary = (secondaryTabs[tabId] ?? []).find(
-      (secondaryTab) => secondaryTab.id === activeSecondaryId,
-    )
-
-    return activeSecondary?.path ?? tab?.path ?? '/'
-  }
-
   function activateTab(tabId: string) {
     setActivePrimaryTab(tabId)
-    navigate(pathForPrimaryTab(tabId))
   }
 
   function closeTab(tabId: string) {
-    const closingIndex = primaryTabs.findIndex((tab) => tab.id === tabId)
-    const nextTabs = primaryTabs.filter((tab) => tab.id !== tabId)
-    const fallbackTab = nextTabs[Math.max(closingIndex - 1, 0)] ?? nextTabs[0]
-    const shouldNavigate = activePrimaryTabId === tabId
-
     closePrimaryTab(tabId)
-
-    if (shouldNavigate) {
-      navigate(fallbackTab ? pathForPrimaryTab(fallbackTab.id) : '/')
-    }
   }
 
   return (

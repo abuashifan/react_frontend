@@ -1,6 +1,6 @@
 # gap-12-budget-module.md — Budget Module Design
 
-**Status**: Design  
+**Status**: Selesai  
 **Dibuat**: 2026-06-29  
 **Referensi phase**: `prompt/prompt-phase-40-budget-backend.md`, `prompt/prompt-phase-41-budget-frontend.md`
 

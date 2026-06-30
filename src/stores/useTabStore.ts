@@ -60,6 +60,7 @@ interface TabActions {
   clearFormState: (primaryTabId: string, secondaryTabId: string) => void
   getActivePrimaryTab: () => PrimaryTab | undefined
   getActiveSecondaryTab: (primaryTabId?: string) => SecondaryTab | undefined
+  getActiveContentPath: () => string
 }
 
 const MAX_PRIMARY_TABS = 10
@@ -271,6 +272,15 @@ export const useTabStore = create<TabState & TabActions>()(
         const tabs = secondaryTabs[resolvedPrimaryId] ?? []
         const activeId = activeSecondaryTabId[resolvedPrimaryId]
         return tabs.find((tab) => tab.id === activeId)
+      },
+
+      getActiveContentPath: () => {
+        const { activePrimaryTabId, primaryTabs, secondaryTabs, activeSecondaryTabId } = get()
+        if (!activePrimaryTabId || activePrimaryTabId === 'dashboard') return '/'
+        const activeSecId = activeSecondaryTabId[activePrimaryTabId]
+        const activeSec = (secondaryTabs[activePrimaryTabId] ?? []).find((t) => t.id === activeSecId)
+        const activePrimary = primaryTabs.find((t) => t.id === activePrimaryTabId)
+        return activeSec?.path ?? activePrimary?.path ?? '/'
       },
     }),
     {
