@@ -26,6 +26,13 @@ import type {
   DepositReconciliationLine,
   AccountLedgerReport,
   AccountLedgerLine,
+  AccountStatementReport,
+  AccountStatementLine,
+  CashBankAccount,
+  FaRegisterReport,
+  FaDepreciationReport,
+  FaDisposalsReport,
+  FaReconciliationReport,
 } from '../types/reports.types'
 import { adaptApiResponse, adaptApAgingResponse, adaptReconciliationReport } from '@/modules/purchase/services/apAdapters'
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -406,6 +413,44 @@ function adaptAlertRows(raw: Raw): LowStockReportLine[] {
   }))
 }
 
+function adaptAccountStatement(raw: Raw): AccountStatementReport {
+  const account = asRecord(raw.account)
+  const filter = asRecord(raw.filter)
+  const period = asRecord(raw.period_totals)
+  const lines: AccountStatementLine[] = asArray(raw.lines).map((l) => ({
+    journal_entry_id: num(l.journal_entry_id),
+    journal_entry_line_id: num(l.journal_entry_line_id),
+    journal_number: str(l.journal_number),
+    journal_date: str(l.journal_date),
+    description: l.description == null ? null : str(l.description),
+    debit: num(l.debit),
+    credit: num(l.credit),
+    running_balance: num(l.running_balance),
+    source_type: l.source_type == null ? null : str(l.source_type),
+    source_number: l.source_number == null ? null : str(l.source_number),
+    source_module: l.source_module == null ? null : str(l.source_module),
+  }))
+  return {
+    account: {
+      id: num(account.id),
+      account_code: str(account.account_code),
+      account_name: str(account.account_name),
+      account_type: str(account.account_type),
+      normal_balance: str(account.normal_balance),
+      is_active: Boolean(account.is_active),
+    },
+    filter: {
+      cash_bank_account_id: num(filter.cash_bank_account_id),
+      start_date: filter.start_date == null ? null : str(filter.start_date),
+      end_date: filter.end_date == null ? null : str(filter.end_date),
+    },
+    opening_balance: num(raw.opening_balance),
+    period_totals: { debit: num(period.debit), credit: num(period.credit) },
+    ending_balance: num(raw.ending_balance),
+    lines,
+  }
+}
+
 function adaptResponse<T>(res: ApiResponse<unknown>, adapt: (raw: Raw) => T): ApiResponse<T> {
   return { ...res, data: adapt(asRecord(res.data)) }
 }
@@ -515,4 +560,130 @@ export const reportsApi = {
   accountLedger: (accountId: number, params: ReportParams) =>
     getRawApiResponse(`/reports/account-ledger/${accountId}`, params)
       .then((res) => adaptResponse(res, adaptAccountLedger)),
+
+  cashBankAccounts: () =>
+    http.get<unknown, ApiResponse<{ accounts: CashBankAccount[] }>>('/cash-bank/accounts'),
+
+  cashBankStatement: (params: { cash_bank_account_id: number; start_date?: string; end_date?: string }) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/cash-bank/reports/account-statement', { params })
+      .then((res) => adaptResponse(res, adaptAccountStatement)),
+
+  faRegister: (params: { as_of_period: string }) =>
+    http
+      .get<unknown, ApiResponse<unknown[]>>('/fixed-assets/reports/register', { params })
+      .then((res): ApiResponse<FaRegisterReport> => ({
+        ...res,
+        data: Array.isArray(res.data) ? res.data.map((r) => {
+          const row = asRecord(r as unknown)
+          return {
+            asset_number: str(row.asset_number),
+            asset_name: str(row.asset_name),
+            category: row.category == null ? null : str(row.category),
+            asset_class: row.asset_class == null ? null : str(row.asset_class),
+            acquisition_date: row.acquisition_date == null ? null : str(row.acquisition_date),
+            service_start_date: row.service_start_date == null ? null : str(row.service_start_date),
+            useful_life_years: row.useful_life_years == null ? null : num(row.useful_life_years),
+            acquisition_cost: num(row.acquisition_cost),
+            depreciation_period_total: num(row.depreciation_period_total),
+            depreciation_current_year: num(row.depreciation_current_year),
+            accumulated_depreciation_until_period: num(row.accumulated_depreciation_until_period),
+            net_book_value_as_of_period: num(row.net_book_value_as_of_period),
+            quantity: num(row.quantity),
+            remaining_quantity: num(row.remaining_quantity),
+            status: str(row.status),
+            department: row.department == null ? null : str(row.department),
+            project: row.project == null ? null : str(row.project),
+            period_cutoff: str(row.period_cutoff),
+          }
+        }) : [],
+      })),
+
+  faDepreciation: (params: { period_from?: string; period_to: string; mode?: 'detail' | 'yearly_summary' }) =>
+    http
+      .get<unknown, ApiResponse<unknown[]>>('/fixed-assets/reports/depreciation', { params })
+      .then((res): ApiResponse<FaDepreciationReport> => {
+        const mode = params.mode ?? 'detail'
+        const rows = Array.isArray(res.data) ? res.data.map(asRecord) : []
+        if (mode === 'yearly_summary') {
+          return {
+            ...res,
+            data: {
+              mode: 'yearly_summary',
+              lines: rows.map((r) => ({
+                year: str(r.year),
+                asset_number: r.asset_number == null ? null : str(r.asset_number),
+                asset_name: r.asset_name == null ? null : str(r.asset_name),
+                depreciation_year_total: num(r.depreciation_year_total),
+                accumulated_depreciation_end_of_year: num(r.accumulated_depreciation_end_of_year),
+                net_book_value_end_of_year: num(r.net_book_value_end_of_year),
+              })),
+            },
+          }
+        }
+        return {
+          ...res,
+          data: {
+            mode: 'detail',
+            lines: rows.map((r) => ({
+              period: str(r.period),
+              asset_number: r.asset_number == null ? null : str(r.asset_number),
+              asset_name: r.asset_name == null ? null : str(r.asset_name),
+              category: r.category == null ? null : str(r.category),
+              depreciation_amount: num(r.depreciation_amount),
+              accumulated_depreciation_after: num(r.accumulated_depreciation_after),
+              net_book_value_after: num(r.net_book_value_after),
+              journal_entry_id: r.journal_entry_id == null ? null : num(r.journal_entry_id),
+              status: str(r.status),
+            })),
+          },
+        }
+      }),
+
+  faDisposals: (params: { disposal_date_from?: string; disposal_date_to?: string }) =>
+    http
+      .get<unknown, ApiResponse<unknown[]>>('/fixed-assets/reports/disposals', { params })
+      .then((res): ApiResponse<FaDisposalsReport> => ({
+        ...res,
+        data: Array.isArray(res.data) ? res.data.map((r) => {
+          const row = asRecord(r as unknown)
+          const asset = row.asset == null ? null : asRecord(row.asset)
+          return {
+            id: num(row.id),
+            disposal_date: str(row.disposal_date),
+            disposal_type: str(row.disposal_type),
+            disposal_reason: row.disposal_reason == null ? null : str(row.disposal_reason),
+            sale_price: row.sale_price == null ? null : num(row.sale_price),
+            book_value_at_disposal: row.book_value_at_disposal == null ? null : num(row.book_value_at_disposal),
+            gain_loss: row.gain_loss == null ? null : num(row.gain_loss),
+            status: str(row.status),
+            asset: asset == null ? null : {
+              asset_number: str(asset.asset_number),
+              name: str(asset.name),
+              acquisition_cost: asset.acquisition_cost == null ? null : num(asset.acquisition_cost),
+            },
+          }
+        }) : [],
+      })),
+
+  faReconciliation: (params: { as_of_period: string }) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/fixed-assets/reports/reconciliation', { params })
+      .then((res): ApiResponse<FaReconciliationReport> => {
+        const raw = asRecord(res.data)
+        return {
+          ...res,
+          data: {
+            period: str(raw.period),
+            asset_register_cost_total: num(raw.asset_register_cost_total),
+            asset_register_accumulated_depreciation: num(raw.asset_register_accumulated_depreciation),
+            asset_register_net_book_value: num(raw.asset_register_net_book_value),
+            gl_fixed_asset_cost_balance: num(raw.gl_fixed_asset_cost_balance),
+            gl_accumulated_depreciation_balance: num(raw.gl_accumulated_depreciation_balance),
+            gl_net_book_value: num(raw.gl_net_book_value),
+            difference_cost: num(raw.difference_cost),
+            difference_accumulated_depreciation: num(raw.difference_accumulated_depreciation),
+          },
+        }
+      }),
 }

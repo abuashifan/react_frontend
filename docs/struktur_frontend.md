@@ -605,7 +605,10 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____reports/
 | | | |____components/
 | | | | |____ReportCompactBar.tsx
+| | | | |____ReportDomainPanel.tsx
 | | | | |____ReportFilterParameter.tsx
+| | | |____constants/
+| | | | |____reportCategories.ts
 | | | |____pages/
 | | | | |____ApAgingReportPage.tsx
 | | | | |____ArAgingReportPage.tsx
@@ -617,6 +620,12 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____InventoryAnalysisPage.tsx
 | | | | |____ProfitLossPage.tsx
 | | | | |____ReconciliationPage.tsx
+| | | | |____CashBankStatementPage.tsx
+| | | | |____FixedAssetDepreciationReportPage.tsx
+| | | | |____FixedAssetDisposalsReportPage.tsx
+| | | | |____FixedAssetReconciliationReportPage.tsx
+| | | | |____FixedAssetRegisterReportPage.tsx
+| | | | |____ReportCategoryPage.tsx
 | | | | |____ReportIndexPage.tsx
 | | | | |____StockReportPage.tsx
 | | | | |____TrialBalancePage.tsx

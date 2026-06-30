@@ -396,6 +396,119 @@ export interface AccountLedgerReport {
   truncated: boolean
 }
 
+// Cash Bank Statement — /cash-bank/reports/account-statement
+export interface CashBankAccount {
+  id: number
+  account_code: string
+  account_name: string
+  account_type: string
+  normal_balance: string
+  is_active: boolean
+}
+
+export interface AccountStatementLine {
+  journal_entry_id: number
+  journal_entry_line_id: number
+  journal_number: string
+  journal_date: string
+  description: string | null
+  debit: number
+  credit: number
+  running_balance: number
+  source_type: string | null
+  source_number: string | null
+  source_module: string | null
+}
+
+export interface AccountStatementReport {
+  account: CashBankAccount
+  filter: { cash_bank_account_id: number; start_date: string | null; end_date: string | null }
+  opening_balance: number
+  period_totals: { debit: number; credit: number }
+  ending_balance: number
+  lines: AccountStatementLine[]
+}
+
+// Fixed Asset Reports — /fixed-assets/reports/*
+
+export interface FaRegisterLine {
+  asset_number: string
+  asset_name: string
+  category: string | null
+  asset_class: string | null
+  acquisition_date: string | null
+  service_start_date: string | null
+  useful_life_years: number | null
+  acquisition_cost: number
+  depreciation_period_total: number
+  depreciation_current_year: number
+  accumulated_depreciation_until_period: number
+  net_book_value_as_of_period: number
+  quantity: number
+  remaining_quantity: number
+  status: string
+  department: string | null
+  project: string | null
+  period_cutoff: string
+}
+
+export type FaRegisterReport = FaRegisterLine[]
+
+export interface FaDepreciationDetailLine {
+  period: string
+  asset_number: string | null
+  asset_name: string | null
+  category: string | null
+  depreciation_amount: number
+  accumulated_depreciation_after: number
+  net_book_value_after: number
+  journal_entry_id: number | null
+  status: string
+}
+
+export interface FaDepreciationYearlySummaryLine {
+  year: string
+  asset_number: string | null
+  asset_name: string | null
+  depreciation_year_total: number
+  accumulated_depreciation_end_of_year: number
+  net_book_value_end_of_year: number
+}
+
+export type FaDepreciationReport =
+  | { mode: 'detail'; lines: FaDepreciationDetailLine[] }
+  | { mode: 'yearly_summary'; lines: FaDepreciationYearlySummaryLine[] }
+
+export interface FaDisposalLine {
+  id: number
+  disposal_date: string
+  disposal_type: string
+  disposal_reason: string | null
+  sale_price: number | null
+  book_value_at_disposal: number | null
+  gain_loss: number | null
+  status: string
+  asset: {
+    asset_number: string
+    name: string
+    acquisition_cost: number | null
+  } | null
+}
+
+export type FaDisposalsReport = FaDisposalLine[]
+
+export interface FaReconciliationReport {
+  period: string
+  asset_register_cost_total: number
+  asset_register_accumulated_depreciation: number
+  asset_register_net_book_value: number
+  gl_fixed_asset_cost_balance: number
+  gl_accumulated_depreciation_balance: number
+  gl_net_book_value: number
+  difference_cost: number
+  difference_accumulated_depreciation: number
+}
+
 // NOTE: Transaction list report (/reports/transactions) dan export PDF/Excel
 // (/reports/{type}/export/*) TIDAK punya route backend (Audit-12 A12-15).
 // Endpoint & UI-nya sengaja dihapus, bukan dibiarkan memanggil 404.
