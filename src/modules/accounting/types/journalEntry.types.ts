@@ -30,6 +30,14 @@ export interface JournalEntry {
   updated_at: string
 }
 
+export interface BudgetWarning {
+  account_id: number
+  budget_amount: number
+  actual_amount: number
+  new_total: number
+  overage: number
+}
+
 export interface JournalEntryListParams {
   page: number
   per_page: number

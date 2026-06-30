@@ -19,6 +19,7 @@ import { coaApi } from '@/modules/master-data/services/coaApi'
 import { useJournalEntry, useJournalEntryMutations } from '../hooks/useJournalEntryList'
 import { journalEntrySchema, type JournalEntryFormValues } from '../schemas/journalEntrySchema'
 import type { DocumentStatus, SelectOption } from '@/types/common.types'
+import type { BudgetWarning } from '../types/journalEntry.types'
 
 interface EditableLine {
   account_id: number | null
@@ -94,7 +95,16 @@ export default function JournalFormPage() {
   const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); toast.success('Jurnal di-approve.') } catch (error) { toast.error(getApiErrorMessage(error, 'Gagal approve.')) } }
   const handlePost = async () => {
     if (!isBalanced) { toast.error('Total debit harus sama dengan total kredit.'); return }
-    try { await post.mutateAsync(Number(id)); toast.success('Jurnal berhasil diposting.') } catch (error) { toast.error(getApiErrorMessage(error, 'Gagal posting jurnal.')) }
+    try {
+      const res = await post.mutateAsync(Number(id))
+      toast.success('Jurnal berhasil diposting.')
+      const warnings = (res.meta?.warnings ?? []) as BudgetWarning[]
+      warnings.forEach((w) => {
+        toast.warning(
+          `Anggaran terlampaui: akun #${w.account_id} — realisasi ${formatCurrency(w.new_total)} dari anggaran ${formatCurrency(w.budget_amount)} (lebih ${formatCurrency(w.overage)})`,
+        )
+      })
+    } catch (error) { toast.error(getApiErrorMessage(error, 'Gagal posting jurnal.')) }
   }
   const handleVoid = async (reason: string) => {
     try {
