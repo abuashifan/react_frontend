@@ -15,6 +15,7 @@ export interface ReportParams extends DateRangeParams {
   project_id?: number
   warehouse_id?: number
   customer_id?: number
+  vendor_id?: number
   product_id?: number
   group_by?: 'day' | 'month'
   include_zero_balance?: boolean
@@ -623,6 +624,48 @@ export interface SalesByProductRow {
 
 export interface SalesByProductReport {
   rows: SalesByProductRow[]
+  totals: { qty: number; subtotal: number; total: number }
+}
+
+// Purchase Aggregation Reports — /reports/purchase/{summary,by-vendor,by-product}
+export interface PurchaseSummaryRow {
+  period: string
+  bill_count: number
+  subtotal: number
+  tax: number
+  total: number
+}
+
+export interface PurchaseSummaryReport {
+  rows: PurchaseSummaryRow[]
+  totals: { bill_count: number; subtotal: number; tax: number; total: number }
+}
+
+export interface PurchaseByVendorRow {
+  vendor_id: number
+  vendor_name: string
+  bill_count: number
+  subtotal: number
+  tax: number
+  total: number
+}
+
+export interface PurchaseByVendorReport {
+  rows: PurchaseByVendorRow[]
+  totals: { bill_count: number; subtotal: number; tax: number; total: number }
+}
+
+export interface PurchaseByProductRow {
+  product_id: number
+  product_code: string
+  product_name: string
+  qty: number
+  subtotal: number
+  total: number
+}
+
+export interface PurchaseByProductReport {
+  rows: PurchaseByProductRow[]
   totals: { qty: number; subtotal: number; total: number }
 }
 

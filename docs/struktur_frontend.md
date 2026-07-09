@@ -632,6 +632,9 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____SalesByCustomerReportPage.tsx
 | | | | |____SalesByProductReportPage.tsx
 | | | | |____SalesSummaryReportPage.tsx
+| | | | |____PurchaseByProductReportPage.tsx
+| | | | |____PurchaseByVendorReportPage.tsx
+| | | | |____PurchaseSummaryReportPage.tsx
 | | | | |____ReportCategoryPage.tsx
 | | | | |____ReportIndexPage.tsx
 | | | | |____StockReportPage.tsx

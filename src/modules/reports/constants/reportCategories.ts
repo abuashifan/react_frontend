@@ -52,8 +52,9 @@ export const REPORT_DOMAINS: ReportDomain[] = [
     label: 'Pembelian',
     categoryPath: 'purchase',
     reports: [
-      { id: 'purchase-summary', title: 'Ringkasan Pembelian', description: 'Rekap pembelian per periode', path: '/reports/purchase/summary', comingSoon: true },
-      { id: 'purchase-by-vendor', title: 'Pembelian per Supplier', description: 'Breakdown pembelian per supplier', path: '/reports/purchase/by-vendor', comingSoon: true },
+      { id: 'purchase-summary', title: 'Ringkasan Pembelian', description: 'Rekap total tagihan & belanja per periode (agregasi)', path: '/reports/purchase/summary' },
+      { id: 'purchase-by-vendor', title: 'Pembelian per Supplier', description: 'Belanja per supplier urut terbesar', path: '/reports/purchase/by-vendor' },
+      { id: 'purchase-by-product', title: 'Pembelian per Barang', description: 'Kuantitas & belanja per produk', path: '/reports/purchase/by-product' },
     ],
   },
   {
