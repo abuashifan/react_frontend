@@ -14,6 +14,9 @@ export interface ReportParams extends DateRangeParams {
   department_id?: number
   project_id?: number
   warehouse_id?: number
+  customer_id?: number
+  product_id?: number
+  group_by?: 'day' | 'month'
   include_zero_balance?: boolean
   only_difference?: boolean
   page?: number
@@ -579,6 +582,48 @@ export interface ApVendorSummaryRow {
 export interface ApVendorSummaryReport {
   rows: ApVendorSummaryRow[]
   totals: { balance: number; net_vendor_exposure: number }
+}
+
+// Sales Aggregation Reports — /reports/sales/{summary,by-customer,by-product}
+export interface SalesSummaryRow {
+  period: string
+  invoice_count: number
+  subtotal: number
+  tax: number
+  total: number
+}
+
+export interface SalesSummaryReport {
+  rows: SalesSummaryRow[]
+  totals: { invoice_count: number; subtotal: number; tax: number; total: number }
+}
+
+export interface SalesByCustomerRow {
+  customer_id: number
+  customer_name: string
+  invoice_count: number
+  subtotal: number
+  tax: number
+  total: number
+}
+
+export interface SalesByCustomerReport {
+  rows: SalesByCustomerRow[]
+  totals: { invoice_count: number; subtotal: number; tax: number; total: number }
+}
+
+export interface SalesByProductRow {
+  product_id: number
+  product_code: string
+  product_name: string
+  qty: number
+  subtotal: number
+  total: number
+}
+
+export interface SalesByProductReport {
+  rows: SalesByProductRow[]
+  totals: { qty: number; subtotal: number; total: number }
 }
 
 // NOTE: Transaction list report (/reports/transactions) dan export PDF/Excel

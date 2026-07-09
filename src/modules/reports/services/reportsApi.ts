@@ -3,6 +3,12 @@ import { http } from '@/services/http'
 import type { ApiResponse } from '@/types/api.types'
 import type {
   ReportParams,
+  SalesSummaryReport,
+  SalesSummaryRow,
+  SalesByCustomerReport,
+  SalesByCustomerRow,
+  SalesByProductReport,
+  SalesByProductRow,
   GeneralLedgerReport,
   TrialBalanceReport,
   TrialBalanceAccount,
@@ -761,6 +767,74 @@ export const reportsApi = {
           { balance: 0, net_customer_exposure: 0 },
         )
         return { ...res, data: { rows, totals } }
+      }),
+
+  salesSummary: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/sales/summary', { params })
+      .then((res): ApiResponse<SalesSummaryReport> => {
+        const raw = asRecord(res.data)
+        const rows: SalesSummaryRow[] = asArray(raw.rows).map((r) => ({
+          period: str(r.period),
+          invoice_count: num(r.invoice_count),
+          subtotal: num(r.subtotal),
+          tax: num(r.tax),
+          total: num(r.total),
+        }))
+        const t = asRecord(raw.totals)
+        return {
+          ...res,
+          data: {
+            rows,
+            totals: { invoice_count: num(t.invoice_count), subtotal: num(t.subtotal), tax: num(t.tax), total: num(t.total) },
+          },
+        }
+      }),
+
+  salesByCustomer: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/sales/by-customer', { params })
+      .then((res): ApiResponse<SalesByCustomerReport> => {
+        const raw = asRecord(res.data)
+        const rows: SalesByCustomerRow[] = asArray(raw.rows).map((r) => ({
+          customer_id: num(r.customer_id),
+          customer_name: str(r.customer_name),
+          invoice_count: num(r.invoice_count),
+          subtotal: num(r.subtotal),
+          tax: num(r.tax),
+          total: num(r.total),
+        }))
+        const t = asRecord(raw.totals)
+        return {
+          ...res,
+          data: {
+            rows,
+            totals: { invoice_count: num(t.invoice_count), subtotal: num(t.subtotal), tax: num(t.tax), total: num(t.total) },
+          },
+        }
+      }),
+
+  salesByProduct: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/sales/by-product', { params })
+      .then((res): ApiResponse<SalesByProductReport> => {
+        const raw = asRecord(res.data)
+        const rows: SalesByProductRow[] = asArray(raw.rows).map((r) => ({
+          product_id: num(r.product_id),
+          product_code: str(r.product_code),
+          product_name: str(r.product_name),
+          qty: num(r.qty),
+          subtotal: num(r.subtotal),
+          total: num(r.total),
+        }))
+        const t = asRecord(raw.totals)
+        return {
+          ...res,
+          data: {
+            rows,
+            totals: { qty: num(t.qty), subtotal: num(t.subtotal), total: num(t.total) },
+          },
+        }
       }),
 
   apVendorSummary: (params: { as_of_date?: string }) =>

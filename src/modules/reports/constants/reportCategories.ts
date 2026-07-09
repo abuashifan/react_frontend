@@ -42,8 +42,9 @@ export const REPORT_DOMAINS: ReportDomain[] = [
     label: 'Penjualan',
     categoryPath: 'sales',
     reports: [
-      { id: 'sales-summary', title: 'Ringkasan Penjualan', description: 'Rekap penjualan per periode', path: '/reports/sales/summary', comingSoon: true },
-      { id: 'sales-by-customer', title: 'Penjualan per Pelanggan', description: 'Breakdown penjualan per pelanggan', path: '/reports/sales/by-customer', comingSoon: true },
+      { id: 'sales-summary', title: 'Ringkasan Penjualan', description: 'Rekap total faktur & omset per periode (agregasi)', path: '/reports/sales/summary' },
+      { id: 'sales-by-customer', title: 'Penjualan per Pelanggan', description: 'Omset per pelanggan urut terbesar', path: '/reports/sales/by-customer' },
+      { id: 'sales-by-product', title: 'Penjualan per Barang', description: 'Kuantitas & omset per produk', path: '/reports/sales/by-product' },
     ],
   },
   {
