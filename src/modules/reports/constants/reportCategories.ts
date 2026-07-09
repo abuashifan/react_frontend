@@ -74,7 +74,9 @@ export const REPORT_DOMAINS: ReportDomain[] = [
     id: 'reconciliation',
     label: 'Rekonsiliasi',
     categoryPath: 'reconciliation',
-    reports: [],
+    reports: [
+      { id: 'reconciliation-all', title: 'Rekonsiliasi', description: 'AR · AP · Persediaan · GRNI · Deposit', path: '/reports/reconciliation' },
+    ],
   },
   {
     id: 'inventory',

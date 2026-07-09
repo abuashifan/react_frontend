@@ -39,7 +39,7 @@ export default function CashBankStatementPage() {
           (a.account_name.toLowerCase().includes(q.toLowerCase()) ||
             a.account_code.toLowerCase().includes(q.toLowerCase())),
       )
-      return Promise.resolve(filtered.map((a) => ({ id: a.id, label: `${a.account_code} — ${a.account_name}` })))
+      return Promise.resolve(filtered.map((a) => ({ value: a.id, id: a.id, label: `${a.account_code} — ${a.account_name}` })))
     },
     [accounts],
   )

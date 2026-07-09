@@ -5,7 +5,7 @@ import {
   Banknote, RotateCcw, BookOpen, ClipboardList, Package, PackageCheck,
   FileText, CreditCard, BarChart3, ArrowLeftRight, SlidersHorizontal,
   ClipboardCheck, Calendar, CalendarDays, TrendingUp, TrendingDown,
-  CheckSquare, BookMarked, Scale, LayoutGrid, Droplets, Clock,
+  CheckSquare, BookMarked, Clock,
   Landmark, Users, Ruler, Warehouse, CalendarClock, Building2,
   FolderKanban, Map, Building, RefreshCcw, UserCog, ShieldCheck, Star,
   Mail, Shield, Archive,
