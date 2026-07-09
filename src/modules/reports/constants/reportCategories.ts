@@ -34,6 +34,7 @@ export const REPORT_DOMAINS: ReportDomain[] = [
       { id: 'general-ledger', title: 'Buku Besar', description: 'Riwayat transaksi per akun dengan saldo berjalan', path: '/reports/general-ledger' },
       { id: 'trial-balance', title: 'Neraca Saldo', description: 'Saldo debit & kredit semua akun per periode', path: '/reports/trial-balance' },
       { id: 'account-ledger', title: 'Buku Besar per Akun', description: 'Detail mutasi per akun COA', path: '/reports/account-ledger' },
+      { id: 'all-journals', title: 'Semua Jurnal', description: 'Daftar semua jurnal per periode', path: '/reports/all-journals', comingSoon: true },
     ],
   },
   {
