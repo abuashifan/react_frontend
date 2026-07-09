@@ -509,6 +509,78 @@ export interface FaReconciliationReport {
   difference_accumulated_depreciation: number
 }
 
+// AR Outstanding — /sales/ar/open-invoices
+export interface ArOutstandingRow {
+  invoice_id: number
+  invoice_number: string
+  invoice_date: string | null
+  due_date: string | null
+  customer_id: number
+  customer_name: string
+  grand_total: number
+  paid_amount: number
+  returned_amount: number
+  balance_due: number
+  status: string
+}
+
+export interface ArOutstandingReport {
+  rows: ArOutstandingRow[]
+  totals: { grand_total: number; paid_amount: number; balance_due: number }
+}
+
+// AP Outstanding — /purchase/ap/open-bills
+export interface ApOutstandingRow {
+  bill_id: number
+  bill_number: string
+  bill_date: string | null
+  due_date: string | null
+  vendor_id: number
+  vendor_name: string
+  grand_total: number
+  paid_amount: number
+  returned_amount: number
+  balance_due: number
+  status: string
+}
+
+export interface ApOutstandingReport {
+  rows: ApOutstandingRow[]
+  totals: { grand_total: number; paid_amount: number; balance_due: number }
+}
+
+// AR Customer Summary — /sales/ar/customer-summary
+export interface ArCustomerSummaryRow {
+  customer_id: number
+  customer_name: string
+  debit: number
+  credit: number
+  balance: number
+  unapplied_deposit_total: number
+  net_customer_exposure: number
+}
+
+export interface ArCustomerSummaryReport {
+  rows: ArCustomerSummaryRow[]
+  totals: { balance: number; net_customer_exposure: number }
+}
+
+// AP Vendor Summary — /purchase/ap/vendor-summary
+export interface ApVendorSummaryRow {
+  vendor_id: number
+  vendor_name: string
+  debit: number
+  credit: number
+  balance: number
+  unapplied_deposit_total: number
+  net_vendor_exposure: number
+}
+
+export interface ApVendorSummaryReport {
+  rows: ApVendorSummaryRow[]
+  totals: { balance: number; net_vendor_exposure: number }
+}
+
 // NOTE: Transaction list report (/reports/transactions) dan export PDF/Excel
 // (/reports/{type}/export/*) TIDAK punya route backend (Audit-12 A12-15).
 // Endpoint & UI-nya sengaja dihapus, bukan dibiarkan memanggil 404.

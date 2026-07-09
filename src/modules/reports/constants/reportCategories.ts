@@ -61,6 +61,8 @@ export const REPORT_DOMAINS: ReportDomain[] = [
     categoryPath: 'ar',
     reports: [
       { id: 'ar-aging', title: 'AR Aging', description: 'Analisis umur piutang per pelanggan', path: '/reports/ar-aging' },
+      { id: 'ar-outstanding', title: 'Faktur Belum Lunas', description: 'Daftar faktur penjualan yang belum terbayar', path: '/reports/ar-outstanding' },
+      { id: 'ar-customer-summary', title: 'Ringkasan Pelanggan', description: 'Saldo piutang dan net exposure per pelanggan', path: '/reports/ar-customer-summary' },
     ],
   },
   {
@@ -69,6 +71,8 @@ export const REPORT_DOMAINS: ReportDomain[] = [
     categoryPath: 'ap',
     reports: [
       { id: 'ap-aging', title: 'AP Aging', description: 'Analisis umur hutang per supplier', path: '/reports/ap-aging' },
+      { id: 'ap-outstanding', title: 'Hutang Belum Lunas', description: 'Daftar tagihan supplier yang belum terbayar', path: '/reports/ap-outstanding' },
+      { id: 'ap-vendor-summary', title: 'Ringkasan Supplier', description: 'Saldo hutang dan net exposure per supplier', path: '/reports/ap-vendor-summary' },
     ],
   },
   {

@@ -33,6 +33,14 @@ import type {
   FaDepreciationReport,
   FaDisposalsReport,
   FaReconciliationReport,
+  ArOutstandingReport,
+  ArOutstandingRow,
+  ApOutstandingReport,
+  ApOutstandingRow,
+  ArCustomerSummaryReport,
+  ArCustomerSummaryRow,
+  ApVendorSummaryReport,
+  ApVendorSummaryRow,
 } from '../types/reports.types'
 import { adaptApiResponse, adaptApAgingResponse, adaptReconciliationReport } from '@/modules/purchase/services/apAdapters'
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -685,5 +693,93 @@ export const reportsApi = {
             difference_accumulated_depreciation: num(raw.difference_accumulated_depreciation),
           },
         }
+      }),
+
+  arOutstanding: (params: { customer_id?: number; as_of_date?: string }) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/sales/ar/open-invoices', { params })
+      .then((res): ApiResponse<ArOutstandingReport> => {
+        const rows: ArOutstandingRow[] = asArray(res.data).map((r) => ({
+          invoice_id: num(r.invoice_id),
+          invoice_number: str(r.invoice_number),
+          invoice_date: r.invoice_date == null ? null : str(r.invoice_date),
+          due_date: r.due_date == null ? null : str(r.due_date),
+          customer_id: num(r.customer_id),
+          customer_name: str(r.customer_name),
+          grand_total: num(r.grand_total),
+          paid_amount: num(r.paid_amount),
+          returned_amount: num(r.returned_amount),
+          balance_due: num(r.balance_due),
+          status: str(r.status),
+        }))
+        const totals = rows.reduce(
+          (acc, r) => ({ grand_total: acc.grand_total + r.grand_total, paid_amount: acc.paid_amount + r.paid_amount, balance_due: acc.balance_due + r.balance_due }),
+          { grand_total: 0, paid_amount: 0, balance_due: 0 },
+        )
+        return { ...res, data: { rows, totals } }
+      }),
+
+  apOutstanding: (params: { vendor_id?: number; as_of_date?: string }) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/purchase/ap/open-bills', { params })
+      .then((res): ApiResponse<ApOutstandingReport> => {
+        const rows: ApOutstandingRow[] = asArray(res.data).map((r) => ({
+          bill_id: num(r.bill_id),
+          bill_number: str(r.bill_number),
+          bill_date: r.bill_date == null ? null : str(r.bill_date),
+          due_date: r.due_date == null ? null : str(r.due_date),
+          vendor_id: num(r.vendor_id),
+          vendor_name: str(r.vendor_name),
+          grand_total: num(r.grand_total),
+          paid_amount: num(r.paid_amount),
+          returned_amount: num(r.returned_amount),
+          balance_due: num(r.balance_due),
+          status: str(r.status),
+        }))
+        const totals = rows.reduce(
+          (acc, r) => ({ grand_total: acc.grand_total + r.grand_total, paid_amount: acc.paid_amount + r.paid_amount, balance_due: acc.balance_due + r.balance_due }),
+          { grand_total: 0, paid_amount: 0, balance_due: 0 },
+        )
+        return { ...res, data: { rows, totals } }
+      }),
+
+  arCustomerSummary: (params: { as_of_date?: string }) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/sales/ar/customer-summary', { params })
+      .then((res): ApiResponse<ArCustomerSummaryReport> => {
+        const rows: ArCustomerSummaryRow[] = asArray(res.data).map((r) => ({
+          customer_id: num(r.customer_id),
+          customer_name: str(r.customer_name),
+          debit: num(r.debit),
+          credit: num(r.credit),
+          balance: num(r.balance),
+          unapplied_deposit_total: num(r.unapplied_deposit_total),
+          net_customer_exposure: num(r.net_customer_exposure),
+        }))
+        const totals = rows.reduce(
+          (acc, r) => ({ balance: acc.balance + r.balance, net_customer_exposure: acc.net_customer_exposure + r.net_customer_exposure }),
+          { balance: 0, net_customer_exposure: 0 },
+        )
+        return { ...res, data: { rows, totals } }
+      }),
+
+  apVendorSummary: (params: { as_of_date?: string }) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/purchase/ap/vendor-summary', { params })
+      .then((res): ApiResponse<ApVendorSummaryReport> => {
+        const rows: ApVendorSummaryRow[] = asArray(res.data).map((r) => ({
+          vendor_id: num(r.vendor_id),
+          vendor_name: str(r.vendor_name),
+          debit: num(r.debit),
+          credit: num(r.credit),
+          balance: num(r.balance),
+          unapplied_deposit_total: num(r.unapplied_deposit_total),
+          net_vendor_exposure: num(r.net_vendor_exposure),
+        }))
+        const totals = rows.reduce(
+          (acc, r) => ({ balance: acc.balance + r.balance, net_vendor_exposure: acc.net_vendor_exposure + r.net_vendor_exposure }),
+          { balance: 0, net_vendor_exposure: 0 },
+        )
+        return { ...res, data: { rows, totals } }
       }),
 }

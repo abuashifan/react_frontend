@@ -611,7 +611,11 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____reportCategories.ts
 | | | |____pages/
 | | | | |____ApAgingReportPage.tsx
+| | | | |____ApOutstandingReportPage.tsx
+| | | | |____ApVendorSummaryPage.tsx
 | | | | |____ArAgingReportPage.tsx
+| | | | |____ArCustomerSummaryPage.tsx
+| | | | |____ArOutstandingReportPage.tsx
 | | | | |____AccountLedgerPage.tsx
 | | | | |____BalanceSheetPage.tsx
 | | | | |____CashFlowPage.tsx
