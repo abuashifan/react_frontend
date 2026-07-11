@@ -215,10 +215,13 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 ### 6C. Build Status
 
 ```
-Terakhir dicek  : 2026-06-21 (Audit-13 Period-End, perubahan dokumen saja)
+Terakhir dicek  : 2026-07-11 (reports-expansion Fase 6 lint cleanup)
 npm run build   : ✅ 0 error
-npm run lint    : ✅ 0 error; 35 warning RHF watch/useMemo legacy
-                  di file-file yang tidak diubah pada audit ini
+npm run lint    : ✅ 0 error, 0 warning
+                  - exhaustive-deps: nilai turunan `?? []` dibungkus useMemo (23 file list/report)
+                  - no-unused-vars: ignoreRestSiblings + pola `^_` (pola omit field)
+                  - set-state-in-effect PeriodEndPage → pola render-phase adjust-state
+                  - react-hooks/incompatible-library dimatikan (inheren RHF watch, bukan bug)
 Playwright      : ✅ Chromium headless; Period-End live + route-mock pada 1440×900,
                   1180×708, 1024×656, dan 390×844; POST run/reopen diintersep
 ```

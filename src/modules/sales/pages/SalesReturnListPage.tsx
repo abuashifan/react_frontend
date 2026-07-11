@@ -40,7 +40,7 @@ export default function SalesReturnListPage() {
     customer_id: filterCustomer ?? undefined,
   })
 
-  const rows = data?.data ?? []
+  const rows = useMemo(() => data?.data ?? [], [data])
   const visibleRows = useMemo(
     () =>
       rows.filter((salesReturn) => {

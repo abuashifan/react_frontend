@@ -28,7 +28,7 @@ export default function SalesSummaryReportPage() {
   })
 
   const report = data?.data
-  const allRows = report?.rows ?? []
+  const allRows = useMemo(() => report?.rows ?? [], [report])
 
   const pagedRows = useMemo(() => {
     const start = pagination.pageIndex * pagination.pageSize

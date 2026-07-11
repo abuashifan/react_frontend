@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Save } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
@@ -22,7 +22,7 @@ export default function AccountMappingPage() {
   const [selectedOptions, setSelectedOptions] = useState<Record<string, SelectOption<number>[]>>({})
   const [isSaving, setIsSaving] = useState(false)
 
-  const mappings: AccountMapping[] = data?.data ?? []
+  const mappings: AccountMapping[] = useMemo(() => data?.data ?? [], [data])
 
   useEffect(() => {
     if (mappings.length > 0) {

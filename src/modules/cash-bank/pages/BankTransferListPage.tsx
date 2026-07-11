@@ -32,7 +32,7 @@ export default function BankTransferListPage() {
   const { void: voidTransfer } = useBankTransferMutations()
 
   const { data, isLoading, isFetching } = useBankTransferList({ page: page + 1, per_page: 25 })
-  const rows = data?.data ?? []
+  const rows = useMemo(() => data?.data ?? [], [data])
   const visibleRows = useMemo(
     () =>
       rows.filter((transfer) => {

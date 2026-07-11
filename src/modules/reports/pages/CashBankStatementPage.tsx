@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
@@ -29,7 +29,7 @@ export default function CashBankStatementPage() {
     queryKey: ['cash-bank', 'accounts'],
     queryFn: () => reportsApi.cashBankAccounts(),
   })
-  const accounts: CashBankAccount[] = accountsData?.data?.accounts ?? []
+  const accounts: CashBankAccount[] = useMemo(() => accountsData?.data?.accounts ?? [], [accountsData])
 
   const searchAccounts = useCallback(
     (q: string) => {

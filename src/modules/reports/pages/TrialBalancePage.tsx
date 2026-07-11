@@ -27,7 +27,7 @@ export default function TrialBalancePage() {
     enabled: !!activeParams,
   })
   const report = data?.data
-  const allAccounts = report?.accounts ?? []
+  const allAccounts = useMemo(() => report?.accounts ?? [], [report])
   const totals = report?.totals
 
   const pagedAccounts = useMemo(() => {

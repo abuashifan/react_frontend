@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { AlertTriangle, CheckCircle2, Loader2, RotateCcw, XCircle } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ConfirmDialog } from '@/components/shared/document/ConfirmDialog'
@@ -74,6 +74,7 @@ export default function PeriodEndPage() {
   const { toast } = useToast()
   const timezone = useCompanyStore((state) => state.activeCompany?.settings?.timezone ?? 'Asia/Jakarta')
   const [period, setPeriod] = useState(() => currentPeriod(timezone))
+  const [prevTimezone, setPrevTimezone] = useState(timezone)
   const [reopenOpen, setReopenOpen] = useState(false)
   const [reopenReason, setReopenReason] = useState('')
   const [runConfirmOpen, setRunConfirmOpen] = useState(false)
@@ -86,9 +87,12 @@ export default function PeriodEndPage() {
   const checklistItems = useMemo(() => checklist?.items ?? [], [checklist?.items])
   const queryError = statusQuery.error ?? checklistQuery.error
 
-  useEffect(() => {
+  // Sinkronkan periode saat timezone perusahaan berubah. Dijalankan saat render
+  // (pola "adjust state on prop change" React) agar tidak memicu cascading render dari effect.
+  if (timezone !== prevTimezone) {
+    setPrevTimezone(timezone)
     setPeriod(currentPeriod(timezone))
-  }, [timezone])
+  }
 
   const handleRun = async () => {
     try {

@@ -40,7 +40,7 @@ export default function VendorDepositListPage() {
     vendor_id: filterVendor ?? undefined,
   })
 
-  const rows = data?.data ?? []
+  const rows = useMemo(() => data?.data ?? [], [data])
   const visibleRows = useMemo(
     () =>
       rows.filter((deposit) => {

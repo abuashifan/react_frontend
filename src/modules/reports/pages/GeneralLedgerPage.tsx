@@ -23,7 +23,7 @@ export default function GeneralLedgerPage() {
 
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['reports', 'general-ledger', activeParams], queryFn: () => reportsApi.generalLedger(activeParams!), enabled: !!activeParams })
   const report = data?.data
-  const allAccounts = report?.accounts ?? []
+  const allAccounts = useMemo(() => report?.accounts ?? [], [report])
 
   const pagedAccounts = useMemo(() => {
     const start = pagination.pageIndex * pagination.pageSize
