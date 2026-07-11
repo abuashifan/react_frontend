@@ -13,6 +13,12 @@ dist-ssr
 praproductions-docs/
 *.local
 
+# Playwright output (artefak test, bukan source)
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
 # Editor directories and files
 .claude/settings.local.json
 .vscode/*
