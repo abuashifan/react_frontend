@@ -32,9 +32,13 @@ export const REPORT_DOMAINS: ReportDomain[] = [
     categoryPath: 'gl',
     reports: [
       { id: 'general-ledger', title: 'Buku Besar', description: 'Riwayat transaksi per akun dengan saldo berjalan', path: '/reports/general-ledger' },
+      { id: 'general-ledger-detail', title: 'Buku Besar - Rincian', description: 'Baris jurnal per akun untuk semua akun sekaligus', path: '/reports/general-ledger?mode=detail' },
       { id: 'trial-balance', title: 'Neraca Saldo', description: 'Saldo debit & kredit semua akun per periode', path: '/reports/trial-balance' },
       { id: 'account-ledger', title: 'Buku Besar per Akun', description: 'Detail mutasi per akun COA', path: '/reports/account-ledger' },
-      { id: 'all-journals', title: 'Semua Jurnal', description: 'Daftar semua jurnal per periode', path: '/reports/all-journals', comingSoon: true },
+      { id: 'all-journals', title: 'Semua Jurnal', description: 'Daftar semua jurnal per periode dengan total debit & kredit', path: '/reports/journals' },
+      { id: 'journals-sales', title: 'Jurnal Penjualan', description: 'Jurnal bersumber transaksi penjualan', path: '/reports/journals?source=sales' },
+      { id: 'journals-purchase', title: 'Jurnal Pembelian', description: 'Jurnal bersumber transaksi pembelian', path: '/reports/journals?source=purchase' },
+      { id: 'journals-general', title: 'Jurnal Umum', description: 'Jurnal manual (penyesuaian)', path: '/reports/journals?source=general' },
     ],
   },
   {

@@ -16,6 +16,7 @@ const ReconciliationPage = lazy(() => import('./pages/ReconciliationPage'))
 const StockReportPage = lazy(() => import('./pages/StockReportPage'))
 const InventoryAnalysisPage = lazy(() => import('./pages/InventoryAnalysisPage'))
 const AccountLedgerPage = lazy(() => import('./pages/AccountLedgerPage'))
+const JournalListReportPage = lazy(() => import('./pages/JournalListReportPage'))
 const BudgetComparisonPage = lazy(() => import('@/modules/budget/pages/BudgetComparisonPage'))
 const ReportCategoryPage = lazy(() => import('./pages/ReportCategoryPage'))
 const CashBankStatementPage = lazy(() => import('./pages/CashBankStatementPage'))
@@ -52,6 +53,7 @@ export const reportsRoutes: RouteObject[] = [
   { path: '/reports/stock', element: wrap(<StockReportPage />) },
   { path: '/reports/inventory-analysis', element: wrap(<InventoryAnalysisPage />) },
   { path: '/reports/account-ledger', element: wrap(<AccountLedgerPage />) },
+  { path: '/reports/journals', element: wrap(<JournalListReportPage />) },
   { path: '/reports/budget/comparison', element: wrap(<BudgetComparisonPage />) },
   { path: '/reports/account-statement', element: wrap(<CashBankStatementPage />) },
   { path: '/reports/fixed-assets/register', element: wrap(<FixedAssetRegisterReportPage />) },

@@ -215,9 +215,14 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 ### 6C. Build Status
 
 ```
-Terakhir dicek  : 2026-07-11 (reports-expansion Fase 6 lint cleanup)
+Terakhir dicek  : 2026-07-11 (reports-expansion Fase 7 — GL detail & journal reports)
 npm run build   : ✅ 0 error
 npm run lint    : ✅ 0 error, 0 warning
+Fase 7          : - JournalListReportPage (Laporan Jurnal /reports/journals) + filter sumber (?source=)
+                  - GeneralLedgerPage: toggle Ringkasan/Rincian (mode=detail), 2 query terpisah
+                  - reportsApi: adapter journalList + generalLedgerDetail; katalog `gl` diperluas
+                  - Backend: GET /reports/journals + GL mode=detail; fix bug import ChartOfAccount/
+                    Department/Project di JournalEntryLine (journal create sebelumnya 500 di test)
                   - exhaustive-deps: nilai turunan `?? []` dibungkus useMemo (23 file list/report)
                   - no-unused-vars: ignoreRestSiblings + pola `^_` (pola omit field)
                   - set-state-in-effect PeriodEndPage → pola render-phase adjust-state

@@ -20,6 +20,10 @@ export interface ReportParams extends DateRangeParams {
   group_by?: 'day' | 'month'
   include_zero_balance?: boolean
   only_difference?: boolean
+  // Buku Besar: 'summary' = saldo per akun (default); 'detail' = baris jurnal per akun (Fase 7 T7.1).
+  mode?: 'summary' | 'detail'
+  // Laporan jurnal: filter per sumber/modul (Fase 7 T7.3).
+  source?: JournalSource
   page?: number
   per_page?: number
 }
@@ -45,6 +49,54 @@ export interface GeneralLedgerAccountSummary {
 
 export interface GeneralLedgerReport {
   accounts: GeneralLedgerAccountSummary[]
+}
+
+// Buku Besar - Rincian (Fase 7 T7.1): tiap akun membawa baris jurnalnya. Backend
+// (GeneralLedgerQueryService::getLedgerDetail) dikembalikan saat param mode=detail.
+// Catatan: baris rincian GL tidak memuat journal_entry_line_id (beda dengan
+// AccountLedgerLine), jadi baris di-key via journal_entry_id + index.
+export interface GeneralLedgerDetailLine {
+  journal_entry_id: number
+  journal_number: string
+  journal_date: string
+  description: string | null
+  debit: number
+  credit: number
+  running_balance: number
+  source_type: string | null
+  source_number: string | null
+  source_module: string | null
+}
+
+export interface GeneralLedgerDetailAccount extends GeneralLedgerAccountSummary {
+  lines: GeneralLedgerDetailLine[]
+}
+
+export interface GeneralLedgerDetailReport {
+  accounts: GeneralLedgerDetailAccount[]
+}
+
+// Laporan Jurnal (Fase 7 T7.2/T7.3) — /reports/journals.
+// 'general' = Jurnal Umum (jurnal manual). 'all' tanpa filter sumber.
+export type JournalSource = 'all' | 'sales' | 'purchase' | 'general'
+
+export interface JournalListRow {
+  journal_entry_id: number
+  journal_number: string
+  journal_date: string
+  description: string | null
+  source_type: string | null
+  source_number: string | null
+  source_module: string | null
+  total_debit: number
+  total_credit: number
+  line_count: number
+}
+
+export interface JournalListReport {
+  rows: JournalListRow[]
+  totals: { journal_count: number; total_debit: number; total_credit: number }
+  filter: { start_date: string | null; end_date: string | null; source: string }
 }
 
 // ---------------------------------------------------------------------------

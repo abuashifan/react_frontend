@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportFilterParameter } from '../components/ReportFilterParameter'
@@ -15,24 +16,55 @@ import type { ReportParams } from '../types/reports.types'
 const today = new Date().toISOString().slice(0, 10)
 const firstOfMonth = today.slice(0, 8) + '01'
 
+type LedgerMode = 'summary' | 'detail'
+
 export default function GeneralLedgerPage() {
+  const [searchParams] = useSearchParams()
+  const [mode, setMode] = useState<LedgerMode>(searchParams.get('mode') === 'detail' ? 'detail' : 'summary')
   const [params, setParams] = useState<ReportParams>({ start_date: firstOfMonth, end_date: today })
   const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
   const [showFilter, setShowFilter] = useState(true)
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
 
-  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['reports', 'general-ledger', activeParams], queryFn: () => reportsApi.generalLedger(activeParams!), enabled: !!activeParams })
-  const report = data?.data
-  const allAccounts = useMemo(() => report?.accounts ?? [], [report])
+  // Dua query terpisah agar jalur ringkasan (rentan crash historis A13-232) tetap utuh
+  // dan mode rincian bersifat aditif — masing-masing hanya aktif pada mode-nya.
+  const summaryQuery = useQuery({
+    queryKey: ['reports', 'general-ledger', 'summary', activeParams],
+    queryFn: () => reportsApi.generalLedger(activeParams!),
+    enabled: !!activeParams && mode === 'summary',
+  })
+  const detailQuery = useQuery({
+    queryKey: ['reports', 'general-ledger', 'detail', activeParams],
+    queryFn: () => reportsApi.generalLedgerDetail(activeParams!),
+    enabled: !!activeParams && mode === 'detail',
+  })
 
-  const pagedAccounts = useMemo(() => {
+  const active = mode === 'detail' ? detailQuery : summaryQuery
+  const { isLoading, isError, refetch } = active
+
+  const summaryAccounts = useMemo(() => summaryQuery.data?.data.accounts ?? [], [summaryQuery.data])
+  const detailAccounts = useMemo(() => detailQuery.data?.data.accounts ?? [], [detailQuery.data])
+  const accounts = mode === 'detail' ? detailAccounts : summaryAccounts
+  const hasReport = mode === 'detail' ? !!detailQuery.data : !!summaryQuery.data
+
+  const pagedSummary = useMemo(() => {
     const start = pagination.pageIndex * pagination.pageSize
-    return allAccounts.slice(start, start + pagination.pageSize)
-  }, [allAccounts, pagination])
+    return summaryAccounts.slice(start, start + pagination.pageSize)
+  }, [summaryAccounts, pagination])
+
+  const pagedDetail = useMemo(() => {
+    const start = pagination.pageIndex * pagination.pageSize
+    return detailAccounts.slice(start, start + pagination.pageSize)
+  }, [detailAccounts, pagination])
 
   const handleSubmit = () => {
     setActiveParams({ ...params })
     setShowFilter(false)
+    setPagination((p) => ({ ...p, pageIndex: 0 }))
+  }
+
+  const handleMode = (next: LedgerMode) => {
+    setMode(next)
     setPagination((p) => ({ ...p, pageIndex: 0 }))
   }
 
@@ -41,25 +73,34 @@ export default function GeneralLedgerPage() {
       <div className="space-y-4">
         {showFilter ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} extras={{ include_zero_balance: true }} />
           : <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} />}
+
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="mr-1 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tampilan</span>
+          <Button variant={mode === 'summary' ? 'default' : 'outline'} size="sm" className={mode === 'summary' ? 'h-7 bg-[#5c9ead] px-3 text-[12px] hover:bg-[#4a8a9b]' : 'h-7 px-3 text-[12px]'} onClick={() => handleMode('summary')}>Ringkasan</Button>
+          <Button variant={mode === 'detail' ? 'default' : 'outline'} size="sm" className={mode === 'detail' ? 'h-7 bg-[#5c9ead] px-3 text-[12px] hover:bg-[#4a8a9b]' : 'h-7 px-3 text-[12px]'} onClick={() => handleMode('detail')}>Rincian</Button>
+        </div>
+
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
         {isError && <ReportError onRetry={() => refetch()} />}
-        {!isLoading && !isError && report && allAccounts.length > 0 && (
+        {!isLoading && !isError && hasReport && accounts.length > 0 && (
           <div className="flex justify-end">
             <Button
               variant="outline"
               size="sm"
               className="text-[12px]"
               onClick={() => exportCsv(
-                `buku-besar-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
+                `buku-besar-${mode}-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
                 ['Kode', 'Akun', 'Saldo Awal', 'Debit Periode', 'Kredit Periode', 'Saldo Akhir'],
-                allAccounts.map((a) => [a.account_code, a.account_name, a.opening_balance, a.period_debit, a.period_credit, a.ending_balance])
+                accounts.map((a) => [a.account_code, a.account_name, a.opening_balance, a.period_debit, a.period_credit, a.ending_balance])
               )}
             >
               Export CSV
             </Button>
           </div>
         )}
-        {!isLoading && !isError && report && (
+
+        {/* Mode Ringkasan: saldo per akun */}
+        {!isLoading && !isError && mode === 'summary' && hasReport && (
           <div className="overflow-auto rounded-lg border border-[#e2e8f0]">
             <table className="w-full text-[12px]">
               <thead className="bg-[#f8fafc]">
@@ -73,7 +114,7 @@ export default function GeneralLedgerPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f1f5f9]">
-                {pagedAccounts.map((acc) => (
+                {pagedSummary.map((acc) => (
                   <tr key={acc.account_id} className="hover:bg-[#f8fafc]">
                     <td className="px-3 py-1.5 text-[#64748b]">{acc.account_code}</td>
                     <td className="px-3 py-1.5 text-[#334155]">{acc.account_name}</td>
@@ -83,13 +124,63 @@ export default function GeneralLedgerPage() {
                     <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-[#1e293b]">{formatCurrency(acc.ending_balance)}</td>
                   </tr>
                 ))}
-                {allAccounts.length === 0 && (
+                {summaryAccounts.length === 0 && (
                   <tr><td colSpan={6} className="py-8 text-center text-[#94a3b8]">Tidak ada transaksi pada periode ini.</td></tr>
                 )}
               </tbody>
             </table>
-            {allAccounts.length > 0 && (
-              <TablePagination pagination={pagination} totalRows={allAccounts.length} onChange={setPagination} isFetching={isLoading} />
+            {summaryAccounts.length > 0 && (
+              <TablePagination pagination={pagination} totalRows={summaryAccounts.length} onChange={setPagination} isFetching={isLoading} />
+            )}
+          </div>
+        )}
+
+        {/* Mode Rincian: baris jurnal per akun */}
+        {!isLoading && !isError && mode === 'detail' && hasReport && (
+          <div className="space-y-3">
+            {pagedDetail.map((acc) => (
+              <div key={acc.account_id} className="overflow-auto rounded-lg border border-[#e2e8f0]">
+                <div className="flex items-center justify-between bg-[#f8fafc] px-3 py-2">
+                  <div className="text-[12px] font-semibold text-[#334155]">
+                    <span className="text-[#64748b]">{acc.account_code}</span> · {acc.account_name}
+                  </div>
+                  <div className="text-[11px] text-[#64748b]">Saldo Akhir: <span className="tabular-nums font-semibold text-[#1e293b]">{formatCurrency(acc.ending_balance)}</span></div>
+                </div>
+                <table className="w-full text-[12px]">
+                  <thead className="bg-white">
+                    <tr className="border-b border-[#f1f5f9]">
+                      <th className="px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">No Jurnal</th>
+                      <th className="px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal</th>
+                      <th className="px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Deskripsi</th>
+                      <th className="px-3 py-1.5 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Debit</th>
+                      <th className="px-3 py-1.5 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kredit</th>
+                      <th className="px-3 py-1.5 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Saldo</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#f1f5f9]">
+                    <tr className="bg-[#fbfdfe]">
+                      <td colSpan={5} className="px-3 py-1.5 text-[11px] italic text-[#94a3b8]">Saldo Awal</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums text-[#64748b]">{formatCurrency(acc.opening_balance)}</td>
+                    </tr>
+                    {acc.lines.map((line, idx) => (
+                      <tr key={`${line.journal_entry_id}-${idx}`} className="hover:bg-[#f8fafc]">
+                        <td className="px-3 py-1.5 font-mono text-[11px] text-[#5c9ead]">{line.journal_number}</td>
+                        <td className="px-3 py-1.5 tabular-nums text-[#64748b]">{line.journal_date}</td>
+                        <td className="px-3 py-1.5 text-[#334155]">{line.description ?? '-'}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums text-green-700">{line.debit ? formatCurrency(line.debit) : '-'}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums text-red-600">{line.credit ? formatCurrency(line.credit) : '-'}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums text-[#1e293b]">{formatCurrency(line.running_balance)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+            {detailAccounts.length === 0 && (
+              <div className="rounded-lg border border-[#e2e8f0] py-8 text-center text-[#94a3b8]">Tidak ada transaksi pada periode ini.</div>
+            )}
+            {detailAccounts.length > 0 && (
+              <TablePagination pagination={pagination} totalRows={detailAccounts.length} onChange={setPagination} isFetching={isLoading} />
             )}
           </div>
         )}

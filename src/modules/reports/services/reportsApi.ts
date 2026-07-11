@@ -16,6 +16,10 @@ import type {
   PurchaseByProductReport,
   PurchaseByProductRow,
   GeneralLedgerReport,
+  GeneralLedgerDetailReport,
+  GeneralLedgerDetailLine,
+  JournalListReport,
+  JournalListRow,
   TrialBalanceReport,
   TrialBalanceAccount,
   TrialBalanceTotals,
@@ -252,6 +256,72 @@ function adaptGeneralLedger(raw: Raw): GeneralLedgerReport {
         ending_balance: num(row.ending_balance),
       }
     }),
+  }
+}
+
+// Buku Besar - Rincian (Fase 7): sama seperti ringkasan tetapi tiap akun membawa `lines`.
+function adaptGeneralLedgerDetail(raw: Raw): GeneralLedgerDetailReport {
+  return {
+    accounts: asArray(raw.accounts).map((row) => {
+      const account = asRecord(row.account)
+      const period = asRecord(row.period_totals)
+      const opening = asRecord(row.opening_balance)
+      const lines: GeneralLedgerDetailLine[] = asArray(row.lines).map((l) => ({
+        journal_entry_id: num(l.journal_entry_id),
+        journal_number: str(l.journal_number),
+        journal_date: str(l.journal_date),
+        description: l.description == null ? null : str(l.description),
+        debit: num(l.debit),
+        credit: num(l.credit),
+        running_balance: num(l.running_balance),
+        source_type: l.source_type == null ? null : str(l.source_type),
+        source_number: l.source_number == null ? null : str(l.source_number),
+        source_module: l.source_module == null ? null : str(l.source_module),
+      }))
+      return {
+        account_id: num(account.id),
+        account_code: str(account.account_code),
+        account_name: str(account.account_name),
+        account_type: str(account.account_type),
+        normal_balance: str(account.normal_balance),
+        opening_balance: num(opening.balance),
+        period_debit: num(period.debit),
+        period_credit: num(period.credit),
+        ending_balance: num(row.ending_balance),
+        lines,
+      }
+    }),
+  }
+}
+
+// Laporan Jurnal (Fase 7 T7.2/T7.3): daftar jurnal posted + total debit/kredit per jurnal.
+function adaptJournalList(raw: Raw): JournalListReport {
+  const totals = asRecord(raw.totals)
+  const filter = asRecord(raw.filter)
+  const rows: JournalListRow[] = asArray(raw.rows).map((r) => ({
+    journal_entry_id: num(r.journal_entry_id),
+    journal_number: str(r.journal_number),
+    journal_date: str(r.journal_date),
+    description: r.description == null ? null : str(r.description),
+    source_type: r.source_type == null ? null : str(r.source_type),
+    source_number: r.source_number == null ? null : str(r.source_number),
+    source_module: r.source_module == null ? null : str(r.source_module),
+    total_debit: num(r.total_debit),
+    total_credit: num(r.total_credit),
+    line_count: num(r.line_count),
+  }))
+  return {
+    rows,
+    totals: {
+      journal_count: num(totals.journal_count),
+      total_debit: num(totals.total_debit),
+      total_credit: num(totals.total_credit),
+    },
+    filter: {
+      start_date: filter.start_date == null ? null : str(filter.start_date),
+      end_date: filter.end_date == null ? null : str(filter.end_date),
+      source: str(filter.source) || 'all',
+    },
   }
 }
 
@@ -494,6 +564,18 @@ export const reportsApi = {
     http
       .get<unknown, ApiResponse<unknown>>('/reports/general-ledger', { params })
       .then((res) => adaptResponse(res, adaptGeneralLedger)),
+
+  // Buku Besar - Rincian (Fase 7 T7.1): endpoint sama dengan mode=detail.
+  generalLedgerDetail: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/general-ledger', { params: { ...params, mode: 'detail' } })
+      .then((res) => adaptResponse(res, adaptGeneralLedgerDetail)),
+
+  // Laporan Jurnal (Fase 7 T7.2/T7.3): daftar jurnal + filter sumber.
+  journalList: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/journals', { params })
+      .then((res) => adaptResponse(res, adaptJournalList)),
 
   trialBalance: (params: ReportParams) =>
     http
