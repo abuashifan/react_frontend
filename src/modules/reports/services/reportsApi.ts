@@ -813,6 +813,36 @@ function adaptResponse<T>(res: ApiResponse<unknown>, adapt: (raw: Raw) => T): Ap
   return { ...res, data: adapt(asRecord(res.data)) }
 }
 
+// E-Faktur DJP export (Fase 12): backend men-stream file CSV siap-unduh (bukan
+// JSON adapter). Ambil sebagai blob lalu picu unduhan di browser. Nama file
+// diambil dari header Content-Disposition, dengan fallback bila absen.
+async function downloadEfaktur(kind: 'sales' | 'purchase', params: ReportParams): Promise<void> {
+  const { token, activeCompanyId } = useAuthStore.getState()
+  const response = await axios.get<Blob>(`${import.meta.env.VITE_API_BASE_URL}/api/reports/tax/efaktur/${kind}`, {
+    params,
+    responseType: 'blob',
+    headers: {
+      Accept: 'text/csv',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(activeCompanyId ? { 'X-Company-ID': String(activeCompanyId) } : {}),
+    },
+  })
+
+  const disposition = String(response.headers['content-disposition'] ?? '')
+  const match = disposition.match(/filename="?([^"]+)"?/)
+  const fallback = kind === 'sales' ? 'efaktur-keluaran.csv' : 'efaktur-masukan.csv'
+  const filename = match?.[1] ?? fallback
+
+  const url = URL.createObjectURL(response.data)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
 async function getRawApiResponse<T>(path: string, params: ReportParams): Promise<ApiResponse<T>> {
   const { token, activeCompanyId } = useAuthStore.getState()
   const response = await axios.get<ApiResponse<T>>(`${import.meta.env.VITE_API_BASE_URL}/api${path}`, {
@@ -918,6 +948,10 @@ export const reportsApi = {
     http
       .get<unknown, ApiResponse<unknown>>('/reports/tax/input-vat', { params })
       .then((res) => adaptResponse(res, adaptInputVat)),
+
+  // Ekspor E-Faktur DJP CSV (Fase 12) — unduhan blob, bukan adapter tabel.
+  downloadEfakturSales: (params: ReportParams) => downloadEfaktur('sales', params),
+  downloadEfakturPurchase: (params: ReportParams) => downloadEfaktur('purchase', params),
 
   financialSummary: (params: ReportParams) =>
     http

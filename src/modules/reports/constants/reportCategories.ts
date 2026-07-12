@@ -132,6 +132,7 @@ export const REPORT_DOMAINS: ReportDomain[] = [
     reports: [
       { id: 'output-vat', title: 'PPN Keluaran', description: 'Daftar PPN keluaran dari faktur penjualan (DPP, PPN, Total)', path: '/reports/tax/output-vat' },
       { id: 'input-vat', title: 'PPN Masukan', description: 'Daftar PPN masukan dari faktur pembelian (DPP, PPN, Total)', path: '/reports/tax/input-vat' },
+      { id: 'efaktur-export', title: 'Ekspor E-Faktur', description: 'Unduh CSV E-Faktur DJP untuk faktur penjualan & pembelian', path: '/reports/tax/efaktur' },
     ],
   },
 ]

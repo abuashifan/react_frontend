@@ -627,6 +627,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____BalanceSheetMultiPeriodPage.tsx
 | | | | |____OutputVatReportPage.tsx
 | | | | |____InputVatReportPage.tsx
+| | | | |____EfakturExportPage.tsx
 | | | | |____FinancialSummaryPage.tsx
 | | | | |____GeneralLedgerPage.tsx
 | | | | |____JournalListReportPage.tsx

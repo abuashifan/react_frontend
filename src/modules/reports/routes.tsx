@@ -15,6 +15,7 @@ const ProfitLossMultiPeriodPage = lazy(() => import('./pages/ProfitLossMultiPeri
 const BalanceSheetMultiPeriodPage = lazy(() => import('./pages/BalanceSheetMultiPeriodPage'))
 const OutputVatReportPage = lazy(() => import('./pages/OutputVatReportPage'))
 const InputVatReportPage = lazy(() => import('./pages/InputVatReportPage'))
+const EfakturExportPage = lazy(() => import('./pages/EfakturExportPage'))
 const FinancialSummaryPage = lazy(() => import('./pages/FinancialSummaryPage'))
 const GeneralLedgerPage = lazy(() => import('./pages/GeneralLedgerPage'))
 const ArAgingReportPage = lazy(() => import('./pages/ArAgingReportPage'))
@@ -61,6 +62,7 @@ export const reportsRoutes: RouteObject[] = [
   { path: '/reports/balance-sheet-multi', element: wrap(<BalanceSheetMultiPeriodPage />) },
   { path: '/reports/tax/output-vat', element: wrap(<OutputVatReportPage />) },
   { path: '/reports/tax/input-vat', element: wrap(<InputVatReportPage />) },
+  { path: '/reports/tax/efaktur', element: wrap(<EfakturExportPage />) },
   { path: '/reports/financial-summary', element: wrap(<FinancialSummaryPage />) },
   { path: '/reports/general-ledger', element: wrap(<GeneralLedgerPage />) },
   { path: '/reports/ar-aging', element: wrap(<ArAgingReportPage />) },
