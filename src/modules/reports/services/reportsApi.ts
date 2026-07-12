@@ -25,6 +25,12 @@ import type {
   InventoryAgingBuckets,
   OpnameWorksheetReport,
   OpnameWorksheetRow,
+  RetainedEarningsReport,
+  EquityChangesReport,
+  EquityChangeRow,
+  CashFlowDirectReport,
+  CashFlowDirectSection,
+  CashFlowDirectLine,
   TrialBalanceReport,
   TrialBalanceAccount,
   TrialBalanceTotals,
@@ -621,6 +627,67 @@ function adaptAccountStatement(raw: Raw): AccountStatementReport {
   }
 }
 
+// Laba Ditahan (Fase 9 T9.1).
+function adaptRetainedEarnings(raw: Raw): RetainedEarningsReport {
+  return {
+    beginning_retained_earnings: num(raw.beginning_retained_earnings),
+    net_income: num(raw.net_income),
+    ending_retained_earnings: num(raw.ending_retained_earnings),
+  }
+}
+
+// Perubahan Ekuitas (Fase 9 T9.2).
+function adaptEquityChanges(raw: Raw): EquityChangesReport {
+  const totals = asRecord(raw.totals)
+  const rows: EquityChangeRow[] = asArray(raw.rows).map((r) => ({
+    account_id: r.account_id == null ? null : num(r.account_id),
+    account_code: r.account_code == null ? null : str(r.account_code),
+    account_name: str(r.account_name),
+    opening_balance: num(r.opening_balance),
+    movement: num(r.movement),
+    closing_balance: num(r.closing_balance),
+    is_current_earnings: Boolean(r.is_current_earnings),
+  }))
+  return {
+    rows,
+    totals: {
+      opening_total: num(totals.opening_total),
+      movement_total: num(totals.movement_total),
+      closing_total: num(totals.closing_total),
+    },
+  }
+}
+
+// Arus Kas Metode Langsung (Fase 9 T9.3).
+function adaptCashFlowDirect(raw: Raw): CashFlowDirectReport {
+  const summary = asRecord(raw.summary)
+  const notes = asRecord(raw.notes)
+  const sections: CashFlowDirectSection[] = asArray(raw.sections).map((s) => ({
+    key: str(s.key),
+    label: str(s.label),
+    subtotal_net: num(s.subtotal_net),
+    lines: asArray(s.lines).map((l): CashFlowDirectLine => ({
+      account_id: l.account_id == null ? null : num(l.account_id),
+      account_code: l.account_code == null ? null : str(l.account_code),
+      account_name: str(l.account_name),
+      cash_in: num(l.cash_in),
+      cash_out: num(l.cash_out),
+      net: num(l.net),
+    })),
+  }))
+  return {
+    summary: {
+      opening_cash_balance: num(summary.opening_cash_balance),
+      cash_in: num(summary.cash_in),
+      cash_out: num(summary.cash_out),
+      net_cash_flow: num(summary.net_cash_flow),
+      ending_cash_balance: num(summary.ending_cash_balance),
+    },
+    sections,
+    no_cash_accounts: Boolean(notes.no_cash_accounts),
+  }
+}
+
 function adaptResponse<T>(res: ApiResponse<unknown>, adapt: (raw: Raw) => T): ApiResponse<T> {
   return { ...res, data: adapt(asRecord(res.data)) }
 }
@@ -688,6 +755,24 @@ export const reportsApi = {
     http
       .get<unknown, ApiResponse<unknown>>('/reports/cash-flow', { params })
       .then((res) => adaptResponse(res, adaptCashFlow)),
+
+  // Arus Kas Metode Langsung (Fase 9 T9.3).
+  cashFlowDirect: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/cash-flow-direct', { params })
+      .then((res) => adaptResponse(res, adaptCashFlowDirect)),
+
+  // Laba Ditahan (Fase 9 T9.1).
+  retainedEarnings: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/retained-earnings', { params })
+      .then((res) => adaptResponse(res, adaptRetainedEarnings)),
+
+  // Perubahan Ekuitas (Fase 9 T9.2).
+  equityChanges: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/equity-changes', { params })
+      .then((res) => adaptResponse(res, adaptEquityChanges)),
 
   financialSummary: (params: ReportParams) =>
     http

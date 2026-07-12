@@ -619,6 +619,9 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____AccountLedgerPage.tsx
 | | | | |____BalanceSheetPage.tsx
 | | | | |____CashFlowPage.tsx
+| | | | |____CashFlowDirectReportPage.tsx
+| | | | |____RetainedEarningsReportPage.tsx
+| | | | |____EquityChangesReportPage.tsx
 | | | | |____FinancialSummaryPage.tsx
 | | | | |____GeneralLedgerPage.tsx
 | | | | |____JournalListReportPage.tsx

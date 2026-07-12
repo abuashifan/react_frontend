@@ -302,6 +302,52 @@ export interface CashFlowReport {
   }
 }
 
+// Laba Ditahan (Fase 9 T9.1) — /reports/retained-earnings.
+export interface RetainedEarningsReport {
+  beginning_retained_earnings: number
+  net_income: number
+  ending_retained_earnings: number
+}
+
+// Perubahan Ekuitas (Fase 9 T9.2) — /reports/equity-changes.
+export interface EquityChangeRow {
+  account_id: number | null
+  account_code: string | null
+  account_name: string
+  opening_balance: number
+  movement: number
+  closing_balance: number
+  is_current_earnings: boolean
+}
+
+export interface EquityChangesReport {
+  rows: EquityChangeRow[]
+  totals: { opening_total: number; movement_total: number; closing_total: number }
+}
+
+// Arus Kas Metode Langsung (Fase 9 T9.3) — /reports/cash-flow-direct.
+export interface CashFlowDirectLine {
+  account_id: number | null
+  account_code: string | null
+  account_name: string
+  cash_in: number
+  cash_out: number
+  net: number
+}
+
+export interface CashFlowDirectSection {
+  key: string
+  label: string
+  lines: CashFlowDirectLine[]
+  subtotal_net: number
+}
+
+export interface CashFlowDirectReport {
+  summary: CashFlowSummary
+  sections: CashFlowDirectSection[]
+  no_cash_accounts: boolean
+}
+
 // Financial Summary — backend: { profit_loss, balance_sheet, cash_flow }
 export interface FinancialSummaryReport {
   profit_loss: {
