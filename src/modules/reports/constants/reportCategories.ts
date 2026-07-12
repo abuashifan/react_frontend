@@ -26,6 +26,8 @@ export const REPORT_DOMAINS: ReportDomain[] = [
       { id: 'cash-flow-direct', title: 'Arus Kas (Langsung)', description: 'Penerimaan & pembayaran kas aktual dirinci per akun lawan', path: '/reports/cash-flow-direct' },
       { id: 'retained-earnings', title: 'Laba Ditahan', description: 'Laba ditahan awal + laba/rugi berjalan = laba ditahan akhir', path: '/reports/retained-earnings' },
       { id: 'equity-changes', title: 'Perubahan Ekuitas', description: 'Saldo awal, pergerakan, dan saldo akhir per komponen ekuitas', path: '/reports/equity-changes' },
+      { id: 'balance-sheet-multi', title: 'Neraca Multi-Periode', description: 'Neraca perbandingan beberapa periode side-by-side', path: '/reports/balance-sheet-multi' },
+      { id: 'profit-loss-multi', title: 'Laba Rugi Multi-Periode', description: 'Laba rugi perbandingan beberapa periode side-by-side', path: '/reports/profit-loss-multi' },
       { id: 'financial-summary', title: 'Ringkasan Keuangan', description: 'Indikator keuangan utama sekilas', path: '/reports/financial-summary' },
     ],
   },

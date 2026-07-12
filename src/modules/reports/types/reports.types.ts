@@ -302,6 +302,63 @@ export interface CashFlowReport {
   }
 }
 
+// Multi-Periode (Fase 10) — /reports/{profit-loss,balance-sheet}/multi-period.
+// Opsi (a): backend menerima periods[] → kolom per periode. Tiap kolom identik
+// dengan laporan single-period untuk periode itu.
+export interface MultiPeriodInput {
+  start_date: string
+  end_date: string
+  label?: string
+}
+
+export interface MultiPeriodColumn {
+  label: string
+  start_date: string
+  end_date: string
+}
+
+export interface MultiPeriodRow {
+  account_id: number | null
+  account_code: string | null
+  account_name: string
+  account_type: string | null
+  values: number[] // sejajar dengan periods[]
+}
+
+export interface MultiPeriodSection {
+  key: string
+  label: string
+  rows: MultiPeriodRow[]
+  totals: number[] // per periode
+}
+
+export interface ProfitLossMultiPeriodSummary {
+  total_revenue: number
+  total_expense: number
+  net_profit_or_loss: number
+}
+
+export interface BalanceSheetMultiPeriodSummary {
+  total_assets: number
+  total_liabilities: number
+  total_equity: number
+  total_liabilities_and_equity: number
+  current_year_profit_or_loss: number
+  is_balanced: boolean
+}
+
+export interface ProfitLossMultiPeriodReport {
+  periods: MultiPeriodColumn[]
+  sections: MultiPeriodSection[]
+  summary_totals: ProfitLossMultiPeriodSummary[]
+}
+
+export interface BalanceSheetMultiPeriodReport {
+  periods: MultiPeriodColumn[]
+  sections: MultiPeriodSection[]
+  summary_totals: BalanceSheetMultiPeriodSummary[]
+}
+
 // Laba Ditahan (Fase 9 T9.1) — /reports/retained-earnings.
 export interface RetainedEarningsReport {
   beginning_retained_earnings: number

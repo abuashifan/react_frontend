@@ -607,6 +607,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____ReportCompactBar.tsx
 | | | | |____ReportDomainPanel.tsx
 | | | | |____ReportFilterParameter.tsx
+| | | | |____PeriodSelector.tsx
 | | | |____constants/
 | | | | |____reportCategories.ts
 | | | |____pages/
@@ -622,6 +623,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____CashFlowDirectReportPage.tsx
 | | | | |____RetainedEarningsReportPage.tsx
 | | | | |____EquityChangesReportPage.tsx
+| | | | |____ProfitLossMultiPeriodPage.tsx
+| | | | |____BalanceSheetMultiPeriodPage.tsx
 | | | | |____FinancialSummaryPage.tsx
 | | | | |____GeneralLedgerPage.tsx
 | | | | |____JournalListReportPage.tsx

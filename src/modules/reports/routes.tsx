@@ -11,6 +11,8 @@ const CashFlowPage = lazy(() => import('./pages/CashFlowPage'))
 const CashFlowDirectReportPage = lazy(() => import('./pages/CashFlowDirectReportPage'))
 const RetainedEarningsReportPage = lazy(() => import('./pages/RetainedEarningsReportPage'))
 const EquityChangesReportPage = lazy(() => import('./pages/EquityChangesReportPage'))
+const ProfitLossMultiPeriodPage = lazy(() => import('./pages/ProfitLossMultiPeriodPage'))
+const BalanceSheetMultiPeriodPage = lazy(() => import('./pages/BalanceSheetMultiPeriodPage'))
 const FinancialSummaryPage = lazy(() => import('./pages/FinancialSummaryPage'))
 const GeneralLedgerPage = lazy(() => import('./pages/GeneralLedgerPage'))
 const ArAgingReportPage = lazy(() => import('./pages/ArAgingReportPage'))
@@ -53,6 +55,8 @@ export const reportsRoutes: RouteObject[] = [
   { path: '/reports/cash-flow-direct', element: wrap(<CashFlowDirectReportPage />) },
   { path: '/reports/retained-earnings', element: wrap(<RetainedEarningsReportPage />) },
   { path: '/reports/equity-changes', element: wrap(<EquityChangesReportPage />) },
+  { path: '/reports/profit-loss-multi', element: wrap(<ProfitLossMultiPeriodPage />) },
+  { path: '/reports/balance-sheet-multi', element: wrap(<BalanceSheetMultiPeriodPage />) },
   { path: '/reports/financial-summary', element: wrap(<FinancialSummaryPage />) },
   { path: '/reports/general-ledger', element: wrap(<GeneralLedgerPage />) },
   { path: '/reports/ar-aging', element: wrap(<ArAgingReportPage />) },

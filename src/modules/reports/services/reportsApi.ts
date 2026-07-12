@@ -31,6 +31,11 @@ import type {
   CashFlowDirectReport,
   CashFlowDirectSection,
   CashFlowDirectLine,
+  MultiPeriodInput,
+  MultiPeriodSection,
+  MultiPeriodRow,
+  ProfitLossMultiPeriodReport,
+  BalanceSheetMultiPeriodReport,
   TrialBalanceReport,
   TrialBalanceAccount,
   TrialBalanceTotals,
@@ -688,6 +693,71 @@ function adaptCashFlowDirect(raw: Raw): CashFlowDirectReport {
   }
 }
 
+// Multi-Periode (Fase 10): sections dengan values[] per kolom periode.
+function adaptMultiPeriodShared(raw: Raw): { periods: BalanceSheetMultiPeriodReport['periods']; sections: MultiPeriodSection[] } {
+  const periods = asArray(raw.periods).map((p) => ({
+    label: str(p.label),
+    start_date: str(p.start_date),
+    end_date: str(p.end_date),
+  }))
+  const sections: MultiPeriodSection[] = asArray(raw.sections).map((s) => ({
+    key: str(s.key),
+    label: str(s.label),
+    totals: asArray(s.totals).map((v) => num(v)),
+    rows: asArray(s.rows).map((r): MultiPeriodRow => ({
+      account_id: r.account_id == null ? null : num(r.account_id),
+      account_code: r.account_code == null ? null : str(r.account_code),
+      account_name: str(r.account_name),
+      account_type: r.account_type == null ? null : str(r.account_type),
+      values: asArray(r.values).map((v) => num(v)),
+    })),
+  }))
+  return { periods, sections }
+}
+
+function adaptProfitLossMultiPeriod(raw: Raw): ProfitLossMultiPeriodReport {
+  const { periods, sections } = adaptMultiPeriodShared(raw)
+  return {
+    periods,
+    sections,
+    summary_totals: asArray(raw.summary_totals).map((t) => ({
+      total_revenue: num(t.total_revenue),
+      total_expense: num(t.total_expense),
+      net_profit_or_loss: num(t.net_profit_or_loss),
+    })),
+  }
+}
+
+function adaptBalanceSheetMultiPeriod(raw: Raw): BalanceSheetMultiPeriodReport {
+  const { periods, sections } = adaptMultiPeriodShared(raw)
+  return {
+    periods,
+    sections,
+    summary_totals: asArray(raw.summary_totals).map((t) => ({
+      total_assets: num(t.total_assets),
+      total_liabilities: num(t.total_liabilities),
+      total_equity: num(t.total_equity),
+      total_liabilities_and_equity: num(t.total_liabilities_and_equity),
+      current_year_profit_or_loss: num(t.current_year_profit_or_loss),
+      is_balanced: Boolean(t.is_balanced),
+    })),
+  }
+}
+
+// Serialisasi periods[] (array of objek) ke bracket-notation karena axios default
+// tidak men-serialize nested array-of-object. Dimensi opsional ikut diserialkan.
+function buildMultiPeriodQuery(params: { periods: MultiPeriodInput[]; department_id?: number; project_id?: number }): string {
+  const usp = new URLSearchParams()
+  params.periods.forEach((p, i) => {
+    usp.append(`periods[${i}][start_date]`, p.start_date)
+    usp.append(`periods[${i}][end_date]`, p.end_date)
+    if (p.label != null) usp.append(`periods[${i}][label]`, p.label)
+  })
+  if (params.department_id != null) usp.append('department_id', String(params.department_id))
+  if (params.project_id != null) usp.append('project_id', String(params.project_id))
+  return usp.toString()
+}
+
 function adaptResponse<T>(res: ApiResponse<unknown>, adapt: (raw: Raw) => T): ApiResponse<T> {
   return { ...res, data: adapt(asRecord(res.data)) }
 }
@@ -773,6 +843,18 @@ export const reportsApi = {
     http
       .get<unknown, ApiResponse<unknown>>('/reports/equity-changes', { params })
       .then((res) => adaptResponse(res, adaptEquityChanges)),
+
+  // Laba Rugi Multi-Periode (Fase 10 T10.3).
+  profitLossMultiPeriod: (params: { periods: MultiPeriodInput[]; department_id?: number; project_id?: number }) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/profit-loss/multi-period?' + buildMultiPeriodQuery(params))
+      .then((res) => adaptResponse(res, adaptProfitLossMultiPeriod)),
+
+  // Neraca Multi-Periode (Fase 10 T10.2).
+  balanceSheetMultiPeriod: (params: { periods: MultiPeriodInput[]; department_id?: number; project_id?: number }) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/balance-sheet/multi-period?' + buildMultiPeriodQuery(params))
+      .then((res) => adaptResponse(res, adaptBalanceSheetMultiPeriod)),
 
   financialSummary: (params: ReportParams) =>
     http
