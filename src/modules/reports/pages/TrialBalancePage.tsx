@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { ReportFilterParameter } from '../components/ReportFilterParameter'
+import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { TablePagination } from '@/components/shared/table/TablePagination'
@@ -12,16 +12,30 @@ import { formatCurrency } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
 import { SaveReportButton } from '../components/SaveReportButton'
 import { useInitialReportParams } from '../hooks/useInitialReportParams'
-import type { ReportParams } from '../types/reports.types'
+import type { ReportParams, ColumnConfig } from '../types/reports.types'
 
 const today = new Date().toISOString().slice(0, 10)
 const firstOfMonth = today.slice(0, 8) + '01'
+
+// Kolom Neraca Saldo (Fase 14 — column selection).
+const TB_COLUMNS: ColumnConfig[] = [
+  { key: 'account_code', label: 'Kode' },
+  { key: 'account_name', label: 'Akun' },
+  { key: 'opening_debit', label: 'Debit Awal' },
+  { key: 'opening_credit', label: 'Kredit Awal' },
+  { key: 'period_debit', label: 'Debit Periode' },
+  { key: 'period_credit', label: 'Kredit Periode' },
+  { key: 'ending_debit', label: 'Debit Akhir' },
+  { key: 'ending_credit', label: 'Kredit Akhir' },
+]
 
 export default function TrialBalancePage() {
   const { initialParams, restored } = useInitialReportParams({ start_date: firstOfMonth, end_date: today })
   const [params, setParams] = useState<ReportParams>(initialParams)
   const [activeParams, setActiveParams] = useState<ReportParams | null>(restored ? initialParams : null)
   const [showFilter, setShowFilter] = useState(!restored)
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(TB_COLUMNS.map((c) => c.key))
+  const showCol = (key: string) => visibleColumns.includes(key)
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -48,8 +62,8 @@ export default function TrialBalancePage() {
     <WorkspaceLayout title="Neraca Saldo" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Neraca Saldo' }]}>
       <div className="space-y-4">
         {showFilter
-          ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} extras={{ include_zero_balance: true }} />
-          : <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} />
+          ? <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} extras={{ include_zero_balance: true }} columns={TB_COLUMNS} visibleColumns={visibleColumns} onColumnsChange={setVisibleColumns} />
+          : <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} columnSummary={`${visibleColumns.length} kolom`} />
         }
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
         {isError && <ReportError onRetry={() => refetch()} />}
@@ -77,47 +91,49 @@ export default function TrialBalancePage() {
             <table className="w-full text-[12px]">
               <thead className="bg-[#f8fafc]">
                 <tr>
-                  <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kode</th>
-                  <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun</th>
-                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Debit Awal</th>
-                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kredit Awal</th>
-                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Debit Periode</th>
-                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kredit Periode</th>
-                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Debit Akhir</th>
-                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kredit Akhir</th>
+                  {showCol('account_code') && <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kode</th>}
+                  {showCol('account_name') && <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun</th>}
+                  {showCol('opening_debit') && <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Debit Awal</th>}
+                  {showCol('opening_credit') && <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kredit Awal</th>}
+                  {showCol('period_debit') && <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Debit Periode</th>}
+                  {showCol('period_credit') && <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kredit Periode</th>}
+                  {showCol('ending_debit') && <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Debit Akhir</th>}
+                  {showCol('ending_credit') && <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kredit Akhir</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f1f5f9]">
                 {pagedAccounts.map((l) => (
                   <tr key={l.account_id} className="hover:bg-[#f8fafc]">
-                    <td className="px-3 py-1.5 text-[#64748b]">{l.account_code}</td>
-                    <td className="px-3 py-1.5 text-[#1e293b]">{l.account_name}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{l.opening_debit ? formatCurrency(l.opening_debit) : '-'}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{l.opening_credit ? formatCurrency(l.opening_credit) : '-'}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{l.period_debit ? formatCurrency(l.period_debit) : '-'}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{l.period_credit ? formatCurrency(l.period_credit) : '-'}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums font-medium">{l.ending_debit ? formatCurrency(l.ending_debit) : '-'}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums font-medium">{l.ending_credit ? formatCurrency(l.ending_credit) : '-'}</td>
+                    {showCol('account_code') && <td className="px-3 py-1.5 text-[#64748b]">{l.account_code}</td>}
+                    {showCol('account_name') && <td className="px-3 py-1.5 text-[#1e293b]">{l.account_name}</td>}
+                    {showCol('opening_debit') && <td className="px-3 py-1.5 text-right tabular-nums">{l.opening_debit ? formatCurrency(l.opening_debit) : '-'}</td>}
+                    {showCol('opening_credit') && <td className="px-3 py-1.5 text-right tabular-nums">{l.opening_credit ? formatCurrency(l.opening_credit) : '-'}</td>}
+                    {showCol('period_debit') && <td className="px-3 py-1.5 text-right tabular-nums">{l.period_debit ? formatCurrency(l.period_debit) : '-'}</td>}
+                    {showCol('period_credit') && <td className="px-3 py-1.5 text-right tabular-nums">{l.period_credit ? formatCurrency(l.period_credit) : '-'}</td>}
+                    {showCol('ending_debit') && <td className="px-3 py-1.5 text-right tabular-nums font-medium">{l.ending_debit ? formatCurrency(l.ending_debit) : '-'}</td>}
+                    {showCol('ending_credit') && <td className="px-3 py-1.5 text-right tabular-nums font-medium">{l.ending_credit ? formatCurrency(l.ending_credit) : '-'}</td>}
                   </tr>
                 ))}
                 {allAccounts.length === 0 && (
-                  <tr><td colSpan={8} className="py-8 text-center text-[#94a3b8]">Tidak ada saldo akun pada periode ini.</td></tr>
+                  <tr><td colSpan={visibleColumns.length} className="py-8 text-center text-[#94a3b8]">Tidak ada saldo akun pada periode ini.</td></tr>
                 )}
               </tbody>
               {totals && (
                 <tfoot className="border-t-2 border-[#cbd5e1] bg-[#f1f5f9]">
                   <tr>
-                    <td colSpan={2} className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-[#334155]">Total</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.opening_debit)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.opening_credit)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.period_debit)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.period_credit)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.ending_debit)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.ending_credit)}</td>
+                    {(showCol('account_code') || showCol('account_name')) && (
+                      <td colSpan={['account_code', 'account_name'].filter(showCol).length} className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-[#334155]">Total</td>
+                    )}
+                    {showCol('opening_debit') && <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.opening_debit)}</td>}
+                    {showCol('opening_credit') && <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.opening_credit)}</td>}
+                    {showCol('period_debit') && <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.period_debit)}</td>}
+                    {showCol('period_credit') && <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.period_credit)}</td>}
+                    {showCol('ending_debit') && <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.ending_debit)}</td>}
+                    {showCol('ending_credit') && <td className="px-3 py-2 text-right tabular-nums font-bold">{formatCurrency(totals.ending_credit)}</td>}
                   </tr>
                   {!totals.is_balanced && (
                     <tr>
-                      <td colSpan={8} className="px-3 py-1.5 text-[12px] font-medium text-red-600">
+                      <td colSpan={visibleColumns.length} className="px-3 py-1.5 text-[12px] font-medium text-red-600">
                         ⚠ Tidak seimbang — selisih: {formatCurrency(totals.difference)}
                       </td>
                     </tr>

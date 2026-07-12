@@ -606,7 +606,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____components/
 | | | | |____ReportCompactBar.tsx
 | | | | |____ReportDomainPanel.tsx
-| | | | |____ReportFilterParameter.tsx
+| | | | |____ReportParameterModal.tsx
 | | | | |____PeriodSelector.tsx
 | | | | |____SaveReportButton.tsx
 | | | |____constants/

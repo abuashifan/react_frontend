@@ -1,7 +1,7 @@
 import { Fragment, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { ReportFilterParameter } from '../components/ReportFilterParameter'
+import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { Button } from '@/components/ui/button'
@@ -32,8 +32,8 @@ export default function CashFlowDirectReportPage() {
     <WorkspaceLayout title="Arus Kas (Metode Langsung)" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Arus Kas (Langsung)' }]}>
       <div className="space-y-4">
         {showFilter
-          ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} />
-          : <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} />}
+          ? <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} />
+          : <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} />}
 
         <p className="text-[11px] text-[#94a3b8]">
           Metode langsung: penerimaan &amp; pembayaran kas aktual dirinci per akun lawan dan dikelompokkan

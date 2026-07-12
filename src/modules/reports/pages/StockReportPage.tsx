@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { ReportFilterParameter } from '../components/ReportFilterParameter'
+import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { Label } from '@/components/ui/label'
@@ -78,8 +78,8 @@ export default function StockReportPage() {
 
         {tab !== 'stock_card' && (
           showFilter
-            ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ warehouse: true }} />
-            : <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} />
+            ? <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ warehouse: true }} />
+            : <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} />
         )}
 
         {tab === 'stock_card' && (

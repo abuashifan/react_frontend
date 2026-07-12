@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { ReportFilterParameter } from '../components/ReportFilterParameter'
+import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { TablePagination } from '@/components/shared/table/TablePagination'
@@ -47,30 +47,31 @@ export default function SalesSummaryReportPage() {
       breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Penjualan', path: '/reports/sales' }, { label: 'Ringkasan Penjualan' }]}
     >
       <div className="space-y-4">
-        {showFilter ? (
-          <>
-            <ReportFilterParameter
-              params={params}
-              onChange={(p) => setParams((prev) => ({ ...prev, ...p }))}
-              onSubmit={handleSubmit}
-              mode="range"
-              isLoading={isLoading}
-            />
-            <div className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-4 py-2">
-              <label className="text-[11px] font-medium uppercase tracking-wide text-[#64748b]">Kelompokkan per</label>
-              <select
-                className="rounded border border-[#e2e8f0] px-2 py-1 text-[12px] text-[#334155] focus:outline-none"
-                value={params.group_by ?? 'month'}
-                onChange={(e) => setParams((prev) => ({ ...prev, group_by: e.target.value as 'day' | 'month' }))}
-              >
-                <option value="month">Bulan</option>
-                <option value="day">Hari</option>
-              </select>
-            </div>
-          </>
-        ) : (
-          <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} mode="range" />
+        {activeParams && <ReportCompactBar params={activeParams} onOpenModal={() => setShowFilter(true)} mode="range" />}
+        {activeParams && (
+          <div className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-4 py-2">
+            <label className="text-[11px] font-medium uppercase tracking-wide text-[#64748b]">Kelompokkan per</label>
+            <select
+              className="rounded border border-[#e2e8f0] px-2 py-1 text-[12px] text-[#334155] focus:outline-none"
+              value={params.group_by ?? 'month'}
+              onChange={(e) => {
+                const gb = e.target.value as 'day' | 'month'
+                setParams((prev) => ({ ...prev, group_by: gb }))
+                setActiveParams((prev) => (prev ? { ...prev, group_by: gb } : prev))
+              }}
+            >
+              <option value="month">Bulan</option>
+              <option value="day">Hari</option>
+            </select>
+          </div>
         )}
+        <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)}
+          params={params}
+          onChange={(p) => setParams((prev) => ({ ...prev, ...p }))}
+          onSubmit={handleSubmit}
+          mode="range"
+          isLoading={isLoading}
+        />
 
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
         {isError && <ReportError onRetry={() => refetch()} />}

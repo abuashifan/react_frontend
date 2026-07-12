@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { ReportFilterParameter } from '../components/ReportFilterParameter'
+import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { TablePagination } from '@/components/shared/table/TablePagination'
@@ -80,9 +80,9 @@ export default function JournalListReportPage() {
     <WorkspaceLayout title={SOURCE_TITLE[source]} breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: SOURCE_TITLE[source] }]}>
       <div className="space-y-4">
         {showFilter ? (
-          <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} />
+          <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} />
         ) : (
-          <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} />
+          <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} />
         )}
 
         <div className="flex flex-wrap items-center gap-1">

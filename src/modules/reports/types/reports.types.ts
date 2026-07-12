@@ -16,6 +16,10 @@ export interface ReportParams extends DateRangeParams {
   warehouse_id?: number
   customer_id?: number
   vendor_id?: number
+  // Fase 14: filter kontekstual tambahan (dikirim ke backend bila laporan mendukung).
+  supplier_id?: number
+  contact_id?: number
+  status?: string
   product_id?: number
   group_by?: 'day' | 'month'
   include_zero_balance?: boolean
@@ -29,6 +33,42 @@ export interface ReportParams extends DateRangeParams {
   source?: JournalSource
   page?: number
   per_page?: number
+}
+
+// Parameter Laporan (Fase 14) — konfigurasi yang dikonsumsi ReportParameterModal.
+// Dipindah dari ReportFilterParameter (dihapus). Page mendeklarasikan filter &
+// kolom yang relevan; modal merendernya secara data-driven.
+export interface DimensionFilterConfig {
+  department?: boolean
+  project?: boolean
+  warehouse?: boolean
+}
+
+export interface ExtraFilterConfig {
+  include_zero_balance?: boolean
+  only_difference?: boolean
+}
+
+export interface StatusFilterConfig {
+  options: { label: string; value: string }[]
+}
+
+export interface ContextFilterConfig {
+  customer?: boolean
+  supplier?: boolean
+  // vendor: sama seperti supplier tetapi mengisi `vendor_id` (dipakai laporan AP
+  // yang backend-nya memfilter per vendor_id).
+  vendor?: boolean
+  product?: boolean
+  account?: boolean
+  contact?: boolean
+  status?: StatusFilterConfig
+}
+
+export interface ColumnConfig {
+  key: string
+  label: string
+  defaultVisible?: boolean
 }
 
 // General Ledger

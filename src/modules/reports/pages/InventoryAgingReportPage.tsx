@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { ReportFilterParameter } from '../components/ReportFilterParameter'
+import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { TablePagination } from '@/components/shared/table/TablePagination'
@@ -51,7 +51,7 @@ export default function InventoryAgingReportPage() {
     <WorkspaceLayout title="Umur Persediaan" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Umur Persediaan' }]}>
       <div className="space-y-4">
         {showFilter ? (
-          <ReportFilterParameter
+          <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)}
             params={params}
             onChange={(p) => setParams((prev) => ({ ...prev, ...p }))}
             onSubmit={handleSubmit}
@@ -61,7 +61,7 @@ export default function InventoryAgingReportPage() {
             extras={{ include_zero_balance: true }}
           />
         ) : (
-          <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} />
+          <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} />
         )}
 
         <p className="text-[11px] text-[#94a3b8]">

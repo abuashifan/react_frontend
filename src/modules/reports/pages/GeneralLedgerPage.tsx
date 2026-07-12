@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { ReportFilterParameter } from '../components/ReportFilterParameter'
+import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { TablePagination } from '@/components/shared/table/TablePagination'
@@ -13,10 +13,20 @@ import { formatCurrency } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
 import { SaveReportButton } from '../components/SaveReportButton'
 import { useInitialReportParams } from '../hooks/useInitialReportParams'
-import type { ReportParams } from '../types/reports.types'
+import type { ReportParams, ColumnConfig } from '../types/reports.types'
 
 const today = new Date().toISOString().slice(0, 10)
 const firstOfMonth = today.slice(0, 8) + '01'
+
+// Kolom mode ringkasan (Fase 14 — column selection).
+const SUMMARY_COLUMNS: ColumnConfig[] = [
+  { key: 'account_code', label: 'Kode' },
+  { key: 'account_name', label: 'Akun' },
+  { key: 'opening_balance', label: 'Saldo Awal' },
+  { key: 'period_debit', label: 'Debit' },
+  { key: 'period_credit', label: 'Kredit' },
+  { key: 'ending_balance', label: 'Saldo Akhir' },
+]
 
 type LedgerMode = 'summary' | 'detail'
 
@@ -27,6 +37,8 @@ export default function GeneralLedgerPage() {
   const [params, setParams] = useState<ReportParams>(initialParams)
   const [activeParams, setActiveParams] = useState<ReportParams | null>(restored ? initialParams : null)
   const [showFilter, setShowFilter] = useState(!restored)
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(SUMMARY_COLUMNS.map((c) => c.key))
+  const showCol = (key: string) => visibleColumns.includes(key)
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
 
   // Dua query terpisah agar jalur ringkasan (rentan crash historis A13-232) tetap utuh
@@ -74,8 +86,8 @@ export default function GeneralLedgerPage() {
   return (
     <WorkspaceLayout title="Buku Besar" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Buku Besar' }]}>
       <div className="space-y-4">
-        {showFilter ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} extras={{ include_zero_balance: true }} />
-          : <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} />}
+        {showFilter ? <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} extras={{ include_zero_balance: true }} columns={mode === 'summary' ? SUMMARY_COLUMNS : undefined} visibleColumns={visibleColumns} onColumnsChange={setVisibleColumns} />
+          : <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} columnSummary={mode === 'summary' ? `${visibleColumns.length} kolom` : undefined} />}
 
         <div className="flex flex-wrap items-center gap-1">
           <span className="mr-1 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tampilan</span>
@@ -111,27 +123,27 @@ export default function GeneralLedgerPage() {
             <table className="w-full text-[12px]">
               <thead className="bg-[#f8fafc]">
                 <tr>
-                  <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kode</th>
-                  <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun</th>
-                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Saldo Awal</th>
-                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Debit</th>
-                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kredit</th>
-                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Saldo Akhir</th>
+                  {showCol('account_code') && <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kode</th>}
+                  {showCol('account_name') && <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun</th>}
+                  {showCol('opening_balance') && <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Saldo Awal</th>}
+                  {showCol('period_debit') && <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Debit</th>}
+                  {showCol('period_credit') && <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kredit</th>}
+                  {showCol('ending_balance') && <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Saldo Akhir</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f1f5f9]">
                 {pagedSummary.map((acc) => (
                   <tr key={acc.account_id} className="hover:bg-[#f8fafc]">
-                    <td className="px-3 py-1.5 text-[#64748b]">{acc.account_code}</td>
-                    <td className="px-3 py-1.5 text-[#334155]">{acc.account_name}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums text-[#64748b]">{formatCurrency(acc.opening_balance)}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums text-green-700">{acc.period_debit ? formatCurrency(acc.period_debit) : '-'}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums text-red-600">{acc.period_credit ? formatCurrency(acc.period_credit) : '-'}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-[#1e293b]">{formatCurrency(acc.ending_balance)}</td>
+                    {showCol('account_code') && <td className="px-3 py-1.5 text-[#64748b]">{acc.account_code}</td>}
+                    {showCol('account_name') && <td className="px-3 py-1.5 text-[#334155]">{acc.account_name}</td>}
+                    {showCol('opening_balance') && <td className="px-3 py-1.5 text-right tabular-nums text-[#64748b]">{formatCurrency(acc.opening_balance)}</td>}
+                    {showCol('period_debit') && <td className="px-3 py-1.5 text-right tabular-nums text-green-700">{acc.period_debit ? formatCurrency(acc.period_debit) : '-'}</td>}
+                    {showCol('period_credit') && <td className="px-3 py-1.5 text-right tabular-nums text-red-600">{acc.period_credit ? formatCurrency(acc.period_credit) : '-'}</td>}
+                    {showCol('ending_balance') && <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-[#1e293b]">{formatCurrency(acc.ending_balance)}</td>}
                   </tr>
                 ))}
                 {summaryAccounts.length === 0 && (
-                  <tr><td colSpan={6} className="py-8 text-center text-[#94a3b8]">Tidak ada transaksi pada periode ini.</td></tr>
+                  <tr><td colSpan={visibleColumns.length} className="py-8 text-center text-[#94a3b8]">Tidak ada transaksi pada periode ini.</td></tr>
                 )}
               </tbody>
             </table>

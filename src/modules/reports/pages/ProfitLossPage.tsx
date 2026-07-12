@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { ReportFilterParameter } from '../components/ReportFilterParameter'
+import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { Button } from '@/components/ui/button'
@@ -53,8 +53,8 @@ export default function ProfitLossPage() {
   return (
     <WorkspaceLayout title="Laba Rugi" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Laba Rugi' }]}>
       <div className="space-y-4">
-        {showFilter ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} />
-          : <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} />}
+        {showFilter ? <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} />
+          : <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} />}
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
         {isError && <ReportError onRetry={() => refetch()} />}
         {!isLoading && !isError && report && (

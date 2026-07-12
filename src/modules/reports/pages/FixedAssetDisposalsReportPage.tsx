@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { ReportFilterParameter } from '../components/ReportFilterParameter'
+import { ReportParameterModal } from '../components/ReportParameterModal'
+import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
@@ -18,6 +19,7 @@ interface ActiveQuery {
 export default function FixedAssetDisposalsReportPage() {
   const [params, setParams] = useState<ReportParams>({ start_date: firstOfYear, end_date: today })
   const [activeQuery, setActiveQuery] = useState<ActiveQuery | null>(null)
+  const [showFilter, setShowFilter] = useState(true)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['reports', 'fa-disposals', activeQuery],
@@ -32,6 +34,7 @@ export default function FixedAssetDisposalsReportPage() {
       disposal_date_from: params.start_date,
       disposal_date_to: params.end_date,
     })
+    setShowFilter(false)
   }
 
   return (
@@ -40,7 +43,8 @@ export default function FixedAssetDisposalsReportPage() {
       breadcrumb={[{ label: 'Laporan' }, { label: 'Aktiva Tetap' }, { label: 'Laporan Pelepasan' }]}
     >
       <div className="space-y-4">
-        <ReportFilterParameter
+        {activeQuery && <ReportCompactBar params={params} onOpenModal={() => setShowFilter(true)} mode="range" />}
+        <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)}
           params={params}
           onChange={(p) => setParams((prev) => ({ ...prev, ...p }))}
           onSubmit={handleSubmit}
