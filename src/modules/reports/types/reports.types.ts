@@ -302,6 +302,38 @@ export interface CashFlowReport {
   }
 }
 
+// Pajak PPN (Fase 11) — /reports/tax/{output-vat,input-vat}.
+export interface OutputVatRow {
+  id: number
+  invoice_number: string
+  invoice_date: string
+  customer_name: string | null
+  dpp: number
+  ppn: number
+  total: number
+}
+
+export interface OutputVatReport {
+  rows: OutputVatRow[]
+  totals: { invoice_count: number; dpp: number; ppn: number; total: number }
+}
+
+export interface InputVatRow {
+  id: number
+  bill_number: string
+  bill_date: string
+  vendor_invoice_number: string | null
+  vendor_name: string | null
+  dpp: number
+  ppn: number
+  total: number
+}
+
+export interface InputVatReport {
+  rows: InputVatRow[]
+  totals: { bill_count: number; dpp: number; ppn: number; total: number }
+}
+
 // Multi-Periode (Fase 10) — /reports/{profit-loss,balance-sheet}/multi-period.
 // Opsi (a): backend menerima periods[] → kolom per periode. Tiap kolom identik
 // dengan laporan single-period untuk periode itu.

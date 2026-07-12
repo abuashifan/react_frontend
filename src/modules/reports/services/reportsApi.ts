@@ -36,6 +36,10 @@ import type {
   MultiPeriodRow,
   ProfitLossMultiPeriodReport,
   BalanceSheetMultiPeriodReport,
+  OutputVatReport,
+  OutputVatRow,
+  InputVatReport,
+  InputVatRow,
   TrialBalanceReport,
   TrialBalanceAccount,
   TrialBalanceTotals,
@@ -758,6 +762,53 @@ function buildMultiPeriodQuery(params: { periods: MultiPeriodInput[]; department
   return usp.toString()
 }
 
+// PPN Keluaran (Fase 11 T11.1).
+function adaptOutputVat(raw: Raw): OutputVatReport {
+  const totals = asRecord(raw.totals)
+  const rows: OutputVatRow[] = asArray(raw.rows).map((r) => ({
+    id: num(r.id),
+    invoice_number: str(r.invoice_number),
+    invoice_date: str(r.invoice_date),
+    customer_name: r.customer_name == null ? null : str(r.customer_name),
+    dpp: num(r.dpp),
+    ppn: num(r.ppn),
+    total: num(r.total),
+  }))
+  return {
+    rows,
+    totals: {
+      invoice_count: num(totals.invoice_count),
+      dpp: num(totals.dpp),
+      ppn: num(totals.ppn),
+      total: num(totals.total),
+    },
+  }
+}
+
+// PPN Masukan (Fase 11 T11.2).
+function adaptInputVat(raw: Raw): InputVatReport {
+  const totals = asRecord(raw.totals)
+  const rows: InputVatRow[] = asArray(raw.rows).map((r) => ({
+    id: num(r.id),
+    bill_number: str(r.bill_number),
+    bill_date: str(r.bill_date),
+    vendor_invoice_number: r.vendor_invoice_number == null ? null : str(r.vendor_invoice_number),
+    vendor_name: r.vendor_name == null ? null : str(r.vendor_name),
+    dpp: num(r.dpp),
+    ppn: num(r.ppn),
+    total: num(r.total),
+  }))
+  return {
+    rows,
+    totals: {
+      bill_count: num(totals.bill_count),
+      dpp: num(totals.dpp),
+      ppn: num(totals.ppn),
+      total: num(totals.total),
+    },
+  }
+}
+
 function adaptResponse<T>(res: ApiResponse<unknown>, adapt: (raw: Raw) => T): ApiResponse<T> {
   return { ...res, data: adapt(asRecord(res.data)) }
 }
@@ -855,6 +906,18 @@ export const reportsApi = {
     http
       .get<unknown, ApiResponse<unknown>>('/reports/balance-sheet/multi-period?' + buildMultiPeriodQuery(params))
       .then((res) => adaptResponse(res, adaptBalanceSheetMultiPeriod)),
+
+  // PPN Keluaran (Fase 11 T11.1).
+  outputVat: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/tax/output-vat', { params })
+      .then((res) => adaptResponse(res, adaptOutputVat)),
+
+  // PPN Masukan (Fase 11 T11.2).
+  inputVat: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/tax/input-vat', { params })
+      .then((res) => adaptResponse(res, adaptInputVat)),
 
   financialSummary: (params: ReportParams) =>
     http

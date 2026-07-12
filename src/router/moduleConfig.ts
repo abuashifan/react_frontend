@@ -141,6 +141,7 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
       { id: 'inventory', label: 'Persediaan', icon: Package, path: '/reports/inventory', permission: 'reports.view' },
       { id: 'fixed-assets', label: 'Aktiva Tetap', icon: Building2, path: '/reports/fixed-assets', permission: 'reports.view' },
       { id: 'cash-bank', label: 'Kas & Bank', icon: Landmark, path: '/reports/cash-bank', permission: 'reports.view' },
+      { id: 'tax', label: 'Pajak', icon: Receipt, path: '/reports/tax', permission: 'reports.view' },
     ],
   },
   {

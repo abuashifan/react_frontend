@@ -125,6 +125,15 @@ export const REPORT_DOMAINS: ReportDomain[] = [
       { id: 'account-statement', title: 'Mutasi Rekening', description: 'Mutasi kas & bank per rekening', path: '/reports/account-statement' },
     ],
   },
+  {
+    id: 'tax',
+    label: 'Pajak',
+    categoryPath: 'tax',
+    reports: [
+      { id: 'output-vat', title: 'PPN Keluaran', description: 'Daftar PPN keluaran dari faktur penjualan (DPP, PPN, Total)', path: '/reports/tax/output-vat' },
+      { id: 'input-vat', title: 'PPN Masukan', description: 'Daftar PPN masukan dari faktur pembelian (DPP, PPN, Total)', path: '/reports/tax/input-vat' },
+    ],
+  },
 ]
 
 export const DOMAIN_BY_PATH: Record<string, ReportDomain> = Object.fromEntries(
