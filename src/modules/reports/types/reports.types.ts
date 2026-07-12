@@ -930,3 +930,30 @@ export interface PurchaseByProductReport {
 // NOTE: Transaction list report (/reports/transactions) dan export PDF/Excel
 // (/reports/{type}/export/*) TIDAK punya route backend (Audit-12 A12-15).
 // Endpoint & UI-nya sengaja dihapus, bukan dibiarkan memanggil 404.
+
+// Laporan Tersimpan (Fase 13). report_key = id laporan (mis. 'general-ledger'),
+// params = filter ReportParams yang disimpan. Dibagikan ke banyak user.
+export interface SavedReport {
+  id: number
+  report_key: string
+  name: string
+  params: ReportParams
+  is_owner: boolean
+  owner_user_id: number
+  shared_user_ids: number[]
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface SavedReportInput {
+  report_key: string
+  name: string
+  params: ReportParams
+  shared_user_ids?: number[]
+}
+
+export interface ShareableUser {
+  id: number
+  name: string
+  email: string
+}

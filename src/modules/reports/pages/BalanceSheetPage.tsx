@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
+import { SaveReportButton } from '../components/SaveReportButton'
+import { useInitialReportParams } from '../hooks/useInitialReportParams'
 import type { ReportParams, ReportSection } from '../types/reports.types'
 
 const today = new Date().toISOString().slice(0, 10)
@@ -36,9 +38,10 @@ function BSSection({ section }: { section: ReportSection }) {
 }
 
 export default function BalanceSheetPage() {
-  const [params, setParams] = useState<ReportParams>({ as_of_date: today })
-  const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
-  const [showFilter, setShowFilter] = useState(true)
+  const { initialParams, restored } = useInitialReportParams({ as_of_date: today })
+  const [params, setParams] = useState<ReportParams>(initialParams)
+  const [activeParams, setActiveParams] = useState<ReportParams | null>(restored ? initialParams : null)
+  const [showFilter, setShowFilter] = useState(!restored)
 
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['reports', 'balance-sheet', activeParams], queryFn: () => reportsApi.balanceSheet(activeParams!), enabled: !!activeParams })
   const report = data?.data
@@ -56,21 +59,24 @@ export default function BalanceSheetPage() {
           : <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} mode="as_of_date" />}
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
         {isError && <ReportError onRetry={() => refetch()} />}
-        {!isLoading && !isError && report && totals && sections.length > 0 && (
-          <div className="flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-[12px]"
-              onClick={() => {
-                const rows = sections.flatMap((s) =>
-                  s.accounts.map((a) => [s.label, a.account_code ?? '', a.account_name, a.amount])
-                )
-                exportCsv(`neraca-${activeParams?.as_of_date ?? ''}.csv`, ['Seksi', 'Kode', 'Akun', 'Jumlah'], rows)
-              }}
-            >
-              Export CSV
-            </Button>
+        {!isLoading && !isError && report && totals && (
+          <div className="flex justify-end gap-2">
+            <SaveReportButton reportKey="balance-sheet" params={activeParams} />
+            {sections.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-[12px]"
+                onClick={() => {
+                  const rows = sections.flatMap((s) =>
+                    s.accounts.map((a) => [s.label, a.account_code ?? '', a.account_name, a.amount])
+                  )
+                  exportCsv(`neraca-${activeParams?.as_of_date ?? ''}.csv`, ['Seksi', 'Kode', 'Akun', 'Jumlah'], rows)
+                }}
+              >
+                Export CSV
+              </Button>
+            )}
           </div>
         )}
         {!isLoading && !isError && report && totals && (

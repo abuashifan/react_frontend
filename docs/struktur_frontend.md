@@ -608,8 +608,13 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____ReportDomainPanel.tsx
 | | | | |____ReportFilterParameter.tsx
 | | | | |____PeriodSelector.tsx
+| | | | |____SaveReportButton.tsx
 | | | |____constants/
 | | | | |____reportCategories.ts
+| | | | |____reportKeyRoutes.ts
+| | | |____hooks/
+| | | | |____useSavedReports.ts
+| | | | |____useInitialReportParams.ts
 | | | |____pages/
 | | | | |____ApAgingReportPage.tsx
 | | | | |____ApOutstandingReportPage.tsx
@@ -649,11 +654,13 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____PurchaseSummaryReportPage.tsx
 | | | | |____ReportCategoryPage.tsx
 | | | | |____ReportIndexPage.tsx
+| | | | |____SavedReportsPage.tsx
 | | | | |____StockReportPage.tsx
 | | | | |____TrialBalancePage.tsx
 | | | |____routes.tsx
 | | | |____services/
 | | | | |____reportsApi.ts
+| | | | |____savedReportsApi.ts
 | | | |____types/
 | | | | |____reports.types.ts
 | | |____sales/

@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
+import { SaveReportButton } from '../components/SaveReportButton'
+import { useInitialReportParams } from '../hooks/useInitialReportParams'
 import type { ReportParams } from '../types/reports.types'
 
 const today = new Date().toISOString().slice(0, 10)
@@ -20,10 +22,11 @@ type LedgerMode = 'summary' | 'detail'
 
 export default function GeneralLedgerPage() {
   const [searchParams] = useSearchParams()
+  const { initialParams, restored } = useInitialReportParams({ start_date: firstOfMonth, end_date: today })
   const [mode, setMode] = useState<LedgerMode>(searchParams.get('mode') === 'detail' ? 'detail' : 'summary')
-  const [params, setParams] = useState<ReportParams>({ start_date: firstOfMonth, end_date: today })
-  const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
-  const [showFilter, setShowFilter] = useState(true)
+  const [params, setParams] = useState<ReportParams>(initialParams)
+  const [activeParams, setActiveParams] = useState<ReportParams | null>(restored ? initialParams : null)
+  const [showFilter, setShowFilter] = useState(!restored)
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
 
   // Dua query terpisah agar jalur ringkasan (rentan crash historis A13-232) tetap utuh
@@ -82,20 +85,23 @@ export default function GeneralLedgerPage() {
 
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
         {isError && <ReportError onRetry={() => refetch()} />}
-        {!isLoading && !isError && hasReport && accounts.length > 0 && (
-          <div className="flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-[12px]"
-              onClick={() => exportCsv(
-                `buku-besar-${mode}-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
-                ['Kode', 'Akun', 'Saldo Awal', 'Debit Periode', 'Kredit Periode', 'Saldo Akhir'],
-                accounts.map((a) => [a.account_code, a.account_name, a.opening_balance, a.period_debit, a.period_credit, a.ending_balance])
-              )}
-            >
-              Export CSV
-            </Button>
+        {!isLoading && !isError && hasReport && (
+          <div className="flex justify-end gap-2">
+            <SaveReportButton reportKey={mode === 'detail' ? 'general-ledger-detail' : 'general-ledger'} params={activeParams} />
+            {accounts.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-[12px]"
+                onClick={() => exportCsv(
+                  `buku-besar-${mode}-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
+                  ['Kode', 'Akun', 'Saldo Awal', 'Debit Periode', 'Kredit Periode', 'Saldo Akhir'],
+                  accounts.map((a) => [a.account_code, a.account_name, a.opening_balance, a.period_debit, a.period_credit, a.ending_balance])
+                )}
+              >
+                Export CSV
+              </Button>
+            )}
           </div>
         )}
 

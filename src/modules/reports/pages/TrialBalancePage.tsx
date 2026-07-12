@@ -10,15 +10,18 @@ import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
+import { SaveReportButton } from '../components/SaveReportButton'
+import { useInitialReportParams } from '../hooks/useInitialReportParams'
 import type { ReportParams } from '../types/reports.types'
 
 const today = new Date().toISOString().slice(0, 10)
 const firstOfMonth = today.slice(0, 8) + '01'
 
 export default function TrialBalancePage() {
-  const [params, setParams] = useState<ReportParams>({ start_date: firstOfMonth, end_date: today })
-  const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
-  const [showFilter, setShowFilter] = useState(true)
+  const { initialParams, restored } = useInitialReportParams({ start_date: firstOfMonth, end_date: today })
+  const [params, setParams] = useState<ReportParams>(initialParams)
+  const [activeParams, setActiveParams] = useState<ReportParams | null>(restored ? initialParams : null)
+  const [showFilter, setShowFilter] = useState(!restored)
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -50,20 +53,23 @@ export default function TrialBalancePage() {
         }
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
         {isError && <ReportError onRetry={() => refetch()} />}
-        {!isLoading && !isError && report && allAccounts.length > 0 && (
-          <div className="flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-[12px]"
-              onClick={() => exportCsv(
-                `neraca-saldo-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
-                ['Kode', 'Akun', 'Debit Awal', 'Kredit Awal', 'Debit Periode', 'Kredit Periode', 'Debit Akhir', 'Kredit Akhir'],
-                allAccounts.map((a) => [a.account_code, a.account_name, a.opening_debit, a.opening_credit, a.period_debit, a.period_credit, a.ending_debit, a.ending_credit])
-              )}
-            >
-              Export CSV
-            </Button>
+        {!isLoading && !isError && report && (
+          <div className="flex justify-end gap-2">
+            <SaveReportButton reportKey="trial-balance" params={activeParams} />
+            {allAccounts.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-[12px]"
+                onClick={() => exportCsv(
+                  `neraca-saldo-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
+                  ['Kode', 'Akun', 'Debit Awal', 'Kredit Awal', 'Debit Periode', 'Kredit Periode', 'Debit Akhir', 'Kredit Akhir'],
+                  allAccounts.map((a) => [a.account_code, a.account_name, a.opening_debit, a.opening_credit, a.period_debit, a.period_credit, a.ending_debit, a.ending_credit])
+                )}
+              >
+                Export CSV
+              </Button>
+            )}
           </div>
         )}
         {!isLoading && !isError && report && (

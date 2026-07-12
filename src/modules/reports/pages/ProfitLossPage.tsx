@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
+import { SaveReportButton } from '../components/SaveReportButton'
+import { useInitialReportParams } from '../hooks/useInitialReportParams'
 import type { ReportParams, ReportSection } from '../types/reports.types'
 
 const today = new Date().toISOString().slice(0, 10)
@@ -37,9 +39,10 @@ function PLSection({ section }: { section: ReportSection }) {
 }
 
 export default function ProfitLossPage() {
-  const [params, setParams] = useState<ReportParams>({ start_date: firstOfMonth, end_date: today })
-  const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
-  const [showFilter, setShowFilter] = useState(true)
+  const { initialParams, restored } = useInitialReportParams({ start_date: firstOfMonth, end_date: today })
+  const [params, setParams] = useState<ReportParams>(initialParams)
+  const [activeParams, setActiveParams] = useState<ReportParams | null>(restored ? initialParams : null)
+  const [showFilter, setShowFilter] = useState(!restored)
 
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['reports', 'profit-loss', activeParams], queryFn: () => reportsApi.profitLoss(activeParams!), enabled: !!activeParams })
   const report = data?.data
@@ -54,22 +57,25 @@ export default function ProfitLossPage() {
           : <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} />}
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
         {isError && <ReportError onRetry={() => refetch()} />}
-        {!isLoading && !isError && report && sections.length > 0 && (
-          <div className="flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-[12px]"
-              onClick={() => {
-                const rows = sections.flatMap((s) =>
-                  s.accounts.map((a) => [s.label, a.account_code ?? '', a.account_name, a.amount])
-                )
-                rows.push(['', '', net >= 0 ? 'Laba Bersih' : 'Rugi Bersih', net])
-                exportCsv(`laba-rugi-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`, ['Seksi', 'Kode', 'Akun', 'Jumlah'], rows)
-              }}
-            >
-              Export CSV
-            </Button>
+        {!isLoading && !isError && report && (
+          <div className="flex justify-end gap-2">
+            <SaveReportButton reportKey="profit-loss" params={activeParams} />
+            {sections.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-[12px]"
+                onClick={() => {
+                  const rows = sections.flatMap((s) =>
+                    s.accounts.map((a) => [s.label, a.account_code ?? '', a.account_name, a.amount])
+                  )
+                  rows.push(['', '', net >= 0 ? 'Laba Bersih' : 'Rugi Bersih', net])
+                  exportCsv(`laba-rugi-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`, ['Seksi', 'Kode', 'Akun', 'Jumlah'], rows)
+                }}
+              >
+                Export CSV
+              </Button>
+            )}
           </div>
         )}
         {!isLoading && !isError && report && (
