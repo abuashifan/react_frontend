@@ -19,6 +19,9 @@ export interface ReportParams extends DateRangeParams {
   product_id?: number
   group_by?: 'day' | 'month'
   include_zero_balance?: boolean
+  // Umur Persediaan (Fase 8): backend inventory memakai `include_zero` (bukan _balance).
+  include_zero?: boolean
+  category_id?: number
   only_difference?: boolean
   // Buku Besar: 'summary' = saldo per akun (default); 'detail' = baris jurnal per akun (Fase 7 T7.1).
   mode?: 'summary' | 'detail'
@@ -78,7 +81,8 @@ export interface GeneralLedgerDetailReport {
 
 // Laporan Jurnal (Fase 7 T7.2/T7.3) — /reports/journals.
 // 'general' = Jurnal Umum (jurnal manual). 'all' tanpa filter sumber.
-export type JournalSource = 'all' | 'sales' | 'purchase' | 'general'
+// 'inventory' = Jurnal Persediaan (Fase 8 T8.2, reuse endpoint jurnal).
+export type JournalSource = 'all' | 'sales' | 'purchase' | 'inventory' | 'general'
 
 export interface JournalListRow {
   journal_entry_id: number
@@ -97,6 +101,73 @@ export interface JournalListReport {
   rows: JournalListRow[]
   totals: { journal_count: number; total_debit: number; total_credit: number }
   filter: { start_date: string | null; end_date: string | null; source: string }
+}
+
+// Umur Persediaan (Fase 8 T8.1) — /inventory/reports/aging.
+// Response backend dibungkus { as_of_date, filters, rows, totals } (ranjau §8).
+// Metode aging: average cost (no FIFO), seluruh on-hand baris masuk satu bucket
+// berdasarkan tanggal inbound terakhir vs as_of_date.
+export interface InventoryAgingBuckets {
+  days_0_30: number
+  days_31_60: number
+  days_61_90: number
+  days_over_90: number
+}
+
+export interface InventoryAgingRow {
+  product_id: number
+  product_code: string
+  product_name: string
+  warehouse_id: number
+  warehouse_name: string
+  quantity_on_hand: number
+  average_cost: number
+  total_value: number
+  last_inbound_date: string | null
+  age_days: number
+  buckets: InventoryAgingBuckets
+}
+
+export interface InventoryAgingReport {
+  as_of_date: string
+  rows: InventoryAgingRow[]
+  totals: { total_quantity_on_hand: number; total_value: number; buckets: InventoryAgingBuckets }
+}
+
+// Kertas Kerja Opname (Fase 8 T8.3) — /inventory/reports/opname-worksheet.
+export interface OpnameWorksheetRow {
+  product_id: number
+  product_code: string
+  product_name: string
+  warehouse_id: number
+  warehouse_name: string
+  unit_name: string
+  system_quantity: number
+  physical_quantity: number | null
+  difference_quantity: number
+  average_cost: number
+  difference_value: number
+  counted: boolean
+}
+
+export interface OpnameWorksheetReport {
+  opname: {
+    id: number
+    opname_number: string
+    opname_date: string | null
+    status: string
+    warehouse_id: number
+    warehouse_name: string
+  } | null
+  rows: OpnameWorksheetRow[]
+  totals: {
+    line_count: number
+    counted_lines: number
+    total_system_quantity: number
+    total_physical_quantity: number
+    total_difference_quantity: number
+    total_difference_value: number
+  }
 }
 
 // ---------------------------------------------------------------------------

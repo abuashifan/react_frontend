@@ -96,6 +96,9 @@ export const REPORT_DOMAINS: ReportDomain[] = [
     reports: [
       { id: 'stock', title: 'Laporan Stok', description: 'Saldo, mutasi, dan kartu stok per produk', path: '/reports/stock' },
       { id: 'inventory-analysis', title: 'Analisis Inventori', description: 'Valuasi, stok rendah, dan stok negatif', path: '/reports/inventory-analysis' },
+      { id: 'inventory-aging', title: 'Umur Persediaan', description: 'Umur stok per produk & gudang dalam bucket 0-30/31-60/61-90/>90 hari', path: '/reports/inventory-aging' },
+      { id: 'inventory-journal', title: 'Jurnal Persediaan', description: 'Jurnal bersumber pergerakan stok', path: '/reports/journals?source=inventory' },
+      { id: 'inventory-opname', title: 'Kertas Kerja Opname', description: 'Qty sistem vs fisik vs selisih per sesi opname', path: '/reports/inventory-opname' },
     ],
   },
   {

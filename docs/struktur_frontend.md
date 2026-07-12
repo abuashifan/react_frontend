@@ -623,6 +623,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____GeneralLedgerPage.tsx
 | | | | |____JournalListReportPage.tsx
 | | | | |____InventoryAnalysisPage.tsx
+| | | | |____InventoryAgingReportPage.tsx
+| | | | |____OpnameWorksheetReportPage.tsx
 | | | | |____ProfitLossPage.tsx
 | | | | |____ReconciliationPage.tsx
 | | | | |____CashBankStatementPage.tsx

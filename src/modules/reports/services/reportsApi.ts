@@ -20,6 +20,11 @@ import type {
   GeneralLedgerDetailLine,
   JournalListReport,
   JournalListRow,
+  InventoryAgingReport,
+  InventoryAgingRow,
+  InventoryAgingBuckets,
+  OpnameWorksheetReport,
+  OpnameWorksheetRow,
   TrialBalanceReport,
   TrialBalanceAccount,
   TrialBalanceTotals,
@@ -325,6 +330,81 @@ function adaptJournalList(raw: Raw): JournalListReport {
   }
 }
 
+// Umur Persediaan (Fase 8 T8.1). Response inventory dibungkus { as_of_date, rows, totals }.
+function adaptInventoryAgingBuckets(raw: Raw): InventoryAgingBuckets {
+  return {
+    days_0_30: num(raw['0_30']),
+    days_31_60: num(raw['31_60']),
+    days_61_90: num(raw['61_90']),
+    days_over_90: num(raw.over_90),
+  }
+}
+
+function adaptInventoryAging(raw: Raw): InventoryAgingReport {
+  const totals = asRecord(raw.totals)
+  const rows: InventoryAgingRow[] = asArray(raw.rows).map((r) => ({
+    product_id: num(r.product_id),
+    product_code: str(r.product_code),
+    product_name: str(r.product_name),
+    warehouse_id: num(r.warehouse_id),
+    warehouse_name: str(r.warehouse_name),
+    quantity_on_hand: num(r.quantity_on_hand),
+    average_cost: num(r.average_cost),
+    total_value: num(r.total_value),
+    last_inbound_date: r.last_inbound_date == null ? null : str(r.last_inbound_date),
+    age_days: num(r.age_days),
+    buckets: adaptInventoryAgingBuckets(asRecord(r.buckets)),
+  }))
+  return {
+    as_of_date: str(raw.as_of_date),
+    rows,
+    totals: {
+      total_quantity_on_hand: num(totals.total_quantity_on_hand),
+      total_value: num(totals.total_value),
+      buckets: adaptInventoryAgingBuckets(asRecord(totals.buckets)),
+    },
+  }
+}
+
+// Kertas Kerja Opname (Fase 8 T8.3).
+function adaptOpnameWorksheet(raw: Raw): OpnameWorksheetReport {
+  const opnameRaw = raw.opname == null ? null : asRecord(raw.opname)
+  const totals = asRecord(raw.totals)
+  const rows: OpnameWorksheetRow[] = asArray(raw.rows).map((r) => ({
+    product_id: num(r.product_id),
+    product_code: str(r.product_code),
+    product_name: str(r.product_name),
+    warehouse_id: num(r.warehouse_id),
+    warehouse_name: str(r.warehouse_name),
+    unit_name: str(r.unit_name),
+    system_quantity: num(r.system_quantity),
+    physical_quantity: r.physical_quantity == null ? null : num(r.physical_quantity),
+    difference_quantity: num(r.difference_quantity),
+    average_cost: num(r.average_cost),
+    difference_value: num(r.difference_value),
+    counted: Boolean(r.counted),
+  }))
+  return {
+    opname: opnameRaw == null ? null : {
+      id: num(opnameRaw.id),
+      opname_number: str(opnameRaw.opname_number),
+      opname_date: opnameRaw.opname_date == null ? null : str(opnameRaw.opname_date),
+      status: str(opnameRaw.status),
+      warehouse_id: num(opnameRaw.warehouse_id),
+      warehouse_name: str(opnameRaw.warehouse_name),
+    },
+    rows,
+    totals: {
+      line_count: num(totals.line_count),
+      counted_lines: num(totals.counted_lines),
+      total_system_quantity: num(totals.total_system_quantity),
+      total_physical_quantity: num(totals.total_physical_quantity),
+      total_difference_quantity: num(totals.total_difference_quantity),
+      total_difference_value: num(totals.total_difference_value),
+    },
+  }
+}
+
 // AR aging — backend: { as_of_date, buckets, customers: [{ customer_id,
 // customer_name, buckets, total }] }. UI membaca lines/totals (A13-235).
 function adaptAgingBucket(bucket: Raw) {
@@ -576,6 +656,18 @@ export const reportsApi = {
     http
       .get<unknown, ApiResponse<unknown>>('/reports/journals', { params })
       .then((res) => adaptResponse(res, adaptJournalList)),
+
+  // Umur Persediaan (Fase 8 T8.1).
+  inventoryAging: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/inventory/reports/aging', { params })
+      .then((res) => adaptResponse(res, adaptInventoryAging)),
+
+  // Kertas Kerja Opname (Fase 8 T8.3).
+  opnameWorksheet: (params: ReportParams & { opname_id?: number }) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/inventory/reports/opname-worksheet', { params })
+      .then((res) => adaptResponse(res, adaptOpnameWorksheet)),
 
   trialBalance: (params: ReportParams) =>
     http

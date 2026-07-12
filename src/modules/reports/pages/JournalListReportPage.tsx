@@ -20,6 +20,7 @@ const SOURCE_OPTIONS: { value: JournalSource; label: string }[] = [
   { value: 'all', label: 'Semua' },
   { value: 'sales', label: 'Penjualan' },
   { value: 'purchase', label: 'Pembelian' },
+  { value: 'inventory', label: 'Persediaan' },
   { value: 'general', label: 'Umum' },
 ]
 
@@ -27,11 +28,12 @@ const SOURCE_TITLE: Record<JournalSource, string> = {
   all: 'Semua Jurnal',
   sales: 'Jurnal Penjualan',
   purchase: 'Jurnal Pembelian',
+  inventory: 'Jurnal Persediaan',
   general: 'Jurnal Umum',
 }
 
 function isSource(value: string | null): value is JournalSource {
-  return value === 'all' || value === 'sales' || value === 'purchase' || value === 'general'
+  return value === 'all' || value === 'sales' || value === 'purchase' || value === 'inventory' || value === 'general'
 }
 
 export default function JournalListReportPage() {
