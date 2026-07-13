@@ -83,39 +83,52 @@ export default function GeneralLedgerPage() {
     setPagination((p) => ({ ...p, pageIndex: 0 }))
   }
 
+  const viewToggle = (
+    <div className="flex items-center gap-1 border-r border-[#e2e8f0] pr-2">
+      <span className="mr-1 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tampilan</span>
+      <Button variant={mode === 'summary' ? 'default' : 'outline'} size="sm" className={mode === 'summary' ? 'h-7 bg-[#5c9ead] px-2.5 text-[12px] hover:bg-[#4a8a9b]' : 'h-7 px-2.5 text-[12px]'} onClick={() => handleMode('summary')}>Ringkasan</Button>
+      <Button variant={mode === 'detail' ? 'default' : 'outline'} size="sm" className={mode === 'detail' ? 'h-7 bg-[#5c9ead] px-2.5 text-[12px] hover:bg-[#4a8a9b]' : 'h-7 px-2.5 text-[12px]'} onClick={() => handleMode('detail')}>Rincian</Button>
+    </div>
+  )
+
   return (
     <WorkspaceLayout title="Buku Besar" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Buku Besar' }]}>
       <div className="space-y-4">
         {showFilter ? <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} extras={{ include_zero_balance: true }} columns={mode === 'summary' ? SUMMARY_COLUMNS : undefined} visibleColumns={visibleColumns} onColumnsChange={setVisibleColumns} />
-          : <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} columnSummary={mode === 'summary' ? `${visibleColumns.length} kolom` : undefined} />}
-
-        <div className="flex flex-wrap items-center gap-1">
-          <span className="mr-1 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tampilan</span>
-          <Button variant={mode === 'summary' ? 'default' : 'outline'} size="sm" className={mode === 'summary' ? 'h-7 bg-[#5c9ead] px-3 text-[12px] hover:bg-[#4a8a9b]' : 'h-7 px-3 text-[12px]'} onClick={() => handleMode('summary')}>Ringkasan</Button>
-          <Button variant={mode === 'detail' ? 'default' : 'outline'} size="sm" className={mode === 'detail' ? 'h-7 bg-[#5c9ead] px-3 text-[12px] hover:bg-[#4a8a9b]' : 'h-7 px-3 text-[12px]'} onClick={() => handleMode('detail')}>Rincian</Button>
-        </div>
+          : (
+            <ReportCompactBar
+              params={activeParams ?? params}
+              onOpenModal={() => setShowFilter(true)}
+              columnSummary={mode === 'summary' ? `${visibleColumns.length} kolom` : undefined}
+              actions={
+                <>
+                  {viewToggle}
+                  {!isLoading && !isError && hasReport && (
+                    <>
+                      <SaveReportButton reportKey={mode === 'detail' ? 'general-ledger-detail' : 'general-ledger'} params={activeParams} />
+                      {accounts.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[12px]"
+                          onClick={() => exportCsv(
+                            `buku-besar-${mode}-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
+                            ['Kode', 'Akun', 'Saldo Awal', 'Debit Periode', 'Kredit Periode', 'Saldo Akhir'],
+                            accounts.map((a) => [a.account_code, a.account_name, a.opening_balance, a.period_debit, a.period_credit, a.ending_balance])
+                          )}
+                        >
+                          Export CSV
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </>
+              }
+            />
+          )}
 
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
         {isError && <ReportError onRetry={() => refetch()} />}
-        {!isLoading && !isError && hasReport && (
-          <div className="flex justify-end gap-2">
-            <SaveReportButton reportKey={mode === 'detail' ? 'general-ledger-detail' : 'general-ledger'} params={activeParams} />
-            {accounts.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-[12px]"
-                onClick={() => exportCsv(
-                  `buku-besar-${mode}-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
-                  ['Kode', 'Akun', 'Saldo Awal', 'Debit Periode', 'Kredit Periode', 'Saldo Akhir'],
-                  accounts.map((a) => [a.account_code, a.account_name, a.opening_balance, a.period_debit, a.period_credit, a.ending_balance])
-                )}
-              >
-                Export CSV
-              </Button>
-            )}
-          </div>
-        )}
 
         {/* Mode Ringkasan: saldo per akun */}
         {!isLoading && !isError && mode === 'summary' && hasReport && (

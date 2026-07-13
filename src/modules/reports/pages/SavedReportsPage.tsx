@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useTabStore } from '@/stores/useTabStore'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -8,7 +8,8 @@ import { reportKeyLabel, buildSavedReportUrl } from '../constants/reportKeyRoute
 import { ReportError } from '../components/ReportError'
 
 export default function SavedReportsPage() {
-  const navigate = useNavigate()
+  const activePrimaryTabId = useTabStore((s) => s.activePrimaryTabId)
+  const openSecondaryTab = useTabStore((s) => s.openSecondaryTab)
   const { data: reports, isLoading, isError, refetch } = useSavedReports()
   const del = useDeleteSavedReport()
 
@@ -57,7 +58,21 @@ export default function SavedReportsPage() {
                     </td>
                     <td className="px-4 py-2.5">
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" className="text-[12px]" onClick={() => navigate(buildSavedReportUrl(r.report_key, r.params))}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-[12px]"
+                          onClick={() => {
+                            if (!activePrimaryTabId) return
+                            openSecondaryTab(activePrimaryTabId, {
+                              id: r.report_key,
+                              label: reportKeyLabel(r.report_key),
+                              type: 'form',
+                              path: buildSavedReportUrl(r.report_key, r.params),
+                              pinned: false,
+                            })
+                          }}
+                        >
                           <ExternalLink className="mr-1.5 h-3.5 w-3.5" />Buka
                         </Button>
                         {r.is_owner && (

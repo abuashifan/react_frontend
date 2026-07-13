@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useTabStore } from '@/stores/useTabStore'
 import { DOMAIN_BY_PATH } from '../constants/reportCategories'
 import { cn } from '@/lib/utils'
 
@@ -7,7 +7,8 @@ interface ReportDomainPanelProps {
 }
 
 export function ReportDomainPanel({ domainId }: ReportDomainPanelProps) {
-  const navigate = useNavigate()
+  const activePrimaryTabId = useTabStore((s) => s.activePrimaryTabId)
+  const openSecondaryTab = useTabStore((s) => s.openSecondaryTab)
   const domain = DOMAIN_BY_PATH[domainId]
 
   if (!domain) return null
@@ -19,7 +20,16 @@ export function ReportDomainPanel({ domainId }: ReportDomainPanelProps) {
           key={report.id}
           type="button"
           disabled={report.comingSoon}
-          onClick={() => navigate(report.path)}
+          onClick={() => {
+            if (!activePrimaryTabId) return
+            openSecondaryTab(activePrimaryTabId, {
+              id: report.id,
+              label: report.title,
+              type: 'form',
+              path: report.path,
+              pinned: false,
+            })
+          }}
           className={cn(
             'flex flex-col gap-1 rounded-lg border border-[#e2e8f0] bg-white p-4 text-left transition-all',
             report.comingSoon
