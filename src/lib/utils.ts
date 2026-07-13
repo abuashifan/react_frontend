@@ -50,6 +50,21 @@ export function formatDate(date: string | Date | null | undefined, format: 'shor
   }).format(d)
 }
 
+/** Tanggal + jam untuk footer dokumen cetak, mis. "13 Juli 2026, 15:22". */
+export function formatDateTime(date: string | Date | null | undefined): string {
+  if (date === null || date === undefined) return EMPTY_VALUE
+  if (typeof date === 'string' && date.trim() === '') return EMPTY_VALUE
+  const d = typeof date === 'string' ? new Date(date) : date
+  if (Number.isNaN(d.getTime())) return EMPTY_VALUE
+  return new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(d)
+}
+
 /**
  * Normalisasi tanggal apapun menjadi `YYYY-MM-DD` untuk `<input type="date">`.
  *

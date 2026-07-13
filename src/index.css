@@ -211,10 +211,38 @@
     font-size: 11pt;
   }
 
-  main,
+  /* Browser default membuang background-color saat print (hemat tinta) — itu
+     menghapus warna header seksi/total row laporan. Paksa tampil apa adanya. */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  main {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* AppShell/WorkspaceLayout memakai flex + h-full + overflow-hidden/auto untuk
+     scroll di layar — semua itu memotong konten saat print kalau tidak direset. */
+  [data-print-shell] {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
   [data-print-content] {
     display: block !important;
     width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
     padding: 0 !important;
     margin: 0 !important;
   }
@@ -229,8 +257,56 @@
     padding: 4px 8px;
   }
 
+  /* Dokumen print-preview laporan (Neraca, dst.) sudah punya border row/total
+     sendiri lewat Tailwind — jangan tambah grid border generik di tiap sel. */
+  .report-print-page th,
+  .report-print-page td {
+    border: none;
+  }
+
+  /* @page size/margin untuk laporan Financial Statement diinjeksikan secara dinamis
+     lewat <style id="report-page-size"> oleh ReportPrintDocument (lihat
+     src/modules/reports/components/ReportPrintDocument.tsx) sesuai pilihan
+     ukuran kertas user (A4/F4/Letter/Custom). Fallback berikut hanya berlaku
+     untuk print di luar dokumen laporan (mis. belum sempat ter-mount). */
   @page {
     margin: 1.5cm;
     size: A4;
+  }
+
+  /* Dokumen print-preview laporan Financial Statement (Neraca, Laba Rugi, dst). */
+  .report-print-page {
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .report-print-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    padding-bottom: 4mm;
+  }
+
+  .report-print-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    padding-top: 2mm;
+  }
+
+  /* Ruang cadangan supaya body tidak tertutup header/footer fixed di tiap halaman. */
+  .report-print-body {
+    margin-top: 26mm !important;
+    margin-bottom: 14mm !important;
+  }
+
+  /* Jangan pecah baris label seksi / total di tengah halaman. */
+  .report-print-avoid-break {
+    break-inside: avoid;
   }
 }

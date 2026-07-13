@@ -4,9 +4,11 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
+import { ReportPrintToolbar } from '../components/ReportPrintToolbar'
+import { ReportPrintDocument } from '../components/ReportPrintDocument'
 import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, formatDate } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
 import type { ReportParams } from '../types/reports.types'
 
@@ -27,71 +29,76 @@ export default function CashFlowDirectReportPage() {
   const summary = report?.summary
   const sections = report?.sections ?? []
   const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false) }
+  const paramLabel = `${activeParams?.start_date ? formatDate(activeParams.start_date) : '-'} — ${activeParams?.end_date ? formatDate(activeParams.end_date) : '-'}`
 
   return (
     <WorkspaceLayout title="Arus Kas (Metode Langsung)" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Arus Kas (Langsung)' }]}>
       <div className="space-y-4">
-        {showFilter
-          ? <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} />
-          : <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} />}
+        <div className="no-print">
+          {showFilter
+            ? <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} />
+            : <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} />}
 
-        <p className="text-[11px] text-[#94a3b8]">
-          Metode langsung: penerimaan &amp; pembayaran kas aktual dirinci per akun lawan dan dikelompokkan
-          ke aktivitas operasi/investasi/pendanaan berdasarkan klasifikasi arus kas akun.
-        </p>
+          <p className="mt-2 text-[11px] text-[#94a3b8]">
+            Metode langsung: penerimaan &amp; pembayaran kas aktual dirinci per akun lawan dan dikelompokkan
+            ke aktivitas operasi/investasi/pendanaan berdasarkan klasifikasi arus kas akun.
+          </p>
+        </div>
 
-        {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
-        {isError && <ReportError onRetry={() => refetch()} />}
+        {isLoading && <div className="no-print flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
+        {isError && <div className="no-print"><ReportError onRetry={() => refetch()} /></div>}
 
         {!isLoading && !isError && report && report.no_cash_accounts && (
-          <div className="rounded-lg border border-[#e2e8f0] bg-[#f8fafc] py-8 text-center text-[13px] text-[#64748b]">
+          <div className="no-print rounded-lg border border-[#e2e8f0] bg-[#f8fafc] py-8 text-center text-[13px] text-[#64748b]">
             Belum ada akun kas/bank yang ditandai. Atur akun kas/bank di Bagan Akun terlebih dahulu.
           </div>
         )}
 
         {!isLoading && !isError && report && !report.no_cash_accounts && summary && (
-          <div className="space-y-4">
-            {sections.length > 0 && (
-              <div className="flex justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-[12px]"
-                  onClick={() => exportCsv(
-                    `arus-kas-langsung-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
-                    ['Aktivitas', 'Akun', 'Kas Masuk', 'Kas Keluar', 'Bersih'],
-                    sections.flatMap((s) => s.lines.map((l) => [s.label, l.account_name, l.cash_in, l.cash_out, l.net]))
-                  )}
-                >
-                  Export CSV
-                </Button>
-              </div>
+          <ReportPrintToolbar
+            extra={sections.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-[12px]"
+                onClick={() => exportCsv(
+                  `arus-kas-langsung-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
+                  ['Aktivitas', 'Akun', 'Kas Masuk', 'Kas Keluar', 'Bersih'],
+                  sections.flatMap((s) => s.lines.map((l) => [s.label, l.account_name, l.cash_in, l.cash_out, l.net]))
+                )}
+              >
+                Export CSV
+              </Button>
             )}
+          />
+        )}
 
-            <div className="overflow-auto rounded-lg border border-[#e2e8f0]">
+        {!isLoading && !isError && report && !report.no_cash_accounts && summary && (
+          <ReportPrintDocument title="Arus Kas (Metode Langsung)" paramLabel={paramLabel}>
+            <div className="space-y-4">
               <table className="w-full text-[12px]">
-                <thead className="bg-[#1e293b]">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-white">Aktivitas / Akun</th>
-                    <th className="px-3 py-2 text-right text-[11px] font-bold uppercase tracking-wide text-white">Kas Masuk</th>
-                    <th className="px-3 py-2 text-right text-[11px] font-bold uppercase tracking-wide text-white">Kas Keluar</th>
-                    <th className="px-3 py-2 text-right text-[11px] font-bold uppercase tracking-wide text-white">Bersih</th>
+                <thead>
+                  <tr className="report-print-avoid-break border-b border-[#cbd5e1]">
+                    <th className="px-2 py-1 text-left text-[11px] font-bold uppercase tracking-wide text-[#334155]">Aktivitas / Akun</th>
+                    <th className="px-2 py-1 text-right text-[11px] font-bold uppercase tracking-wide text-[#334155]">Kas Masuk</th>
+                    <th className="px-2 py-1 text-right text-[11px] font-bold uppercase tracking-wide text-[#334155]">Kas Keluar</th>
+                    <th className="px-2 py-1 text-right text-[11px] font-bold uppercase tracking-wide text-[#334155]">Bersih</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#f1f5f9]">
+                <tbody>
                   {sections.map((section) => (
                     <Fragment key={section.key}>
-                      <tr className="bg-[#f8fafc]">
-                        <td className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-[#334155]">{section.label}</td>
+                      <tr className="report-print-avoid-break bg-[#f8fafc]">
+                        <td className="px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-[#334155]">{section.label}</td>
                         <td colSpan={2}></td>
-                        <td className={`px-3 py-1.5 text-right tabular-nums font-bold ${section.subtotal_net < 0 ? 'text-red-600' : 'text-green-700'}`}>{formatCurrency(section.subtotal_net)}</td>
+                        <td className={`px-2 py-1 text-right tabular-nums font-bold ${section.subtotal_net < 0 ? 'text-red-600' : 'text-green-700'}`}>{formatCurrency(section.subtotal_net)}</td>
                       </tr>
                       {section.lines.map((line, i) => (
-                        <tr key={`${section.key}-${line.account_id ?? i}`} className="hover:bg-[#f8fafc]">
-                          <td className="px-3 py-1.5 pl-6 text-[#334155]">{line.account_code ? <span className="text-[#64748b]">{line.account_code} · </span> : null}{line.account_name}</td>
-                          <td className="px-3 py-1.5 text-right tabular-nums text-green-700">{line.cash_in ? formatCurrency(line.cash_in) : '-'}</td>
-                          <td className="px-3 py-1.5 text-right tabular-nums text-red-600">{line.cash_out ? formatCurrency(line.cash_out) : '-'}</td>
-                          <td className={`px-3 py-1.5 text-right tabular-nums font-medium ${line.net < 0 ? 'text-red-600' : 'text-[#1e293b]'}`}>{formatCurrency(line.net)}</td>
+                        <tr key={`${section.key}-${line.account_id ?? i}`}>
+                          <td className="px-2 py-0.5 pl-6 text-[#334155]">{line.account_code ? <span className="text-[#64748b]">{line.account_code} · </span> : null}{line.account_name}</td>
+                          <td className="px-2 py-0.5 text-right tabular-nums text-green-700">{line.cash_in ? formatCurrency(line.cash_in) : '-'}</td>
+                          <td className="px-2 py-0.5 text-right tabular-nums text-red-600">{line.cash_out ? formatCurrency(line.cash_out) : '-'}</td>
+                          <td className={`px-2 py-0.5 text-right tabular-nums font-medium ${line.net < 0 ? 'text-red-600' : 'text-[#1e293b]'}`}>{formatCurrency(line.net)}</td>
                         </tr>
                       ))}
                     </Fragment>
@@ -100,32 +107,34 @@ export default function CashFlowDirectReportPage() {
                     <tr><td colSpan={4} className="py-8 text-center text-[#94a3b8]">Tidak ada pergerakan kas pada periode ini.</td></tr>
                   )}
                 </tbody>
-                <tfoot className="border-t-2 border-[#cbd5e1] bg-[#f1f5f9]">
-                  <tr>
-                    <td className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-[#334155]">Arus Kas Bersih</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-bold text-green-700">{formatCurrency(summary.cash_in)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-bold text-red-600">{formatCurrency(summary.cash_out)}</td>
-                    <td className={`px-3 py-2 text-right tabular-nums font-bold ${summary.net_cash_flow < 0 ? 'text-red-600' : 'text-green-700'}`}>{formatCurrency(summary.net_cash_flow)}</td>
+                <tfoot>
+                  <tr className="report-print-avoid-break border-t-2 border-[#cbd5e1] bg-[#f1f5f9]">
+                    <td className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-[#334155]">Arus Kas Bersih</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums font-bold text-green-700">{formatCurrency(summary.cash_in)}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums font-bold text-red-600">{formatCurrency(summary.cash_out)}</td>
+                    <td className={`px-2 py-1.5 text-right tabular-nums font-bold ${summary.net_cash_flow < 0 ? 'text-red-600' : 'text-green-700'}`}>{formatCurrency(summary.net_cash_flow)}</td>
                   </tr>
                 </tfoot>
               </table>
-            </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-lg border border-[#e2e8f0] bg-white px-4 py-3">
-                <p className="text-[11px] text-[#64748b]">Saldo Awal Kas</p>
-                <p className="text-[16px] font-semibold tabular-nums text-[#334155]">{formatCurrency(summary.opening_cash_balance)}</p>
-              </div>
-              <div className="rounded-lg border border-[#e2e8f0] bg-white px-4 py-3">
-                <p className="text-[11px] text-[#64748b]">Arus Kas Bersih</p>
-                <p className={`text-[16px] font-semibold tabular-nums ${summary.net_cash_flow < 0 ? 'text-red-600' : 'text-green-700'}`}>{formatCurrency(summary.net_cash_flow)}</p>
-              </div>
-              <div className="rounded-lg border border-[#e2e8f0] bg-white px-4 py-3">
-                <p className="text-[11px] text-[#64748b]">Saldo Akhir Kas</p>
-                <p className="text-[16px] font-semibold tabular-nums text-[#1e293b]">{formatCurrency(summary.ending_cash_balance)}</p>
-              </div>
+              <table className="report-print-avoid-break w-full text-[12px]">
+                <tbody>
+                  <tr>
+                    <td className="px-2 py-1 text-[#334155]">Saldo Awal Kas</td>
+                    <td className="px-2 py-1 text-right tabular-nums font-semibold text-[#334155]">{formatCurrency(summary.opening_cash_balance)}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 text-[#334155]">Arus Kas Bersih</td>
+                    <td className={`px-2 py-1 text-right tabular-nums font-semibold ${summary.net_cash_flow < 0 ? 'text-red-600' : 'text-green-700'}`}>{formatCurrency(summary.net_cash_flow)}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 text-[#334155]">Saldo Akhir Kas</td>
+                    <td className="px-2 py-1 text-right tabular-nums font-semibold text-[#1e293b]">{formatCurrency(summary.ending_cash_balance)}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-          </div>
+          </ReportPrintDocument>
         )}
       </div>
     </WorkspaceLayout>

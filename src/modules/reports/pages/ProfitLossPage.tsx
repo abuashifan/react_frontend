@@ -4,39 +4,19 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
+import { ReportPrintToolbar } from '../components/ReportPrintToolbar'
+import { ReportPrintDocument } from '../components/ReportPrintDocument'
+import { ReportPrintSection } from '../components/ReportPrintSection'
 import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, formatDate } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
 import { SaveReportButton } from '../components/SaveReportButton'
 import { useInitialReportParams } from '../hooks/useInitialReportParams'
-import type { ReportParams, ReportSection } from '../types/reports.types'
+import type { ReportParams } from '../types/reports.types'
 
 const today = new Date().toISOString().slice(0, 10)
 const firstOfMonth = today.slice(0, 8) + '01'
-
-function PLSection({ section }: { section: ReportSection }) {
-  return (
-    <>
-      <tr className="bg-[#f8fafc]">
-        <td colSpan={2} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">{section.label}</td>
-      </tr>
-      {section.accounts.map((item, i) => (
-        <tr key={item.account_id ?? i} className="hover:bg-[#f8fafc]/50">
-          <td className="px-3 py-1 pl-6 text-[12px] text-[#334155]">{item.account_code ? `${item.account_code} — ` : ''}{item.account_name}</td>
-          <td className="px-3 py-1 text-right tabular-nums text-[12px] text-[#334155]">{formatCurrency(item.amount)}</td>
-        </tr>
-      ))}
-      {section.accounts.length === 0 && (
-        <tr><td colSpan={2} className="px-3 py-1 pl-6 text-[12px] text-[#94a3b8]">Tidak ada akun.</td></tr>
-      )}
-      <tr className="border-t border-[#e2e8f0]">
-        <td className="px-3 py-1.5 pl-6 text-[12px] font-semibold text-[#1e293b]">Total {section.label}</td>
-        <td className="px-3 py-1.5 text-right tabular-nums text-[12px] font-semibold text-[#1e293b]">{formatCurrency(section.total)}</td>
-      </tr>
-    </>
-  )
-}
 
 export default function ProfitLossPage() {
   const { initialParams, restored } = useInitialReportParams({ start_date: firstOfMonth, end_date: today })
@@ -49,51 +29,58 @@ export default function ProfitLossPage() {
   const sections = report?.sections ?? []
   const net = report?.totals.net_profit_or_loss ?? 0
   const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false) }
+  const paramLabel = `${activeParams?.start_date ? formatDate(activeParams.start_date) : '-'} — ${activeParams?.end_date ? formatDate(activeParams.end_date) : '-'}`
 
   return (
     <WorkspaceLayout title="Laba Rugi" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Laba Rugi' }]}>
       <div className="space-y-4">
-        {showFilter ? <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} />
-          : <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} />}
-        {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
-        {isError && <ReportError onRetry={() => refetch()} />}
+        <div className="no-print">
+          {showFilter ? <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} />
+            : <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} />}
+        </div>
+        {isLoading && <div className="no-print flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
+        {isError && <div className="no-print"><ReportError onRetry={() => refetch()} /></div>}
         {!isLoading && !isError && report && (
-          <div className="flex justify-end gap-2">
-            <SaveReportButton reportKey="profit-loss" params={activeParams} />
-            {sections.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-[12px]"
-                onClick={() => {
-                  const rows = sections.flatMap((s) =>
-                    s.accounts.map((a) => [s.label, a.account_code ?? '', a.account_name, a.amount])
-                  )
-                  rows.push(['', '', net >= 0 ? 'Laba Bersih' : 'Rugi Bersih', net])
-                  exportCsv(`laba-rugi-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`, ['Seksi', 'Kode', 'Akun', 'Jumlah'], rows)
-                }}
-              >
-                Export CSV
-              </Button>
-            )}
-          </div>
+          <ReportPrintToolbar
+            extra={
+              <>
+                <SaveReportButton reportKey="profit-loss" params={activeParams} />
+                {sections.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-[12px]"
+                    onClick={() => {
+                      const rows = sections.flatMap((s) =>
+                        s.accounts.map((a) => [s.label, a.account_code ?? '', a.account_name, a.amount])
+                      )
+                      rows.push(['', '', net >= 0 ? 'Laba Bersih' : 'Rugi Bersih', net])
+                      exportCsv(`laba-rugi-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`, ['Seksi', 'Kode', 'Akun', 'Jumlah'], rows)
+                    }}
+                  >
+                    Export CSV
+                  </Button>
+                )}
+              </>
+            }
+          />
         )}
         {!isLoading && !isError && report && (
-          <div className="overflow-auto rounded-lg border border-[#e2e8f0]">
+          <ReportPrintDocument title="Laba Rugi" paramLabel={paramLabel}>
             <table className="w-full">
               <colgroup><col /><col className="w-40" /></colgroup>
-              <tbody className="divide-y divide-[#f1f5f9]">
-                {sections.map((section) => <PLSection key={section.key} section={section} />)}
+              <tbody>
+                {sections.map((section) => <ReportPrintSection key={section.key} section={section} />)}
                 {sections.length === 0 && (
-                  <tr><td colSpan={2} className="px-3 py-8 text-center text-[12px] text-[#94a3b8]">Tidak ada data laba rugi pada periode ini.</td></tr>
+                  <tr><td colSpan={2} className="px-2 py-8 text-center text-[12px] text-[#94a3b8]">Tidak ada data laba rugi pada periode ini.</td></tr>
                 )}
-                <tr className="border-t-2 border-[#cbd5e1] bg-[#f1f5f9]">
-                  <td className="px-3 py-2.5 text-[14px] font-bold text-[#1e293b]">{net >= 0 ? 'LABA BERSIH' : 'RUGI BERSIH'}</td>
-                  <td className={`px-3 py-2.5 text-right tabular-nums text-[14px] font-bold ${net >= 0 ? 'text-green-700' : 'text-red-600'}`}>{formatCurrency(net)}</td>
+                <tr className="report-print-avoid-break border-t-2 border-[#cbd5e1] bg-[#f1f5f9]">
+                  <td className="px-2 py-2 text-[14px] font-bold text-[#1e293b]">{net >= 0 ? 'LABA BERSIH' : 'RUGI BERSIH'}</td>
+                  <td className={`px-2 py-2 text-right tabular-nums text-[14px] font-bold ${net >= 0 ? 'text-green-700' : 'text-red-600'}`}>{formatCurrency(net)}</td>
                 </tr>
               </tbody>
             </table>
-          </div>
+          </ReportPrintDocument>
         )}
       </div>
     </WorkspaceLayout>

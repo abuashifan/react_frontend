@@ -26,7 +26,7 @@ export function PrimaryTabs({ top }: PrimaryTabsProps) {
 
   return (
     <div
-      className="fixed left-0 right-0 z-[38] bg-white border-b border-[#d9e2e5] flex items-stretch overflow-x-auto no-scrollbar"
+      className="no-print fixed left-0 right-0 z-[38] bg-white border-b border-[#d9e2e5] flex items-stretch overflow-x-auto no-scrollbar"
       style={{ top, height: 36 }}
     >
       {primaryTabs.map((tab) => {

@@ -609,9 +609,16 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____ReportParameterModal.tsx
 | | | | |____PeriodSelector.tsx
 | | | | |____SaveReportButton.tsx
+| | | | |____PageSetupControl.tsx
+| | | | |____ReportPrintToolbar.tsx
+| | | | |____ReportPrintDocument.tsx
+| | | | |____ReportPrintSection.tsx
 | | | |____constants/
 | | | | |____reportCategories.ts
 | | | | |____reportKeyRoutes.ts
+| | | | |____pageSizes.ts
+| | | |____stores/
+| | | | |____useReportPageSetupStore.ts
 | | | |____hooks/
 | | | | |____useSavedReports.ts
 | | | | |____useInitialReportParams.ts

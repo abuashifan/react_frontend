@@ -49,12 +49,12 @@ export function WorkspaceLayout({
   const hasSidebar = !!sidebar
 
   return (
-    <div className="flex h-full min-h-0 overflow-hidden">
+    <div className="flex h-full min-h-0 overflow-hidden" data-print-shell>
       {/* Filter Sidebar */}
       {hasSidebar && (
         <aside
           className={cn(
-            'flex-shrink-0 bg-white border-r border-[#d9e2e5] transition-all duration-200 overflow-hidden',
+            'no-print flex-shrink-0 bg-white border-r border-[#d9e2e5] transition-all duration-200 overflow-hidden',
             isSidebarCollapsed ? 'w-0' : 'w-[220px]',
           )}
         >
@@ -63,9 +63,9 @@ export function WorkspaceLayout({
       )}
 
       {/* Main content */}
-      <div className="flex min-h-0 flex-1 min-w-0 flex-col overflow-hidden">
+      <div className="flex min-h-0 flex-1 min-w-0 flex-col overflow-hidden" data-print-shell>
         {/* Page header */}
-        <div className="flex flex-shrink-0 items-center justify-between px-4 lg:px-6 py-3 bg-white border-b border-[#d9e2e5]">
+        <div className="no-print flex flex-shrink-0 items-center justify-between px-4 lg:px-6 py-3 bg-white border-b border-[#d9e2e5]">
           <div className="flex items-center gap-2 min-w-0">
             {hasSidebar && (
               <button
@@ -92,7 +92,7 @@ export function WorkspaceLayout({
         </div>
 
         {/* Table / content */}
-        <div className="min-h-0 flex-1 overflow-y-auto p-3 md:p-4 lg:p-6">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-3 md:p-4 lg:p-6" data-print-content>{children}</div>
       </div>
     </div>
   )

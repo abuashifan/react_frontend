@@ -34,7 +34,7 @@ export function SecondaryTabs({ top }: SecondaryTabsProps) {
 
   return (
     <div
-      className="fixed left-0 right-0 z-[37] bg-[#EFEFED] border-b border-[#d9e2e5] flex items-end overflow-x-auto no-scrollbar px-2"
+      className="no-print fixed left-0 right-0 z-[37] bg-[#EFEFED] border-b border-[#d9e2e5] flex items-end overflow-x-auto no-scrollbar px-2"
       style={{ top, height: 32 }}
     >
       {tabs.map((tab) => {

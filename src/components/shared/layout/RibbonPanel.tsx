@@ -91,7 +91,7 @@ export function RibbonPanel() {
   return (
     <div
       className={cn(
-        'fixed left-0 right-0 top-[52px] z-[60] h-[64px] overflow-hidden bg-white border-b border-[#d9e2e5]',
+        'no-print fixed left-0 right-0 top-[52px] z-[60] h-[64px] overflow-hidden bg-white border-b border-[#d9e2e5]',
         'transition-all duration-150 ease-out',
         isRibbonOpen
           ? 'translate-y-0 opacity-100 pointer-events-auto'
