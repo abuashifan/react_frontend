@@ -1,3 +1,4 @@
+import { Download } from 'lucide-react'
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -5,14 +6,15 @@ import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { ReportPrintToolbar } from '../components/ReportPrintToolbar'
+import { ReportToolButton } from '../components/ReportToolButton'
 import { ReportPrintDocument } from '../components/ReportPrintDocument'
-import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
 import { SaveReportButton } from '../components/SaveReportButton'
-import { useInitialReportParams } from '../hooks/useInitialReportParams'
-import type { ReportParams, ColumnConfig } from '../types/reports.types'
+import type { ColumnConfig } from '../types/reports.types'
+import { useReportParams } from '../hooks/useReportParams'
+import { useReportFilterSummary } from '../hooks/useReportFilterSummary'
 
 const today = new Date().toISOString().slice(0, 10)
 const firstOfMonth = today.slice(0, 8) + '01'
@@ -30,10 +32,8 @@ const TB_COLUMNS: ColumnConfig[] = [
 ]
 
 export default function TrialBalancePage() {
-  const { initialParams, restored } = useInitialReportParams({ start_date: firstOfMonth, end_date: today })
-  const [params, setParams] = useState<ReportParams>(initialParams)
-  const [activeParams, setActiveParams] = useState<ReportParams | null>(restored ? initialParams : null)
-  const [showFilter, setShowFilter] = useState(!restored)
+  const { params, setParams, activeParams, setActiveParams, showFilter, setShowFilter } = useReportParams({ start_date: firstOfMonth, end_date: today })
+  const filterSummary = useReportFilterSummary(activeParams)
   const [visibleColumns, setVisibleColumns] = useState<string[]>(TB_COLUMNS.map((c) => c.key))
   const showCol = (key: string) => visibleColumns.includes(key)
 
@@ -52,42 +52,37 @@ export default function TrialBalancePage() {
     setShowFilter(false)
   }
 
+  // Alat laporan menempel di filter bar supaya tidak memakai baris toolbar sendiri.
+  const tools = !isLoading && !isError && report ? (
+    <ReportPrintToolbar
+      extra={
+        <>
+          <SaveReportButton reportKey="trial-balance" params={activeParams} />
+          {allAccounts.length > 0 && (
+            <ReportToolButton icon={Download} label="Export CSV" onClick={() => exportCsv(
+                `neraca-saldo-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
+                ['Kode', 'Akun', 'Debit Awal', 'Kredit Awal', 'Debit Periode', 'Kredit Periode', 'Debit Akhir', 'Kredit Akhir'],
+                allAccounts.map((a) => [a.account_code, a.account_name, a.opening_debit, a.opening_credit, a.period_debit, a.period_credit, a.ending_debit, a.ending_credit])
+              )} />
+          )}
+        </>
+      }
+    />
+  ) : undefined
+
   return (
-    <WorkspaceLayout title="Neraca Saldo" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Neraca Saldo' }]}>
+    <WorkspaceLayout
+      hideHeader
+      toolbar={<ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} columnSummary={`${visibleColumns.length} kolom`} actions={tools} />}
+    >
       <div className="space-y-4">
         <div className="no-print">
-          {showFilter
-            ? <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} extras={{ include_zero_balance: true }} columns={TB_COLUMNS} visibleColumns={visibleColumns} onColumnsChange={setVisibleColumns} />
-            : <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} columnSummary={`${visibleColumns.length} kolom`} />
-          }
+          {showFilter && <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} extras={{ include_zero_balance: true }} columns={TB_COLUMNS} visibleColumns={visibleColumns} onColumnsChange={setVisibleColumns} />}
         </div>
         {isLoading && <div className="no-print flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
         {isError && <div className="no-print"><ReportError onRetry={() => refetch()} /></div>}
         {!isLoading && !isError && report && (
-          <ReportPrintToolbar
-            extra={
-              <>
-                <SaveReportButton reportKey="trial-balance" params={activeParams} />
-                {allAccounts.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-[12px]"
-                    onClick={() => exportCsv(
-                      `neraca-saldo-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
-                      ['Kode', 'Akun', 'Debit Awal', 'Kredit Awal', 'Debit Periode', 'Kredit Periode', 'Debit Akhir', 'Kredit Akhir'],
-                      allAccounts.map((a) => [a.account_code, a.account_name, a.opening_debit, a.opening_credit, a.period_debit, a.period_credit, a.ending_debit, a.ending_credit])
-                    )}
-                  >
-                    Export CSV
-                  </Button>
-                )}
-              </>
-            }
-          />
-        )}
-        {!isLoading && !isError && report && (
-          <ReportPrintDocument title="Neraca Saldo" paramLabel={paramLabel}>
+          <ReportPrintDocument title="Neraca Saldo" paramLabel={paramLabel} filterSummary={filterSummary}>
             <table className="w-full text-[12px]">
               <thead>
                 <tr className="report-print-avoid-break border-b border-[#cbd5e1]">

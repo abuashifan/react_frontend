@@ -1,24 +1,24 @@
-import { useState } from 'react'
+import { Download } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { ReportPrintToolbar } from '../components/ReportPrintToolbar'
+import { ReportToolButton } from '../components/ReportToolButton'
 import { ReportPrintDocument } from '../components/ReportPrintDocument'
-import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
-import type { ReportParams } from '../types/reports.types'
+import { useReportParams } from '../hooks/useReportParams'
+import { useReportFilterSummary } from '../hooks/useReportFilterSummary'
 
 const today = new Date().toISOString().slice(0, 10)
 const firstOfYear = today.slice(0, 4) + '-01-01'
 
 export default function EquityChangesReportPage() {
-  const [params, setParams] = useState<ReportParams>({ start_date: firstOfYear, end_date: today })
-  const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
-  const [showFilter, setShowFilter] = useState(true)
+  const { params, setParams, activeParams, setActiveParams, showFilter, setShowFilter } = useReportParams({ start_date: firstOfYear, end_date: today })
+  const filterSummary = useReportFilterSummary(activeParams)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['reports', 'equity-changes', activeParams],
@@ -31,39 +31,34 @@ export default function EquityChangesReportPage() {
   const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false) }
   const paramLabel = `${activeParams?.start_date ? formatDate(activeParams.start_date) : '-'} — ${activeParams?.end_date ? formatDate(activeParams.end_date) : '-'}`
 
+  // Alat laporan menempel di filter bar supaya tidak memakai baris toolbar sendiri.
+  const tools = !isLoading && !isError && report ? (
+    <ReportPrintToolbar
+      extra={rows.length > 0 && (
+        <ReportToolButton icon={Download} label="Export CSV" onClick={() => exportCsv(
+            `perubahan-ekuitas-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
+            ['Akun', 'Saldo Awal', 'Pergerakan', 'Saldo Akhir'],
+            rows.map((r) => [r.account_name, r.opening_balance, r.movement, r.closing_balance])
+          )} />
+      )}
+    />
+  ) : undefined
+
   return (
-    <WorkspaceLayout title="Perubahan Ekuitas" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Perubahan Ekuitas' }]}>
+    <WorkspaceLayout
+      hideHeader
+      toolbar={<ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} actions={tools} />}
+    >
       <div className="space-y-4">
         <div className="no-print">
-          {showFilter
-            ? <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} />
-            : <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} />}
+          {showFilter && <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} />}
         </div>
 
         {isLoading && <div className="no-print flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
         {isError && <div className="no-print"><ReportError onRetry={() => refetch()} /></div>}
 
         {!isLoading && !isError && report && (
-          <ReportPrintToolbar
-            extra={rows.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-[12px]"
-                onClick={() => exportCsv(
-                  `perubahan-ekuitas-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
-                  ['Akun', 'Saldo Awal', 'Pergerakan', 'Saldo Akhir'],
-                  rows.map((r) => [r.account_name, r.opening_balance, r.movement, r.closing_balance])
-                )}
-              >
-                Export CSV
-              </Button>
-            )}
-          />
-        )}
-
-        {!isLoading && !isError && report && (
-          <ReportPrintDocument title="Perubahan Ekuitas" paramLabel={paramLabel}>
+          <ReportPrintDocument title="Perubahan Ekuitas" paramLabel={paramLabel} filterSummary={filterSummary}>
             <table className="w-full text-[12px]">
               <thead>
                 <tr className="report-print-avoid-break border-b border-[#cbd5e1]">

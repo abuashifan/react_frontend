@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { List, X } from 'lucide-react'
 import { useTabStore } from '@/stores/useTabStore'
 import { cn } from '@/lib/utils'
 
@@ -45,6 +45,8 @@ export function SecondaryTabs({ top }: SecondaryTabsProps) {
             role="tab"
             tabIndex={0}
             aria-selected={isActive}
+            aria-label={tab.label}
+            title={tab.label}
             onClick={() => activateTab(tab.id)}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
@@ -62,7 +64,14 @@ export function SecondaryTabs({ top }: SecondaryTabsProps) {
             )}
             style={{ height: 28, marginTop: 4 }}
           >
-            <span>{tab.label}</span>
+            {/* Tab daftar tampil sebagai ikon saja; ikon diturunkan dari `type`
+                karena store di-persist ke sessionStorage dan komponen tidak bisa
+                diserialisasi. */}
+            {tab.type === 'list' ? (
+              <List className="h-3.5 w-3.5" />
+            ) : (
+              <span className="max-w-[140px] truncate">{tab.label}</span>
+            )}
             {!tab.pinned && (
               <button
                 type="button"

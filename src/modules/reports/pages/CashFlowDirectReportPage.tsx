@@ -1,24 +1,25 @@
-import { Fragment, useState } from 'react'
+import { Download } from 'lucide-react'
+import { Fragment } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { ReportPrintToolbar } from '../components/ReportPrintToolbar'
+import { ReportToolButton } from '../components/ReportToolButton'
 import { ReportPrintDocument } from '../components/ReportPrintDocument'
-import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
-import type { ReportParams } from '../types/reports.types'
+import { useReportParams } from '../hooks/useReportParams'
+import { useReportFilterSummary } from '../hooks/useReportFilterSummary'
 
 const today = new Date().toISOString().slice(0, 10)
 const firstOfMonth = today.slice(0, 8) + '01'
 
 export default function CashFlowDirectReportPage() {
-  const [params, setParams] = useState<ReportParams>({ start_date: firstOfMonth, end_date: today })
-  const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
-  const [showFilter, setShowFilter] = useState(true)
+  const { params, setParams, activeParams, setActiveParams, showFilter, setShowFilter } = useReportParams({ start_date: firstOfMonth, end_date: today })
+  const filterSummary = useReportFilterSummary(activeParams)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['reports', 'cash-flow-direct', activeParams],
@@ -31,13 +32,27 @@ export default function CashFlowDirectReportPage() {
   const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false) }
   const paramLabel = `${activeParams?.start_date ? formatDate(activeParams.start_date) : '-'} — ${activeParams?.end_date ? formatDate(activeParams.end_date) : '-'}`
 
+  // Alat laporan menempel di filter bar supaya tidak memakai baris toolbar sendiri.
+  const tools = !isLoading && !isError && report && !report.no_cash_accounts && summary ? (
+    <ReportPrintToolbar
+      extra={sections.length > 0 && (
+        <ReportToolButton icon={Download} label="Export CSV" onClick={() => exportCsv(
+            `arus-kas-langsung-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
+            ['Aktivitas', 'Akun', 'Kas Masuk', 'Kas Keluar', 'Bersih'],
+            sections.flatMap((s) => s.lines.map((l) => [s.label, l.account_name, l.cash_in, l.cash_out, l.net]))
+          )} />
+      )}
+    />
+  ) : undefined
+
   return (
-    <WorkspaceLayout title="Arus Kas (Metode Langsung)" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Arus Kas (Langsung)' }]}>
+    <WorkspaceLayout
+      hideHeader
+      toolbar={<ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} actions={tools} />}
+    >
       <div className="space-y-4">
         <div className="no-print">
-          {showFilter
-            ? <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} />
-            : <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} />}
+          {showFilter && <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} />}
 
           <p className="mt-2 text-[11px] text-[#94a3b8]">
             Metode langsung: penerimaan &amp; pembayaran kas aktual dirinci per akun lawan dan dikelompokkan
@@ -55,26 +70,7 @@ export default function CashFlowDirectReportPage() {
         )}
 
         {!isLoading && !isError && report && !report.no_cash_accounts && summary && (
-          <ReportPrintToolbar
-            extra={sections.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-[12px]"
-                onClick={() => exportCsv(
-                  `arus-kas-langsung-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
-                  ['Aktivitas', 'Akun', 'Kas Masuk', 'Kas Keluar', 'Bersih'],
-                  sections.flatMap((s) => s.lines.map((l) => [s.label, l.account_name, l.cash_in, l.cash_out, l.net]))
-                )}
-              >
-                Export CSV
-              </Button>
-            )}
-          />
-        )}
-
-        {!isLoading && !isError && report && !report.no_cash_accounts && summary && (
-          <ReportPrintDocument title="Arus Kas (Metode Langsung)" paramLabel={paramLabel}>
+          <ReportPrintDocument title="Arus Kas (Metode Langsung)" paramLabel={paramLabel} filterSummary={filterSummary}>
             <div className="space-y-4">
               <table className="w-full text-[12px]">
                 <thead>

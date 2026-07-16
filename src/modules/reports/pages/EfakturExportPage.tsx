@@ -32,7 +32,7 @@ export default function EfakturExportPage() {
   }
 
   return (
-    <WorkspaceLayout title="Ekspor E-Faktur" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Pajak', path: '/reports/tax' }, { label: 'Ekspor E-Faktur' }]}>
+    <WorkspaceLayout hideHeader>
       <div className="space-y-4">
         <div className="rounded-lg border border-[#e2e8f0] bg-white p-4">
           <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Periode Masa Pajak</p>

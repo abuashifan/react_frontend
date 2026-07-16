@@ -33,9 +33,14 @@ function quartersOfYear(year: number): MultiPeriodInput[] {
 interface Props {
   onApply: (periods: MultiPeriodInput[]) => void
   isLoading?: boolean
+  /**
+   * Alat laporan (ukuran kertas, cetak, export) — dirender di baris aksi supaya
+   * laporan tidak menumpuk baris toolbar terpisah secara vertikal.
+   */
+  actions?: React.ReactNode
 }
 
-export function PeriodSelector({ onApply, isLoading }: Props) {
+export function PeriodSelector({ onApply, isLoading, actions }: Props) {
   const currentYear = new Date().getFullYear()
   const [periods, setPeriods] = useState<MultiPeriodInput[]>(() => quartersOfYear(currentYear))
 
@@ -84,6 +89,7 @@ export function PeriodSelector({ onApply, isLoading }: Props) {
           {isLoading ? 'Memuat...' : 'Terapkan'}
         </Button>
         <span className="text-[11px] text-[#94a3b8]">Maks {MAX_PERIODS} kolom</span>
+        {actions && <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
     </div>
   )

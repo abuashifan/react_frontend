@@ -285,7 +285,7 @@ export const useTabStore = create<TabState & TabActions>()(
     }),
     {
       name: 'seaside-erp-tabs',
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => sessionStorage),
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') {
@@ -301,12 +301,25 @@ export const useTabStore = create<TabState & TabActions>()(
         }
 
         const state = persistedState as Partial<TabState>
-        const tabs = state.primaryTabs ?? []
+        // v4: ribbon Laporan dinonaktifkan. Tab sisa ribbon lama (mis. `reports-financial`
+        // berlabel "Keuangan" menuju /reports/financial) dibuang agar user tidak
+        // menyimpan tab kategori yang sudah tidak punya jalur masuk.
+        const tabs = (state.primaryTabs ?? []).filter(
+          (tab) => tab.module !== 'reports' || tab.id === 'reports',
+        )
         const primaryTabs = tabs.some((tab) => tab.id === DASHBOARD_TAB.id)
           ? tabs
           : [DASHBOARD_TAB, ...tabs]
+        const liveTabIds = new Set(primaryTabs.map((tab) => tab.id))
         const activePrimaryTabId = state.activePrimaryTabId ?? DASHBOARD_TAB.id
         const activeTab = primaryTabs.find((tab) => tab.id === activePrimaryTabId) ?? DASHBOARD_TAB
+
+        const secondaryTabs = Object.fromEntries(
+          Object.entries(state.secondaryTabs ?? {}).filter(([tabId]) => liveTabIds.has(tabId)),
+        )
+        const activeSecondaryTabId = Object.fromEntries(
+          Object.entries(state.activeSecondaryTabId ?? {}).filter(([tabId]) => liveTabIds.has(tabId)),
+        )
 
         return {
           ...state,
@@ -314,8 +327,8 @@ export const useTabStore = create<TabState & TabActions>()(
           isRibbonOpen: false,
           primaryTabs,
           activePrimaryTabId: activeTab.id,
-          secondaryTabs: state.secondaryTabs ?? {},
-          activeSecondaryTabId: state.activeSecondaryTabId ?? {},
+          secondaryTabs,
+          activeSecondaryTabId,
         }
       },
     },

@@ -307,9 +307,11 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____use-toast.ts
 | | |____useCompanySettings.ts
 | | |____useDocumentActions.ts
+| | |____useOpenPrimaryTab.ts
 | | |____usePermission.ts
 | | |____usePersistentFormDraft.ts
 | | |____useSessionTimeout.ts
+| | |____useTabFormState.ts
 | | |____useToast.ts
 | | |____useViewMode.ts
 | |____index.css
@@ -608,13 +610,16 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____ReportDomainPanel.tsx
 | | | | |____ReportParameterModal.tsx
 | | | | |____PeriodSelector.tsx
+| | | | |____SavedReportsPanel.tsx
 | | | | |____SaveReportButton.tsx
+| | | | |____ReportToolButton.tsx
 | | | | |____PageSetupControl.tsx
 | | | | |____ReportPrintToolbar.tsx
 | | | | |____ReportPrintDocument.tsx
 | | | | |____ReportPrintSection.tsx
 | | | |____constants/
 | | | | |____reportCategories.ts
+| | | | |____reportDomainIcons.ts
 | | | | |____reportKeyRoutes.ts
 | | | | |____pageSizes.ts
 | | | |____stores/
@@ -622,6 +627,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____hooks/
 | | | | |____useSavedReports.ts
 | | | | |____useInitialReportParams.ts
+| | | | |____useReportParams.ts
+| | | | |____useReportFilterSummary.ts
 | | | |____pages/
 | | | | |____ApAgingReportPage.tsx
 | | | | |____ApOutstandingReportPage.tsx
@@ -660,8 +667,10 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____PurchaseByVendorReportPage.tsx
 | | | | |____PurchaseSummaryReportPage.tsx
 | | | | |____ReportCategoryPage.tsx
-| | | | |____ReportIndexPage.tsx
+| | | | |____ReportListPage.tsx
 | | | | |____SavedReportsPage.tsx
+| | | | |____legacy/
+| | | | | |____ReportIndexPage.legacy.tsx
 | | | | |____StockReportPage.tsx
 | | | | |____TrialBalancePage.tsx
 | | | |____routes.tsx
@@ -762,6 +771,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____index.tsx
 | | |____moduleConfig.ts
 | | |____placeholders.tsx
+| | |____legacy/
+| | | |____reportsRibbon.legacy.ts
 | |____services/
 | | |____http.ts
 | |____stores/

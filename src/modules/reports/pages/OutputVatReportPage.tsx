@@ -10,15 +10,13 @@ import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
-import type { ReportParams } from '../types/reports.types'
+import { useReportParams } from '../hooks/useReportParams'
 
 const today = new Date().toISOString().slice(0, 10)
 const firstOfMonth = today.slice(0, 8) + '01'
 
 export default function OutputVatReportPage() {
-  const [params, setParams] = useState<ReportParams>({ start_date: firstOfMonth, end_date: today })
-  const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
-  const [showFilter, setShowFilter] = useState(true)
+  const { params, setParams, activeParams, setActiveParams, showFilter, setShowFilter } = useReportParams({ start_date: firstOfMonth, end_date: today })
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -38,11 +36,12 @@ export default function OutputVatReportPage() {
   const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false); setPagination((p) => ({ ...p, pageIndex: 0 })) }
 
   return (
-    <WorkspaceLayout title="PPN Keluaran" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Pajak', path: '/reports/tax' }, { label: 'PPN Keluaran' }]}>
+    <WorkspaceLayout
+      hideHeader
+      toolbar={<ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} />}
+    >
       <div className="space-y-4">
-        {showFilter
-          ? <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} />
-          : <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} />}
+        {showFilter && <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} />}
 
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
         {isError && <ReportError onRetry={() => refetch()} />}

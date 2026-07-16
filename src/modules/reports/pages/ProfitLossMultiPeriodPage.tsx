@@ -1,11 +1,12 @@
+import { Download } from 'lucide-react'
 import { Fragment, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { PeriodSelector } from '../components/PeriodSelector'
 import { ReportError } from '../components/ReportError'
 import { ReportPrintToolbar } from '../components/ReportPrintToolbar'
+import { ReportToolButton } from '../components/ReportToolButton'
 import { ReportPrintDocument } from '../components/ReportPrintDocument'
-import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
@@ -25,11 +26,24 @@ export default function ProfitLossMultiPeriodPage() {
   const summary = report?.summary_totals ?? []
   const paramLabel = cols.map((c) => c.label).join(' · ')
 
+  // Alat laporan menempel di section filter supaya tidak memakai baris toolbar sendiri.
+  const tools = !isLoading && !isError && report && cols.length > 0 ? (
+    <ReportPrintToolbar
+      extra={
+        <ReportToolButton icon={Download} label="Export CSV" onClick={() => exportCsv(
+            'laba-rugi-multi-periode.csv',
+            ['Akun', ...cols.map((c) => c.label)],
+            sections.flatMap((s) => s.rows.map((r) => [r.account_name, ...r.values]))
+          )} />
+      }
+    />
+  ) : undefined
+
   return (
-    <WorkspaceLayout title="Laba Rugi Multi-Periode" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Laba Rugi Multi-Periode' }]}>
+    <WorkspaceLayout hideHeader>
       <div className="space-y-4">
         <div className="no-print">
-          <PeriodSelector onApply={setPeriods} isLoading={isLoading} />
+          <PeriodSelector onApply={setPeriods} isLoading={isLoading} actions={tools} />
         </div>
 
         {isLoading && <div className="no-print flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
@@ -37,23 +51,6 @@ export default function ProfitLossMultiPeriodPage() {
 
         {!isLoading && !isError && report && cols.length > 0 && (
           <>
-            <ReportPrintToolbar
-              extra={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 text-[12px]"
-                  onClick={() => exportCsv(
-                    'laba-rugi-multi-periode.csv',
-                    ['Akun', ...cols.map((c) => c.label)],
-                    sections.flatMap((s) => s.rows.map((r) => [r.account_name, ...r.values]))
-                  )}
-                >
-                  Export CSV
-                </Button>
-              }
-            />
-
             <ReportPrintDocument title="Laba Rugi Multi-Periode" paramLabel={paramLabel}>
               <table className="w-full text-[12px]">
                 <thead>

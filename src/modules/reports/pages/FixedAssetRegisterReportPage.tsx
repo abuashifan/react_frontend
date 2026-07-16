@@ -22,10 +22,7 @@ export default function FixedAssetRegisterReportPage() {
   const rows = data?.data ?? []
 
   return (
-    <WorkspaceLayout
-      title="Daftar Aktiva Tetap"
-      breadcrumb={[{ label: 'Laporan' }, { label: 'Aktiva Tetap' }, { label: 'Daftar Aktiva Tetap' }]}
-    >
+    <WorkspaceLayout hideHeader>
       <div className="space-y-4">
         {/* Filter */}
         <div className="rounded-lg border border-[#e2e8f0] bg-white p-4">

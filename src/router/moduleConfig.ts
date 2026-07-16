@@ -5,10 +5,10 @@ import {
   Banknote, RotateCcw, BookOpen, ClipboardList, Package, PackageCheck,
   FileText, CreditCard, BarChart3, ArrowLeftRight, SlidersHorizontal,
   ClipboardCheck, Calendar, CalendarDays, TrendingUp, TrendingDown,
-  CheckSquare, BookMarked, Clock,
+  CheckSquare,
   Landmark, Users, Ruler, Warehouse, CalendarClock, Building2,
   FolderKanban, Map, Building, RefreshCcw, UserCog, ShieldCheck, Star,
-  Mail, Shield, Archive, Bookmark,
+  Mail, Shield, Archive,
 } from 'lucide-react'
 
 export interface RibbonItem {
@@ -25,6 +25,17 @@ export interface ModuleConfig {
   path: string
   permission?: string
   ribbonItems: RibbonItem[]
+  /**
+   * Klik main menu langsung membuka tab primer halaman daftar modul ini, tanpa
+   * ribbon. Dipakai modul yang ribbon-nya hanya jadi pemilih kategori.
+   */
+  opensListDirectly?: boolean
+  /**
+   * Konten menempel langsung di bawah baris tab, tanpa jarak kanvas. Dipakai
+   * modul yang punya toolbar sendiri di bawah tab (mis. filter bar Laporan)
+   * sehingga toolbar terlihat menyatu dengan tab.
+   */
+  flushContent?: boolean
 }
 
 export const MODULE_CONFIGS: ModuleConfig[] = [
@@ -130,20 +141,11 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     id: 'reports',
     label: 'Daftar Laporan',
     path: '/reports',
-    ribbonItems: [
-      { id: 'financial', label: 'Keuangan', icon: BarChart3, path: '/reports/financial', permission: 'reports.view' },
-      { id: 'gl', label: 'Buku Besar', icon: BookMarked, path: '/reports/gl', permission: 'reports.view' },
-      { id: 'sales', label: 'Penjualan', icon: TrendingUp, path: '/reports/sales', permission: 'reports.view' },
-      { id: 'purchase', label: 'Pembelian', icon: TrendingDown, path: '/reports/purchase', permission: 'reports.view' },
-      { id: 'ar', label: 'Piutang', icon: Clock, path: '/reports/ar', permission: 'reports.view' },
-      { id: 'ap', label: 'Hutang', icon: Clock, path: '/reports/ap', permission: 'reports.view' },
-      { id: 'reconciliation', label: 'Rekonsiliasi', icon: RefreshCcw, path: '/reports/reconciliation', permission: 'reports.view' },
-      { id: 'inventory', label: 'Persediaan', icon: Package, path: '/reports/inventory', permission: 'reports.view' },
-      { id: 'fixed-assets', label: 'Aktiva Tetap', icon: Building2, path: '/reports/fixed-assets', permission: 'reports.view' },
-      { id: 'cash-bank', label: 'Kas & Bank', icon: Landmark, path: '/reports/cash-bank', permission: 'reports.view' },
-      { id: 'tax', label: 'Pajak', icon: Receipt, path: '/reports/tax', permission: 'reports.view' },
-      { id: 'saved', label: 'Tersimpan', icon: Bookmark, path: '/reports/saved', permission: 'reports.view' },
-    ],
+    // Ribbon Laporan dinonaktifkan — kategori kini jadi sidebar di ReportListPage.
+    // Model lamanya diarsipkan di src/router/legacy/reportsRibbon.legacy.ts.
+    ribbonItems: [],
+    opensListDirectly: true,
+    flushContent: true,
   },
   {
     id: 'settings',

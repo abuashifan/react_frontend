@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { BookmarkPlus } from 'lucide-react'
+import { ReportToolButton } from './ReportToolButton'
 import { useCreateSavedReport, useShareableUsers } from '../hooks/useSavedReports'
 import { reportKeyLabel } from '../constants/reportKeyRoutes'
 import type { ReportParams } from '../types/reports.types'
@@ -43,10 +44,7 @@ export function SaveReportButton({ reportKey, params }: Props) {
 
   return (
     <>
-      <Button variant="outline" size="sm" className="text-[12px]" disabled={!params} onClick={openDialog}>
-        <BookmarkPlus className="mr-1.5 h-3.5 w-3.5" />
-        Simpan Laporan
-      </Button>
+      <ReportToolButton icon={BookmarkPlus} label="Simpan Laporan" disabled={!params} onClick={openDialog} />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

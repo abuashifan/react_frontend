@@ -10,15 +10,13 @@ import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
-import type { ReportParams } from '../types/reports.types'
+import { useReportParams } from '../hooks/useReportParams'
 
 const today = new Date().toISOString().slice(0, 10)
 const firstDayOfMonth = today.slice(0, 7) + '-01'
 
 export default function SalesByProductReportPage() {
-  const [params, setParams] = useState<ReportParams>({ start_date: firstDayOfMonth, end_date: today })
-  const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
-  const [showFilter, setShowFilter] = useState(true)
+  const { params, setParams, activeParams, setActiveParams, showFilter, setShowFilter } = useReportParams({ start_date: firstDayOfMonth, end_date: today })
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -43,11 +41,11 @@ export default function SalesByProductReportPage() {
 
   return (
     <WorkspaceLayout
-      title="Penjualan per Barang"
-      breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Penjualan', path: '/reports/sales' }, { label: 'Per Barang' }]}
+      hideHeader
+      toolbar={<ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} mode="range" />}
     >
       <div className="space-y-4">
-        {showFilter ? (
+        {showFilter && (
           <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)}
             params={params}
             onChange={(p) => setParams((prev) => ({ ...prev, ...p }))}
@@ -55,8 +53,6 @@ export default function SalesByProductReportPage() {
             mode="range"
             isLoading={isLoading}
           />
-        ) : (
-          <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} mode="range" />
         )}
 
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}

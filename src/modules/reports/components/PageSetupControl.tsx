@@ -17,9 +17,17 @@ export function PageSetupControl() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 text-[12px]">
+        {/* Ikon + label ukuran sudah menjelaskan diri sendiri, jadi tidak perlu
+            tooltip yang bentrok dengan trigger popover. */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-label={`Ukuran kertas: ${PAGE_SIZE_LABELS[size]}`}
+          className="h-7 gap-1 px-2 text-[#475569] hover:bg-[#f1f5f9] hover:text-[#326273]"
+        >
           <FileText className="h-3.5 w-3.5" />
-          Ukuran Kertas: {PAGE_SIZE_LABELS[size]}
+          <span className="text-[11px] font-medium">{PAGE_SIZE_LABELS[size]}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-64 space-y-3 p-3">

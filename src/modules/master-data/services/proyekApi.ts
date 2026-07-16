@@ -4,7 +4,7 @@ import type { SelectOption } from '@/types/common.types'
 import type { Proyek, CreateProyekPayload, UpdateProyekPayload } from '../types/proyek.types'
 
 export const proyekApi = {
-  list: (params?: { search?: string; status?: string }) =>
+  list: (params?: { search?: string; status?: string; per_page?: number }) =>
     http.get<unknown, PaginatedResponse<Proyek>>('/master-data/projects', { params }),
 
   create: (payload: CreateProyekPayload) =>

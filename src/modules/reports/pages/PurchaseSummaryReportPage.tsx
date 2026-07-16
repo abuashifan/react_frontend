@@ -10,15 +10,13 @@ import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
-import type { ReportParams } from '../types/reports.types'
+import { useReportParams } from '../hooks/useReportParams'
 
 const today = new Date().toISOString().slice(0, 10)
 const firstDayOfMonth = today.slice(0, 7) + '-01'
 
 export default function PurchaseSummaryReportPage() {
-  const [params, setParams] = useState<ReportParams>({ start_date: firstDayOfMonth, end_date: today, group_by: 'month' })
-  const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
-  const [showFilter, setShowFilter] = useState(true)
+  const { params, setParams, activeParams, setActiveParams, showFilter, setShowFilter } = useReportParams({ start_date: firstDayOfMonth, end_date: today, group_by: 'month' })
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -43,11 +41,10 @@ export default function PurchaseSummaryReportPage() {
 
   return (
     <WorkspaceLayout
-      title="Ringkasan Pembelian"
-      breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Pembelian', path: '/reports/purchase' }, { label: 'Ringkasan Pembelian' }]}
+      hideHeader
+      toolbar={activeParams ? <ReportCompactBar params={activeParams} onOpenModal={() => setShowFilter(true)} mode="range" /> : undefined}
     >
       <div className="space-y-4">
-        {activeParams && <ReportCompactBar params={activeParams} onOpenModal={() => setShowFilter(true)} mode="range" />}
         {activeParams && (
           <div className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-4 py-2">
             <label className="text-[11px] font-medium uppercase tracking-wide text-[#64748b]">Kelompokkan per</label>

@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportParameterModal } from '../components/ReportParameterModal'
@@ -8,7 +7,7 @@ import { ReportPrintToolbar } from '../components/ReportPrintToolbar'
 import { ReportPrintDocument } from '../components/ReportPrintDocument'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import type { ReportParams } from '../types/reports.types'
+import { useReportParams } from '../hooks/useReportParams'
 
 const today = new Date().toISOString().slice(0, 10)
 const firstOfMonth = today.slice(0, 8) + '01'
@@ -24,25 +23,27 @@ function KPICard({ label, value, positive }: { label: string; value: number; pos
 }
 
 export default function FinancialSummaryPage() {
-  const [params, setParams] = useState<ReportParams>({ start_date: firstOfMonth, end_date: today })
-  const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
-  const [showFilter, setShowFilter] = useState(true)
+  const { params, setParams, activeParams, setActiveParams, showFilter, setShowFilter } = useReportParams({ start_date: firstOfMonth, end_date: today })
 
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['reports', 'financial-summary', activeParams], queryFn: () => reportsApi.financialSummary(activeParams!), enabled: !!activeParams })
   const report = data?.data
   const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false) }
   const paramLabel = `${activeParams?.start_date ? formatDate(activeParams.start_date) : '-'} — ${activeParams?.end_date ? formatDate(activeParams.end_date) : '-'}`
 
+  // Alat laporan menempel di filter bar supaya tidak memakai baris toolbar sendiri.
+  const tools = !isLoading && !isError && report ? <ReportPrintToolbar /> : undefined
+
   return (
-    <WorkspaceLayout title="Ringkasan Keuangan" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Ringkasan Keuangan' }]}>
+    <WorkspaceLayout
+      hideHeader
+      toolbar={<ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} actions={tools} />}
+    >
       <div className="space-y-4">
         <div className="no-print">
-          {showFilter ? <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} />
-            : <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} />}
+          {showFilter && <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} />}
         </div>
         {isLoading && <div className="no-print flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
         {isError && <div className="no-print"><ReportError onRetry={() => refetch()} /></div>}
-        {!isLoading && !isError && report && <ReportPrintToolbar />}
         {!isLoading && !isError && report && (
           <ReportPrintDocument title="Ringkasan Keuangan" paramLabel={paramLabel}>
             <div className="space-y-5">

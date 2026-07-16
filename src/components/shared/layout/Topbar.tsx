@@ -24,7 +24,8 @@ import { useCompanyStore } from '@/stores/useCompanyStore'
 import { useTabStore } from '@/stores/useTabStore'
 import type { ModuleKey } from '@/stores/useTabStore'
 import { authApi } from '@/modules/auth/services/authApi'
-import { TOP_MODULES } from '@/router/moduleConfig'
+import { MODULE_MAP, TOP_MODULES } from '@/router/moduleConfig'
+import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
 import { cn } from '@/lib/utils'
 import { APP_NAME } from '@/lib/constants'
 
@@ -60,6 +61,7 @@ export function Topbar() {
   const { user, logout } = useAuthStore()
   const { activeCompany } = useCompanyStore()
   const { activeModule, isRibbonOpen, setActiveModule, openRibbon, closeRibbon } = useTabStore()
+  const openTab = useOpenPrimaryTab()
 
   async function handleLogout() {
     try {
@@ -73,6 +75,21 @@ export function Topbar() {
 
   function handleModuleClick(moduleId: string) {
     const moduleKey = moduleId as ModuleKey
+    const moduleConfig = MODULE_MAP[moduleKey]
+
+    // Modul tanpa ribbon (mis. Laporan): langsung buka tab halaman daftarnya.
+    if (moduleConfig?.opensListDirectly) {
+      closeRibbon()
+      openTab({
+        id: moduleKey,
+        menuKey: 'list',
+        label: moduleConfig.label,
+        module: moduleKey,
+        path: moduleConfig.path,
+      })
+      return
+    }
+
     if (activeModule === moduleKey && isRibbonOpen) {
       closeRibbon()
       return

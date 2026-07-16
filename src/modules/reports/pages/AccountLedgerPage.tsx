@@ -49,10 +49,7 @@ export default function AccountLedgerPage() {
   }
 
   return (
-    <WorkspaceLayout
-      title="Buku Besar per Akun"
-      breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Buku Besar per Akun' }]}
-    >
+    <WorkspaceLayout hideHeader>
       <div className="space-y-4">
         {/* Filter panel */}
         <div className="rounded-lg border border-[#e2e8f0] bg-white p-4">

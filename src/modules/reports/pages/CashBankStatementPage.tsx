@@ -62,10 +62,7 @@ export default function CashBankStatementPage() {
   }
 
   return (
-    <WorkspaceLayout
-      title="Mutasi Rekening"
-      breadcrumb={[{ label: 'Laporan' }, { label: 'Kas & Bank' }, { label: 'Mutasi Rekening' }]}
-    >
+    <WorkspaceLayout hideHeader>
       <div className="space-y-4">
         {/* Filter */}
         <div className="rounded-lg border border-[#e2e8f0] bg-white p-4">

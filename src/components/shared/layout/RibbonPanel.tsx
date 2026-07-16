@@ -1,6 +1,6 @@
 import { useTabStore } from '@/stores/useTabStore'
 import { usePermission } from '@/hooks/usePermission'
-import { useToast } from '@/hooks/useToast'
+import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
 import { MODULE_MAP } from '@/router/moduleConfig'
 import type { RibbonItem } from '@/router/moduleConfig'
 import { cn } from '@/lib/utils'
@@ -52,11 +52,10 @@ export function RibbonPanel() {
     activePrimaryTabId,
     isRibbonOpen,
     closeRibbon,
-    openPrimaryTab,
     primaryTabs,
   } = useTabStore()
   const { can, permissionsLoaded } = usePermission()
-  const { toast } = useToast()
+  const openTab = useOpenPrimaryTab()
   const activePrimaryTab = primaryTabs.find((tab) => tab.id === activePrimaryTabId)
 
   if (!activeModule) return null
@@ -68,21 +67,17 @@ export function RibbonPanel() {
     (item) => !permissionsLoaded || !item.permission || can(item.permission),
   )
 
+  // Modul tanpa item ribbon (mis. Laporan) tidak boleh memunculkan panel kosong.
+  if (visibleItems.length === 0) return null
+
   function handleItemClick(item: RibbonItem) {
-    const didOpen = openPrimaryTab({
+    openTab({
       id: `${activeModule}-${item.id}`,
       menuKey: item.id,
       label: item.label,
       module: moduleId,
       path: item.path,
     })
-
-    if (!didOpen) {
-      toast.warning('Maksimal 10 tab dapat dibuka sekaligus. Tutup tab yang tidak diperlukan.')
-      closeRibbon()
-      return
-    }
-
     closeRibbon()
   }
 

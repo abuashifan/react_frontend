@@ -142,3 +142,16 @@ export const DOMAIN_BY_PATH: Record<string, ReportDomain> = Object.fromEntries(
 )
 
 export const DEFAULT_DOMAIN = 'financial'
+
+/**
+ * Saring laporan berdasarkan judul atau deskripsinya. Query kosong mengembalikan
+ * daftar apa adanya, sehingga aman dipakai saat kotak cari belum diisi.
+ */
+export function filterReports(reports: ReportEntry[], query: string): ReportEntry[] {
+  const q = query.trim().toLowerCase()
+  if (!q) return reports
+  return reports.filter(
+    (report) =>
+      report.title.toLowerCase().includes(q) || report.description.toLowerCase().includes(q),
+  )
+}

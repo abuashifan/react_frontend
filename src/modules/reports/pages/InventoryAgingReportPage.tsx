@@ -11,13 +11,12 @@ import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
 import type { ReportParams } from '../types/reports.types'
+import { useReportParams } from '../hooks/useReportParams'
 
 const today = new Date().toISOString().slice(0, 10)
 
 export default function InventoryAgingReportPage() {
-  const [params, setParams] = useState<ReportParams>({ as_of_date: today })
-  const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
-  const [showFilter, setShowFilter] = useState(true)
+  const { params, setParams, activeParams, setActiveParams, showFilter, setShowFilter } = useReportParams({ as_of_date: today })
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
 
   const query = useMemo<ReportParams | null>(() => {
@@ -48,9 +47,12 @@ export default function InventoryAgingReportPage() {
   }
 
   return (
-    <WorkspaceLayout title="Umur Persediaan" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Umur Persediaan' }]}>
+    <WorkspaceLayout
+      hideHeader
+      toolbar={<ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} />}
+    >
       <div className="space-y-4">
-        {showFilter ? (
+        {showFilter && (
           <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)}
             params={params}
             onChange={(p) => setParams((prev) => ({ ...prev, ...p }))}
@@ -60,8 +62,6 @@ export default function InventoryAgingReportPage() {
             dimensions={{ warehouse: true }}
             extras={{ include_zero_balance: true }}
           />
-        ) : (
-          <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} />
         )}
 
         <p className="text-[11px] text-[#94a3b8]">

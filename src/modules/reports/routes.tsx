@@ -3,7 +3,7 @@ import { lazy, type ReactElement } from 'react'
 import { ProtectedRoute } from '@/router/guards'
 import type { RouteObject } from 'react-router-dom'
 
-const ReportIndexPage = lazy(() => import('./pages/ReportIndexPage'))
+const ReportListPage = lazy(() => import('./pages/ReportListPage'))
 const TrialBalancePage = lazy(() => import('./pages/TrialBalancePage'))
 const ProfitLossPage = lazy(() => import('./pages/ProfitLossPage'))
 const BalanceSheetPage = lazy(() => import('./pages/BalanceSheetPage'))
@@ -51,7 +51,7 @@ const wrap = (element: ReactElement) => (
 )
 
 export const reportsRoutes: RouteObject[] = [
-  { path: '/reports', element: wrap(<ReportIndexPage />) },
+  { path: '/reports', element: wrap(<ReportListPage />) },
   { path: '/reports/trial-balance', element: wrap(<TrialBalancePage />) },
   { path: '/reports/profit-loss', element: wrap(<ProfitLossPage />) },
   { path: '/reports/balance-sheet', element: wrap(<BalanceSheetPage />) },

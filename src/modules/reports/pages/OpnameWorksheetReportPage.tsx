@@ -30,7 +30,7 @@ export default function OpnameWorksheetReportPage() {
   }
 
   return (
-    <WorkspaceLayout title="Kertas Kerja Opname" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Kertas Kerja Opname' }]}>
+    <WorkspaceLayout hideHeader>
       <div className="space-y-4">
         <div className="rounded-lg border border-[#e2e8f0] bg-white p-4">
           <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Parameter</p>

@@ -12,8 +12,8 @@ import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
 import { SaveReportButton } from '../components/SaveReportButton'
-import { useInitialReportParams } from '../hooks/useInitialReportParams'
-import type { ReportParams, ColumnConfig } from '../types/reports.types'
+import type { ColumnConfig } from '../types/reports.types'
+import { useReportParams } from '../hooks/useReportParams'
 
 const today = new Date().toISOString().slice(0, 10)
 const firstOfMonth = today.slice(0, 8) + '01'
@@ -32,11 +32,8 @@ type LedgerMode = 'summary' | 'detail'
 
 export default function GeneralLedgerPage() {
   const [searchParams] = useSearchParams()
-  const { initialParams, restored } = useInitialReportParams({ start_date: firstOfMonth, end_date: today })
+  const { params, setParams, activeParams, setActiveParams, showFilter, setShowFilter } = useReportParams({ start_date: firstOfMonth, end_date: today })
   const [mode, setMode] = useState<LedgerMode>(searchParams.get('mode') === 'detail' ? 'detail' : 'summary')
-  const [params, setParams] = useState<ReportParams>(initialParams)
-  const [activeParams, setActiveParams] = useState<ReportParams | null>(restored ? initialParams : null)
-  const [showFilter, setShowFilter] = useState(!restored)
   const [visibleColumns, setVisibleColumns] = useState<string[]>(SUMMARY_COLUMNS.map((c) => c.key))
   const showCol = (key: string) => visibleColumns.includes(key)
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
@@ -92,11 +89,9 @@ export default function GeneralLedgerPage() {
   )
 
   return (
-    <WorkspaceLayout title="Buku Besar" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Buku Besar' }]}>
-      <div className="space-y-4">
-        {showFilter ? <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} extras={{ include_zero_balance: true }} columns={mode === 'summary' ? SUMMARY_COLUMNS : undefined} visibleColumns={visibleColumns} onColumnsChange={setVisibleColumns} />
-          : (
-            <ReportCompactBar
+    <WorkspaceLayout
+      hideHeader
+      toolbar={<ReportCompactBar
               params={activeParams ?? params}
               onOpenModal={() => setShowFilter(true)}
               columnSummary={mode === 'summary' ? `${visibleColumns.length} kolom` : undefined}
@@ -124,8 +119,10 @@ export default function GeneralLedgerPage() {
                   )}
                 </>
               }
-            />
-          )}
+            />}
+    >
+      <div className="space-y-4">
+        {showFilter && <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ department: true, project: true }} extras={{ include_zero_balance: true }} columns={mode === 'summary' ? SUMMARY_COLUMNS : undefined} visibleColumns={visibleColumns} onColumnsChange={setVisibleColumns} />}
 
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
         {isError && <ReportError onRetry={() => refetch()} />}

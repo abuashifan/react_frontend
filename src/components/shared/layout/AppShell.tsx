@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTabStore } from '@/stores/useTabStore'
+import { MODULE_MAP } from '@/router/moduleConfig'
 import { useSessionTimeout } from '@/hooks/useSessionTimeout'
 import { SessionWarningDialog } from '@/components/shared/feedback/SessionWarningDialog'
 import { Topbar } from './Topbar'
@@ -41,7 +42,14 @@ export function AppShell({ children }: AppShellProps) {
   // Content region starts after fixed chrome and owns the remaining viewport height.
   const secondaryTabsH = isDashboard ? 0 : 32
   const contentChromeTop = 52 + 36 + secondaryTabsH
-  const contentTop = `calc(${contentChromeTop}px + var(--shell-content-gap-current))`
+
+  // Modul ber-`flushContent` (mis. Laporan) memasang toolbar sendiri tepat di bawah
+  // baris tab, jadi jarak kanvas dihilangkan supaya toolbar menyatu dengan tab.
+  const activeTab = primaryTabs.find((tab) => tab.id === activePrimaryTabId)
+  const flushContent = !!(activeTab && MODULE_MAP[activeTab.module]?.flushContent)
+  const contentTop = flushContent
+    ? `${contentChromeTop}px`
+    : `calc(${contentChromeTop}px + var(--shell-content-gap-current))`
 
   return (
     <div className="h-dvh overflow-hidden bg-canvas">

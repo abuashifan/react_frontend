@@ -1,27 +1,25 @@
-import { useState } from 'react'
+import { Download } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { ReportPrintToolbar } from '../components/ReportPrintToolbar'
+import { ReportToolButton } from '../components/ReportToolButton'
 import { ReportPrintDocument } from '../components/ReportPrintDocument'
 import { ReportPrintSection } from '../components/ReportPrintSection'
-import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
 import { SaveReportButton } from '../components/SaveReportButton'
-import { useInitialReportParams } from '../hooks/useInitialReportParams'
-import type { ReportParams } from '../types/reports.types'
+import { useReportParams } from '../hooks/useReportParams'
+import { useReportFilterSummary } from '../hooks/useReportFilterSummary'
 
 const today = new Date().toISOString().slice(0, 10)
 
 export default function BalanceSheetPage() {
-  const { initialParams, restored } = useInitialReportParams({ as_of_date: today })
-  const [params, setParams] = useState<ReportParams>(initialParams)
-  const [activeParams, setActiveParams] = useState<ReportParams | null>(restored ? initialParams : null)
-  const [showFilter, setShowFilter] = useState(!restored)
+  const { params, setParams, activeParams, setActiveParams, showFilter, setShowFilter } = useReportParams({ as_of_date: today })
+  const filterSummary = useReportFilterSummary(activeParams)
 
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['reports', 'balance-sheet', activeParams], queryFn: () => reportsApi.balanceSheet(activeParams!), enabled: !!activeParams })
   const report = data?.data
@@ -32,39 +30,36 @@ export default function BalanceSheetPage() {
   const equitySections = sections.filter((s) => s.key === 'equity')
   const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false) }
 
+  // Alat laporan menempel di filter bar supaya tidak memakai baris toolbar sendiri.
+  const tools = !isLoading && !isError && report && totals ? (
+    <ReportPrintToolbar
+      extra={
+        <>
+          <SaveReportButton reportKey="balance-sheet" params={activeParams} />
+          {sections.length > 0 && (
+            <ReportToolButton icon={Download} label="Export CSV" onClick={() => {
+                const rows = sections.flatMap((s) =>
+                  s.accounts.map((a) => [s.label, a.account_code ?? '', a.account_name, a.amount])
+                )
+                exportCsv(`neraca-${activeParams?.as_of_date ?? ''}.csv`, ['Seksi', 'Kode', 'Akun', 'Jumlah'], rows)
+              }} />
+          )}
+        </>
+      }
+    />
+  ) : undefined
+
   return (
-    <WorkspaceLayout title="Neraca" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Neraca' }]}>
+    <WorkspaceLayout
+      hideHeader
+      toolbar={<ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} mode="as_of_date" actions={tools} />}
+    >
       <div className="space-y-4">
         <div className="no-print">
-          {showFilter ? <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} mode="as_of_date" isLoading={isLoading} dimensions={{ department: true, project: true }} />
-            : <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} mode="as_of_date" />}
+          {showFilter && <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} mode="as_of_date" isLoading={isLoading} dimensions={{ department: true, project: true }} />}
         </div>
         {isLoading && <div className="no-print flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
         {isError && <div className="no-print"><ReportError onRetry={() => refetch()} /></div>}
-        {!isLoading && !isError && report && totals && (
-          <ReportPrintToolbar
-            extra={
-              <>
-                <SaveReportButton reportKey="balance-sheet" params={activeParams} />
-                {sections.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-[12px]"
-                    onClick={() => {
-                      const rows = sections.flatMap((s) =>
-                        s.accounts.map((a) => [s.label, a.account_code ?? '', a.account_name, a.amount])
-                      )
-                      exportCsv(`neraca-${activeParams?.as_of_date ?? ''}.csv`, ['Seksi', 'Kode', 'Akun', 'Jumlah'], rows)
-                    }}
-                  >
-                    Export CSV
-                  </Button>
-                )}
-              </>
-            }
-          />
-        )}
         {!isLoading && !isError && report && totals && (
           <>
             {!totals.is_balanced && (
@@ -72,7 +67,7 @@ export default function BalanceSheetPage() {
                 ⚠ Neraca tidak seimbang — selisih: {formatCurrency(totals.difference)}
               </div>
             )}
-            <ReportPrintDocument title="Neraca" paramLabel={`Per ${activeParams?.as_of_date ? formatDate(activeParams.as_of_date) : '-'}`}>
+            <ReportPrintDocument title="Neraca" paramLabel={`Per ${activeParams?.as_of_date ? formatDate(activeParams.as_of_date) : '-'}`} filterSummary={filterSummary}>
               <table className="w-full">
                 <colgroup><col /><col className="w-36" /></colgroup>
                 <tbody>

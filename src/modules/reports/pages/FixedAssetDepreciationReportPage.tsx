@@ -31,10 +31,7 @@ export default function FixedAssetDepreciationReportPage() {
   const report = data?.data
 
   return (
-    <WorkspaceLayout
-      title="Laporan Penyusutan"
-      breadcrumb={[{ label: 'Laporan' }, { label: 'Aktiva Tetap' }, { label: 'Laporan Penyusutan' }]}
-    >
+    <WorkspaceLayout hideHeader>
       <div className="space-y-4">
         {/* Filter */}
         <div className="rounded-lg border border-[#e2e8f0] bg-white p-4">

@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import type { ReportParams } from '../types/reports.types'
+import { useReportParams } from '../hooks/useReportParams'
 
 const today = new Date().toISOString().slice(0, 10)
 const firstOfMonth = today.slice(0, 8) + '01'
@@ -23,9 +23,7 @@ const TAB_LABELS: Record<StockTab, string> = {
 
 export default function StockReportPage() {
   const [tab, setTab] = useState<StockTab>('balance')
-  const [params, setParams] = useState<ReportParams>({ start_date: firstOfMonth, end_date: today })
-  const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
-  const [showFilter, setShowFilter] = useState(true)
+  const { params, setParams, activeParams, setActiveParams, showFilter, setShowFilter } = useReportParams({ start_date: firstOfMonth, end_date: today })
 
   // stock card has its own product_id filter
   const [cardProductId, setCardProductId] = useState('')
@@ -59,7 +57,10 @@ export default function StockReportPage() {
   }
 
   return (
-    <WorkspaceLayout title="Laporan Stok" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Laporan Stok' }]}>
+    <WorkspaceLayout
+      hideHeader
+      toolbar={tab !== 'stock_card' ? <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} /> : undefined}
+    >
       <div className="space-y-4">
         <div role="tablist" aria-label="Tab Laporan Stok" className="flex gap-2">
           {(['balance', 'movement', 'stock_card'] as StockTab[]).map((t) => (
@@ -76,10 +77,8 @@ export default function StockReportPage() {
           ))}
         </div>
 
-        {tab !== 'stock_card' && (
-          showFilter
-            ? <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ warehouse: true }} />
-            : <ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} />
+        {tab !== 'stock_card' && showFilter && (
+          <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} isLoading={isLoading} dimensions={{ warehouse: true }} />
         )}
 
         {tab === 'stock_card' && (
