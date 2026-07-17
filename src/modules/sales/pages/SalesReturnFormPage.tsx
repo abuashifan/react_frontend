@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useSalesReturn, useSalesReturnMutations } from '../hooks/useSalesReturnList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
@@ -34,7 +35,7 @@ function lineSubtotal(l: EditableLine) {
 }
 
 export default function SalesReturnFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -77,7 +78,10 @@ export default function SalesReturnFormPage() {
       if (isCreate) {
         const res = await create.mutateAsync({ ...values, lines })
         toast.success('Retur berhasil disimpan.')
-        navigate(`/sales/returns/${res.data.id}`)
+        replaceRecordTab('/sales/returns/create', {
+          label: res.data.number,
+          path: `/sales/returns/${res.data.id}`,
+        })
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
         toast.success('Retur berhasil diperbarui.')

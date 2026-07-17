@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useProforma, useProformaMutations } from '../hooks/useProformaList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
@@ -35,7 +36,7 @@ function lineSubtotal(l: EditableLine) {
 }
 
 export default function ProformaFormPage() {
-  const navigate = useNavigate()
+  const { openRecordTab, replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -79,7 +80,10 @@ export default function ProformaFormPage() {
       if (isCreate) {
         const res = await create.mutateAsync({ ...values, lines })
         toast.success('Proforma berhasil dibuat.')
-        navigate(`/sales/proformas/${res.data.id}`)
+        replaceRecordTab('/sales/proformas/create', {
+          label: res.data.number,
+          path: `/sales/proformas/${res.data.id}`,
+        })
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
         toast.success('Proforma berhasil diperbarui.')
@@ -113,7 +117,8 @@ export default function ProformaFormPage() {
     try {
       const res = await salesInvoiceApi.createFromProforma(Number(id))
       toast.success('Invoice berhasil dibuat dari proforma.')
-      navigate(`/sales/invoices/${res.data.id}`)
+      // Hasil konversi jadi tab baru, bukan menggantikan tab proforma asalnya.
+      openRecordTab({ label: res.data.number, path: `/sales/invoices/${res.data.id}` })
     } catch { toast.error('Gagal membuat invoice dari proforma.') }
     finally { setConverting(false) }
   }

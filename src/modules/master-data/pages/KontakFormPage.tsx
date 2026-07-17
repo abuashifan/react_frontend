@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { FixedBottomBar } from '@/components/shared/layout/FixedBottomBar'
@@ -17,7 +18,7 @@ import { paymentTermsApi } from '../services/paymentTermsApi'
 import { kontakSchema, type KontakFormValues } from '../schemas/kontakSchema'
 
 export default function KontakFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab, closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -63,7 +64,7 @@ export default function KontakFormPage() {
       if (isCreate) {
         const res = await create.mutateAsync(payload)
         toast.success('Kontak berhasil dibuat.')
-        navigate(`/master-data/contacts/${res.data.id}`)
+        replaceRecordTab('/master-data/contacts/create', { label: res.data.name, path: `/master-data/contacts/${res.data.id}` })
       } else {
         await update.mutateAsync({ id: Number(id), payload })
         toast.success('Kontak berhasil diperbarui.')
@@ -93,7 +94,7 @@ export default function KontakFormPage() {
         <FixedBottomBar
           left={<span className="text-[13px] text-[#64748b]">{isCreate ? 'Kontak baru' : kontak?.contact_code}</span>}
         >
-          <Button variant="outline" className="h-8 text-[13px]" onClick={() => navigate('/master-data/contacts')}>
+          <Button variant="outline" className="h-8 text-[13px]" onClick={() => closeRecordTab(id ? `/master-data/contacts/${id}` : '/master-data/contacts/create', '/master-data/contacts')}>
             Batal
           </Button>
           <Button

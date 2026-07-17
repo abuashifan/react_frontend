@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { FixedBottomBar } from '@/components/shared/layout/FixedBottomBar'
@@ -26,7 +27,7 @@ const PRODUCT_TYPE_OPTIONS = [
 ]
 
 export default function ProdukFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab, closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -76,7 +77,7 @@ export default function ProdukFormPage() {
       if (isCreate) {
         const res = await create.mutateAsync(values)
         toast.success('Produk berhasil dibuat.')
-        navigate(`/master-data/products/${res.data.id}`)
+        replaceRecordTab('/master-data/products/create', { label: res.data.product_name, path: `/master-data/products/${res.data.id}` })
       } else {
         await update.mutateAsync({ id: Number(id), payload: values })
         toast.success('Produk berhasil diperbarui.')
@@ -106,7 +107,7 @@ export default function ProdukFormPage() {
         <FixedBottomBar
           left={<span className="text-[13px] text-[#64748b]">{isCreate ? 'Produk baru' : produk?.product_code}</span>}
         >
-          <Button variant="outline" className="h-8 text-[13px]" onClick={() => navigate('/master-data/products')}>
+          <Button variant="outline" className="h-8 text-[13px]" onClick={() => closeRecordTab(id ? `/master-data/products/${id}` : '/master-data/products/create', '/master-data/products')}>
             Batal
           </Button>
           <Button

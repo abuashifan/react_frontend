@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useCustomerDeposit, useCustomerDepositMutations } from '../hooks/useCustomerDepositList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
@@ -20,7 +21,7 @@ import { formatCurrency } from '@/lib/utils'
 import type { DocumentStatus } from '@/types/common.types'
 
 export default function CustomerDepositFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -56,7 +57,10 @@ export default function CustomerDepositFormPage() {
     try {
       const res = await create.mutateAsync(values)
       toast.success('Deposit berhasil disimpan.')
-      navigate(`/sales/customer-deposits/${res.data.id}`)
+      replaceRecordTab('/sales/customer-deposits/create', {
+        label: res.data.number,
+        path: `/sales/customer-deposits/${res.data.id}`,
+      })
     } catch { toast.error('Gagal menyimpan deposit.') }
   })
 

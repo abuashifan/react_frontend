@@ -50,6 +50,7 @@ interface TabActions {
   closePrimaryTab: (tabId: string) => void
   setActivePrimaryTab: (tabId: string) => void
   openSecondaryTab: (primaryTabId: string, tab: SecondaryTab) => void
+  replaceSecondaryTab: (primaryTabId: string, fromId: string, tab: SecondaryTab) => boolean
   closeSecondaryTab: (primaryTabId: string, secondaryTabId: string) => void
   setActiveSecondaryTab: (primaryTabId: string, secondaryTabId: string) => void
   updateFormState: (
@@ -204,6 +205,25 @@ export const useTabStore = create<TabState & TabActions>()(
             [primaryTabId]: tab.id,
           },
         }))
+      },
+
+      // Dipakai saat dokumen baru tersimpan: tab "…/create" berubah identitas menjadi
+      // tab record-nya, di posisi yang sama, tanpa berkedip jadi dua tab.
+      replaceSecondaryTab: (primaryTabId, fromId, tab) => {
+        const tabs = get().secondaryTabs[primaryTabId] ?? []
+        if (!tabs.some((secondaryTab) => secondaryTab.id === fromId)) return false
+
+        // Bila tab tujuan kebetulan sudah terbuka, tab asal cukup dibuang.
+        const targetExists = tabs.some((secondaryTab) => secondaryTab.id === tab.id)
+        const nextTabs = targetExists
+          ? tabs.filter((secondaryTab) => secondaryTab.id !== fromId)
+          : tabs.map((secondaryTab) => (secondaryTab.id === fromId ? tab : secondaryTab))
+
+        set((state) => ({
+          secondaryTabs: { ...state.secondaryTabs, [primaryTabId]: nextTabs },
+          activeSecondaryTabId: { ...state.activeSecondaryTabId, [primaryTabId]: tab.id },
+        }))
+        return true
       },
 
       closeSecondaryTab: (primaryTabId, secondaryTabId) => {

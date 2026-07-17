@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
@@ -14,6 +13,7 @@ import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilt
 import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useSalesInvoiceList, useSalesInvoiceMutations } from '../hooks/useSalesInvoiceList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
@@ -29,7 +29,7 @@ function isOverdue(invoice: SalesInvoice): boolean {
 }
 
 export default function SalesInvoiceListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
   const [filterStatuses, setFilterStatuses] = useState<SalesInvoiceStatus[]>([])
@@ -122,7 +122,11 @@ export default function SalesInvoiceListPage() {
       size: 140,
       meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => (
-        <button type="button" onClick={() => navigate(`/sales/invoices/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">
+        <button
+          type="button"
+          onClick={() => openRecordTab({ label: original.number, path: `/sales/invoices/${original.id}` })}
+          className="font-medium text-[#5c9ead] hover:underline"
+        >
           {original.number}
         </button>
       ),
@@ -223,7 +227,10 @@ export default function SalesInvoiceListPage() {
         sidebar={sidebar}
         action={
           <PermissionGuard permission="sales.invoices.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/sales/invoices/create')}>
+            <Button
+              className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]"
+              onClick={() => openRecordTab({ label: 'Invoice Baru', path: '/sales/invoices/create' })}
+            >
               <Plus className="mr-1 h-3.5 w-3.5" /> Buat Invoice
             </Button>
           </PermissionGuard>

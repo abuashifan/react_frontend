@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -20,9 +20,10 @@ import { coaApi } from '@/modules/master-data/services/coaApi'
 import { vendorDepositSchema, type VendorDepositFormValues } from '../schemas/vendorDepositSchema'
 import type { DocumentStatus } from '@/types/common.types'
 import { useState } from 'react'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 export default function VendorDepositFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -50,7 +51,7 @@ export default function VendorDepositFormPage() {
     try {
       const res = await create.mutateAsync(toVendorDepositPayload(values))
       toast.success('Deposit vendor berhasil dibuat.')
-      navigate(`/purchase/vendor-deposits/${res.data.id}`)
+      replaceRecordTab('/purchase/vendor-deposits/create', { label: res.data.number, path: `/purchase/vendor-deposits/${res.data.id}` })
     } catch { toast.error('Gagal menyimpan deposit vendor.') }
   })
 

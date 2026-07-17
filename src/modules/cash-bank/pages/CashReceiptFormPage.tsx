@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -19,12 +19,13 @@ import { useCashReceipt, useCashReceiptMutations } from '../hooks/useCashBankLis
 import { cashReceiptSchema, type CashReceiptFormValues } from '../schemas/cashBankSchemas'
 import type { DocumentStatus } from '@/types/common.types'
 import { toDateInputValue } from '@/lib/utils'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 interface EditableLine { account_id: number | null; amount: number; description: string }
 const DEFAULT_LINE: EditableLine = { account_id: null, amount: 0, description: '' }
 
 export default function CashReceiptFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -50,7 +51,7 @@ export default function CashReceiptFormPage() {
     try {
       const res = await create.mutateAsync({ ...values, lines: linePayloads.length ? linePayloads : undefined })
       toast.success('Penerimaan kas berhasil dibuat.')
-      navigate(`/cash-bank/cash-receipts/${res.data.id}`)
+      replaceRecordTab('/cash-bank/cash-receipts/create', { label: res.data.number, path: `/cash-bank/cash-receipts/${res.data.id}` })
     } catch { toast.error('Gagal menyimpan penerimaan kas.') }
   })
 

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2, RefreshCw } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
@@ -20,11 +19,12 @@ import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { useStockOpnameList, useStockOpnameMutations } from '../hooks/useStockOpnameList'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { StockOpname, StockOpnameStatus } from '../types/stockOpname.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: StockOpnameStatus[] = ['draft', 'counted', 'finalized', 'void']
 
 export default function StockOpnameListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
   const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
@@ -112,7 +112,7 @@ export default function StockOpnameListPage() {
       size: 140,
       meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => (
-        <button type="button" onClick={() => navigate(`/inventory/opnames/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">
+        <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/inventory/opnames/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.number}
         </button>
       ),
@@ -209,7 +209,7 @@ export default function StockOpnameListPage() {
         sidebar={sidebar}
         action={
           <PermissionGuard permission="inventory.opname.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/inventory/opnames/create')}>
+            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Opname Baru', path: '/inventory/opnames/create' })}>
               <Plus className="mr-1 h-3.5 w-3.5" /> Buat Opname
             </Button>
           </PermissionGuard>

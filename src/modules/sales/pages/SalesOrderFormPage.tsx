@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useSalesOrder, useSalesOrderMutations } from '../hooks/useSalesOrderList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
@@ -44,7 +45,9 @@ function toOrderLine(line: EditableLine): Omit<EditableLine, 'delivered_quantity
 }
 
 export default function SalesOrderFormPage() {
+  // `navigate` masih dipakai alur deep link ?from_quotation yang tidak lahir dari tab.
   const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const isCreate = !id
@@ -110,7 +113,10 @@ export default function SalesOrderFormPage() {
       if (isCreate) {
         const res = await create.mutateAsync({ ...values, lines: lines.map(toOrderLine) })
         toast.success('Sales Order berhasil dibuat.')
-        navigate(`/sales/orders/${res.data.id}`)
+        replaceRecordTab('/sales/orders/create', {
+          label: res.data.number,
+          path: `/sales/orders/${res.data.id}`,
+        })
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines: lines.map(toOrderLine) } })
         toast.success('Sales Order berhasil diperbarui.')

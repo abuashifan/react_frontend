@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2, RefreshCw } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
@@ -20,11 +19,12 @@ import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { useStockAdjustmentList, useStockAdjustmentMutations } from '../hooks/useStockAdjustmentList'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { StockAdjustment, StockAdjustmentStatus } from '../types/stockAdjustment.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: StockAdjustmentStatus[] = ['draft', 'approved', 'posted', 'void']
 
 export default function StockAdjustmentListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
   const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
@@ -112,7 +112,7 @@ export default function StockAdjustmentListPage() {
       size: 140,
       meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => (
-        <button type="button" onClick={() => navigate(`/inventory/adjustments/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">
+        <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/inventory/adjustments/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.number}
         </button>
       ),
@@ -204,7 +204,7 @@ export default function StockAdjustmentListPage() {
         sidebar={sidebar}
         action={
           <PermissionGuard permission="inventory.adjustments.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/inventory/adjustments/create')}>
+            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Penyesuaian Baru', path: '/inventory/adjustments/create' })}>
               <Plus className="mr-1 h-3.5 w-3.5" /> Buat Penyesuaian
             </Button>
           </PermissionGuard>

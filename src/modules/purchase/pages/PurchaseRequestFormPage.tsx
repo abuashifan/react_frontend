@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -19,6 +19,7 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { purchaseRequestSchema, type PurchaseRequestFormValues } from '../schemas/purchaseRequestSchema'
 import type { DocumentStatus } from '@/types/common.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 interface EditableLine {
   product_id: number | null
@@ -35,7 +36,7 @@ function lineSubtotal(l: EditableLine) {
 }
 
 export default function PurchaseRequestFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -75,7 +76,7 @@ export default function PurchaseRequestFormPage() {
       if (isCreate) {
         const res = await create.mutateAsync(payload)
         toast.success('Purchase Request berhasil dibuat.')
-        navigate(`/purchase/requests/${res.data.id}`)
+        replaceRecordTab('/purchase/requests/create', { label: res.data.number, path: `/purchase/requests/${res.data.id}` })
       } else {
         await update.mutateAsync({ id: Number(id), payload })
         toast.success('Purchase Request berhasil diperbarui.')

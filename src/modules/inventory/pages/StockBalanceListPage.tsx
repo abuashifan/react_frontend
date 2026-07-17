@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
 import { DataTable } from '@/components/shared/table/DataTable'
@@ -11,7 +11,7 @@ import type { ColumnDef } from '@/components/shared/table/DataTable'
 import type { StockBalance } from '../types/stockBalance.types'
 
 export default function StockBalanceListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const [page, setPage] = useState(0)
   const [warehouseId, setWarehouseId] = useState<number | null>(null)
 
@@ -33,7 +33,12 @@ export default function StockBalanceListPage() {
         <div className="min-w-0 space-y-0.5">
           <button
             type="button"
-            onClick={() => navigate(`/inventory/stock-balances/${original.product_id}/${original.warehouse_id}`)}
+            onClick={() =>
+              openRecordTab({
+                label: original.product?.name ?? `#${original.product_id}`,
+                path: `/inventory/stock-balances/${original.product_id}/${original.warehouse_id}`,
+              })
+            }
             className="block max-w-full truncate text-left font-medium text-[#5c9ead] hover:underline"
           >
             {original.product?.name ?? '-'}

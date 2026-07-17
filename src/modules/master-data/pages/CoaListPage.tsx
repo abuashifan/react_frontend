@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { ChevronRight, ChevronDown, Plus, Power, PowerOff } from 'lucide-react'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
@@ -44,7 +44,7 @@ interface CoaRowProps {
   level: number
   selectedIds: string[]
   onSelect: (id: string) => void
-  onNavigate: (id: number) => void
+  onNavigate: (node: Coa) => void
   onToggleActive: (node: Coa) => void
   isTogglingId: number | null
 }
@@ -85,10 +85,10 @@ function CoaRow({ node, level, selectedIds, onSelect, onNavigate, onToggleActive
             ) : (
               <span className="w-3.5 flex-shrink-0" />
             )}
-            <span onClick={() => onNavigate(node.id)}>{node.account_code}</span>
+            <span onClick={() => onNavigate(node)}>{node.account_code}</span>
           </div>
         </td>
-        <td className="px-3 py-2 text-[13px] text-[#24323a] cursor-pointer" onClick={() => onNavigate(node.id)}>
+        <td className="px-3 py-2 text-[13px] text-[#24323a] cursor-pointer" onClick={() => onNavigate(node)}>
           {node.account_name}
         </td>
         <td className="px-3 py-2 text-[13px] text-[#64748b]">
@@ -141,7 +141,7 @@ function CoaRow({ node, level, selectedIds, onSelect, onNavigate, onToggleActive
 }
 
 export default function CoaListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [filterType, setFilterType] = useState<CoaType | undefined>()
@@ -245,7 +245,7 @@ export default function CoaListPage() {
         <PermissionGuard permission="master-data.coa.create">
           <Button
             className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]"
-            onClick={() => navigate('/master-data/coa/create')}
+            onClick={() => openRecordTab({ label: 'Akun Baru', path: '/master-data/coa/create' })}
           >
             <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Akun
           </Button>
@@ -322,7 +322,7 @@ export default function CoaListPage() {
                     level={0}
                     selectedIds={selectedIds}
                     onSelect={toggleSelect}
-                    onNavigate={(id) => navigate(`/master-data/coa/${id}`)}
+                    onNavigate={(row) => openRecordTab({ label: row.account_code, path: `/master-data/coa/${row.id}` })}
                     onToggleActive={handleToggleActive}
                     isTogglingId={togglingId}
                   />

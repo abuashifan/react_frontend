@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
@@ -10,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useProformaList } from '../hooks/useProformaList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
@@ -18,7 +18,7 @@ import type { ProformaInvoice, ProformaStatus } from '../types/proforma.types'
 const STATUSES: ProformaStatus[] = ['draft', 'issued', 'accepted', 'cancelled', 'converted']
 
 export default function ProformaListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const [page, setPage] = useState(0)
   const [filterStatus, setFilterStatus] = useState<ProformaStatus | undefined>()
   const [filterCustomer, setFilterCustomer] = useState<number | null>(null)
@@ -39,7 +39,7 @@ export default function ProformaListPage() {
       size: 140,
       meta: { sticky: true, stickyLeft: 0 },
       cell: ({ original }) => (
-        <button type="button" onClick={() => navigate(`/sales/proformas/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">
+        <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/sales/proformas/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.number}
         </button>
       ),
@@ -89,7 +89,7 @@ export default function ProformaListPage() {
       sidebar={sidebar}
       action={
         <PermissionGuard permission="sales.proformas.create">
-          <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => navigate('/sales/proformas/create')}>
+          <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => openRecordTab({ label: 'Proforma Baru', path: '/sales/proformas/create' })}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Buat Proforma
           </Button>
         </PermissionGuard>

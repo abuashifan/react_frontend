@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -33,6 +33,7 @@ import { toDateInputValue, formatCurrency } from '@/lib/utils'
 import type { VendorBillLineClassification } from '../types/vendorBill.types'
 import { applyApiValidationErrors, getApiErrorMessage, isApiNotFound } from '@/lib/apiError'
 import { NotFoundPage, ServerErrorPage } from '@/modules/errors/ErrorPage'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 interface EditableLine {
   product_id: number | null
@@ -54,7 +55,7 @@ function lineBase(l: EditableLine) {
 }
 
 export default function VendorBillFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -82,7 +83,7 @@ export default function VendorBillFormPage() {
         ? await createFromPurchaseOrder.mutateAsync(sourceId)
         : await createFromGoodsReceipt.mutateAsync(sourceId)
       toast.success('Tagihan dibuat dari dokumen sumber.')
-      navigate(`/purchase/bills/${res.data.id}`)
+      replaceRecordTab('/purchase/bills/create', { label: res.data.bill_number, path: `/purchase/bills/${res.data.id}` })
     } catch {
       toast.error('Gagal membuat tagihan dari dokumen sumber.')
     }
@@ -203,7 +204,7 @@ export default function VendorBillFormPage() {
         const res = await create.mutateAsync(payload)
         formDraft.clearDraft()
         toast.success('Tagihan vendor berhasil dibuat.')
-        navigate(`/purchase/bills/${res.data.id}`)
+        replaceRecordTab('/purchase/bills/create', { label: res.data.bill_number, path: `/purchase/bills/${res.data.id}` })
       } else {
         await update.mutateAsync({ id: Number(id), payload })
         formDraft.clearDraft()

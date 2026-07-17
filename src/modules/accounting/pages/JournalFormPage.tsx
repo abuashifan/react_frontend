@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -20,6 +20,7 @@ import { useJournalEntry, useJournalEntryMutations } from '../hooks/useJournalEn
 import { journalEntrySchema, type JournalEntryFormValues } from '../schemas/journalEntrySchema'
 import type { DocumentStatus, SelectOption } from '@/types/common.types'
 import type { BudgetWarning } from '../types/journalEntry.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 interface EditableLine {
   account_id: number | null
@@ -33,7 +34,7 @@ interface EditableLine {
 const DEFAULT_LINE: EditableLine = { account_id: null, account_option: null, description: '', debit: 0, credit: 0 }
 
 export default function JournalFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -81,7 +82,7 @@ export default function JournalFormPage() {
       if (isCreate) {
         const res = await create.mutateAsync({ ...values, lines: linePayloads })
         toast.success('Jurnal berhasil dibuat.')
-        navigate(`/accounting/journals/${res.data.id}`)
+        replaceRecordTab('/accounting/journals/create', { label: res.data.journal_number, path: `/accounting/journals/${res.data.id}` })
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads } })
         toast.success('Jurnal berhasil diperbarui.')

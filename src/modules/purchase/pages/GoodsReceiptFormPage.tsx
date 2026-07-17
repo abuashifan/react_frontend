@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -20,6 +20,7 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { goodsReceiptSchema, type GoodsReceiptFormValues } from '../schemas/goodsReceiptSchema'
 import type { DocumentStatus } from '@/types/common.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 interface EditableLine {
   product_id: number | null
@@ -40,7 +41,7 @@ function toGoodsReceiptLine(line: EditableLine): Omit<EditableLine, 'billed_quan
 }
 
 export default function GoodsReceiptFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -78,7 +79,7 @@ export default function GoodsReceiptFormPage() {
     try {
       const res = await create.mutateAsync(toGoodsReceiptPayload(values, lines.map(toGoodsReceiptLine)))
       toast.success('Penerimaan barang berhasil dibuat.')
-      navigate(`/purchase/goods-receipts/${res.data.id}`)
+      replaceRecordTab('/purchase/goods-receipts/create', { label: res.data.number, path: `/purchase/goods-receipts/${res.data.id}` })
     } catch { toast.error('Gagal menyimpan penerimaan barang.') }
   })
 

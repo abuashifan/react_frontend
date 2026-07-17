@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
 import { DataTable } from '@/components/shared/table/DataTable'
@@ -67,7 +67,7 @@ const columns: ColumnDef<Produk>[] = [
 ]
 
 export default function ProdukListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
   const [filterCategoryId, setFilterCategoryId] = useState<number | null>(null)
@@ -123,7 +123,7 @@ export default function ProdukListPage() {
         <PermissionGuard permission="master-data.products.create">
           <Button
             className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]"
-            onClick={() => navigate('/master-data/products/create')}
+            onClick={() => openRecordTab({ label: 'Produk Baru', path: '/master-data/products/create' })}
           >
             <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Produk
           </Button>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import type { Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { FixedBottomBar } from '@/components/shared/layout/FixedBottomBar'
@@ -22,6 +22,7 @@ import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { proyekApi } from '@/modules/master-data/services/proyekApi'
 import { fixedAssetCategoryApi } from '../services/fixedAssetCategoryApi'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useFixedAsset } from '../hooks/useFixedAssetList'
 import { useFixedAssetMutations } from '../hooks/useFixedAssetMutations'
 import {
@@ -102,7 +103,7 @@ function cleanForm(values: FixedAssetFormValues): FixedAssetFormValues {
 }
 
 export default function FixedAssetFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const assetId = id ? Number(id) : undefined
@@ -198,7 +199,7 @@ export default function FixedAssetFormPage() {
       if (isCreate) {
         const res = await mutations.create.mutateAsync(payload)
         toast.success('Aktiva tetap berhasil dibuat.')
-        navigate(`/fixed-assets/${res.data.id}`)
+        replaceRecordTab('/fixed-assets/create', { label: res.data.asset_number ?? `FA-${res.data.id}`, path: `/fixed-assets/${res.data.id}` })
       } else if (assetId) {
         await mutations.update.mutateAsync({ id: assetId, payload })
         toast.success('Aktiva tetap berhasil diperbarui.')

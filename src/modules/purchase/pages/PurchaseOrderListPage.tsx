@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
@@ -14,11 +13,12 @@ import { usePurchaseOrderList } from '../hooks/usePurchaseOrderList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import type { PurchaseOrder, PurchaseOrderStatus } from '../types/purchaseOrder.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: PurchaseOrderStatus[] = ['draft', 'approved', 'confirmed', 'cancelled', 'closed']
 
 export default function PurchaseOrderListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const [page, setPage] = useState(0)
   const [filterStatus, setFilterStatus] = useState<PurchaseOrderStatus | undefined>()
   const [filterVendor, setFilterVendor] = useState<number | null>(null)
@@ -38,7 +38,7 @@ export default function PurchaseOrderListPage() {
       size: 140,
       meta: { sticky: true, stickyLeft: 0 },
       cell: ({ original }) => (
-        <button type="button" onClick={() => navigate(`/purchase/orders/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">
+        <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/purchase/orders/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.number}
         </button>
       ),
@@ -84,7 +84,7 @@ export default function PurchaseOrderListPage() {
       sidebar={sidebar}
       action={
         <PermissionGuard permission="purchase.orders.create">
-          <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/purchase/orders/create')}>
+          <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Purchase Order Baru', path: '/purchase/orders/create' })}>
             <Plus className="mr-1 h-3.5 w-3.5" /> Buat PO
           </Button>
         </PermissionGuard>

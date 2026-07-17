@@ -21,6 +21,7 @@ import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { purchaseOrderSchema, type PurchaseOrderFormValues } from '../schemas/purchaseOrderSchema'
 import type { DocumentStatus } from '@/types/common.types'
 import { toDateInputValue } from '@/lib/utils'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 interface EditableLine {
   product_id: number | null
@@ -47,7 +48,9 @@ function toPurchaseOrderLine(line: EditableLine): Omit<EditableLine, 'received_q
 }
 
 export default function PurchaseOrderFormPage() {
+  // `navigate` masih dipakai alur deep link yang tidak lahir dari tab.
   const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const isCreate = !id
@@ -102,7 +105,7 @@ export default function PurchaseOrderFormPage() {
       if (isCreate) {
         const res = await create.mutateAsync(payload)
         toast.success('Purchase Order berhasil dibuat.')
-        navigate(`/purchase/orders/${res.data.id}`)
+        replaceRecordTab('/purchase/orders/create', { label: res.data.number, path: `/purchase/orders/${res.data.id}` })
       } else {
         await update.mutateAsync({ id: Number(id), payload })
         toast.success('Purchase Order berhasil diperbarui.')

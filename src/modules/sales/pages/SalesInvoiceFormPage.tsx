@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -16,6 +16,7 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useSalesInvoice, useSalesInvoiceMutations } from '../hooks/useSalesInvoiceList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
@@ -41,7 +42,7 @@ function lineBase(l: EditableLine) {
 
 
 export default function SalesInvoiceFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -133,7 +134,10 @@ export default function SalesInvoiceFormPage() {
         const res = await create.mutateAsync({ ...values, lines })
         formDraft.clearDraft()
         toast.success('Invoice berhasil dibuat.')
-        navigate(`/sales/invoices/${res.data.id}`)
+        replaceRecordTab('/sales/invoices/create', {
+          label: res.data.number,
+          path: `/sales/invoices/${res.data.id}`,
+        })
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
         formDraft.clearDraft()

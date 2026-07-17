@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
@@ -12,11 +11,12 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { usePurchaseRequestList } from '../hooks/usePurchaseRequestList'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import type { PurchaseRequest, PurchaseRequestStatus } from '../types/purchaseRequest.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: PurchaseRequestStatus[] = ['draft', 'submitted', 'approved', 'rejected', 'cancelled', 'converted']
 
 export default function PurchaseRequestListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const [page, setPage] = useState(0)
   const [filterStatus, setFilterStatus] = useState<PurchaseRequestStatus | undefined>()
 
@@ -33,7 +33,7 @@ export default function PurchaseRequestListPage() {
       size: 140,
       meta: { sticky: true, stickyLeft: 0 },
       cell: ({ original }) => (
-        <button type="button" onClick={() => navigate(`/purchase/requests/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">
+        <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/purchase/requests/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.number}
         </button>
       ),
@@ -70,7 +70,7 @@ export default function PurchaseRequestListPage() {
       sidebar={sidebar}
       action={
         <PermissionGuard permission="purchase.requests.create">
-          <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/purchase/requests/create')}>
+          <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Permintaan Baru', path: '/purchase/requests/create' })}>
             <Plus className="mr-1 h-3.5 w-3.5" /> Buat PR
           </Button>
         </PermissionGuard>

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
@@ -10,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { formatDate } from '@/lib/utils'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useDeliveryOrderList } from '../hooks/useDeliveryOrderList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
@@ -18,7 +18,7 @@ import type { DeliveryOrder, DeliveryOrderStatus } from '../types/deliveryOrder.
 const STATUSES: DeliveryOrderStatus[] = ['draft', 'ready', 'shipped', 'delivered', 'void', 'cancelled']
 
 export default function DeliveryOrderListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const [page, setPage] = useState(0)
   const [filterStatus, setFilterStatus] = useState<DeliveryOrderStatus | undefined>()
   const [filterCustomer, setFilterCustomer] = useState<number | null>(null)
@@ -39,7 +39,7 @@ export default function DeliveryOrderListPage() {
       size: 140,
       meta: { sticky: true, stickyLeft: 0 },
       cell: ({ original }) => (
-        <button type="button" onClick={() => navigate(`/sales/delivery-orders/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">
+        <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/sales/delivery-orders/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.number}
         </button>
       ),
@@ -84,7 +84,7 @@ export default function DeliveryOrderListPage() {
       sidebar={sidebar}
       action={
         <PermissionGuard permission="sales.delivery-orders.create">
-          <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => navigate('/sales/delivery-orders/create')}>
+          <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => openRecordTab({ label: 'Delivery Order Baru', path: '/sales/delivery-orders/create' })}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Buat DO
           </Button>
         </PermissionGuard>

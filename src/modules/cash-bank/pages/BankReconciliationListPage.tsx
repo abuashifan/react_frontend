@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { DataTable } from '@/components/shared/table/DataTable'
@@ -10,15 +9,16 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { useBankReconciliationList } from '../hooks/useCashBankList'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import type { BankReconciliation } from '../types/cashBank.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 export default function BankReconciliationListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const [page, setPage] = useState(0)
   // Backend hanya punya status 'draft' untuk rekonsiliasi — tidak ada filter status.
   const { data, isLoading, isFetching } = useBankReconciliationList({ page: page + 1, per_page: 25 })
 
   const columns: ColumnDef<BankReconciliation>[] = [
-    { id: 'number', header: 'Nomor', size: 140, meta: { sticky: true, stickyLeft: 0 }, cell: ({ original }) => <button type="button" onClick={() => navigate(`/cash-bank/bank-reconciliations/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">{original.number}</button> },
+    { id: 'number', header: 'Nomor', size: 140, meta: { sticky: true, stickyLeft: 0 }, cell: ({ original }) => <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/cash-bank/bank-reconciliations/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">{original.number}</button> },
     { id: 'account', header: 'Akun Bank', size: 180, cell: ({ original }) => original.cash_bank_account?.name ?? '-' },
     { id: 'start', header: 'Tgl Mulai', size: 110, cell: ({ original }) => formatDate(original.statement_start_date) },
     { id: 'end', header: 'Tgl Akhir', size: 110, cell: ({ original }) => formatDate(original.statement_end_date) },
@@ -28,7 +28,7 @@ export default function BankReconciliationListPage() {
 
   return (
     <WorkspaceLayout title="Rekonsiliasi Bank" breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Rekonsiliasi Bank' }]}
-      action={<PermissionGuard permission="cash_bank.create"><Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/cash-bank/bank-reconciliations/create')}><Plus className="mr-1 h-3.5 w-3.5" /> Buat Rekonsiliasi</Button></PermissionGuard>}>
+      action={<PermissionGuard permission="cash_bank.create"><Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Rekonsiliasi Baru', path: '/cash-bank/bank-reconciliations/create' })}><Plus className="mr-1 h-3.5 w-3.5" /> Buat Rekonsiliasi</Button></PermissionGuard>}>
       <DataTable data={data?.data ?? []} columns={columns} totalRows={data?.meta.total ?? 0} isLoading={isLoading} isFetching={isFetching} pagination={{ pageIndex: page, pageSize: 25 }} onPaginationChange={(p) => setPage(p.pageIndex)} emptyTitle="Belum ada rekonsiliasi bank" emptyDescription="Rekonsiliasi saldo buku vs rekening koran." />
     </WorkspaceLayout>
   )

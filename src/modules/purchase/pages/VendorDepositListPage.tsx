@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
@@ -18,12 +17,13 @@ import { useVendorDepositList, useVendorDepositMutations } from '../hooks/useVen
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { VendorDeposit, VendorDepositStatus } from '../types/vendorDeposit.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: VendorDepositStatus[] = ['draft', 'posted', 'partially_allocated', 'fully_allocated', 'refunded', 'void']
 const FILTER_HINT = 'Filter multi-select dan tanggal berlaku pada data halaman yang sedang dimuat.'
 
 export default function VendorDepositListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
   const [filterStatuses, setFilterStatuses] = useState<VendorDepositStatus[]>([])
@@ -114,7 +114,7 @@ export default function VendorDepositListPage() {
       size: 140,
       meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => (
-        <button type="button" onClick={() => navigate(`/purchase/vendor-deposits/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">
+        <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/purchase/vendor-deposits/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.number}
         </button>
       ),
@@ -189,7 +189,7 @@ export default function VendorDepositListPage() {
         sidebar={sidebar}
         action={
           <PermissionGuard permission="purchase.deposits.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/purchase/vendor-deposits/create')}>
+            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Deposit Baru', path: '/purchase/vendor-deposits/create' })}>
               <Plus className="mr-1 h-3.5 w-3.5" /> Buat Deposit
             </Button>
           </PermissionGuard>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -20,6 +20,7 @@ import { coaApi } from '@/modules/master-data/services/coaApi'
 import { vendorPaymentSchema, type VendorPaymentFormValues } from '../schemas/vendorPaymentSchema'
 import type { DocumentStatus } from '@/types/common.types'
 import type { VendorPaymentLinePayload } from '../types/vendorPayment.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 interface BillLine {
   vendor_bill_id: number
@@ -29,7 +30,7 @@ interface BillLine {
 }
 
 export default function VendorPaymentFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -82,7 +83,7 @@ export default function VendorPaymentFormPage() {
       const lines: VendorPaymentLinePayload[] = billLines.map((l) => ({ vendor_bill_id: l.vendor_bill_id, amount: l.amount }))
       const res = await create.mutateAsync({ ...toVendorPaymentPayload(values), lines })
       toast.success('Pembayaran vendor berhasil dibuat.')
-      navigate(`/purchase/payments/${res.data.id}`)
+      replaceRecordTab('/purchase/payments/create', { label: res.data.number, path: `/purchase/payments/${res.data.id}` })
     } catch { toast.error('Gagal menyimpan pembayaran vendor.') }
   })
 

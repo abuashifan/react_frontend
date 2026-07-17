@@ -1,4 +1,5 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -11,7 +12,7 @@ import type { StockCardLine } from '@/modules/reports/types/reports.types'
 
 export default function StockBalanceDetailPage() {
   const { productId, warehouseId } = useParams<{ productId: string; warehouseId: string }>()
-  const navigate = useNavigate()
+  const { closeRecordTab } = useRecordTab()
 
   const pId = productId ? Number(productId) : undefined
   const wId = warehouseId ? Number(warehouseId) : undefined
@@ -68,7 +69,17 @@ export default function StockBalanceDetailPage() {
       ]}
     >
       <div className="space-y-3">
-        <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-[12px]" onClick={() => navigate('/inventory/stock-balances')}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1 px-2 text-[12px]"
+          onClick={() =>
+            closeRecordTab(
+              `/inventory/stock-balances/${productId}/${warehouseId}`,
+              '/inventory/stock-balances',
+            )
+          }
+        >
           <ArrowLeft className="h-3.5 w-3.5" /> Kembali
         </Button>
 

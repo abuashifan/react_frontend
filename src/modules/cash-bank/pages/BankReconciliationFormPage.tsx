@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { RefreshCw } from 'lucide-react'
@@ -20,9 +20,10 @@ import { useBankReconciliation, useBankReconciliationMutations } from '../hooks/
 import { bankReconciliationSchema, type BankReconciliationFormValues } from '../schemas/cashBankSchemas'
 import type { DocumentStatus } from '@/types/common.types'
 import type { BankReconciliationLine } from '../types/cashBank.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 export default function BankReconciliationFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -49,7 +50,7 @@ export default function BankReconciliationFormPage() {
       if (isCreate) {
         const res = await create.mutateAsync(values)
         toast.success('Rekonsiliasi bank berhasil dibuat.')
-        navigate(`/cash-bank/bank-reconciliations/${res.data.id}`)
+        replaceRecordTab('/cash-bank/bank-reconciliations/create', { label: res.data.number, path: `/cash-bank/bank-reconciliations/${res.data.id}` })
       } else {
         await update.mutateAsync({ id: Number(id), payload: values })
         toast.success('Rekonsiliasi bank berhasil diperbarui.')

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -20,9 +20,10 @@ import { useStockOpname, useStockOpnameMutations } from '../hooks/useStockOpname
 import { stockOpnameSchema, type StockOpnameFormValues } from '../schemas/stockOpnameSchema'
 import type { DocumentStatus } from '@/types/common.types'
 import type { StockOpnameLine } from '../types/stockOpname.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 export default function StockOpnameFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -75,7 +76,7 @@ export default function StockOpnameFormPage() {
       const res = await create.mutateAsync(values)
       formDraft.clearDraft()
       toast.success('Opname berhasil dibuat.')
-      navigate(`/inventory/opnames/${res.data.id}`)
+      replaceRecordTab('/inventory/opnames/create', { label: res.data.number, path: `/inventory/opnames/${res.data.id}` })
     } catch { toast.error('Gagal membuat opname.') }
   })
 

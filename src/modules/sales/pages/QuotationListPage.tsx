@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
@@ -10,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useQuotationList } from '../hooks/useQuotationList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
@@ -18,7 +18,7 @@ import type { QuotationStatus } from '../types/quotation.types'
 const STATUSES: QuotationStatus[] = ['draft', 'sent', 'approved', 'accepted', 'rejected', 'cancelled', 'converted']
 
 export default function QuotationListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const [page, setPage] = useState(0)
   const [filterStatus, setFilterStatus] = useState<QuotationStatus | undefined>()
   const [filterCustomer, setFilterCustomer] = useState<number | null>(null)
@@ -40,7 +40,7 @@ export default function QuotationListPage() {
       cell: ({ original }) => (
         <button
           type="button"
-          onClick={() => navigate(`/sales/quotations/${original.id}`)}
+          onClick={() => openRecordTab({ label: original.number, path: `/sales/quotations/${original.id}` })}
           className="font-medium text-[#5c9ead] hover:underline"
         >
           {original.number}
@@ -98,7 +98,7 @@ export default function QuotationListPage() {
       sidebar={sidebar}
       action={
         <PermissionGuard permission="sales.quotations.create">
-          <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => navigate('/sales/quotations/create')}>
+          <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => openRecordTab({ label: 'Quotation Baru', path: '/sales/quotations/create' })}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Buat Quotation
           </Button>
         </PermissionGuard>

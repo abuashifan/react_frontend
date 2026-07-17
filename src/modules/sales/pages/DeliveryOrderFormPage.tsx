@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useDeliveryOrder, useDeliveryOrderMutations } from '../hooks/useDeliveryOrderList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
@@ -29,7 +30,7 @@ interface EditableLine {
 const DEFAULT_LINE: EditableLine = { product_id: null, description: '', quantity: 1 }
 
 export default function DeliveryOrderFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -73,7 +74,10 @@ export default function DeliveryOrderFormPage() {
       if (isCreate) {
         const res = await create.mutateAsync({ ...values, lines })
         toast.success('Delivery Order berhasil dibuat.')
-        navigate(`/sales/delivery-orders/${res.data.id}`)
+        replaceRecordTab('/sales/delivery-orders/create', {
+          label: res.data.number,
+          path: `/sales/delivery-orders/${res.data.id}`,
+        })
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
         toast.success('Delivery Order berhasil diperbarui.')

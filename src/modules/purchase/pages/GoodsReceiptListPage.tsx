@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
@@ -18,12 +17,13 @@ import { useGoodsReceiptList, useGoodsReceiptMutations } from '../hooks/useGoods
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { GoodsReceipt, GoodsReceiptStatus } from '../types/goodsReceipt.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: GoodsReceiptStatus[] = ['draft', 'received', 'partially_billed', 'void', 'cancelled']
 const FILTER_HINT = 'Filter multi-select dan tanggal berlaku pada data halaman yang sedang dimuat.'
 
 export default function GoodsReceiptListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
   const [filterStatuses, setFilterStatuses] = useState<GoodsReceiptStatus[]>([])
@@ -114,7 +114,7 @@ export default function GoodsReceiptListPage() {
       size: 140,
       meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => (
-        <button type="button" onClick={() => navigate(`/purchase/goods-receipts/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">
+        <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/purchase/goods-receipts/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.number}
         </button>
       ),
@@ -177,7 +177,7 @@ export default function GoodsReceiptListPage() {
         sidebar={sidebar}
         action={
           <PermissionGuard permission="purchase.goods-receipts.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/purchase/goods-receipts/create')}>
+            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Penerimaan Baru', path: '/purchase/goods-receipts/create' })}>
               <Plus className="mr-1 h-3.5 w-3.5" /> Buat GR
             </Button>
           </PermissionGuard>

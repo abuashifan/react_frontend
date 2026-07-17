@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2, AlertTriangle } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { EmptyState } from '@/components/shared/feedback/EmptyState'
@@ -19,11 +18,12 @@ import { useVendorBillList, useVendorBillMutations } from '../hooks/useVendorBil
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { VendorBill, VendorBillStatus } from '../types/vendorBill.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: VendorBillStatus[] = ['draft', 'approved', 'posted', 'partially_paid', 'paid', 'void']
 
 export default function VendorBillListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState<25 | 50 | 100>(25)
@@ -121,7 +121,7 @@ export default function VendorBillListPage() {
       size: 140,
       meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => (
-        <button type="button" onClick={() => navigate(`/purchase/bills/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">
+        <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/purchase/bills/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.number}
         </button>
       ),
@@ -213,7 +213,7 @@ export default function VendorBillListPage() {
         sidebar={sidebar}
         action={
           <PermissionGuard permission="purchase.bills.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/purchase/bills/create')}>
+            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Tagihan Baru', path: '/purchase/bills/create' })}>
               <Plus className="mr-1 h-3.5 w-3.5" /> Buat Bill
             </Button>
           </PermissionGuard>

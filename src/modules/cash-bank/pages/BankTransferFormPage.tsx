@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -18,9 +18,10 @@ import { useBankTransfer, useBankTransferMutations } from '../hooks/useCashBankL
 import { bankTransferSchema, type BankTransferFormValues } from '../schemas/cashBankSchemas'
 import type { DocumentStatus } from '@/types/common.types'
 import { toDateInputValue } from '@/lib/utils'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 export default function BankTransferFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -60,7 +61,7 @@ export default function BankTransferFormPage() {
       const res = await create.mutateAsync(values)
       formDraft.clearDraft()
       toast.success('Transfer bank berhasil dibuat.')
-      navigate(`/cash-bank/bank-transfers/${res.data.id}`)
+      replaceRecordTab('/cash-bank/bank-transfers/create', { label: res.data.number, path: `/cash-bank/bank-transfers/${res.data.id}` })
     } catch { toast.error('Gagal menyimpan transfer bank.') }
   })
 

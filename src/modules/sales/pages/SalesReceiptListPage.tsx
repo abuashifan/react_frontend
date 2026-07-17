@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
@@ -13,6 +12,7 @@ import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFil
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
 import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useToast } from '@/hooks/useToast'
 import { useSalesReceiptList, useSalesReceiptMutations } from '../hooks/useSalesReceiptList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
@@ -23,7 +23,7 @@ const STATUSES: SalesReceiptStatus[] = ['draft', 'posted', 'void']
 const FILTER_HINT = 'Filter multi-select dan tanggal berlaku pada data halaman yang sedang dimuat.'
 
 export default function SalesReceiptListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
   const [filterStatuses, setFilterStatuses] = useState<SalesReceiptStatus[]>([])
@@ -116,7 +116,7 @@ export default function SalesReceiptListPage() {
       size: 140,
       meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => (
-        <button type="button" onClick={() => navigate(`/sales/receipts/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">
+        <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/sales/receipts/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.number}
         </button>
       ),
@@ -190,7 +190,7 @@ export default function SalesReceiptListPage() {
         sidebar={sidebar}
         action={
           <PermissionGuard permission="sales.receipts.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/sales/receipts/create')}>
+            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Penerimaan Baru', path: '/sales/receipts/create' })}>
               <Plus className="mr-1 h-3.5 w-3.5" /> Catat Penerimaan
             </Button>
           </PermissionGuard>

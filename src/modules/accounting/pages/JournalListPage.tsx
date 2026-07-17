@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
@@ -13,6 +12,7 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { useJournalEntryList } from '../hooks/useJournalEntryList'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import type { JournalEntry, JournalEntryStatus } from '../types/journalEntry.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: JournalEntryStatus[] = ['draft', 'approved', 'posted', 'void']
 
@@ -32,7 +32,7 @@ function journalTotal(entry: JournalEntry, side: 'debit' | 'credit'): number | u
 }
 
 export default function JournalListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const [page, setPage] = useState(0)
   const [filterStatus, setFilterStatus] = useState<JournalEntryStatus | undefined>()
   const [dateFrom, setDateFrom] = useState('')
@@ -54,7 +54,7 @@ export default function JournalListPage() {
       size: 160,
       meta: { sticky: true, stickyLeft: 0 },
       cell: ({ original }) => (
-        <button type="button" onClick={() => navigate(`/accounting/journals/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">
+        <button type="button" onClick={() => openRecordTab({ label: original.journal_number, path: `/accounting/journals/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.journal_number}
         </button>
       ),
@@ -110,7 +110,7 @@ export default function JournalListPage() {
       sidebar={sidebar}
       action={
         <PermissionGuard permission="journal.create">
-          <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/accounting/journals/create')}>
+          <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Jurnal Baru', path: '/accounting/journals/create' })}>
             <Plus className="mr-1 h-3.5 w-3.5" /> Buat Jurnal
           </Button>
         </PermissionGuard>

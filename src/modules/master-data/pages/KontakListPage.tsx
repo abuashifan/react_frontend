@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
 import { DataTable } from '@/components/shared/table/DataTable'
@@ -75,7 +75,7 @@ const columns: ColumnDef<Kontak>[] = [
 ]
 
 export default function KontakListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
   const [filterType, setFilterType] = useState<KontakType | undefined>()
@@ -133,7 +133,7 @@ export default function KontakListPage() {
         <PermissionGuard permission="master-data.contacts.create">
           <Button
             className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]"
-            onClick={() => navigate('/master-data/contacts/create')}
+            onClick={() => openRecordTab({ label: 'Kontak Baru', path: '/master-data/contacts/create' })}
           >
             <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Kontak
           </Button>

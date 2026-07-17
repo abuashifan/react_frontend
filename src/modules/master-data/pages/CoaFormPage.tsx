@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { FixedBottomBar } from '@/components/shared/layout/FixedBottomBar'
@@ -25,7 +26,7 @@ const COA_TYPES = [
 ]
 
 export default function CoaFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab, closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -64,7 +65,7 @@ export default function CoaFormPage() {
       if (isCreate) {
         const res = await create.mutateAsync(values)
         toast.success('Akun berhasil dibuat.')
-        navigate(`/master-data/coa/${res.data.id}`)
+        replaceRecordTab('/master-data/coa/create', { label: res.data.account_code, path: `/master-data/coa/${res.data.id}` })
       } else {
         await update.mutateAsync({ id: Number(id), payload: values })
         toast.success('Akun berhasil diperbarui.')
@@ -94,7 +95,7 @@ export default function CoaFormPage() {
         <FixedBottomBar
           left={<span className="text-[13px] text-[#64748b]">{isCreate ? 'Akun baru' : coa?.account_name}</span>}
         >
-          <Button variant="outline" className="h-8 text-[13px]" onClick={() => navigate('/master-data/coa')}>
+          <Button variant="outline" className="h-8 text-[13px]" onClick={() => closeRecordTab(id ? `/master-data/coa/${id}` : '/master-data/coa/create', '/master-data/coa')}>
             Batal
           </Button>
           <Button

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
@@ -14,11 +13,12 @@ import { usePurchaseReturnList } from '../hooks/usePurchaseReturnList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import type { PurchaseReturn, PurchaseReturnStatus } from '../types/purchaseReturn.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: PurchaseReturnStatus[] = ['draft', 'approved', 'posted', 'void']
 
 export default function PurchaseReturnListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const [page, setPage] = useState(0)
   const [filterStatus, setFilterStatus] = useState<PurchaseReturnStatus | undefined>()
   const [filterVendor, setFilterVendor] = useState<number | null>(null)
@@ -38,7 +38,7 @@ export default function PurchaseReturnListPage() {
       size: 140,
       meta: { sticky: true, stickyLeft: 0 },
       cell: ({ original }) => (
-        <button type="button" onClick={() => navigate(`/purchase/returns/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">
+        <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/purchase/returns/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.number}
         </button>
       ),
@@ -89,7 +89,7 @@ export default function PurchaseReturnListPage() {
       sidebar={sidebar}
       action={
         <PermissionGuard permission="purchase.returns.create">
-          <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/purchase/returns/create')}>
+          <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Retur Baru', path: '/purchase/returns/create' })}>
             <Plus className="mr-1 h-3.5 w-3.5" /> Buat Retur
           </Button>
         </PermissionGuard>

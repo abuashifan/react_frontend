@@ -310,6 +310,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____useOpenPrimaryTab.ts
 | | |____usePermission.ts
 | | |____usePersistentFormDraft.ts
+| | |____useRecordTab.ts
 | | |____useSessionTimeout.ts
 | | |____useTabFormState.ts
 | | |____useToast.ts

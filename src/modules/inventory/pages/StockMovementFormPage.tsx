@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -23,6 +23,7 @@ import { stockMovementSchema, stockMovementLineSchema, type StockMovementFormVal
 import type { DocumentStatus } from '@/types/common.types'
 import type { StockMovementType } from '../types/stockMovement.types'
 import { toDateInputValue } from '@/lib/utils'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 const MANUAL_TYPES: { value: StockMovementType; label: string }[] = [
   { value: 'adjustment_in', label: 'Penyesuaian Masuk' },
@@ -40,7 +41,7 @@ interface EditableLine {
 const DEFAULT_LINE: EditableLine = { product_id: null, warehouse_id: null, quantity: 1, unit_cost: 0 }
 
 export default function StockMovementFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -124,7 +125,7 @@ export default function StockMovementFormPage() {
       const res = await create.mutateAsync({ ...values, movement_type: values.movement_type as StockMovementType, lines: linePayloads })
       formDraft.clearDraft()
       toast.success('Mutasi stok berhasil dibuat.')
-      navigate(`/inventory/movements/${res.data.id}`)
+      replaceRecordTab('/inventory/movements/create', { label: res.data.number, path: `/inventory/movements/${res.data.id}` })
     } catch { toast.error('Gagal menyimpan mutasi stok.') }
   })
 

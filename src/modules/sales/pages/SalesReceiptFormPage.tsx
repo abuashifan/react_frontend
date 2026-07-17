@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useSalesReceipt, useSalesReceiptMutations, useCustomerOpenInvoices } from '../hooks/useSalesReceiptList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
@@ -27,7 +28,7 @@ interface ReceiptLine {
 }
 
 export default function SalesReceiptFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -81,7 +82,10 @@ export default function SalesReceiptFormPage() {
         lines: lines.map(({ sales_invoice_id, amount }) => ({ sales_invoice_id, amount })),
       })
       toast.success('Penerimaan berhasil disimpan.')
-      navigate(`/sales/receipts/${res.data.id}`)
+      replaceRecordTab('/sales/receipts/create', {
+        label: res.data.number,
+        path: `/sales/receipts/${res.data.id}`,
+      })
     } catch { toast.error('Gagal menyimpan penerimaan.') }
   })
 

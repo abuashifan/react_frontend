@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -23,6 +23,7 @@ import { stockAdjustmentSchema, stockAdjustmentLineSchema, type StockAdjustmentF
 import type { DocumentStatus } from '@/types/common.types'
 import type { StockAdjustmentLineType } from '../types/stockAdjustment.types'
 import { toDateInputValue } from '@/lib/utils'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 interface EditableLine {
   product_id: number | null
@@ -38,7 +39,7 @@ interface SelectOption { value: number; label: string; sublabel?: string }
 const DEFAULT_LINE: EditableLine = { product_id: null, warehouse_id: null, adjustment_type: 'increase', quantity: 1, unit_cost: 0, reason: '' }
 
 export default function StockAdjustmentFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -178,7 +179,7 @@ export default function StockAdjustmentFormPage() {
         const res = await create.mutateAsync({ ...values, lines: linePayloads })
         formDraft.clearDraft()
         toast.success('Penyesuaian berhasil dibuat.')
-        navigate(`/inventory/adjustments/${res.data.id}`)
+        replaceRecordTab('/inventory/adjustments/create', { label: res.data.number, path: `/inventory/adjustments/${res.data.id}` })
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads } })
         formDraft.clearDraft()

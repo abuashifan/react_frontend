@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useQuotation, useQuotationMutations } from '../hooks/useQuotationList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
@@ -36,7 +37,7 @@ function lineSubtotal(l: EditableLine) {
 }
 
 export default function QuotationFormPage() {
-  const navigate = useNavigate()
+  const { openRecordTab, replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -85,7 +86,10 @@ export default function QuotationFormPage() {
       if (isCreate) {
         const res = await create.mutateAsync({ ...values, lines })
         toast.success('Draft berhasil disimpan.')
-        navigate(`/sales/quotations/${res.data.id}`)
+        replaceRecordTab('/sales/quotations/create', {
+          label: res.data.number,
+          path: `/sales/quotations/${res.data.id}`,
+        })
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
         toast.success('Draft berhasil diperbarui.')
@@ -135,7 +139,9 @@ export default function QuotationFormPage() {
     try {
       const res = await salesOrderApi.createFromQuotation(Number(id))
       toast.success('Sales Order berhasil dibuat.')
-      navigate(`/sales/orders/${res.data.id}`)
+      // Hasil konversi jadi tab baru, bukan menggantikan tab quotation asalnya —
+      // user biasanya masih perlu melihat dokumen sumbernya.
+      openRecordTab({ label: res.data.number, path: `/sales/orders/${res.data.id}` })
     } catch { toast.error('Gagal membuat Sales Order.') }
     finally { setConverting(false) }
   }
