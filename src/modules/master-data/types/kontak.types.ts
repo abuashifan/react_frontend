@@ -28,6 +28,7 @@ export interface KontakListParams {
 }
 
 export interface CreateKontakPayload {
+  contact_code?: string
   name: string
   contact_type: KontakType
   phone?: string

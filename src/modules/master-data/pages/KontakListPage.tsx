@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, PowerOff } from 'lucide-react'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
@@ -8,9 +8,10 @@ import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
-import { useKontakList } from '../hooks/useKontakList'
+import { useToast } from '@/hooks/useToast'
+import { useKontakList, useKontakMutations } from '../hooks/useKontakList'
 import type { Kontak, KontakType } from '../types/kontak.types'
-import type { ColumnDef } from '@/components/shared/table/DataTable'
+import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import { cn } from '@/lib/utils'
 
 const KONTAK_TYPE_LABELS: Record<KontakType, string> = {
@@ -76,18 +77,53 @@ const columns: ColumnDef<Kontak>[] = [
 
 export default function KontakListPage() {
   const { openRecordTab } = useRecordTab()
+  const { toast } = useToast()
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
   const [filterType, setFilterType] = useState<KontakType | undefined>()
   const [filterActive, setFilterActive] = useState<boolean | undefined>()
+  const [selectedRows, setSelectedRows] = useState<string[]>([])
   const { data, isLoading, isFetching } = useKontakList({
     page,
     per_page: perPage,
     contact_type: filterType,
     is_active: filterActive,
   })
+  const { deactivate } = useKontakMutations()
 
   const activeFilterCount = [filterType, filterActive].filter((v) => v !== undefined).length
+
+  const bulkActions: BulkAction[] = [
+    {
+      id: 'bulk-deactivate',
+      label: 'Nonaktifkan Terpilih',
+      icon: <PowerOff className="h-3.5 w-3.5" />,
+      variant: 'destructive',
+      permission: 'contacts.deactivate',
+      onClick: async (ids) => {
+        const rows = data?.data ?? []
+        const eligible = rows.filter((k) => ids.includes(String(k.id)) && k.is_active)
+        if (eligible.length === 0) {
+          toast.warning('Kontak yang dipilih sudah nonaktif.')
+          return
+        }
+        if (!confirm(`Nonaktifkan ${eligible.length} kontak terpilih?`)) return
+
+        const results = await Promise.allSettled(eligible.map((k) => deactivate.mutateAsync(k.id)))
+        const successCount = results.filter((r) => r.status === 'fulfilled').length
+        const failureCount = results.length - successCount
+
+        if (failureCount === 0) {
+          toast.success(`${successCount} kontak berhasil dinonaktifkan.`)
+        } else if (successCount === 0) {
+          toast.error(`Gagal menonaktifkan ${failureCount} kontak.`)
+        } else {
+          toast.warning(`${successCount} kontak dinonaktifkan, ${failureCount} gagal.`)
+        }
+        setSelectedRows([])
+      },
+    },
+  ]
 
   const sidebar = (
     <FilterSidebar
@@ -148,6 +184,10 @@ export default function KontakListPage() {
         isFetching={isFetching}
         pagination={{ pageIndex: page - 1, pageSize: perPage }}
         onPaginationChange={(s) => { setPage(s.pageIndex + 1); setPerPage(s.pageSize) }}
+        selectedRows={selectedRows}
+        onRowSelect={setSelectedRows}
+        bulkActions={bulkActions}
+        onRowClick={(row) => openRecordTab({ label: row.name, path: `/master-data/contacts/${row.id}` })}
         emptyTitle="Belum ada kontak"
         emptyDescription="Tambahkan customer atau supplier pertama untuk memulai."
       />

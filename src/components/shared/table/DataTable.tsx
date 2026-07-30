@@ -36,6 +36,7 @@ export interface DataTableProps<T extends { id: number | string }> {
   selectedRows?: string[]
   onRowSelect?: (ids: string[]) => void
   bulkActions?: BulkAction[]
+  onRowClick?: (row: T) => void
   emptyTitle?: string
   emptyDescription?: string
 }
@@ -63,6 +64,7 @@ export function DataTable<T extends { id: number | string }>({
   selectedRows = [],
   onRowSelect,
   bulkActions,
+  onRowClick,
   emptyTitle = 'Tidak ada data',
   emptyDescription,
 }: DataTableProps<T>) {
@@ -182,15 +184,18 @@ export function DataTable<T extends { id: number | string }>({
                 return (
                   <tr
                     key={id}
+                    onClick={onRowClick ? () => onRowClick(row) : undefined}
                     className={cn(
                       'h-9 border-b border-[#f1f5f9] transition-colors hover:bg-[#f8fbfc]',
                       isSelected && 'bg-[#EFF9FB]',
                       isFetching && 'opacity-60',
+                      onRowClick && 'cursor-pointer',
                     )}
                   >
                     {renderedColumns.map((col) => (
                       <td
                         key={col.id}
+                        onClick={col.id === '_select' ? (e) => e.stopPropagation() : undefined}
                         className={cn(
                           'px-3 py-2 text-[13px]',
                           col.meta?.sticky

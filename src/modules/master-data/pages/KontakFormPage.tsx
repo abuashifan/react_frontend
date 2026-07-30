@@ -43,6 +43,7 @@ export default function KontakFormPage() {
   useEffect(() => {
     if (kontak) {
       reset({
+        contact_code: kontak.contact_code ?? '',
         name: kontak.name,
         contact_type: kontak.contact_type,
         phone: kontak.phone ?? '',
@@ -57,6 +58,7 @@ export default function KontakFormPage() {
   const onSubmit = async (values: KontakFormValues) => {
     const payload = {
       ...values,
+      contact_code: values.contact_code || undefined,
       email: values.email || undefined,
       phone: values.phone || undefined,
     }
@@ -109,6 +111,12 @@ export default function KontakFormPage() {
     >
       <div className="space-y-3">
         <FormSection title="Informasi Kontak">
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kode Kontak</Label>
+            <Input {...register('contact_code')} placeholder="CTC-001" className="h-9 text-[13px]" />
+            {errors.contact_code && <p className="text-[11px] text-red-500">{errors.contact_code.message}</p>}
+          </div>
+
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
               Nama <span className="text-red-500">*</span>
