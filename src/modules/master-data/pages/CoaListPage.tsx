@@ -145,7 +145,8 @@ export default function CoaListPage() {
   const { toast } = useToast()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [filterType, setFilterType] = useState<CoaType | undefined>()
-  const [filterActive, setFilterActive] = useState<boolean | undefined>()
+  // Default: hanya tampilkan akun aktif. Pilih "Semua" di filter Status untuk menampilkan semuanya.
+  const [filterActive, setFilterActive] = useState<boolean | undefined>(true)
   const [togglingId, setTogglingId] = useState<number | null>(null)
 
   const { data, isLoading } = useCoaList({
@@ -204,7 +205,7 @@ export default function CoaListPage() {
   const sidebar = (
     <FilterSidebar
       activeCount={activeFilterCount}
-      onReset={() => { setFilterType(undefined); setFilterActive(undefined) }}
+      onReset={() => { setFilterType(undefined); setFilterActive(true) }}
     >
       <FilterSection title="Tipe Akun">
         {(['asset', 'liability', 'equity', 'revenue', 'expense'] as CoaType[]).map((t) => (
@@ -221,16 +222,23 @@ export default function CoaListPage() {
         <label className="flex items-center gap-2 cursor-pointer">
           <Checkbox
             checked={filterActive === true}
-            onCheckedChange={(checked) => setFilterActive(checked ? true : undefined)}
+            onCheckedChange={(checked) => checked && setFilterActive(true)}
           />
           <span className="text-[12px] text-[#334155]">Aktif</span>
         </label>
         <label className="flex items-center gap-2 cursor-pointer">
           <Checkbox
             checked={filterActive === false}
-            onCheckedChange={(checked) => setFilterActive(checked ? false : undefined)}
+            onCheckedChange={(checked) => checked && setFilterActive(false)}
           />
           <span className="text-[12px] text-[#334155]">Nonaktif</span>
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <Checkbox
+            checked={filterActive === undefined}
+            onCheckedChange={(checked) => checked && setFilterActive(undefined)}
+          />
+          <span className="text-[12px] text-[#334155]">Semua</span>
         </label>
       </FilterSection>
     </FilterSidebar>

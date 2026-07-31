@@ -22,10 +22,18 @@ export const kontakApi = {
   deactivate: (id: number) =>
     http.patch<unknown, ApiResponse<void>>(`/master-data/contacts/${id}/deactivate`),
 
-  search: async (query: string, contact_type?: string): Promise<SelectOption<number>[]> => {
+  search: async (query: string, type?: 'customer' | 'supplier'): Promise<SelectOption<number>[]> => {
     const res = await http.get<unknown, PaginatedResponse<Kontak>>(
       '/master-data/contacts',
-      { params: { search: query, per_page: 10, contact_type, is_active: true } },
+      {
+        params: {
+          search: query,
+          per_page: 10,
+          is_active: true,
+          ...(type === 'customer' ? { is_customer: true } : {}),
+          ...(type === 'supplier' ? { is_supplier: true } : {}),
+        },
+      },
     )
     return res.data.map((c) => ({
       value: c.id,

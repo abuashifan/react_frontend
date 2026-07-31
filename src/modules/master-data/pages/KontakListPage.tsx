@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, PowerOff } from 'lucide-react'
+import { Plus, Power, PowerOff } from 'lucide-react'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
@@ -18,6 +18,19 @@ const KONTAK_TYPE_LABELS: Record<KontakType, string> = {
   customer: 'Customer',
   supplier: 'Supplier',
   both: 'Keduanya',
+}
+
+/** Tipe kontak ditentukan dari flag is_customer/is_supplier — `contact_type` mentah backend
+ * bukan sumber kebenaran (lihat KontakType di kontak.types.ts). */
+function getKontakTypeLabel(kontak: Kontak): string {
+  if (kontak.is_customer && kontak.is_supplier) return KONTAK_TYPE_LABELS.both
+  if (kontak.is_customer) return KONTAK_TYPE_LABELS.customer
+  if (kontak.is_supplier) return KONTAK_TYPE_LABELS.supplier
+  // Fallback untuk data lama yang belum punya flag is_customer/is_supplier
+  if (kontak.contact_type === 'customer' || kontak.contact_type === 'supplier') {
+    return KONTAK_TYPE_LABELS[kontak.contact_type]
+  }
+  return '-'
 }
 
 const columns: ColumnDef<Kontak>[] = [
@@ -40,7 +53,7 @@ const columns: ColumnDef<Kontak>[] = [
     size: 110,
     cell: ({ original }) => (
       <Badge className="text-[11px] bg-[#EFF9FB] text-[#326273] hover:bg-[#EFF9FB]">
-        {KONTAK_TYPE_LABELS[original.contact_type]}
+        {getKontakTypeLabel(original)}
       </Badge>
     ),
   },
@@ -81,54 +94,70 @@ export default function KontakListPage() {
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
   const [filterType, setFilterType] = useState<KontakType | undefined>()
-  const [filterActive, setFilterActive] = useState<boolean | undefined>()
+  // Default: hanya tampilkan kontak aktif. Pilih "Semua" di filter Status untuk menampilkan semuanya.
+  const [filterActive, setFilterActive] = useState<boolean | undefined>(true)
   const [selectedRows, setSelectedRows] = useState<string[]>([])
   const { data, isLoading, isFetching } = useKontakList({
     page,
     per_page: perPage,
-    contact_type: filterType,
+    is_customer: filterType === 'customer' || filterType === 'both' ? true : undefined,
+    is_supplier: filterType === 'supplier' || filterType === 'both' ? true : undefined,
     is_active: filterActive,
   })
-  const { deactivate } = useKontakMutations()
+  const { activate, deactivate } = useKontakMutations()
 
   const activeFilterCount = [filterType, filterActive].filter((v) => v !== undefined).length
 
+  const runBulkStatusChange = async (
+    ids: string[],
+    targetActive: boolean,
+    mutateAsync: (id: number) => Promise<unknown>,
+  ) => {
+    const rows = data?.data ?? []
+    const eligible = rows.filter((k) => ids.includes(String(k.id)) && k.is_active !== targetActive)
+    const verb = targetActive ? 'diaktifkan' : 'dinonaktifkan'
+    if (eligible.length === 0) {
+      toast.warning(`Kontak yang dipilih sudah ${verb}.`)
+      return
+    }
+    if (!targetActive && !confirm(`Nonaktifkan ${eligible.length} kontak terpilih?`)) return
+
+    const results = await Promise.allSettled(eligible.map((k) => mutateAsync(k.id)))
+    const successCount = results.filter((r) => r.status === 'fulfilled').length
+    const failureCount = results.length - successCount
+
+    if (failureCount === 0) {
+      toast.success(`${successCount} kontak berhasil ${verb}.`)
+    } else if (successCount === 0) {
+      toast.error(`Gagal ${targetActive ? 'mengaktifkan' : 'menonaktifkan'} ${failureCount} kontak.`)
+    } else {
+      toast.warning(`${successCount} kontak ${verb}, ${failureCount} gagal.`)
+    }
+    setSelectedRows([])
+  }
+
   const bulkActions: BulkAction[] = [
+    {
+      id: 'bulk-activate',
+      label: 'Aktifkan Terpilih',
+      icon: <Power className="h-3.5 w-3.5" />,
+      permission: 'contacts.edit',
+      onClick: (ids) => runBulkStatusChange(ids, true, (id) => activate.mutateAsync(id)),
+    },
     {
       id: 'bulk-deactivate',
       label: 'Nonaktifkan Terpilih',
       icon: <PowerOff className="h-3.5 w-3.5" />,
       variant: 'destructive',
       permission: 'contacts.deactivate',
-      onClick: async (ids) => {
-        const rows = data?.data ?? []
-        const eligible = rows.filter((k) => ids.includes(String(k.id)) && k.is_active)
-        if (eligible.length === 0) {
-          toast.warning('Kontak yang dipilih sudah nonaktif.')
-          return
-        }
-        if (!confirm(`Nonaktifkan ${eligible.length} kontak terpilih?`)) return
-
-        const results = await Promise.allSettled(eligible.map((k) => deactivate.mutateAsync(k.id)))
-        const successCount = results.filter((r) => r.status === 'fulfilled').length
-        const failureCount = results.length - successCount
-
-        if (failureCount === 0) {
-          toast.success(`${successCount} kontak berhasil dinonaktifkan.`)
-        } else if (successCount === 0) {
-          toast.error(`Gagal menonaktifkan ${failureCount} kontak.`)
-        } else {
-          toast.warning(`${successCount} kontak dinonaktifkan, ${failureCount} gagal.`)
-        }
-        setSelectedRows([])
-      },
+      onClick: (ids) => runBulkStatusChange(ids, false, (id) => deactivate.mutateAsync(id)),
     },
   ]
 
   const sidebar = (
     <FilterSidebar
       activeCount={activeFilterCount}
-      onReset={() => { setFilterType(undefined); setFilterActive(undefined) }}
+      onReset={() => { setFilterType(undefined); setFilterActive(true) }}
     >
       <FilterSection title="Tipe Kontak">
         {(['customer', 'supplier', 'both'] as KontakType[]).map((t) => (
@@ -145,16 +174,23 @@ export default function KontakListPage() {
         <label className="flex items-center gap-2 cursor-pointer">
           <Checkbox
             checked={filterActive === true}
-            onCheckedChange={(checked) => setFilterActive(checked ? true : undefined)}
+            onCheckedChange={(checked) => checked && setFilterActive(true)}
           />
           <span className="text-[12px] text-[#334155]">Aktif</span>
         </label>
         <label className="flex items-center gap-2 cursor-pointer">
           <Checkbox
             checked={filterActive === false}
-            onCheckedChange={(checked) => setFilterActive(checked ? false : undefined)}
+            onCheckedChange={(checked) => checked && setFilterActive(false)}
           />
           <span className="text-[12px] text-[#334155]">Nonaktif</span>
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <Checkbox
+            checked={filterActive === undefined}
+            onCheckedChange={(checked) => checked && setFilterActive(undefined)}
+          />
+          <span className="text-[12px] text-[#334155]">Semua</span>
         </label>
       </FilterSection>
     </FilterSidebar>

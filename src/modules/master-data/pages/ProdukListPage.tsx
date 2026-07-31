@@ -71,7 +71,8 @@ export default function ProdukListPage() {
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
   const [filterCategoryId, setFilterCategoryId] = useState<number | null>(null)
-  const [filterActive, setFilterActive] = useState<boolean | undefined>()
+  // Default: hanya tampilkan produk aktif. Pilih "Semua" di filter Status untuk menampilkan semuanya.
+  const [filterActive, setFilterActive] = useState<boolean | undefined>(true)
   const { data, isLoading, isFetching } = useProdukList({
     page,
     per_page: perPage,
@@ -84,7 +85,7 @@ export default function ProdukListPage() {
   const sidebar = (
     <FilterSidebar
       activeCount={activeFilterCount}
-      onReset={() => { setFilterCategoryId(null); setFilterActive(undefined) }}
+      onReset={() => { setFilterCategoryId(null); setFilterActive(true) }}
     >
       <FilterSection title="Kategori">
         <SearchableSelect
@@ -99,16 +100,23 @@ export default function ProdukListPage() {
         <label className="flex items-center gap-2 cursor-pointer">
           <Checkbox
             checked={filterActive === true}
-            onCheckedChange={(checked) => setFilterActive(checked ? true : undefined)}
+            onCheckedChange={(checked) => checked && setFilterActive(true)}
           />
           <span className="text-[12px] text-[#334155]">Aktif</span>
         </label>
         <label className="flex items-center gap-2 cursor-pointer">
           <Checkbox
             checked={filterActive === false}
-            onCheckedChange={(checked) => setFilterActive(checked ? false : undefined)}
+            onCheckedChange={(checked) => checked && setFilterActive(false)}
           />
           <span className="text-[12px] text-[#334155]">Nonaktif</span>
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <Checkbox
+            checked={filterActive === undefined}
+            onCheckedChange={(checked) => checked && setFilterActive(undefined)}
+          />
+          <span className="text-[12px] text-[#334155]">Semua</span>
         </label>
       </FilterSection>
     </FilterSidebar>

@@ -7,15 +7,18 @@ import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { FixedBottomBar } from '@/components/shared/layout/FixedBottomBar'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/useToast'
 import { useKontak, useKontakMutations } from '../hooks/useKontakList'
 import { paymentTermsApi } from '../services/paymentTermsApi'
 import { kontakSchema, type KontakFormValues } from '../schemas/kontakSchema'
+import { cn } from '@/lib/utils'
 
 export default function KontakFormPage() {
   const { replaceRecordTab, closeRecordTab } = useRecordTab()
@@ -26,7 +29,7 @@ export default function KontakFormPage() {
   const { data, isLoading } = useKontak(id ? Number(id) : undefined)
   const kontak = data?.data
 
-  const { create, update } = useKontakMutations()
+  const { create, update, activate, deactivate } = useKontakMutations()
 
   const {
     register,
@@ -42,10 +45,16 @@ export default function KontakFormPage() {
 
   useEffect(() => {
     if (kontak) {
+      const contactType: KontakFormValues['contact_type'] =
+        kontak.is_customer && kontak.is_supplier
+          ? 'both'
+          : kontak.is_supplier || kontak.contact_type === 'supplier'
+            ? 'supplier'
+            : 'customer'
       reset({
         contact_code: kontak.contact_code ?? '',
         name: kontak.name,
-        contact_type: kontak.contact_type,
+        contact_type: contactType,
         phone: kontak.phone ?? '',
         email: kontak.email ?? '',
         address: kontak.address ?? '',
@@ -56,11 +65,15 @@ export default function KontakFormPage() {
   }, [kontak, reset])
 
   const onSubmit = async (values: KontakFormValues) => {
+    const { contact_type, ...rest } = values
     const payload = {
-      ...values,
+      ...rest,
       contact_code: values.contact_code || undefined,
       email: values.email || undefined,
       phone: values.phone || undefined,
+      is_customer: contact_type === 'customer' || contact_type === 'both',
+      is_supplier: contact_type === 'supplier' || contact_type === 'both',
+      ...(contact_type !== 'both' ? { contact_type } : {}),
     }
     try {
       if (isCreate) {
@@ -73,6 +86,22 @@ export default function KontakFormPage() {
       }
     } catch {
       toast.error('Gagal menyimpan kontak.')
+    }
+  }
+
+  const handleToggleActive = async () => {
+    if (!kontak) return
+    try {
+      if (kontak.is_active) {
+        if (!confirm(`Nonaktifkan kontak "${kontak.name}"?`)) return
+        await deactivate.mutateAsync(kontak.id)
+        toast.success('Kontak berhasil dinonaktifkan.')
+      } else {
+        await activate.mutateAsync(kontak.id)
+        toast.success('Kontak berhasil diaktifkan.')
+      }
+    } catch {
+      toast.error('Gagal mengubah status kontak.')
     }
   }
 
@@ -94,8 +123,40 @@ export default function KontakFormPage() {
       ]}
       bottomBar={
         <FixedBottomBar
-          left={<span className="text-[13px] text-[#64748b]">{isCreate ? 'Kontak baru' : kontak?.contact_code}</span>}
+          left={
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] text-[#64748b]">{isCreate ? 'Kontak baru' : kontak?.contact_code}</span>
+              {!isCreate && kontak && (
+                <Badge
+                  className={cn(
+                    'text-[11px] px-2 py-0.5 rounded-full',
+                    kontak.is_active
+                      ? 'bg-[#D1FAE5] text-[#065F46] hover:bg-[#D1FAE5]'
+                      : 'bg-[#F1F5F9] text-[#64748b] hover:bg-[#F1F5F9]',
+                  )}
+                >
+                  {kontak.is_active ? 'Aktif' : 'Nonaktif'}
+                </Badge>
+              )}
+            </div>
+          }
         >
+          {!isCreate && kontak && (
+            <PermissionGuard permission={kontak.is_active ? 'contacts.deactivate' : 'contacts.edit'}>
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(
+                  'h-8 text-[13px]',
+                  kontak.is_active ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700',
+                )}
+                onClick={handleToggleActive}
+                disabled={activate.isPending || deactivate.isPending}
+              >
+                {kontak.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+              </Button>
+            </PermissionGuard>
+          )}
           <Button variant="outline" className="h-8 text-[13px]" onClick={() => closeRecordTab(id ? `/master-data/contacts/${id}` : '/master-data/contacts/create', '/master-data/contacts')}>
             Batal
           </Button>

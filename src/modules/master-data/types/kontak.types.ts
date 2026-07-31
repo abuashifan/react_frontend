@@ -1,10 +1,12 @@
+/** Segmen tipe kontak untuk UI (filter & form). Bukan nilai mentah `contact_type` backend —
+ * backend membedakan customer/supplier lewat flag `is_customer`/`is_supplier`, bukan enum tunggal. */
 export type KontakType = 'customer' | 'supplier' | 'both'
 
 export interface Kontak {
   id: number
   contact_code: string | null
   name: string
-  contact_type: KontakType
+  contact_type: string
   phone: string | null
   email: string | null
   address: string | null
@@ -23,14 +25,17 @@ export interface KontakListParams {
   page: number
   per_page: 25 | 50 | 100
   search?: string
-  contact_type?: KontakType
+  is_customer?: boolean
+  is_supplier?: boolean
   is_active?: boolean
 }
 
 export interface CreateKontakPayload {
   contact_code?: string
   name: string
-  contact_type: KontakType
+  contact_type?: 'customer' | 'supplier'
+  is_customer?: boolean
+  is_supplier?: boolean
   phone?: string
   email?: string
   address?: string
