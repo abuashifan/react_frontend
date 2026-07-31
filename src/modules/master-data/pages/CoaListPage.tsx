@@ -5,9 +5,9 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar } from '@/components/shared/layout/FilterSidebar'
 import { SingleCheckboxFilter } from '@/components/shared/filter/SingleCheckboxFilter'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
+import { ActiveStatusBadge } from '@/components/shared/badge/ActiveStatusBadge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/useToast'
 import { useCoaList, useCoaMutations } from '../hooks/useCoaList'
@@ -102,16 +102,7 @@ function CoaRow({ node, level, selectedIds, onSelect, onNavigate, onToggleActive
           {COA_TYPE_LABELS[node.account_type]}
         </td>
         <td className="px-3 py-2">
-          <Badge
-            className={cn(
-              'text-[11px] px-2 py-0.5 rounded-full font-medium',
-              node.is_active
-                ? 'bg-[#D1FAE5] text-[#065F46] hover:bg-[#D1FAE5]'
-                : 'bg-[#F1F5F9] text-[#64748b] hover:bg-[#F1F5F9]',
-            )}
-          >
-            {node.is_active ? 'Aktif' : 'Nonaktif'}
-          </Badge>
+          <ActiveStatusBadge isActive={node.is_active} className="font-medium" />
         </td>
         <td className="px-3 py-2">
           <PermissionGuard permission="master-data.coa.edit">

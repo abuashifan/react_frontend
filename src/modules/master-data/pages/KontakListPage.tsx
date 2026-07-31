@@ -6,13 +6,13 @@ import { FilterSidebar } from '@/components/shared/layout/FilterSidebar'
 import { SingleCheckboxFilter } from '@/components/shared/filter/SingleCheckboxFilter'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
+import { ActiveStatusBadge } from '@/components/shared/badge/ActiveStatusBadge'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/useToast'
 import { useKontakList, useKontakMutations } from '../hooks/useKontakList'
 import type { Kontak, KontakType } from '../types/kontak.types'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
-import { cn } from '@/lib/utils'
 
 const STATUS_OPTIONS: { value: boolean | undefined; label: string }[] = [
   { value: true, label: 'Aktif' },
@@ -79,18 +79,7 @@ const columns: ColumnDef<Kontak>[] = [
     id: 'is_active',
     header: 'Status',
     size: 90,
-    cell: ({ original }) => (
-      <Badge
-        className={cn(
-          'text-[11px] px-2 py-0.5 rounded-full',
-          original.is_active
-            ? 'bg-[#D1FAE5] text-[#065F46] hover:bg-[#D1FAE5]'
-            : 'bg-[#F1F5F9] text-[#64748b] hover:bg-[#F1F5F9]',
-        )}
-      >
-        {original.is_active ? 'Aktif' : 'Nonaktif'}
-      </Badge>
-    ),
+    cell: ({ original }) => <ActiveStatusBadge isActive={original.is_active} />,
   },
 ]
 

@@ -5,19 +5,18 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
+import { ActiveStatusBadge } from '@/components/shared/badge/ActiveStatusBadge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/useToast'
 import { useGudangList, useGudangMutations } from '../hooks/useSimpleLists'
 import { gudangSchema, type GudangFormValues } from '../schemas/gudangSchema'
 import type { Gudang } from '../types/gudang.types'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
-import { cn } from '@/lib/utils'
 
 export default function GudangPage() {
   const { toast } = useToast()
@@ -99,11 +98,7 @@ export default function GudangPage() {
       id: 'is_active',
       header: 'Status',
       size: 90,
-      cell: ({ original }) => (
-        <Badge className={cn('text-[11px] px-2 py-0.5 rounded-full', original.is_active ? 'bg-[#D1FAE5] text-[#065F46] hover:bg-[#D1FAE5]' : 'bg-[#F1F5F9] text-[#64748b] hover:bg-[#F1F5F9]')}>
-          {original.is_active ? 'Aktif' : 'Nonaktif'}
-        </Badge>
-      ),
+      cell: ({ original }) => <ActiveStatusBadge isActive={original.is_active} />,
     },
     {
       id: 'actions',

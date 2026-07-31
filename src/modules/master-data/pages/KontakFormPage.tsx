@@ -8,10 +8,10 @@ import { FormSection } from '@/components/shared/form/FormSection'
 import { FixedBottomBar } from '@/components/shared/layout/FixedBottomBar'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
+import { ActiveStatusBadge } from '@/components/shared/badge/ActiveStatusBadge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/useToast'
@@ -126,18 +126,7 @@ export default function KontakFormPage() {
           left={
             <div className="flex items-center gap-2">
               <span className="text-[13px] text-[#64748b]">{isCreate ? 'Kontak baru' : kontak?.contact_code}</span>
-              {!isCreate && kontak && (
-                <Badge
-                  className={cn(
-                    'text-[11px] px-2 py-0.5 rounded-full',
-                    kontak.is_active
-                      ? 'bg-[#D1FAE5] text-[#065F46] hover:bg-[#D1FAE5]'
-                      : 'bg-[#F1F5F9] text-[#64748b] hover:bg-[#F1F5F9]',
-                  )}
-                >
-                  {kontak.is_active ? 'Aktif' : 'Nonaktif'}
-                </Badge>
-              )}
+              {!isCreate && kontak && <ActiveStatusBadge isActive={kontak.is_active} />}
             </div>
           }
         >
