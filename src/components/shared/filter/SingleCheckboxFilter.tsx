@@ -11,19 +11,21 @@ interface SingleCheckboxFilterProps<T> {
   options: SingleCheckboxFilterOption<T>[]
   value: T
   onChange: (value: T) => void
+  /** Nilai yang dikirim saat opsi yang sedang aktif di-uncheck (mis. balik ke "tampilkan semua"). */
+  clearValue?: T
   note?: string
 }
 
 /** Filter mutually-exclusive lewat sederet checkbox (bukan multi-select) —
  * pilih satu opsi otomatis melepas opsi lainnya. Untuk multi-select gunakan MultiCheckboxFilter. */
-export function SingleCheckboxFilter<T>({ title, options, value, onChange, note }: SingleCheckboxFilterProps<T>) {
+export function SingleCheckboxFilter<T>({ title, options, value, onChange, clearValue, note }: SingleCheckboxFilterProps<T>) {
   return (
     <FilterSection title={title}>
       {options.map((option) => (
         <label key={String(option.value)} className="flex items-center gap-2 cursor-pointer">
           <Checkbox
             checked={value === option.value}
-            onCheckedChange={(checked) => checked && onChange(option.value)}
+            onCheckedChange={(checked) => onChange(checked ? option.value : (clearValue as T))}
           />
           <span className="text-[12px] text-[#334155]">{option.label}</span>
         </label>

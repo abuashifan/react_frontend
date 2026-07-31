@@ -3,10 +3,10 @@ import { Plus } from 'lucide-react'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { SingleCheckboxFilter } from '@/components/shared/filter/SingleCheckboxFilter'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useProdukList } from '../hooks/useProdukList'
@@ -14,6 +14,12 @@ import { kategoriProdukApi } from '../services/kategoriProdukApi'
 import type { Produk } from '../types/produk.types'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import { cn } from '@/lib/utils'
+
+const STATUS_OPTIONS: { value: boolean | undefined; label: string }[] = [
+  { value: true, label: 'Aktif' },
+  { value: false, label: 'Nonaktif' },
+  { value: undefined, label: 'Semua' },
+]
 
 const columns: ColumnDef<Produk>[] = [
   {
@@ -96,29 +102,12 @@ export default function ProdukListPage() {
           size="sm"
         />
       </FilterSection>
-      <FilterSection title="Status">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={filterActive === true}
-            onCheckedChange={(checked) => checked && setFilterActive(true)}
-          />
-          <span className="text-[12px] text-[#334155]">Aktif</span>
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={filterActive === false}
-            onCheckedChange={(checked) => checked && setFilterActive(false)}
-          />
-          <span className="text-[12px] text-[#334155]">Nonaktif</span>
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={filterActive === undefined}
-            onCheckedChange={(checked) => checked && setFilterActive(undefined)}
-          />
-          <span className="text-[12px] text-[#334155]">Semua</span>
-        </label>
-      </FilterSection>
+      <SingleCheckboxFilter
+        title="Status"
+        options={STATUS_OPTIONS}
+        value={filterActive}
+        onChange={setFilterActive}
+      />
     </FilterSidebar>
   )
 

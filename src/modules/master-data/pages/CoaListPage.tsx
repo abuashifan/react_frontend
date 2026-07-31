@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { ChevronRight, ChevronDown, Plus, Power, PowerOff } from 'lucide-react'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { FilterSidebar } from '@/components/shared/layout/FilterSidebar'
+import { SingleCheckboxFilter } from '@/components/shared/filter/SingleCheckboxFilter'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -20,6 +21,12 @@ const COA_TYPE_LABELS: Record<CoaType, string> = {
   revenue: 'Pendapatan',
   expense: 'Beban',
 }
+
+const STATUS_OPTIONS: { value: boolean | undefined; label: string }[] = [
+  { value: true, label: 'Aktif' },
+  { value: false, label: 'Nonaktif' },
+  { value: undefined, label: 'Semua' },
+]
 
 function buildTree(flat: Coa[]): Coa[] {
   const map = new Map<number, Coa>()
@@ -207,40 +214,18 @@ export default function CoaListPage() {
       activeCount={activeFilterCount}
       onReset={() => { setFilterType(undefined); setFilterActive(true) }}
     >
-      <FilterSection title="Tipe Akun">
-        {(['asset', 'liability', 'equity', 'revenue', 'expense'] as CoaType[]).map((t) => (
-          <label key={t} className="flex items-center gap-2 cursor-pointer">
-            <Checkbox
-              checked={filterType === t}
-              onCheckedChange={(checked) => setFilterType(checked ? t : undefined)}
-            />
-            <span className="text-[12px] text-[#334155]">{COA_TYPE_LABELS[t]}</span>
-          </label>
-        ))}
-      </FilterSection>
-      <FilterSection title="Status">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={filterActive === true}
-            onCheckedChange={(checked) => checked && setFilterActive(true)}
-          />
-          <span className="text-[12px] text-[#334155]">Aktif</span>
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={filterActive === false}
-            onCheckedChange={(checked) => checked && setFilterActive(false)}
-          />
-          <span className="text-[12px] text-[#334155]">Nonaktif</span>
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={filterActive === undefined}
-            onCheckedChange={(checked) => checked && setFilterActive(undefined)}
-          />
-          <span className="text-[12px] text-[#334155]">Semua</span>
-        </label>
-      </FilterSection>
+      <SingleCheckboxFilter
+        title="Tipe Akun"
+        options={(['asset', 'liability', 'equity', 'revenue', 'expense'] as CoaType[]).map((t) => ({ value: t, label: COA_TYPE_LABELS[t] }))}
+        value={filterType}
+        onChange={setFilterType}
+      />
+      <SingleCheckboxFilter
+        title="Status"
+        options={STATUS_OPTIONS}
+        value={filterActive}
+        onChange={setFilterActive}
+      />
     </FilterSidebar>
   )
 

@@ -2,17 +2,23 @@ import { useState } from 'react'
 import { Plus, Power, PowerOff } from 'lucide-react'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { FilterSidebar } from '@/components/shared/layout/FilterSidebar'
+import { SingleCheckboxFilter } from '@/components/shared/filter/SingleCheckboxFilter'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/useToast'
 import { useKontakList, useKontakMutations } from '../hooks/useKontakList'
 import type { Kontak, KontakType } from '../types/kontak.types'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import { cn } from '@/lib/utils'
+
+const STATUS_OPTIONS: { value: boolean | undefined; label: string }[] = [
+  { value: true, label: 'Aktif' },
+  { value: false, label: 'Nonaktif' },
+  { value: undefined, label: 'Semua' },
+]
 
 const KONTAK_TYPE_LABELS: Record<KontakType, string> = {
   customer: 'Customer',
@@ -159,40 +165,18 @@ export default function KontakListPage() {
       activeCount={activeFilterCount}
       onReset={() => { setFilterType(undefined); setFilterActive(true) }}
     >
-      <FilterSection title="Tipe Kontak">
-        {(['customer', 'supplier', 'both'] as KontakType[]).map((t) => (
-          <label key={t} className="flex items-center gap-2 cursor-pointer">
-            <Checkbox
-              checked={filterType === t}
-              onCheckedChange={(checked) => setFilterType(checked ? t : undefined)}
-            />
-            <span className="text-[12px] text-[#334155]">{KONTAK_TYPE_LABELS[t]}</span>
-          </label>
-        ))}
-      </FilterSection>
-      <FilterSection title="Status">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={filterActive === true}
-            onCheckedChange={(checked) => checked && setFilterActive(true)}
-          />
-          <span className="text-[12px] text-[#334155]">Aktif</span>
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={filterActive === false}
-            onCheckedChange={(checked) => checked && setFilterActive(false)}
-          />
-          <span className="text-[12px] text-[#334155]">Nonaktif</span>
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={filterActive === undefined}
-            onCheckedChange={(checked) => checked && setFilterActive(undefined)}
-          />
-          <span className="text-[12px] text-[#334155]">Semua</span>
-        </label>
-      </FilterSection>
+      <SingleCheckboxFilter
+        title="Tipe Kontak"
+        options={(['customer', 'supplier', 'both'] as KontakType[]).map((t) => ({ value: t, label: KONTAK_TYPE_LABELS[t] }))}
+        value={filterType}
+        onChange={setFilterType}
+      />
+      <SingleCheckboxFilter
+        title="Status"
+        options={STATUS_OPTIONS}
+        value={filterActive}
+        onChange={setFilterActive}
+      />
     </FilterSidebar>
   )
 
