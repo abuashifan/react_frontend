@@ -163,7 +163,7 @@ export default function StockOpnameFormPage() {
         documentNumber={opname?.number}
         status={status}
         breadcrumb={[{ label: 'Inventori' }, { label: 'Opname', path: '/inventory/opnames' }, { label: isCreate ? 'Buat Opname' : (opname?.number ?? '') }]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={opname?.number} actions={actions} />}
+        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={opname?.number} actions={actions} />}
       >
         <div className="space-y-3">
           <FormSection title="Header">

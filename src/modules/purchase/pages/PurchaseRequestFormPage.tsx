@@ -167,7 +167,7 @@ export default function PurchaseRequestFormPage() {
       documentNumber={pr?.number}
       status={status}
       breadcrumb={[{ label: 'Pembelian' }, { label: 'Purchase Request', path: '/purchase/requests' }, { label: isCreate ? 'Buat PR' : (pr?.number ?? '') }]}
-      bottomBar={<DocumentActionBar documentStatus={status} documentNumber={pr?.number} actions={actions} />}
+      headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={pr?.number} actions={actions} />}
     >
       <div className="space-y-3">
         <FormSection title="Header">

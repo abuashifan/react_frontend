@@ -214,7 +214,7 @@ export default function StockMovementFormPage() {
         status={status}
         readOnly={!isEditable}
         breadcrumb={[{ label: 'Inventori' }, { label: 'Mutasi Stok', path: '/inventory/movements' }, { label: isCreate ? 'Buat Mutasi' : (movement?.number ?? '') }]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={movement?.number} actions={actions} />}
+        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={movement?.number} actions={actions} />}
       >
         <div className="space-y-3">
           <FormSection title="Header">

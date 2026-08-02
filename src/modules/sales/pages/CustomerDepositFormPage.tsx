@@ -109,7 +109,7 @@ export default function CustomerDepositFormPage() {
           { label: 'Deposit Customer', path: '/sales/customer-deposits' },
           { label: isCreate ? 'Buat Deposit' : (deposit?.number ?? '') },
         ]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={deposit?.number} actions={actions} />}
+        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={deposit?.number} actions={actions} />}
       >
         <div className="space-y-3">
           <FormSection title="Informasi Deposit">

@@ -260,7 +260,7 @@ export default function SalesOrderFormPage() {
         { label: 'Sales Order', path: '/sales/orders' },
         { label: isCreate ? 'Buat SO' : (order?.number ?? '') },
       ]}
-      bottomBar={<DocumentActionBar documentStatus={status} documentNumber={order?.number} actions={actions} />}
+      headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={order?.number} actions={actions} />}
     >
       <div className="space-y-3">
         <FormSection title="Header">

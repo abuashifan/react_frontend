@@ -117,7 +117,7 @@ export default function PurchaseReturnFormPage() {
         documentNumber={ret?.number}
         status={status}
         breadcrumb={[{ label: 'Pembelian' }, { label: 'Retur', path: '/purchase/returns' }, { label: isCreate ? 'Buat Retur' : (ret?.number ?? '') }]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={ret?.number} actions={actions} />}
+        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={ret?.number} actions={actions} />}
       >
         <div className="space-y-3">
           <FormSection title="Header">

@@ -122,7 +122,7 @@ export default function VendorPaymentFormPage() {
         documentNumber={payment?.number}
         status={status}
         breadcrumb={[{ label: 'Pembelian' }, { label: 'Pembayaran', path: '/purchase/payments' }, { label: isCreate ? 'Buat Pembayaran' : (payment?.number ?? '') }]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={payment?.number} actions={actions} />}
+        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={payment?.number} actions={actions} />}
       >
         <div className="space-y-3">
           <FormSection title="Header">

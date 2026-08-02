@@ -90,7 +90,7 @@ export default function VendorDepositFormPage() {
         documentNumber={deposit?.number}
         status={status}
         breadcrumb={[{ label: 'Pembelian' }, { label: 'Deposit Vendor', path: '/purchase/vendor-deposits' }, { label: isCreate ? 'Buat Deposit' : (deposit?.number ?? '') }]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={deposit?.number} actions={actions} />}
+        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={deposit?.number} actions={actions} />}
       >
         <div className="space-y-3">
           <FormSection title="Header">

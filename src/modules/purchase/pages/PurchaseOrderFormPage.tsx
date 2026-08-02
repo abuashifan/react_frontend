@@ -193,7 +193,7 @@ export default function PurchaseOrderFormPage() {
       status={status}
       readOnly={!isEditable}
       breadcrumb={[{ label: 'Pembelian' }, { label: 'Purchase Order', path: '/purchase/orders' }, { label: isCreate ? 'Buat PO' : (po?.number ?? '') }]}
-      bottomBar={<DocumentActionBar documentStatus={status} documentNumber={po?.number} actions={actions} />}
+      headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={po?.number} actions={actions} />}
     >
       <div className="space-y-3">
         <FormSection title="Header">

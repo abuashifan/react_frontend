@@ -4,10 +4,9 @@ import { useForm, Controller, type Control } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
+import { FormSaveActions } from '@/components/shared/layout/FormSaveActions'
 import { FormSection } from '@/components/shared/form/FormSection'
-import { FixedBottomBar } from '@/components/shared/layout/FixedBottomBar'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -228,26 +227,18 @@ export default function ProdukFormPage() {
   return (
     <FormLayout
       title={isCreate ? 'Tambah Produk' : 'Edit Produk'}
+      documentNumber={isCreate ? undefined : (produk?.product_code ?? undefined)}
       breadcrumb={[
         { label: 'Master Data' },
         { label: 'Produk', path: '/master-data/products' },
         { label: isCreate ? 'Tambah Produk' : (produk?.product_name ?? '') },
       ]}
-      bottomBar={
-        <FixedBottomBar
-          left={<span className="text-[13px] text-[#64748b]">{isCreate ? 'Produk baru' : produk?.product_code}</span>}
-        >
-          <Button variant="outline" className="h-8 text-[13px]" onClick={() => closeRecordTab(id ? `/master-data/products/${id}` : '/master-data/products/create', '/master-data/products')}>
-            Batal
-          </Button>
-          <Button
-            className="bg-[#e39774] hover:bg-[#d4845e] h-8 text-[13px]"
-            onClick={handleSubmit(onSubmit)}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Menyimpan...' : 'Simpan'}
-          </Button>
-        </FixedBottomBar>
+      headerActions={
+        <FormSaveActions
+          onCancel={() => closeRecordTab(id ? `/master-data/products/${id}` : '/master-data/products/create', '/master-data/products')}
+          onSave={handleSubmit(onSubmit)}
+          isSaving={isSubmitting}
+        />
       }
     >
       <div className="space-y-3">

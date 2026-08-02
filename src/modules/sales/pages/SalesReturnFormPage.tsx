@@ -194,7 +194,7 @@ export default function SalesReturnFormPage() {
           { label: 'Retur', path: '/sales/returns' },
           { label: isCreate ? 'Buat Retur' : (ret?.number ?? '') },
         ]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={ret?.number} actions={actions} />}
+        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={ret?.number} actions={actions} />}
       >
         <div className="space-y-3">
           <FormSection title="Header">

@@ -94,7 +94,7 @@ export default function BankReconciliationFormPage() {
     <>
       <FormLayout title={isCreate ? 'Buat Rekonsiliasi Bank' : 'Rekonsiliasi Bank'} documentNumber={reconciliation?.number} status={status} readOnly={!isEditable}
         breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Rekonsiliasi Bank', path: '/cash-bank/bank-reconciliations' }, { label: isCreate ? 'Buat' : (reconciliation?.number ?? '') }]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={reconciliation?.number} actions={actions} />}>
+        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={reconciliation?.number} actions={actions} />}>
         <div className="space-y-4">
           <FormSection title="Header">
             <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Bank <span className="text-red-500">*</span></Label><SearchableSelect value={watch('cash_bank_account_id') ?? null} onChange={(v) => setValue('cash_bank_account_id', v as number)} onSearch={coaApi.search} placeholder="Pilih akun bank..." disabled={!isEditable} error={errors.cash_bank_account_id?.message} selectedOptions={reconciliation?.cash_bank_account ? [{ value: reconciliation.cash_bank_account.id, label: reconciliation.cash_bank_account.name }] : []} /></div>

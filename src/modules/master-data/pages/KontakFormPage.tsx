@@ -4,8 +4,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
+import { FormSaveActions } from '@/components/shared/layout/FormSaveActions'
 import { FormSection } from '@/components/shared/form/FormSection'
-import { FixedBottomBar } from '@/components/shared/layout/FixedBottomBar'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { ActiveStatusBadge } from '@/components/shared/badge/ActiveStatusBadge'
@@ -116,47 +116,38 @@ export default function KontakFormPage() {
   return (
     <FormLayout
       title={isCreate ? 'Tambah Kontak' : 'Edit Kontak'}
+      documentNumber={isCreate ? undefined : (kontak?.contact_code ?? undefined)}
       breadcrumb={[
         { label: 'Master Data' },
         { label: 'Kontak', path: '/master-data/contacts' },
         { label: isCreate ? 'Tambah Kontak' : (kontak?.name ?? '') },
       ]}
-      bottomBar={
-        <FixedBottomBar
-          left={
-            <div className="flex items-center gap-2">
-              <span className="text-[13px] text-[#64748b]">{isCreate ? 'Kontak baru' : kontak?.contact_code}</span>
-              {!isCreate && kontak && <ActiveStatusBadge isActive={kontak.is_active} />}
-            </div>
-          }
-        >
-          {!isCreate && kontak && (
-            <PermissionGuard permission={kontak.is_active ? 'contacts.deactivate' : 'contacts.edit'}>
-              <Button
-                type="button"
-                variant="outline"
-                className={cn(
-                  'h-8 text-[13px]',
-                  kontak.is_active ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700',
-                )}
-                onClick={handleToggleActive}
-                disabled={activate.isPending || deactivate.isPending}
-              >
-                {kontak.is_active ? 'Nonaktifkan' : 'Aktifkan'}
-              </Button>
-            </PermissionGuard>
-          )}
-          <Button variant="outline" className="h-8 text-[13px]" onClick={() => closeRecordTab(id ? `/master-data/contacts/${id}` : '/master-data/contacts/create', '/master-data/contacts')}>
-            Batal
-          </Button>
-          <Button
-            className="bg-[#e39774] hover:bg-[#d4845e] h-8 text-[13px]"
-            onClick={handleSubmit(onSubmit)}
-            disabled={isSubmitting}
+      headerActions={
+        <>
+          {!isCreate && kontak && <ActiveStatusBadge isActive={kontak.is_active} />}
+          <FormSaveActions
+            onCancel={() => closeRecordTab(id ? `/master-data/contacts/${id}` : '/master-data/contacts/create', '/master-data/contacts')}
+            onSave={handleSubmit(onSubmit)}
+            isSaving={isSubmitting}
           >
-            {isSubmitting ? 'Menyimpan...' : 'Simpan'}
-          </Button>
-        </FixedBottomBar>
+            {!isCreate && kontak && (
+              <PermissionGuard permission={kontak.is_active ? 'contacts.deactivate' : 'contacts.edit'}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={cn(
+                    'h-8 text-[13px]',
+                    kontak.is_active ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700',
+                  )}
+                  onClick={handleToggleActive}
+                  disabled={activate.isPending || deactivate.isPending}
+                >
+                  {kontak.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                </Button>
+              </PermissionGuard>
+            )}
+          </FormSaveActions>
+        </>
       }
     >
       <div className="space-y-3">

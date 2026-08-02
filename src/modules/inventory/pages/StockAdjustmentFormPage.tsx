@@ -301,7 +301,7 @@ export default function StockAdjustmentFormPage() {
         status={status}
         readOnly={!isEditable}
         breadcrumb={[{ label: 'Inventori' }, { label: 'Penyesuaian', path: '/inventory/adjustments' }, { label: isCreate ? 'Buat Penyesuaian' : (adj?.number ?? '') }]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={adj?.number} actions={actions} />}
+        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={adj?.number} actions={actions} />}
       >
         <div className="space-y-3">
           <FormSection title="Header">

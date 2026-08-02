@@ -147,7 +147,7 @@ export default function SalesReceiptFormPage() {
           { label: 'Penerimaan', path: '/sales/receipts' },
           { label: isCreate ? 'Buat Penerimaan' : (receipt?.number ?? '') },
         ]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={receipt?.number} actions={actions} />}
+        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={receipt?.number} actions={actions} />}
       >
         <div className="space-y-3">
           <FormSection title="Informasi Penerimaan">

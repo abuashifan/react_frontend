@@ -345,7 +345,7 @@ export default function VendorBillFormPage() {
         status={status}
         readOnly={!isEditable}
         breadcrumb={[{ label: 'Pembelian' }, { label: 'Tagihan', path: '/purchase/bills' }, { label: isCreate ? 'Buat Bill' : (bill?.number ?? '') }]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={bill?.number} actions={actions} />}
+        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={bill?.number} actions={actions} />}
       >
         <div className="space-y-3">
           {hasPaidDependences && (

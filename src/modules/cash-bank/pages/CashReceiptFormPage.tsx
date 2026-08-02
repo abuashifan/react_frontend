@@ -75,7 +75,7 @@ export default function CashReceiptFormPage() {
     <>
       <FormLayout title={isCreate ? 'Buat Penerimaan Kas' : 'Penerimaan Kas'} documentNumber={receipt?.number} status={status} readOnly={!isEditable}
         breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Penerimaan Kas', path: '/cash-bank/cash-receipts' }, { label: isCreate ? 'Buat' : (receipt?.number ?? '') }]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={receipt?.number} actions={actions} />}>
+        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={receipt?.number} actions={actions} />}>
         <div className="space-y-3">
           <FormSection title="Header">
             <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label><Input {...register('receipt_date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />{errors.receipt_date && <p className="text-[11px] text-red-500">{errors.receipt_date.message}</p>}</div>

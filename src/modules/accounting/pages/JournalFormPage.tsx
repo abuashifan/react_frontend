@@ -171,7 +171,7 @@ export default function JournalFormPage() {
         status={status}
         readOnly={!isEditable}
         breadcrumb={[{ label: 'Akuntansi' }, { label: 'Jurnal', path: '/accounting/journals' }, { label: isCreate ? 'Buat Jurnal' : (journal?.journal_number ?? '') }]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={journal?.journal_number} actions={actions} />}
+        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={journal?.journal_number} actions={actions} />}
       >
         <div className="space-y-3">
           <FormSection title="Header">

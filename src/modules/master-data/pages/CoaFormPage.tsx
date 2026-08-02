@@ -4,10 +4,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
+import { FormSaveActions } from '@/components/shared/layout/FormSaveActions'
 import { FormSection } from '@/components/shared/form/FormSection'
-import { FixedBottomBar } from '@/components/shared/layout/FixedBottomBar'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -86,26 +85,18 @@ export default function CoaFormPage() {
   return (
     <FormLayout
       title={isCreate ? 'Tambah Akun' : 'Edit Akun'}
+      documentNumber={isCreate ? undefined : coa?.account_name}
       breadcrumb={[
         { label: 'Master Data' },
         { label: 'COA', path: '/master-data/coa' },
         { label: isCreate ? 'Tambah Akun' : (coa?.account_code ?? '') },
       ]}
-      bottomBar={
-        <FixedBottomBar
-          left={<span className="text-[13px] text-[#64748b]">{isCreate ? 'Akun baru' : coa?.account_name}</span>}
-        >
-          <Button variant="outline" className="h-8 text-[13px]" onClick={() => closeRecordTab(id ? `/master-data/coa/${id}` : '/master-data/coa/create', '/master-data/coa')}>
-            Batal
-          </Button>
-          <Button
-            className="bg-[#e39774] hover:bg-[#d4845e] h-8 text-[13px]"
-            onClick={handleSubmit(onSubmit)}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Menyimpan...' : 'Simpan'}
-          </Button>
-        </FixedBottomBar>
+      headerActions={
+        <FormSaveActions
+          onCancel={() => closeRecordTab(id ? `/master-data/coa/${id}` : '/master-data/coa/create', '/master-data/coa')}
+          onSave={handleSubmit(onSubmit)}
+          isSaving={isSubmitting}
+        />
       }
     >
       <div className="space-y-3">

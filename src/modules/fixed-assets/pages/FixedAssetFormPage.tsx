@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useParams } from 'react-router-dom'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
-import { FixedBottomBar } from '@/components/shared/layout/FixedBottomBar'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
@@ -239,16 +238,9 @@ export default function FixedAssetFormPage() {
     )
   }
 
-  const bottomBar = (
-    <FixedBottomBar
-      left={
-        <>
-          <span className="font-semibold text-[#24323a]">{asset?.asset_number ?? (isCreate ? 'Aktiva Baru' : `FA-${assetId}`)}</span>
-          <span className="text-[#d9e2e5]">·</span>
-          <StatusBadge status={status} />
-        </>
-      }
-    >
+  const headerActions = (
+    <>
+      <StatusBadge status={status} />
       {isEditable && can(isCreate ? 'fixed_assets.create' : 'fixed_assets.edit') && (
         <Button type="button" variant="outline" className="h-8 px-4 text-[13px]" disabled={isSubmitting || mutations.create.isPending || mutations.update.isPending} onClick={() => void handleSave()}>
           {isSubmitting ? 'Menyimpan...' : 'Simpan'}
@@ -268,7 +260,7 @@ export default function FixedAssetFormPage() {
           </Button>
         </PermissionGuard>
       )}
-    </FixedBottomBar>
+    </>
   )
 
   return (
@@ -281,7 +273,7 @@ export default function FixedAssetFormPage() {
           ? 'Aktiva dengan depresiasi yang sudah diposting hanya dapat dilihat.'
           : 'Aktiva sudah dilepas/terdepresiasi penuh sehingga hanya dapat dilihat.'}
         breadcrumb={[{ label: 'Aktiva Tetap', path: '/fixed-assets' }, { label: isCreate ? 'Buat Aktiva' : (asset?.asset_number ?? '') }]}
-        bottomBar={bottomBar}
+        headerActions={headerActions}
       >
         <div className="space-y-3">
           <FormSection title="Informasi Dasar">

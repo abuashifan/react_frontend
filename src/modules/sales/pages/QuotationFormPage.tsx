@@ -276,7 +276,7 @@ export default function QuotationFormPage() {
         { label: 'Quotation', path: '/sales/quotations' },
         { label: isCreate ? 'Buat Quotation' : (quotation?.number ?? '') },
       ]}
-      bottomBar={<DocumentActionBar documentStatus={status} documentNumber={quotation?.number} actions={actions} />}
+      headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={quotation?.number} actions={actions} />}
     >
       <div className="space-y-3">
         <FormSection title="Header">

@@ -161,7 +161,7 @@ export default function GoodsReceiptFormPage() {
         documentNumber={gr?.number}
         status={status}
         breadcrumb={[{ label: 'Pembelian' }, { label: 'Penerimaan Barang', path: '/purchase/goods-receipts' }, { label: isCreate ? 'Buat GR' : (gr?.number ?? '') }]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={gr?.number} actions={actions} />}
+        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={gr?.number} actions={actions} />}
       >
         <div className="space-y-3">
           <FormSection title="Header">

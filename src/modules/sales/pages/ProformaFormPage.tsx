@@ -219,7 +219,7 @@ export default function ProformaFormPage() {
         { label: 'Proforma', path: '/sales/proformas' },
         { label: isCreate ? 'Buat Proforma' : (proforma?.number ?? '') },
       ]}
-      bottomBar={<DocumentActionBar documentStatus={status} documentNumber={proforma?.number} actions={actions} />}
+      headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={proforma?.number} actions={actions} />}
     >
       <div className="space-y-3">
         <FormSection title="Header">

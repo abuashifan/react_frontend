@@ -276,7 +276,7 @@ export default function SalesInvoiceFormPage() {
           { label: 'Invoice', path: '/sales/invoices' },
           { label: isCreate ? 'Buat Invoice' : (invoice?.number ?? '') },
         ]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={invoice?.number} actions={actions} />}
+        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={invoice?.number} actions={actions} />}
       >
         <div className="space-y-3">
           {hasPostedDependences && (
