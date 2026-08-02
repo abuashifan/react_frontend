@@ -76,7 +76,7 @@ export function FormLayout({
       <div
         className={cn(
           'min-h-0 flex-1 overflow-y-auto p-4 lg:p-6',
-          bottomBar && 'pb-[calc(56px+var(--shell-safe-bottom)+16px)]',
+          bottomBar && 'pb-[calc(var(--shell-bottom-bar-actual-h,56px)+16px)]',
         )}
       >
         <div className="max-w-[1200px]">

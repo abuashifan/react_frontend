@@ -23,13 +23,14 @@ import type { DocumentStatus } from '@/types/common.types'
 
 interface EditableLine {
   product_id: number | null
+  product?: { id: number; code: string; name: string } | null
   description: string
   quantity: number
   unit_price: number
   discount_percent: number
 }
 
-const DEFAULT_LINE: EditableLine = { product_id: null, description: '', quantity: 1, unit_price: 0, discount_percent: 0 }
+const DEFAULT_LINE: EditableLine = { product_id: null, product: null, description: '', quantity: 1, unit_price: 0, discount_percent: 0 }
 
 function lineSubtotal(l: EditableLine) {
   return l.quantity * l.unit_price * (1 - l.discount_percent / 100)
@@ -67,6 +68,7 @@ export default function ProformaFormPage() {
       })
       setLines(proforma.lines.map((l) => ({
         product_id: l.product_id,
+        product: l.product,
         description: l.description,
         quantity: l.quantity,
         unit_price: l.unit_price,
@@ -150,11 +152,15 @@ export default function ProformaFormPage() {
       render: ({ item, isReadOnly, onUpdate }) => (
         <SearchableSelect
           value={item.product_id}
-          onChange={(v) => onUpdate('product_id', v)}
+          onChange={(v, opt) => {
+            onUpdate('product_id', v)
+            onUpdate('product', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null)
+          }}
           onSearch={produkApi.search}
           placeholder="Pilih produk..."
           disabled={isReadOnly}
           size="sm"
+          selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []}
         />
       ),
     },

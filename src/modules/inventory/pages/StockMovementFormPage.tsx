@@ -33,12 +33,14 @@ const MANUAL_TYPES: { value: StockMovementType; label: string }[] = [
 
 interface EditableLine {
   product_id: number | null
+  product?: { id: number; code: string; name: string } | null
   warehouse_id: number | null
+  warehouse?: { id: number; code: string; name: string } | null
   quantity: number
   unit_cost: number
 }
 
-const DEFAULT_LINE: EditableLine = { product_id: null, warehouse_id: null, quantity: 1, unit_cost: 0 }
+const DEFAULT_LINE: EditableLine = { product_id: null, product: null, warehouse_id: null, warehouse: null, quantity: 1, unit_cost: 0 }
 
 export default function StockMovementFormPage() {
   const { replaceRecordTab } = useRecordTab()
@@ -75,7 +77,9 @@ export default function StockMovementFormPage() {
       })
       setLines(movement.lines.map((l) => ({
         product_id: l.product_id,
+        product: l.product,
         warehouse_id: l.warehouse_id,
+        warehouse: l.warehouse,
         quantity: l.quantity,
         unit_cost: l.unit_cost ?? 0,
       })))
@@ -147,7 +151,7 @@ export default function StockMovementFormPage() {
       width: 200,
       render: ({ item, index, isReadOnly, onUpdate }) => (
         <div>
-          <SearchableSelect value={item.product_id} onChange={(v) => { onUpdate('product_id', v); setLineErrors((prev) => { const n = { ...prev }; delete n[index]; return n }) }} onSearch={produkApi.search} placeholder="Pilih produk..." disabled={isReadOnly} size="sm" />
+          <SearchableSelect value={item.product_id} onChange={(v, opt) => { onUpdate('product_id', v); onUpdate('product', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null); setLineErrors((prev) => { const n = { ...prev }; delete n[index]; return n }) }} onSearch={produkApi.search} placeholder="Pilih produk..." disabled={isReadOnly} size="sm" selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []} />
           {lineErrors[index]?.product_id && <p className="mt-0.5 text-[10px] text-red-500">{lineErrors[index].product_id}</p>}
         </div>
       ),
@@ -158,7 +162,7 @@ export default function StockMovementFormPage() {
       width: 160,
       render: ({ item, index, isReadOnly, onUpdate }) => (
         <div>
-          <SearchableSelect value={item.warehouse_id} onChange={(v) => { onUpdate('warehouse_id', v); setLineErrors((prev) => { const n = { ...prev }; delete n[index]; return n }) }} onSearch={gudangApi.search} placeholder="Pilih gudang..." disabled={isReadOnly} size="sm" />
+          <SearchableSelect value={item.warehouse_id} onChange={(v, opt) => { onUpdate('warehouse_id', v); onUpdate('warehouse', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null); setLineErrors((prev) => { const n = { ...prev }; delete n[index]; return n }) }} onSearch={gudangApi.search} placeholder="Pilih gudang..." disabled={isReadOnly} size="sm" selectedOptions={item.warehouse ? [{ value: item.warehouse.id, label: item.warehouse.name, sublabel: item.warehouse.code }] : []} />
           {lineErrors[index]?.warehouse_id && <p className="mt-0.5 text-[10px] text-red-500">{lineErrors[index].warehouse_id}</p>}
         </div>
       ),

@@ -123,6 +123,7 @@ export default function ProdukListPage() {
         isFetching={isFetching}
         pagination={{ pageIndex: page - 1, pageSize: perPage }}
         onPaginationChange={(s) => { setPage(s.pageIndex + 1); setPerPage(s.pageSize) }}
+        onRowClick={(row) => openRecordTab({ label: row.product_name, path: `/master-data/products/${row.id}` })}
         emptyTitle="Belum ada produk"
         emptyDescription="Tambahkan produk pertama untuk memulai."
       />

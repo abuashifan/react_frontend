@@ -312,7 +312,7 @@ export default function StockAdjustmentFormPage() {
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Gudang Default</Label>
-              <SearchableSelect value={warehouseId ?? null} onChange={(v) => setValue('warehouse_id', v)} onSearch={gudangApi.search} placeholder="Pilih gudang..." disabled={!isEditable} />
+              <SearchableSelect value={warehouseId ?? null} onChange={(v) => setValue('warehouse_id', v)} onSearch={gudangApi.search} placeholder="Pilih gudang..." disabled={!isEditable} selectedOptions={adj?.warehouse ? [{ value: adj.warehouse.id, label: adj.warehouse.name }] : []} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Alasan</Label>

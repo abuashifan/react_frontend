@@ -21,8 +21,8 @@ import type { DocumentStatus } from '@/types/common.types'
 import { toDateInputValue } from '@/lib/utils'
 import { useRecordTab } from '@/hooks/useRecordTab'
 
-interface EditableLine { account_id: number | null; amount: number; description: string }
-const DEFAULT_LINE: EditableLine = { account_id: null, amount: 0, description: '' }
+interface EditableLine { account_id: number | null; account?: { id: number; code: string; name: string } | null; amount: number; description: string }
+const DEFAULT_LINE: EditableLine = { account_id: null, account: null, amount: 0, description: '' }
 
 export default function CashReceiptFormPage() {
   const { replaceRecordTab } = useRecordTab()
@@ -42,7 +42,7 @@ export default function CashReceiptFormPage() {
   useEffect(() => {
     if (receipt) {
       reset({ receipt_date: toDateInputValue(receipt.receipt_date), cash_bank_account_id: receipt.cash_bank_account_id, contact_id: receipt.contact_id, amount: receipt.amount, notes: receipt.notes ?? '' })
-      setLines(receipt.lines.map((l) => ({ account_id: l.account_id, amount: l.amount, description: l.description ?? '' })))
+      setLines(receipt.lines.map((l) => ({ account_id: l.account_id, account: l.account, amount: l.amount, description: l.description ?? '' })))
     }
   }, [receipt, reset])
 
@@ -59,7 +59,7 @@ export default function CashReceiptFormPage() {
   const handleVoid = async (reason: string) => { await voidReceipt.mutateAsync({ id: Number(id), reason }); toast.success('Berhasil di-void.'); setVoidOpen(false) }
 
   const columns: LineItemColumn<EditableLine>[] = [
-    { id: 'account', header: 'Akun Lawan', width: 200, render: ({ item, isReadOnly, onUpdate }) => <SearchableSelect value={item.account_id} onChange={(v) => onUpdate('account_id', v)} onSearch={coaApi.search} placeholder="Pilih akun..." disabled={isReadOnly} size="sm" /> },
+    { id: 'account', header: 'Akun Lawan', width: 200, render: ({ item, isReadOnly, onUpdate }) => <SearchableSelect value={item.account_id} onChange={(v, opt) => { onUpdate('account_id', v); onUpdate('account', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null) }} onSearch={coaApi.search} placeholder="Pilih akun..." disabled={isReadOnly} size="sm" selectedOptions={item.account ? [{ value: item.account.id, label: item.account.name, sublabel: item.account.code }] : []} /> },
     { id: 'amount', header: 'Jumlah', width: 130, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <Input type="number" value={item.amount || ''} onChange={(e) => onUpdate('amount', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} /> },
     { id: 'description', header: 'Keterangan', width: 180, render: ({ item, isReadOnly, onUpdate }) => <Input value={item.description} onChange={(e) => onUpdate('description', e.target.value)} disabled={isReadOnly} placeholder="Keterangan..." className="h-8 text-[12px]" /> },
   ]
