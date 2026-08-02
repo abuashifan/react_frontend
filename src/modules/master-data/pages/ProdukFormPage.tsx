@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm, Controller, type Control } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -19,6 +19,7 @@ import { coaApi } from '../services/coaApi'
 import { satuanApi } from '../services/satuanApi'
 import { kategoriProdukApi } from '../services/kategoriProdukApi'
 import { produkSchema, type ProdukFormValues } from '../schemas/produkSchema'
+import type { AccountMapping } from '../types/accountMapping.types'
 import { cn } from '@/lib/utils'
 
 const PRODUCT_TYPE_OPTIONS = [
@@ -28,32 +29,83 @@ const PRODUCT_TYPE_OPTIONS = [
 ]
 
 type AccountMode = 'standard' | 'custom'
+type AccountFieldName = 'sales_account_id' | 'sales_discount_account_id' | 'sales_return_account_id' | 'purchase_return_account_id' | 'inventory_account_id' | 'inventory_interim_account_id' | 'cogs_account_id'
 
-function AccountModeToggle({ mode, onChange, disabled }: { mode: AccountMode; onChange: (mode: AccountMode) => void; disabled?: boolean }) {
+function AccountModeToggle({ mode, onChange }: { mode: AccountMode; onChange: (mode: AccountMode) => void }) {
   return (
     <div className="flex gap-1">
       <button
         type="button"
-        disabled={disabled}
         onClick={() => onChange('standard')}
         className={cn(
-          'h-6 rounded px-2 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+          'h-6 rounded px-2 text-[11px] font-medium transition-colors',
           mode === 'standard' ? 'bg-[#5c9ead] text-white' : 'bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]',
         )}
       >
-        Standar
+        Standar Akun
       </button>
       <button
         type="button"
-        disabled={disabled}
         onClick={() => onChange('custom')}
         className={cn(
-          'h-6 rounded px-2 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+          'h-6 rounded px-2 text-[11px] font-medium transition-colors',
           mode === 'custom' ? 'bg-[#5c9ead] text-white' : 'bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]',
         )}
       >
         Custom
       </button>
+    </div>
+  )
+}
+
+function AccountField({
+  name,
+  label,
+  mappingKey,
+  placeholder,
+  mode,
+  control,
+  mappings,
+  selectedOption,
+}: {
+  name: AccountFieldName
+  label: string
+  mappingKey: string
+  placeholder: string
+  mode: AccountMode
+  control: Control<ProdukFormValues>
+  mappings: AccountMapping[]
+  selectedOption?: { id: number; account_name: string; account_code: string } | null
+}) {
+  const mapping = mappings.find((m) => m.mapping_key === mappingKey)
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">{label}</Label>
+      {mode === 'standard' ? (
+        <div
+          className={cn(
+            'flex h-9 items-center rounded-md border px-2.5 text-[13px]',
+            mapping?.account_id ? 'border-[#d9e2e5] bg-[#f8fbfc] text-[#64748b]' : 'border-amber-300 bg-amber-50 text-amber-700',
+          )}
+        >
+          {mapping?.account_id ? `${mapping.account_code} - ${mapping.account_name}` : 'Belum diatur di Pengaturan > Pemetaan Akun'}
+        </div>
+      ) : (
+        <Controller
+          name={name}
+          control={control}
+          render={({ field }) => (
+            <SearchableSelect
+              value={field.value ?? null}
+              onChange={field.onChange}
+              onSearch={coaApi.search}
+              placeholder={placeholder}
+              selectedOptions={selectedOption ? [{ value: selectedOption.id, label: selectedOption.account_name, sublabel: selectedOption.account_code }] : []}
+            />
+          )}
+        />
+      )}
     </div>
   )
 }
@@ -70,8 +122,6 @@ export default function ProdukFormPage() {
   const { create, update } = useProdukMutations()
   const { data: mappingData } = useAccountMappings()
   const mappings = mappingData?.data ?? []
-  const salesAccountDefault = mappings.find((m) => m.mapping_key === 'sales.revenue')
-  const inventoryAccountDefault = mappings.find((m) => m.mapping_key === 'inventory.asset')
 
   const {
     register,
@@ -86,8 +136,7 @@ export default function ProdukFormPage() {
     defaultValues: { is_stock_item: true as boolean, product_type: 'goods' },
   })
 
-  const [salesAccountMode, setSalesAccountMode] = useState<AccountMode>('standard')
-  const [inventoryAccountMode, setInventoryAccountMode] = useState<AccountMode>('standard')
+  const [accountMode, setAccountMode] = useState<AccountMode>('standard')
 
   const isStockItem = watch('is_stock_item')
   const productType = watch('product_type')
@@ -102,21 +151,38 @@ export default function ProdukFormPage() {
   }, [canBeStockItem, isStockItem, setValue])
 
   useEffect(() => {
-    if (salesAccountMode === 'standard') {
+    if (accountMode === 'standard') {
       setValue('sales_account_id', null)
+      setValue('sales_discount_account_id', null)
+      setValue('sales_return_account_id', null)
+      setValue('purchase_return_account_id', null)
+      setValue('inventory_account_id', null)
+      setValue('inventory_interim_account_id', null)
+      setValue('cogs_account_id', null)
     }
-  }, [salesAccountMode, setValue])
+  }, [accountMode, setValue])
 
   useEffect(() => {
-    if (!showInventoryAccount || inventoryAccountMode === 'standard') {
+    if (!showInventoryAccount) {
+      setValue('purchase_return_account_id', null)
       setValue('inventory_account_id', null)
+      setValue('inventory_interim_account_id', null)
+      setValue('cogs_account_id', null)
     }
-  }, [showInventoryAccount, inventoryAccountMode, setValue])
+  }, [showInventoryAccount, setValue])
 
   useEffect(() => {
     if (produk) {
-      setSalesAccountMode(produk.sales_account_id ? 'custom' : 'standard')
-      setInventoryAccountMode(produk.inventory_account_id ? 'custom' : 'standard')
+      const hasCustomAccount = [
+        produk.sales_account_id,
+        produk.sales_discount_account_id,
+        produk.sales_return_account_id,
+        produk.purchase_return_account_id,
+        produk.inventory_account_id,
+        produk.inventory_interim_account_id,
+        produk.cogs_account_id,
+      ].some((value) => value !== null && value !== undefined)
+      setAccountMode(hasCustomAccount ? 'custom' : 'standard')
       reset({
         product_code: produk.product_code ?? '',
         product_name: produk.product_name,
@@ -126,7 +192,12 @@ export default function ProdukFormPage() {
         is_stock_item: produk.is_stock_item,
         description: produk.description ?? '',
         sales_account_id: produk.sales_account_id,
+        sales_discount_account_id: produk.sales_discount_account_id,
+        sales_return_account_id: produk.sales_return_account_id,
+        purchase_return_account_id: produk.purchase_return_account_id,
         inventory_account_id: produk.inventory_account_id,
+        inventory_interim_account_id: produk.inventory_interim_account_id,
+        cogs_account_id: produk.cogs_account_id,
       })
     }
   }, [produk, reset])
@@ -260,76 +331,85 @@ export default function ProdukFormPage() {
         </FormSection>
 
         <FormSection title="Akun Akuntansi">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Penjualan</Label>
-              <AccountModeToggle mode={salesAccountMode} onChange={setSalesAccountMode} />
-            </div>
-            {salesAccountMode === 'standard' ? (
-              <div
-                className={cn(
-                  'flex h-9 items-center rounded-md border px-2.5 text-[13px]',
-                  salesAccountDefault?.account_id
-                    ? 'border-[#d9e2e5] bg-[#f8fbfc] text-[#64748b]'
-                    : 'border-amber-300 bg-amber-50 text-amber-700',
-                )}
-              >
-                {salesAccountDefault?.account_id
-                  ? `${salesAccountDefault.account_code} - ${salesAccountDefault.account_name}`
-                  : 'Belum diatur di Pengaturan > Pemetaan Akun'}
-              </div>
-            ) : (
-              <Controller
-                name="sales_account_id"
-                control={control}
-                render={({ field }) => (
-                  <SearchableSelect
-                    value={field.value ?? null}
-                    onChange={field.onChange}
-                    onSearch={coaApi.search}
-                    placeholder="Pilih akun penjualan..."
-                    selectedOptions={produk?.sales_account ? [{ value: produk.sales_account.id, label: produk.sales_account.account_name, sublabel: produk.sales_account.account_code }] : []}
-                  />
-                )}
-              />
-            )}
+          <div className="flex items-center justify-between md:col-span-2">
+            <p className="text-[11px] text-[#64748b]">Standar Akun mengikuti Pengaturan &gt; Pemetaan Akun. Pilih Custom untuk override khusus produk ini.</p>
+            <AccountModeToggle mode={accountMode} onChange={setAccountMode} />
           </div>
 
+          <AccountField
+            name="sales_account_id"
+            label="Akun Penjualan"
+            mappingKey="sales.revenue"
+            placeholder="Pilih akun penjualan..."
+            mode={accountMode}
+            control={control}
+            mappings={mappings}
+            selectedOption={produk?.sales_account}
+          />
+          <AccountField
+            name="sales_discount_account_id"
+            label="Akun Diskon Penjualan"
+            mappingKey="sales.discount"
+            placeholder="Pilih akun diskon penjualan..."
+            mode={accountMode}
+            control={control}
+            mappings={mappings}
+            selectedOption={produk?.sales_discount_account}
+          />
+          <AccountField
+            name="sales_return_account_id"
+            label="Akun Retur Penjualan"
+            mappingKey="sales.return"
+            placeholder="Pilih akun retur penjualan..."
+            mode={accountMode}
+            control={control}
+            mappings={mappings}
+            selectedOption={produk?.sales_return_account}
+          />
+
           {showInventoryAccount && (
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Persediaan</Label>
-                <AccountModeToggle mode={inventoryAccountMode} onChange={setInventoryAccountMode} />
-              </div>
-              {inventoryAccountMode === 'standard' ? (
-                <div
-                  className={cn(
-                    'flex h-9 items-center rounded-md border px-2.5 text-[13px]',
-                    inventoryAccountDefault?.account_id
-                      ? 'border-[#d9e2e5] bg-[#f8fbfc] text-[#64748b]'
-                      : 'border-amber-300 bg-amber-50 text-amber-700',
-                  )}
-                >
-                  {inventoryAccountDefault?.account_id
-                    ? `${inventoryAccountDefault.account_code} - ${inventoryAccountDefault.account_name}`
-                    : 'Belum diatur di Pengaturan > Pemetaan Akun'}
-                </div>
-              ) : (
-                <Controller
-                  name="inventory_account_id"
-                  control={control}
-                  render={({ field }) => (
-                    <SearchableSelect
-                      value={field.value ?? null}
-                      onChange={field.onChange}
-                      onSearch={coaApi.search}
-                      placeholder="Pilih akun persediaan..."
-                      selectedOptions={produk?.inventory_account ? [{ value: produk.inventory_account.id, label: produk.inventory_account.account_name, sublabel: produk.inventory_account.account_code }] : []}
-                    />
-                  )}
-                />
-              )}
-            </div>
+            <>
+              <AccountField
+                name="inventory_account_id"
+                label="Akun Persediaan"
+                mappingKey="inventory.asset"
+                placeholder="Pilih akun persediaan..."
+                mode={accountMode}
+                control={control}
+                mappings={mappings}
+                selectedOption={produk?.inventory_account}
+              />
+              <AccountField
+                name="cogs_account_id"
+                label="Akun HPP"
+                mappingKey="inventory.cogs"
+                placeholder="Pilih akun HPP..."
+                mode={accountMode}
+                control={control}
+                mappings={mappings}
+                selectedOption={produk?.cogs_account}
+              />
+              <AccountField
+                name="purchase_return_account_id"
+                label="Akun Retur Pembelian"
+                mappingKey="purchase.return"
+                placeholder="Pilih akun retur pembelian..."
+                mode={accountMode}
+                control={control}
+                mappings={mappings}
+                selectedOption={produk?.purchase_return_account}
+              />
+              <AccountField
+                name="inventory_interim_account_id"
+                label="Akun Penerimaan Belum Tertagih"
+                mappingKey="purchase.inventory_interim"
+                placeholder="Pilih akun penerimaan belum tertagih..."
+                mode={accountMode}
+                control={control}
+                mappings={mappings}
+                selectedOption={produk?.inventory_interim_account}
+              />
+            </>
           )}
         </FormSection>
       </div>

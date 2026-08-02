@@ -9,7 +9,12 @@ export const produkSchema = z.object({
   is_stock_item: z.boolean(),
   description: z.string().optional(),
   sales_account_id: z.number().nullable().optional(),
+  sales_discount_account_id: z.number().nullable().optional(),
+  sales_return_account_id: z.number().nullable().optional(),
+  purchase_return_account_id: z.number().nullable().optional(),
   inventory_account_id: z.number().nullable().optional(),
+  inventory_interim_account_id: z.number().nullable().optional(),
+  cogs_account_id: z.number().nullable().optional(),
 })
 
 export type ProdukFormValues = z.infer<typeof produkSchema>
