@@ -12,6 +12,7 @@ import { useAccountMappings, useAccountMappingMutations } from '../hooks/useAcco
 import { coaApi } from '../services/coaApi'
 import type { AccountMapping } from '../types/accountMapping.types'
 import type { SelectOption } from '@/types/common.types'
+import { getApiErrorMessage } from '@/lib/apiError'
 
 export default function AccountMappingPage() {
   const { toast } = useToast()
@@ -21,6 +22,9 @@ export default function AccountMappingPage() {
   const [localValues, setLocalValues] = useState<Record<string, number | null>>({})
   const [selectedOptions, setSelectedOptions] = useState<Record<string, SelectOption<number>[]>>({})
   const [isSaving, setIsSaving] = useState(false)
+  // Halaman ini menyimpan banyak mapping sekaligus, jadi pesan error disimpan per
+  // `mapping_key` supaya baris yang gagal benar-benar ditandai, bukan hanya toast generik.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const mappings: AccountMapping[] = useMemo(() => data?.data ?? [], [data])
 
@@ -44,6 +48,11 @@ export default function AccountMappingPage() {
 
   const handleChange = (key: string, value: number | null, option?: SelectOption<number> | null) => {
     setLocalValues((prev) => ({ ...prev, [key]: value }))
+    setFieldErrors((prev) => {
+      if (!(key in prev)) return prev
+      const { [key]: _removed, ...rest } = prev
+      return rest
+    })
     if (option) {
       setSelectedOptions((prev) => ({ ...prev, [key]: [option] }))
     } else {
@@ -57,15 +66,31 @@ export default function AccountMappingPage() {
 
   const handleSaveAll = async () => {
     setIsSaving(true)
+    setFieldErrors({})
     try {
-      await Promise.all(
+      // `allSettled` supaya kegagalan satu mapping bisa dipetakan kembali ke baris
+      // asalnya (mis. ACCOUNT_INACTIVE / ACCOUNT_TYPE_NOT_ALLOWED pada satu akun).
+      const results = await Promise.allSettled(
         mappings.map((m) =>
           update.mutateAsync({ key: m.mapping_key, payload: { account_id: localValues[m.mapping_key] ?? null } }),
         ),
       )
+
+      const failed: Record<string, string> = {}
+      let firstReason: unknown
+      results.forEach((result, index) => {
+        if (result.status !== 'rejected') return
+        if (firstReason === undefined) firstReason = result.reason
+        failed[mappings[index].mapping_key] = getApiErrorMessage(result.reason, 'Gagal menyimpan mapping akun ini.')
+      })
+
+      if (Object.keys(failed).length > 0) {
+        setFieldErrors(failed)
+        toast.error(getApiErrorMessage(firstReason, 'Gagal menyimpan sebagian mapping akun.'))
+        return
+      }
+
       toast.success('Semua mapping akun berhasil disimpan.')
-    } catch {
-      toast.error('Gagal menyimpan sebagian mapping akun.')
     } finally {
       setIsSaving(false)
     }
@@ -128,6 +153,7 @@ export default function AccountMappingPage() {
                   }}
                   onSearch={handleSearchWithOption}
                   placeholder="Pilih akun..."
+                  error={fieldErrors[mapping.mapping_key]}
                   selectedOptions={selectedOptions[mapping.mapping_key] ?? []}
                 />
               </div>

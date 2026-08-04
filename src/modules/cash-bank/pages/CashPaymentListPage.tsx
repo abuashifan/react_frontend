@@ -7,6 +7,7 @@ import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatus
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
 import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
@@ -24,6 +25,8 @@ export default function CashPaymentListPage() {
   const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
+  const [search, setSearch] = useState('')
+  const [prevSearch, setPrevSearch] = useState('')
   const [filterStatuses, setFilterStatuses] = useState<CashBankStatus[]>([])
   const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [selectedRows, setSelectedRows] = useState<string[]>([])
@@ -31,7 +34,13 @@ export default function CashPaymentListPage() {
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
   const { void: voidPayment } = useCashPaymentMutations()
 
-  const { data, isLoading, isFetching } = useCashPaymentList({ page: page + 1, per_page: 25 })
+  if (search !== prevSearch) {
+    setPrevSearch(search)
+    setPage(0)
+    setSelectedRows([])
+  }
+
+  const { data, isLoading, isFetching } = useCashPaymentList({ page: page + 1, per_page: 25, search: search || undefined })
   const rows = useMemo(() => data?.data ?? [], [data])
   const visibleRows = useMemo(
     () =>
@@ -165,6 +174,7 @@ export default function CashPaymentListPage() {
           </PermissionGuard>
         }
       >
+        <ListSearchBar value={search} onChange={setSearch} placeholder="Cari nomor pengeluaran..." className="mb-3" />
         <DataTable
           data={visibleRows}
           columns={columns}

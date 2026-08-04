@@ -12,6 +12,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { cn, fieldErrorClass } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { useRecordTab } from '@/hooks/useRecordTab'
@@ -36,6 +39,16 @@ function lineSubtotal(l: EditableLine) {
 }
 
 export default function SalesReturnFormPage() {
+  const { id } = useParams()
+  // `/sales/returns/create` dan `/sales/returns/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <SalesReturnFormPageContent key={id ?? 'create'} />
+}
+
+function SalesReturnFormPageContent() {
   const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
@@ -46,7 +59,7 @@ export default function SalesReturnFormPage() {
   const ret = data?.data
   const { create, update, approve, post, void: voidRet } = useSalesReturnMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<SalesReturnFormValues>({
+  const { register, handleSubmit, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<SalesReturnFormValues>({
     resolver: zodResolver(salesReturnSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -88,21 +101,25 @@ export default function SalesReturnFormPage() {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
         toast.success('Retur berhasil diperbarui.')
       }
-    } catch { toast.error('Gagal menyimpan retur.') }
+    } catch (saveError) {
+      // Backend memvalidasi tanggal sebagai `return_date`, form memakai `date`.
+      applyApiValidationErrors(saveError, setError, { return_date: 'date' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan retur.'))
+    }
   })
 
   const handleApprove = async () => {
     try {
       await approve.mutateAsync(Number(id))
       toast.success('Retur berhasil di-approve.')
-    } catch { toast.error('Gagal approve retur.') }
+    } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve retur.')) }
   }
 
   const handlePost = async () => {
     try {
       await post.mutateAsync(Number(id))
       toast.success('Retur berhasil diposting.')
-    } catch { toast.error('Gagal memposting retur.') }
+    } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal memposting retur.')) }
   }
 
   const handleVoid = async (reason: string) => {
@@ -217,8 +234,8 @@ export default function SalesReturnFormPage() {
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Tanggal <span className="text-red-500">*</span>
               </Label>
-              <Input {...register('date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+              <Input {...register('date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+              <FieldError message={errors.date?.message} />
             </div>
 
             {(ret?.sales_invoice_number || ret?.delivery_order_number) && (
@@ -232,7 +249,8 @@ export default function SalesReturnFormPage() {
 
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
           </FormSection>
 

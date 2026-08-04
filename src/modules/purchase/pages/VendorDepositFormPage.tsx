@@ -10,9 +10,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
-import { formatCurrency } from '@/lib/utils'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useVendorDeposit, useVendorDepositMutations } from '../hooks/useVendorDepositList'
 import { toVendorDepositPayload } from '../services/vendorDepositAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
@@ -23,6 +25,16 @@ import { useState } from 'react'
 import { useRecordTab } from '@/hooks/useRecordTab'
 
 export default function VendorDepositFormPage() {
+  const { id } = useParams()
+  // `/purchase/vendor-deposits/create` dan `/purchase/vendor-deposits/:id` merender komponen
+  // yang sama, dan React Router tidak me-remount otomatis saat berpindah di antara keduanya
+  // (hanya param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <VendorDepositFormPageContent key={id ?? 'create'} />
+}
+
+function VendorDepositFormPageContent() {
   const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
@@ -34,7 +46,7 @@ export default function VendorDepositFormPage() {
   const deposit = data?.data
   const { create, post, void: voidDep } = useVendorDepositMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<VendorDepositFormValues>({
+  const { register, handleSubmit, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<VendorDepositFormValues>({
     resolver: zodResolver(vendorDepositSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -52,10 +64,14 @@ export default function VendorDepositFormPage() {
       const res = await create.mutateAsync(toVendorDepositPayload(values))
       toast.success('Deposit vendor berhasil dibuat.')
       replaceRecordTab('/purchase/vendor-deposits/create', { label: res.data.number, path: `/purchase/vendor-deposits/${res.data.id}` })
-    } catch { toast.error('Gagal menyimpan deposit vendor.') }
+    } catch (saveError) {
+      // Backend memakai nama kolom DB (`deposit_date`), form memakai `date`.
+      applyApiValidationErrors(saveError, setError, { deposit_date: 'date' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan deposit vendor.'))
+    }
   })
 
-  const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Deposit berhasil diposting.') } catch { toast.error('Gagal posting deposit.') } }
+  const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Deposit berhasil diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting deposit.')) } }
   const handleVoid = async (reason: string) => {
     await voidDep.mutateAsync({ id: Number(id), reason })
     toast.success('Deposit berhasil di-void.')
@@ -100,8 +116,8 @@ export default function VendorDepositFormPage() {
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
-              <Input {...register('date')} type="date" disabled={!isCreate} className="h-9 text-[13px]" />
-              {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+              <Input {...register('date')} type="date" disabled={!isCreate} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+              <FieldError message={errors.date?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Kas/Bank <span className="text-red-500">*</span></Label>
@@ -109,12 +125,13 @@ export default function VendorDepositFormPage() {
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jumlah <span className="text-red-500">*</span></Label>
-              <Input {...register('amount', { valueAsNumber: true })} type="number" disabled={!isCreate} className="h-9 text-[13px] tabular-nums text-right" min={0} />
-              {errors.amount && <p className="text-[11px] text-red-500">{errors.amount.message}</p>}
+              <Input {...register('amount', { valueAsNumber: true })} type="number" disabled={!isCreate} className={cn('h-9 text-[13px] tabular-nums text-right', fieldErrorClass(errors.amount))} min={0} />
+              <FieldError message={errors.amount?.message} />
             </div>
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} disabled={!isCreate} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} disabled={!isCreate} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
           </FormSection>
 

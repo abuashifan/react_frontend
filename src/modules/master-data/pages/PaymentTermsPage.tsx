@@ -10,11 +10,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePaymentTermsList, usePaymentTermsMutations } from '../hooks/useSimpleLists'
 import { paymentTermsSchema, type PaymentTermsFormValues } from '../schemas/paymentTermsSchema'
 import type { PaymentTerms } from '../types/paymentTerms.types'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { cn, fieldErrorClass } from '@/lib/utils'
 
 export default function PaymentTermsPage() {
   const { toast } = useToast()
@@ -28,6 +31,7 @@ export default function PaymentTermsPage() {
     register,
     handleSubmit,
     reset,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<PaymentTermsFormValues>({ resolver: zodResolver(paymentTermsSchema) })
 
@@ -53,8 +57,10 @@ export default function PaymentTermsPage() {
         toast.success('Syarat pembayaran berhasil dibuat.')
       }
       setDialogOpen(false)
-    } catch {
-      toast.error('Gagal menyimpan syarat pembayaran.')
+    } catch (error) {
+      // DUPLICATE_PAYMENT_TERM_CODE dsb. ditandai di field terkait sekaligus di toast.
+      applyApiValidationErrors(error, setError)
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan syarat pembayaran.'))
     }
   }
 
@@ -63,8 +69,8 @@ export default function PaymentTermsPage() {
     try {
       await deactivate.mutateAsync(item.id)
       toast.success('Syarat pembayaran berhasil dinonaktifkan.')
-    } catch {
-      toast.error('Gagal menonaktifkan syarat pembayaran.')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal menonaktifkan syarat pembayaran.'))
     }
   }
 
@@ -151,22 +157,22 @@ export default function PaymentTermsPage() {
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Kode <span className="text-red-500">*</span>
               </Label>
-              <Input {...register('code')} placeholder="NET30" className="h-9 text-[13px]" />
-              {errors.code && <p className="text-[11px] text-red-500">{errors.code.message}</p>}
+              <Input {...register('code')} placeholder="NET30" className={cn('h-9 text-[13px]', fieldErrorClass(errors.code))} />
+              <FieldError message={errors.code?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Nama <span className="text-red-500">*</span>
               </Label>
-              <Input {...register('name')} placeholder="Net 30" className="h-9 text-[13px]" />
-              {errors.name && <p className="text-[11px] text-red-500">{errors.name.message}</p>}
+              <Input {...register('name')} placeholder="Net 30" className={cn('h-9 text-[13px]', fieldErrorClass(errors.name))} />
+              <FieldError message={errors.name?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Jumlah Hari <span className="text-red-500">*</span>
               </Label>
-              <Input {...register('days', { valueAsNumber: true })} type="number" min="0" placeholder="30" className="h-9 text-[13px] tabular-nums" />
-              {errors.days && <p className="text-[11px] text-red-500">{errors.days.message}</p>}
+              <Input {...register('days', { valueAsNumber: true })} type="number" min="0" placeholder="30" className={cn('h-9 text-[13px] tabular-nums', fieldErrorClass(errors.days))} />
+              <FieldError message={errors.days?.message} />
             </div>
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" className="h-8 text-[13px]" onClick={() => setDialogOpen(false)}>Batal</Button>

@@ -4,6 +4,7 @@ import { useRecordTab } from '@/hooks/useRecordTab'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
 import { SingleCheckboxFilter } from '@/components/shared/filter/SingleCheckboxFilter'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { ActiveStatusBadge } from '@/components/shared/badge/ActiveStatusBadge'
@@ -67,12 +68,20 @@ export default function ProdukListPage() {
   const [filterCategoryId, setFilterCategoryId] = useState<number | null>(null)
   // Default: hanya tampilkan produk aktif. Pilih "Semua" di filter Status untuk menampilkan semuanya.
   const [filterActive, setFilterActive] = useState<boolean | undefined>(true)
+  const [search, setSearch] = useState('')
+  const [prevSearch, setPrevSearch] = useState('')
   const { data, isLoading, isFetching } = useProdukList({
     page,
     per_page: perPage,
     product_category_id: filterCategoryId ?? undefined,
     is_active: filterActive,
+    search: search || undefined,
   })
+
+  if (search !== prevSearch) {
+    setPrevSearch(search)
+    setPage(1)
+  }
 
   const activeFilterCount = [filterCategoryId, filterActive].filter((v) => v !== undefined && v !== null).length
 
@@ -115,6 +124,13 @@ export default function ProdukListPage() {
         </PermissionGuard>
       }
     >
+      <ListSearchBar
+        value={search}
+        onChange={setSearch}
+        placeholder="Cari kode atau nama produk..."
+        className="mb-3"
+      />
+
       <DataTable
         data={data?.data ?? []}
         columns={columns}

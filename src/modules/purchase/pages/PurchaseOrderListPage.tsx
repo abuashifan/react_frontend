@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
@@ -20,12 +21,20 @@ const STATUSES: PurchaseOrderStatus[] = ['draft', 'approved', 'confirmed', 'canc
 export default function PurchaseOrderListPage() {
   const { openRecordTab } = useRecordTab()
   const [page, setPage] = useState(0)
+  const [search, setSearch] = useState('')
+  const [prevSearch, setPrevSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<PurchaseOrderStatus | undefined>()
   const [filterVendor, setFilterVendor] = useState<number | null>(null)
+
+  if (search !== prevSearch) {
+    setPrevSearch(search)
+    setPage(0)
+  }
 
   const { data, isLoading, isFetching } = usePurchaseOrderList({
     page: page + 1,
     per_page: 25,
+    search: search || undefined,
     status: filterStatus,
     vendor_id: filterVendor ?? undefined,
   })
@@ -90,6 +99,7 @@ export default function PurchaseOrderListPage() {
         </PermissionGuard>
       }
     >
+      <ListSearchBar value={search} onChange={setSearch} placeholder="Cari nomor PO, vendor..." className="mb-3" />
       <DataTable
         data={data?.data ?? []}
         columns={columns}

@@ -13,7 +13,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/useToast'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
-import { cn } from '@/lib/utils'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { cn, fieldErrorClass } from '@/lib/utils'
 import { useAccessRoles, useAccessRole, useAccessRoleMutations, usePermissionCatalog } from '../hooks/useAccessManagement'
 import type { AccessRole, PermissionDefinition } from '../types/access.types'
 
@@ -55,7 +57,7 @@ export default function RolesPage() {
       await updatePermissions.mutateAsync({ id: selectedRoleId, permissions: Array.from(getPerms()) })
       setLocalPerms(null)
       toast.success('Izin peran disimpan.')
-    } catch { toast.error('Gagal menyimpan izin.') }
+    } catch (permError) { toast.error(getApiErrorMessage(permError, 'Gagal menyimpan izin.')) }
   }
 
   const handleCreate = createForm.handleSubmit(async (values) => {
@@ -66,19 +68,24 @@ export default function RolesPage() {
       createForm.reset()
       setSelectedRoleId(res.data.id)
       setLocalPerms(null)
-    } catch { toast.error('Gagal membuat peran.') }
+    } catch (createError) {
+      // Tandai field penyebab dari backend (mis. nama peran duplikat) supaya user
+      // tahu isian mana yang salah, bukan hanya toast generik.
+      applyApiValidationErrors(createError, createForm.setError)
+      toast.error(getApiErrorMessage(createError, 'Gagal membuat peran.'))
+    }
   })
 
   const handleClone = async (r: AccessRole) => {
     try { await clone.mutateAsync(r.id); toast.success(`Peran "${r.name}" diklon.`) }
-    catch { toast.error('Gagal mengklon peran.') }
+    catch (cloneError) { toast.error(getApiErrorMessage(cloneError, 'Gagal mengklon peran.')) }
   }
 
   const handleToggleActive = async (r: AccessRole) => {
     try {
       if (r.is_active) { await deactivate.mutateAsync(r.id); toast.success('Peran dinonaktifkan.') }
       else { await reactivate.mutateAsync(r.id); toast.success('Peran diaktifkan.') }
-    } catch { toast.error('Gagal mengubah status peran.') }
+    } catch (statusError) { toast.error(getApiErrorMessage(statusError, 'Gagal mengubah status peran.')) }
   }
 
   if (isLoading) {
@@ -180,12 +187,13 @@ export default function RolesPage() {
           <form onSubmit={(e) => void handleCreate(e)} className="space-y-3 pt-1">
             <div className="flex flex-col gap-1">
               <Label htmlFor="settings-roles-create-name" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Nama Peran <span className="text-red-500">*</span></Label>
-              <Input id="settings-roles-create-name" {...createForm.register('name')} className="h-9 text-[13px]" placeholder="mis. Staf Penjualan" />
-              {createForm.formState.errors.name && <p className="text-[11px] text-red-500">{createForm.formState.errors.name.message}</p>}
+              <Input id="settings-roles-create-name" {...createForm.register('name')} className={cn('h-9 text-[13px]', fieldErrorClass(createForm.formState.errors.name))} placeholder="mis. Staf Penjualan" />
+              <FieldError message={createForm.formState.errors.name?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="settings-roles-create-description" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Deskripsi</Label>
-              <Textarea id="settings-roles-create-description" {...createForm.register('description')} className="resize-none text-[13px]" rows={2} placeholder="Deskripsi singkat peran (opsional)" />
+              <Textarea id="settings-roles-create-description" {...createForm.register('description')} className={cn('resize-none text-[13px]', fieldErrorClass(createForm.formState.errors.description))} rows={2} placeholder="Deskripsi singkat peran (opsional)" />
+              <FieldError message={createForm.formState.errors.description?.message} />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setCreateOpen(false)} className="h-9 text-[13px]">Batal</Button>

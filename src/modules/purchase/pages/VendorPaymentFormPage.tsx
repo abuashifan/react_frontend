@@ -10,9 +10,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
-import { formatCurrency } from '@/lib/utils'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useVendorPayment, useVendorOpenBills, useVendorPaymentMutations } from '../hooks/useVendorPaymentList'
 import { toVendorPaymentPayload } from '../services/vendorPaymentAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
@@ -30,6 +32,16 @@ interface BillLine {
 }
 
 export default function VendorPaymentFormPage() {
+  const { id } = useParams()
+  // `/purchase/payments/create` dan `/purchase/payments/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <VendorPaymentFormPageContent key={id ?? 'create'} />
+}
+
+function VendorPaymentFormPageContent() {
   const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
@@ -42,7 +54,7 @@ export default function VendorPaymentFormPage() {
   const payment = data?.data
   const { create, post, void: voidPayment } = useVendorPaymentMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<VendorPaymentFormValues>({
+  const { register, handleSubmit, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<VendorPaymentFormValues>({
     resolver: zodResolver(vendorPaymentSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -84,10 +96,14 @@ export default function VendorPaymentFormPage() {
       const res = await create.mutateAsync({ ...toVendorPaymentPayload(values), lines })
       toast.success('Pembayaran vendor berhasil dibuat.')
       replaceRecordTab('/purchase/payments/create', { label: res.data.number, path: `/purchase/payments/${res.data.id}` })
-    } catch { toast.error('Gagal menyimpan pembayaran vendor.') }
+    } catch (saveError) {
+      // Backend memakai nama kolom DB (`payment_date`), form memakai `date`.
+      applyApiValidationErrors(saveError, setError, { payment_date: 'date' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan pembayaran vendor.'))
+    }
   })
 
-  const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Pembayaran berhasil diposting.') } catch { toast.error('Gagal posting pembayaran.') } }
+  const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Pembayaran berhasil diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting pembayaran.')) } }
   const handleVoid = async (reason: string) => {
     await voidPayment.mutateAsync({ id: Number(id), reason })
     toast.success('Pembayaran berhasil di-void.')
@@ -132,8 +148,8 @@ export default function VendorPaymentFormPage() {
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
-              <Input {...register('date')} type="date" disabled={!isCreate} className="h-9 text-[13px]" />
-              {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+              <Input {...register('date')} type="date" disabled={!isCreate} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+              <FieldError message={errors.date?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Kas/Bank <span className="text-red-500">*</span></Label>
@@ -141,11 +157,13 @@ export default function VendorPaymentFormPage() {
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Total Pembayaran</Label>
-              <Input {...register('amount', { valueAsNumber: true })} type="number" disabled className="h-9 text-[13px] tabular-nums text-right" />
+              <Input {...register('amount', { valueAsNumber: true })} type="number" disabled className={cn('h-9 text-[13px] tabular-nums text-right', fieldErrorClass(errors.amount))} />
+              <FieldError message={errors.amount?.message} />
             </div>
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} disabled={!isCreate} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} disabled={!isCreate} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
           </FormSection>
 

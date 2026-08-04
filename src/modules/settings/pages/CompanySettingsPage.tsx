@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage } from '@/lib/apiError'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useCompanySettings, useCompanySettingsMutations } from '../hooks/useCompanySettings'
 import type { CompanyAccountingSettings, CompanyModuleSettings, RoundingMethod } from '../types/settings.types'
@@ -63,7 +64,7 @@ export default function CompanySettingsPage() {
         rounding_method: accounting.rounding_method,
       })
       toast.success('Pengaturan akuntansi disimpan.')
-    } catch { toast.error('Gagal menyimpan pengaturan akuntansi.') }
+    } catch (saveError) { toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan pengaturan akuntansi.')) }
   }
 
   const handleToggleModule = async (key: keyof CompanyModuleSettings, value: boolean) => {
@@ -72,9 +73,9 @@ export default function CompanySettingsPage() {
     try {
       await updateModules.mutateAsync({ [key]: value })
       toast.success('Pengaturan modul disimpan.')
-    } catch {
+    } catch (moduleError) {
       setModules(modules)
-      toast.error('Gagal menyimpan pengaturan modul.')
+      toast.error(getApiErrorMessage(moduleError, 'Gagal menyimpan pengaturan modul.'))
     }
   }
 

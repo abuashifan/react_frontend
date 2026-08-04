@@ -12,8 +12,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { cn, fieldErrorClass } from '@/lib/utils'
 import { usePurchaseReturn, usePurchaseReturnMutations } from '../hooks/usePurchaseReturnList'
 import { toPurchaseReturnPayload } from '../services/purchaseReturnAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
@@ -37,6 +40,16 @@ function lineSubtotal(l: EditableLine) {
 
 export default function PurchaseReturnFormPage() {
   const { id } = useParams()
+  // `/purchase/returns/create` dan `/purchase/returns/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <PurchaseReturnFormPageContent key={id ?? 'create'} />
+}
+
+function PurchaseReturnFormPageContent() {
+  const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
@@ -46,7 +59,7 @@ export default function PurchaseReturnFormPage() {
   const ret = data?.data
   const { create, approve, post, void: voidRet } = usePurchaseReturnMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<PurchaseReturnFormValues>({
+  const { register, handleSubmit, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<PurchaseReturnFormValues>({
     resolver: zodResolver(purchaseReturnSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -68,11 +81,15 @@ export default function PurchaseReturnFormPage() {
     try {
       await create.mutateAsync(toPurchaseReturnPayload(values, lines.map(({ product, ...line }) => line)))
       toast.success('Retur pembelian berhasil dibuat.')
-    } catch { toast.error('Gagal menyimpan retur pembelian.') }
+    } catch (saveError) {
+      // Backend memakai nama kolom DB (`return_date`), form memakai `date`.
+      applyApiValidationErrors(saveError, setError, { return_date: 'date' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan retur pembelian.'))
+    }
   })
 
-  const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); toast.success('Retur di-approve.') } catch { toast.error('Gagal approve retur.') } }
-  const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Retur berhasil diposting.') } catch { toast.error('Gagal posting retur.') } }
+  const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); toast.success('Retur di-approve.') } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve retur.')) } }
+  const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Retur berhasil diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting retur.')) } }
   const handleVoid = async (reason: string) => {
     await voidRet.mutateAsync({ id: Number(id), reason })
     toast.success('Retur berhasil di-void.')
@@ -127,8 +144,8 @@ export default function PurchaseReturnFormPage() {
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
-              <Input {...register('date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+              <Input {...register('date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+              <FieldError message={errors.date?.message} />
             </div>
             {(ret?.vendor_bill_number || ret?.goods_receipt_number) && (
               <div className="flex flex-col gap-1">
@@ -138,7 +155,8 @@ export default function PurchaseReturnFormPage() {
             )}
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
           </FormSection>
           <div>

@@ -12,11 +12,14 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { useGudangList, useGudangMutations } from '../hooks/useSimpleLists'
 import { gudangSchema, type GudangFormValues } from '../schemas/gudangSchema'
 import type { Gudang } from '../types/gudang.types'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { cn, fieldErrorClass } from '@/lib/utils'
 
 export default function GudangPage() {
   const { toast } = useToast()
@@ -31,6 +34,7 @@ export default function GudangPage() {
     handleSubmit,
     control,
     reset,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<GudangFormValues>({
     resolver: zodResolver(gudangSchema),
@@ -59,8 +63,10 @@ export default function GudangPage() {
         toast.success('Gudang berhasil dibuat.')
       }
       setDialogOpen(false)
-    } catch {
-      toast.error('Gagal menyimpan gudang.')
+    } catch (error) {
+      // DUPLICATE_WAREHOUSE_CODE dsb. ditandai di field terkait sekaligus di toast.
+      applyApiValidationErrors(error, setError)
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan gudang.'))
     }
   }
 
@@ -69,8 +75,9 @@ export default function GudangPage() {
     try {
       await deactivate.mutateAsync(item.id)
       toast.success('Gudang berhasil dinonaktifkan.')
-    } catch {
-      toast.error('Gagal menonaktifkan gudang.')
+    } catch (error) {
+      // Mis. CANNOT_DEACTIVATE_DEFAULT_WAREHOUSE dari backend.
+      toast.error(getApiErrorMessage(error, 'Gagal menonaktifkan gudang.'))
     }
   }
 
@@ -156,19 +163,20 @@ export default function GudangPage() {
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Kode <span className="text-red-500">*</span>
               </Label>
-              <Input {...register('code')} placeholder="GDG-01" className="h-9 text-[13px]" />
-              {errors.code && <p className="text-[11px] text-red-500">{errors.code.message}</p>}
+              <Input {...register('code')} placeholder="GDG-01" className={cn('h-9 text-[13px]', fieldErrorClass(errors.code))} />
+              <FieldError message={errors.code?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Nama <span className="text-red-500">*</span>
               </Label>
-              <Input {...register('name')} placeholder="Gudang Utama" className="h-9 text-[13px]" />
-              {errors.name && <p className="text-[11px] text-red-500">{errors.name.message}</p>}
+              <Input {...register('name')} placeholder="Gudang Utama" className={cn('h-9 text-[13px]', fieldErrorClass(errors.name))} />
+              <FieldError message={errors.name?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Alamat</Label>
-              <Textarea {...register('address')} placeholder="Alamat gudang (opsional)" className="text-[13px] resize-none" rows={2} />
+              <Textarea {...register('address')} placeholder="Alamat gudang (opsional)" className={cn('text-[13px] resize-none', fieldErrorClass(errors.address))} rows={2} />
+              <FieldError message={errors.address?.message} />
             </div>
             <div className="flex items-center gap-3">
               <Controller
@@ -178,7 +186,10 @@ export default function GudangPage() {
                   <Switch checked={field.value} onCheckedChange={field.onChange} />
                 )}
               />
-              <Label className="text-[13px] text-[#24323a]">Gudang aktif</Label>
+              <div className="flex flex-col">
+                <Label className="text-[13px] text-[#24323a]">Gudang aktif</Label>
+                <FieldError message={errors.is_active?.message} />
+              </div>
             </div>
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" className="h-8 text-[13px]" onClick={() => setDialogOpen(false)}>Batal</Button>

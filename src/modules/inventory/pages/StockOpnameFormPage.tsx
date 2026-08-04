@@ -11,10 +11,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
-import { formatNumber, formatDate } from '@/lib/utils'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { cn, fieldErrorClass, formatNumber, formatDate } from '@/lib/utils'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { useStockOpname, useStockOpnameMutations } from '../hooks/useStockOpnameList'
 import { stockOpnameSchema, type StockOpnameFormValues } from '../schemas/stockOpnameSchema'
@@ -23,6 +25,16 @@ import type { StockOpnameLine } from '../types/stockOpname.types'
 import { useRecordTab } from '@/hooks/useRecordTab'
 
 export default function StockOpnameFormPage() {
+  const { id } = useParams()
+  // `/inventory/opnames/create` dan `/inventory/opnames/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <StockOpnameFormPageContent key={id ?? 'create'} />
+}
+
+function StockOpnameFormPageContent() {
   const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
@@ -33,7 +45,7 @@ export default function StockOpnameFormPage() {
   const opname = data?.data
   const { create, generateLines, updateLine, markCounted, finalize, void: voidOpname } = useStockOpnameMutations()
 
-  const { register, handleSubmit, control, getValues, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<StockOpnameFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, watch, reset, setError, formState: { errors, isSubmitting } } = useForm<StockOpnameFormValues>({
     resolver: zodResolver(stockOpnameSchema),
     defaultValues: { opname_date: new Date().toISOString().slice(0, 10) },
   })
@@ -77,12 +89,17 @@ export default function StockOpnameFormPage() {
       formDraft.clearDraft()
       toast.success('Opname berhasil dibuat.')
       replaceRecordTab('/inventory/opnames/create', { label: res.data.number, path: `/inventory/opnames/${res.data.id}` })
-    } catch { toast.error('Gagal membuat opname.') }
+    } catch (saveError) {
+      // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
+      // bukan hanya toast generik "Gagal membuat opname".
+      applyApiValidationErrors(saveError, setError)
+      toast.error(getApiErrorMessage(saveError, 'Gagal membuat opname.'))
+    }
   })
 
   const handleGenerateLines = async () => {
     try { await generateLines.mutateAsync(Number(id)); toast.success('Lines berhasil digenerate.') }
-    catch { toast.error('Gagal generate lines.') }
+    catch (generateError) { toast.error(getApiErrorMessage(generateError, 'Gagal generate lines.')) }
   }
 
   const handleUpdateLine = async (lineId: number) => {
@@ -93,7 +110,7 @@ export default function StockOpnameFormPage() {
     try {
       await updateLine.mutateAsync({ id: Number(id), lineId, physical_quantity: qty, reason: input.reason || undefined })
       toast.success('Qty fisik tersimpan.')
-    } catch { toast.error('Gagal menyimpan qty fisik.') }
+    } catch (lineError) { toast.error(getApiErrorMessage(lineError, 'Gagal menyimpan qty fisik.')) }
   }
 
   const handleMarkCounted = async () => {
@@ -108,12 +125,12 @@ export default function StockOpnameFormPage() {
       return
     }
     try { await markCounted.mutateAsync(Number(id)); toast.success('Opname ditandai selesai dihitung.') }
-    catch { toast.error('Gagal mark counted.') }
+    catch (markError) { toast.error(getApiErrorMessage(markError, 'Gagal mark counted.')) }
   }
 
   const handleFinalize = async () => {
     try { await finalize.mutateAsync(Number(id)); toast.success('Opname berhasil difinalisasi.') }
-    catch { toast.error('Gagal finalisasi opname.') }
+    catch (finalizeError) { toast.error(getApiErrorMessage(finalizeError, 'Gagal finalisasi opname.')) }
   }
 
   const handleVoid = async (reason: string) => {
@@ -170,7 +187,7 @@ export default function StockOpnameFormPage() {
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
               {isCreate
-                ? <><Input {...register('opname_date')} type="date" className="h-9 text-[13px]" />{errors.opname_date && <p className="text-[11px] text-red-500">{errors.opname_date.message}</p>}</>
+                ? <><Input {...register('opname_date')} type="date" className={cn('h-9 text-[13px]', fieldErrorClass(errors.opname_date))} /><FieldError message={errors.opname_date?.message} /></>
                 : <span className="text-[13px] text-[#334155]">{opname ? formatDate(opname.opname_date) : '-'}</span>
               }
             </div>
@@ -184,7 +201,7 @@ export default function StockOpnameFormPage() {
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
               {isCreate
-                ? <Textarea {...register('notes')} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+                ? <><Textarea {...register('notes')} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} /><FieldError message={errors.notes?.message} /></>
                 : <span className="text-[13px] text-[#334155]">{opname?.notes ?? '-'}</span>
               }
             </div>

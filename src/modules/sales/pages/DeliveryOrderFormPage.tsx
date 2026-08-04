@@ -11,6 +11,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { cn, fieldErrorClass } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { useRecordTab } from '@/hooks/useRecordTab'
@@ -31,6 +34,16 @@ interface EditableLine {
 const DEFAULT_LINE: EditableLine = { product_id: null, product: null, description: '', quantity: 1 }
 
 export default function DeliveryOrderFormPage() {
+  const { id } = useParams()
+  // `/sales/delivery-orders/create` dan `/sales/delivery-orders/:id` merender komponen yang
+  // sama, dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <DeliveryOrderFormPageContent key={id ?? 'create'} />
+}
+
+function DeliveryOrderFormPageContent() {
   const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
@@ -41,7 +54,7 @@ export default function DeliveryOrderFormPage() {
   const order = data?.data
   const { create, update, ready, ship, deliver, cancel, void: voidDo } = useDeliveryOrderMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<DeliveryOrderFormValues>({
+  const { register, handleSubmit, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<DeliveryOrderFormValues>({
     resolver: zodResolver(deliveryOrderSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -84,21 +97,27 @@ export default function DeliveryOrderFormPage() {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
         toast.success('Delivery Order berhasil diperbarui.')
       }
-    } catch { toast.error('Gagal menyimpan Delivery Order.') }
+    } catch (saveError) {
+      // Backend memakai `delivery_date`/`shipping_address`, form memakai
+      // `date`/`delivery_address` — dipetakan supaya pesan error mendarat di
+      // input yang benar.
+      applyApiValidationErrors(saveError, setError, { delivery_date: 'date', shipping_address: 'delivery_address' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Delivery Order.'))
+    }
   })
 
   const handleReady = async () => {
     try {
       await ready.mutateAsync(Number(id))
       toast.success('DO siap dikirim.')
-    } catch { toast.error('Gagal mengubah status DO.') }
+    } catch (readyError) { toast.error(getApiErrorMessage(readyError, 'Gagal mengubah status DO.')) }
   }
 
   const handleShip = async () => {
     try {
       await ship.mutateAsync(Number(id))
       toast.success('DO dalam pengiriman.')
-    } catch { toast.error('Gagal mengubah status DO.') }
+    } catch (shipError) { toast.error(getApiErrorMessage(shipError, 'Gagal mengubah status DO.')) }
   }
 
   const handleDeliver = async () => {
@@ -106,7 +125,7 @@ export default function DeliveryOrderFormPage() {
     try {
       await deliver.mutateAsync(Number(id))
       toast.success('Pengiriman berhasil dikonfirmasi.')
-    } catch { toast.error('Gagal mengkonfirmasi pengiriman.') }
+    } catch (deliverError) { toast.error(getApiErrorMessage(deliverError, 'Gagal mengkonfirmasi pengiriman.')) }
     finally { setDeliverConfirming(false) }
   }
 
@@ -114,7 +133,7 @@ export default function DeliveryOrderFormPage() {
     try {
       await cancel.mutateAsync(Number(id))
       toast.success('DO dibatalkan.')
-    } catch { toast.error('Gagal membatalkan DO.') }
+    } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan DO.')) }
   }
 
   const handleVoid = async (reason: string) => {
@@ -226,8 +245,8 @@ export default function DeliveryOrderFormPage() {
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Tanggal <span className="text-red-500">*</span>
               </Label>
-              <Input {...register('date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+              <Input {...register('date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+              <FieldError message={errors.date?.message} />
             </div>
 
             <div className="flex flex-col gap-1">
@@ -238,6 +257,7 @@ export default function DeliveryOrderFormPage() {
                 onSearch={gudangApi.search}
                 placeholder="Pilih gudang..."
                 disabled={!isEditable}
+                error={errors.warehouse_id?.message}
                 selectedOptions={order?.warehouse ? [{ value: order.warehouse.id, label: order.warehouse.name }] : []}
               />
             </div>
@@ -251,12 +271,14 @@ export default function DeliveryOrderFormPage() {
 
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Alamat Pengiriman</Label>
-              <Textarea {...register('delivery_address')} disabled={!isEditable} placeholder="Alamat pengiriman..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('delivery_address')} disabled={!isEditable} placeholder="Alamat pengiriman..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.delivery_address))} rows={2} />
+              <FieldError message={errors.delivery_address?.message} />
             </div>
 
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
           </FormSection>
 

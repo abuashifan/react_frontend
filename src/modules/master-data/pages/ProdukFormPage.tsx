@@ -7,11 +7,15 @@ import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSaveActions } from '@/components/shared/layout/FormSaveActions'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useProduk, useProdukMutations } from '../hooks/useProdukList'
 import { useAccountMappings } from '../hooks/useAccountMappings'
 import { coaApi } from '../services/coaApi'
@@ -19,7 +23,7 @@ import { satuanApi } from '../services/satuanApi'
 import { kategoriProdukApi } from '../services/kategoriProdukApi'
 import { produkSchema, type ProdukFormValues } from '../schemas/produkSchema'
 import type { AccountMapping } from '../types/accountMapping.types'
-import { cn } from '@/lib/utils'
+import { cn, fieldErrorClass } from '@/lib/utils'
 
 const PRODUCT_TYPE_OPTIONS = [
   { value: 'goods', label: 'Barang' },
@@ -66,6 +70,7 @@ function AccountField({
   control,
   mappings,
   selectedOption,
+  error,
 }: {
   name: AccountFieldName
   label: string
@@ -75,6 +80,7 @@ function AccountField({
   control: Control<ProdukFormValues>
   mappings: AccountMapping[]
   selectedOption?: { id: number; account_name: string; account_code: string } | null
+  error?: string
 }) {
   const mapping = mappings.find((m) => m.mapping_key === mappingKey)
 
@@ -100,16 +106,28 @@ function AccountField({
               onChange={field.onChange}
               onSearch={coaApi.search}
               placeholder={placeholder}
+              error={error}
               selectedOptions={selectedOption ? [{ value: selectedOption.id, label: selectedOption.account_name, sublabel: selectedOption.account_code }] : []}
             />
           )}
         />
       )}
+      {mode === 'standard' && <FieldError message={error} />}
     </div>
   )
 }
 
 export default function ProdukFormPage() {
+  const { id } = useParams()
+  // `/master-data/products/create` dan `/master-data/products/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <ProdukFormPageContent key={id ?? 'create'} />
+}
+
+function ProdukFormPageContent() {
   const { replaceRecordTab, closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
@@ -128,6 +146,8 @@ export default function ProdukFormPage() {
     control,
     watch,
     setValue,
+    setError,
+    getValues,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<ProdukFormValues>({
@@ -201,19 +221,66 @@ export default function ProdukFormPage() {
     }
   }, [produk, reset])
 
+  // Didaftarkan setelah reset dari data server supaya draft yang belum tersimpan
+  // menang atas nilai server saat form dibuka ulang (urutan efek = urutan deklarasi).
+  // Form ini di-remount tiap kali tab record/create berpindah (lihat `key` di
+  // ProdukFormPage), jadi isian yang belum tersimpan harus dipersist ke localStorage
+  // supaya tidak hilang saat user pindah tab — mis. mengecek kode produk di Daftar
+  // setelah simpan gagal, lalu kembali ke form.
+  const formDraft = usePersistentFormDraft<ProdukFormValues, AccountMode>({
+    draftKey: `master-data.product.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: accountMode,
+    onRestoreExtra: setAccountMode,
+  })
+
   const onSubmit = async (values: ProdukFormValues) => {
     try {
       if (isCreate) {
         const res = await create.mutateAsync(values)
+        formDraft.clearDraft()
         toast.success('Produk berhasil dibuat.')
         replaceRecordTab('/master-data/products/create', { label: res.data.product_name, path: `/master-data/products/${res.data.id}` })
       } else {
         await update.mutateAsync({ id: Number(id), payload: values })
+        formDraft.clearDraft()
         toast.success('Produk berhasil diperbarui.')
       }
-    } catch {
-      toast.error('Gagal menyimpan produk.')
+    } catch (error) {
+      // Tampilkan penyebab spesifik dari backend (mis. kode produk duplikat) di
+      // field terkait sekaligus di toast, bukan pesan generik "Gagal menyimpan".
+      applyApiValidationErrors(error, setError)
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan produk.'))
     }
+  }
+
+  const handleDiscardDraft = () => {
+    formDraft.discardDraft()
+    if (produk) {
+      setAccountMode('standard')
+      reset({
+        product_code: produk.product_code ?? '',
+        product_name: produk.product_name,
+        product_type: produk.product_type,
+        product_category_id: produk.product_category_id,
+        unit_id: produk.unit_id,
+        is_stock_item: produk.is_stock_item,
+        description: produk.description ?? '',
+        sales_account_id: produk.sales_account_id,
+        sales_discount_account_id: produk.sales_discount_account_id,
+        sales_return_account_id: produk.sales_return_account_id,
+        purchase_return_account_id: produk.purchase_return_account_id,
+        inventory_account_id: produk.inventory_account_id,
+        inventory_interim_account_id: produk.inventory_interim_account_id,
+        cogs_account_id: produk.cogs_account_id,
+      })
+    } else {
+      setAccountMode('standard')
+      reset({ is_stock_item: true, product_type: 'goods', product_code: '', product_name: '', description: '' })
+    }
+    toast.info('Draft dibuang.')
   }
 
   if (!isCreate && isLoading) {
@@ -238,28 +305,35 @@ export default function ProdukFormPage() {
           onCancel={() => closeRecordTab(id ? `/master-data/products/${id}` : '/master-data/products/create', '/master-data/products')}
           onSave={handleSubmit(onSubmit)}
           isSaving={isSubmitting}
-        />
+        >
+          {formDraft.isRestored && (
+            <Button variant="ghost" className="h-8 text-[13px] text-[#64748b]" onClick={handleDiscardDraft}>
+              Buang Draft
+            </Button>
+          )}
+        </FormSaveActions>
       }
     >
       <div className="space-y-3">
         <FormSection title="Informasi Produk">
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kode Produk</Label>
-            <Input {...register('product_code')} placeholder="PRD-001" className="h-9 text-[13px]" />
+            <Input {...register('product_code')} placeholder="PRD-001" className={cn('h-9 text-[13px]', fieldErrorClass(errors.product_code))} />
+            <FieldError message={errors.product_code?.message} />
           </div>
 
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
               Nama Produk <span className="text-red-500">*</span>
             </Label>
-            <Input {...register('product_name')} placeholder="Nama produk" className="h-9 text-[13px]" />
-            {errors.product_name && <p className="text-[11px] text-red-500">{errors.product_name.message}</p>}
+            <Input {...register('product_name')} placeholder="Nama produk" className={cn('h-9 text-[13px]', fieldErrorClass(errors.product_name))} />
+            <FieldError message={errors.product_name?.message} />
           </div>
 
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tipe Produk</Label>
             <Select value={watch('product_type')} onValueChange={(v) => setValue('product_type', v as ProdukFormValues['product_type'])}>
-              <SelectTrigger className="h-9 text-[13px]">
+              <SelectTrigger className={cn('h-9 text-[13px]', fieldErrorClass(errors.product_type))}>
                 <SelectValue placeholder="Pilih tipe..." />
               </SelectTrigger>
               <SelectContent>
@@ -268,6 +342,7 @@ export default function ProdukFormPage() {
                 ))}
               </SelectContent>
             </Select>
+            <FieldError message={errors.product_type?.message} />
           </div>
 
           <div className="flex flex-col gap-1">
@@ -281,6 +356,7 @@ export default function ProdukFormPage() {
                   onChange={field.onChange}
                   onSearch={kategoriProdukApi.search}
                   placeholder="Pilih kategori..."
+                  error={errors.product_category_id?.message}
                   selectedOptions={produk?.category ? [{ value: produk.category.id, label: produk.category.name }] : []}
                 />
               )}
@@ -298,6 +374,7 @@ export default function ProdukFormPage() {
                   onChange={field.onChange}
                   onSearch={satuanApi.search}
                   placeholder="Pilih satuan..."
+                  error={errors.unit_id?.message}
                   selectedOptions={produk?.unit ? [{ value: produk.unit.id, label: produk.unit.name, sublabel: produk.unit.code }] : []}
                 />
               )}
@@ -316,6 +393,7 @@ export default function ProdukFormPage() {
               <div>
                 <p className="text-[13px] font-medium text-[#24323a]">Item Stok</p>
                 <p className="text-[11px] text-[#64748b]">Lacak stok di gudang</p>
+                <FieldError message={errors.is_stock_item?.message} />
               </div>
             </div>
           )}
@@ -336,6 +414,7 @@ export default function ProdukFormPage() {
             control={control}
             mappings={mappings}
             selectedOption={produk?.sales_account}
+            error={errors.sales_account_id?.message}
           />
           <AccountField
             name="sales_discount_account_id"
@@ -346,6 +425,7 @@ export default function ProdukFormPage() {
             control={control}
             mappings={mappings}
             selectedOption={produk?.sales_discount_account}
+            error={errors.sales_discount_account_id?.message}
           />
           <AccountField
             name="sales_return_account_id"
@@ -356,6 +436,7 @@ export default function ProdukFormPage() {
             control={control}
             mappings={mappings}
             selectedOption={produk?.sales_return_account}
+            error={errors.sales_return_account_id?.message}
           />
 
           {showInventoryAccount && (
@@ -369,6 +450,7 @@ export default function ProdukFormPage() {
                 control={control}
                 mappings={mappings}
                 selectedOption={produk?.inventory_account}
+                error={errors.inventory_account_id?.message}
               />
               <AccountField
                 name="cogs_account_id"
@@ -379,6 +461,7 @@ export default function ProdukFormPage() {
                 control={control}
                 mappings={mappings}
                 selectedOption={produk?.cogs_account}
+                error={errors.cogs_account_id?.message}
               />
               <AccountField
                 name="purchase_return_account_id"
@@ -389,6 +472,7 @@ export default function ProdukFormPage() {
                 control={control}
                 mappings={mappings}
                 selectedOption={produk?.purchase_return_account}
+                error={errors.purchase_return_account_id?.message}
               />
               <AccountField
                 name="inventory_interim_account_id"
@@ -399,6 +483,7 @@ export default function ProdukFormPage() {
                 control={control}
                 mappings={mappings}
                 selectedOption={produk?.inventory_interim_account}
+                error={errors.inventory_interim_account_id?.message}
               />
             </>
           )}

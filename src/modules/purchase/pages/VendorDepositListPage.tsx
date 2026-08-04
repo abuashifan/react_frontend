@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
@@ -26,6 +27,8 @@ export default function VendorDepositListPage() {
   const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
+  const [search, setSearch] = useState('')
+  const [prevSearch, setPrevSearch] = useState('')
   const [filterStatuses, setFilterStatuses] = useState<VendorDepositStatus[]>([])
   const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [filterVendor, setFilterVendor] = useState<number | null>(null)
@@ -34,9 +37,15 @@ export default function VendorDepositListPage() {
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
   const { void: voidDeposit } = useVendorDepositMutations()
 
+  if (search !== prevSearch) {
+    setPrevSearch(search)
+    setPage(0)
+  }
+
   const { data, isLoading, isFetching } = useVendorDepositList({
     page: page + 1,
     per_page: 25,
+    search: search || undefined,
     vendor_id: filterVendor ?? undefined,
   })
 
@@ -195,6 +204,7 @@ export default function VendorDepositListPage() {
           </PermissionGuard>
         }
       >
+        <ListSearchBar value={search} onChange={setSearch} placeholder="Cari nomor deposit, vendor..." className="mb-3" />
         <DataTable
           data={visibleRows}
           columns={columns}

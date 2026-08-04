@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
@@ -22,10 +23,17 @@ export default function SalesOrderListPage() {
   const [page, setPage] = useState(0)
   const [filterStatus, setFilterStatus] = useState<SalesOrderStatus | undefined>()
   const [filterCustomer, setFilterCustomer] = useState<number | null>(null)
+  const [search, setSearch] = useState('')
+  const [prevSearch, setPrevSearch] = useState('')
+  if (search !== prevSearch) {
+    setPrevSearch(search)
+    setPage(0)
+  }
 
   const { data, isLoading, isFetching } = useSalesOrderList({
     page: page + 1,
     per_page: 25,
+    search: search || undefined,
     status: filterStatus,
     customer_id: filterCustomer ?? undefined,
   })
@@ -96,6 +104,7 @@ export default function SalesOrderListPage() {
         </PermissionGuard>
       }
     >
+      <ListSearchBar value={search} onChange={setSearch} placeholder="Cari nomor SO, customer..." className="mb-3" />
       <DataTable
         data={data?.data ?? []}
         columns={columns}

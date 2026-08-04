@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
@@ -18,11 +19,19 @@ const STATUSES: PurchaseRequestStatus[] = ['draft', 'submitted', 'approved', 're
 export default function PurchaseRequestListPage() {
   const { openRecordTab } = useRecordTab()
   const [page, setPage] = useState(0)
+  const [search, setSearch] = useState('')
+  const [prevSearch, setPrevSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<PurchaseRequestStatus | undefined>()
+
+  if (search !== prevSearch) {
+    setPrevSearch(search)
+    setPage(0)
+  }
 
   const { data, isLoading, isFetching } = usePurchaseRequestList({
     page: page + 1,
     per_page: 25,
+    search: search || undefined,
     status: filterStatus,
   })
 
@@ -76,6 +85,7 @@ export default function PurchaseRequestListPage() {
         </PermissionGuard>
       }
     >
+      <ListSearchBar value={search} onChange={setSearch} placeholder="Cari nomor PR..." className="mb-3" />
       <DataTable
         data={data?.data ?? []}
         columns={columns}

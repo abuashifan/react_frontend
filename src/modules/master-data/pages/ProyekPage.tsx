@@ -13,12 +13,14 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { useProyekList, useProyekMutations } from '../hooks/useSimpleLists'
 import { proyekSchema, type ProyekFormValues } from '../schemas/proyekSchema'
 import type { Proyek, ProyekStatus } from '../types/proyek.types'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
-import { cn } from '@/lib/utils'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { cn, fieldErrorClass } from '@/lib/utils'
 
 const STATUS_LABELS: Record<ProyekStatus, string> = {
   active: 'Aktif',
@@ -46,6 +48,7 @@ export default function ProyekPage() {
     register,
     handleSubmit,
     reset,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<ProyekFormValues>({
     resolver: zodResolver(proyekSchema),
@@ -82,8 +85,10 @@ export default function ProyekPage() {
         toast.success('Proyek berhasil dibuat.')
       }
       setDialogOpen(false)
-    } catch {
-      toast.error('Gagal menyimpan proyek.')
+    } catch (error) {
+      // DUPLICATE_PROJECT_CODE dsb. ditandai di field terkait sekaligus di toast.
+      applyApiValidationErrors(error, setError)
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan proyek.'))
     }
   }
 
@@ -92,8 +97,8 @@ export default function ProyekPage() {
     try {
       await deactivate.mutateAsync(item.id)
       toast.success('Proyek berhasil dinonaktifkan.')
-    } catch {
-      toast.error('Gagal menonaktifkan proyek.')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal menonaktifkan proyek.'))
     }
   }
 
@@ -213,13 +218,13 @@ export default function ProyekPage() {
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Nama <span className="text-red-500">*</span>
               </Label>
-              <Input {...register('name')} placeholder="Proyek Renovasi" className="h-9 text-[13px]" />
-              {errors.name && <p className="text-[11px] text-red-500">{errors.name.message}</p>}
+              <Input {...register('name')} placeholder="Proyek Renovasi" className={cn('h-9 text-[13px]', fieldErrorClass(errors.name))} />
+              <FieldError message={errors.name?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Status</Label>
               <Select value={formStatus} onValueChange={(v) => setFormStatus(v as ProyekStatus)}>
-                <SelectTrigger className="h-9 text-[13px]">
+                <SelectTrigger className={cn('h-9 text-[13px]', fieldErrorClass(errors.status))}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -228,15 +233,18 @@ export default function ProyekPage() {
                   <SelectItem value="cancelled">Dibatalkan</SelectItem>
                 </SelectContent>
               </Select>
+              <FieldError message={errors.status?.message} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
                 <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal Mulai</Label>
-                <Input {...register('start_date')} type="date" className="h-9 text-[13px]" />
+                <Input {...register('start_date')} type="date" className={cn('h-9 text-[13px]', fieldErrorClass(errors.start_date))} />
+                <FieldError message={errors.start_date?.message} />
               </div>
               <div className="flex flex-col gap-1">
                 <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal Selesai</Label>
-                <Input {...register('end_date')} type="date" className="h-9 text-[13px]" />
+                <Input {...register('end_date')} type="date" className={cn('h-9 text-[13px]', fieldErrorClass(errors.end_date))} />
+                <FieldError message={errors.end_date?.message} />
               </div>
             </div>
             <DialogFooter className="pt-2">

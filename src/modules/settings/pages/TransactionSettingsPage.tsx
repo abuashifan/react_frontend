@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage } from '@/lib/apiError'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { useCompanySettings, useCompanySettingsMutations } from '../hooks/useCompanySettings'
 import type { CompanyAccountingSettings, WorkflowMode } from '../types/settings.types'
@@ -78,7 +79,7 @@ export default function TransactionSettingsPage() {
       })
       await updateTransactionDefaults.mutateAsync({ default_payment_term_id: paymentTermId })
       toast.success('Pengaturan transaksi disimpan.')
-    } catch { toast.error('Gagal menyimpan pengaturan transaksi.') }
+    } catch (saveError) { toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan pengaturan transaksi.')) }
   }
 
   if (isLoading) {

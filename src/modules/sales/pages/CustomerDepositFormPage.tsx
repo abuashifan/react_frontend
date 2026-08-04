@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { useRecordTab } from '@/hooks/useRecordTab'
@@ -17,10 +19,20 @@ import { useCustomerDeposit, useCustomerDepositMutations } from '../hooks/useCus
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { customerDepositSchema, type CustomerDepositFormValues } from '../schemas/customerDepositSchema'
-import { formatCurrency } from '@/lib/utils'
+import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
 import type { DocumentStatus } from '@/types/common.types'
 
 export default function CustomerDepositFormPage() {
+  const { id } = useParams()
+  // `/sales/customer-deposits/create` dan `/sales/customer-deposits/:id` merender komponen
+  // yang sama, dan React Router tidak me-remount otomatis saat berpindah di antara keduanya
+  // (hanya param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <CustomerDepositFormPageContent key={id ?? 'create'} />
+}
+
+function CustomerDepositFormPageContent() {
   const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
@@ -31,7 +43,7 @@ export default function CustomerDepositFormPage() {
   const deposit = data?.data
   const { create, post, void: voidDep } = useCustomerDepositMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<CustomerDepositFormValues>({
+  const { register, handleSubmit, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<CustomerDepositFormValues>({
     resolver: zodResolver(customerDepositSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -61,14 +73,18 @@ export default function CustomerDepositFormPage() {
         label: res.data.number,
         path: `/sales/customer-deposits/${res.data.id}`,
       })
-    } catch { toast.error('Gagal menyimpan deposit.') }
+    } catch (saveError) {
+      // Backend memvalidasi tanggal sebagai `deposit_date`, form memakai `date`.
+      applyApiValidationErrors(saveError, setError, { deposit_date: 'date' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan deposit.'))
+    }
   })
 
   const handlePost = async () => {
     try {
       await post.mutateAsync(Number(id))
       toast.success('Deposit berhasil diposting.')
-    } catch { toast.error('Gagal memposting deposit.') }
+    } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal memposting deposit.')) }
   }
 
   const handleVoid = async (reason: string) => {
@@ -132,8 +148,8 @@ export default function CustomerDepositFormPage() {
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Tanggal <span className="text-red-500">*</span>
               </Label>
-              <Input {...register('date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+              <Input {...register('date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+              <FieldError message={errors.date?.message} />
             </div>
 
             <div className="flex flex-col gap-1">
@@ -160,15 +176,16 @@ export default function CustomerDepositFormPage() {
                 type="number"
                 min={0}
                 disabled={!isEditable}
-                className="h-9 text-[13px] text-right tabular-nums"
+                className={cn('h-9 text-[13px] text-right tabular-nums', fieldErrorClass(errors.amount))}
                 placeholder="0"
               />
-              {errors.amount && <p className="text-[11px] text-red-500">{errors.amount.message}</p>}
+              <FieldError message={errors.amount?.message} />
             </div>
 
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
           </FormSection>
 

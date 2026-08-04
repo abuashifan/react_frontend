@@ -11,20 +11,32 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { useCashReceipt, useCashReceiptMutations } from '../hooks/useCashBankList'
 import { cashReceiptSchema, type CashReceiptFormValues } from '../schemas/cashBankSchemas'
 import type { DocumentStatus } from '@/types/common.types'
-import { toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
 import { useRecordTab } from '@/hooks/useRecordTab'
 
 interface EditableLine { account_id: number | null; account?: { id: number; code: string; name: string } | null; amount: number; description: string }
 const DEFAULT_LINE: EditableLine = { account_id: null, account: null, amount: 0, description: '' }
 
 export default function CashReceiptFormPage() {
+  const { id } = useParams()
+  // `/cash-bank/cash-receipts/create` dan `/cash-bank/cash-receipts/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <CashReceiptFormPageContent key={id ?? 'create'} />
+}
+
+function CashReceiptFormPageContent() {
   const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
@@ -33,7 +45,7 @@ export default function CashReceiptFormPage() {
   const { data, isLoading } = useCashReceipt(id ? Number(id) : undefined)
   const receipt = data?.data
   const { create, post, void: voidReceipt } = useCashReceiptMutations()
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<CashReceiptFormValues>({ resolver: zodResolver(cashReceiptSchema), defaultValues: { receipt_date: new Date().toISOString().slice(0, 10) } })
+  const { register, handleSubmit, setValue, watch, reset, setError, formState: { errors, isSubmitting } } = useForm<CashReceiptFormValues>({ resolver: zodResolver(cashReceiptSchema), defaultValues: { receipt_date: new Date().toISOString().slice(0, 10) } })
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
   const [isVoidOpen, setVoidOpen] = useState(false)
   const status = (receipt?.status ?? 'draft') as DocumentStatus
@@ -52,10 +64,15 @@ export default function CashReceiptFormPage() {
       const res = await create.mutateAsync({ ...values, lines: linePayloads.length ? linePayloads : undefined })
       toast.success('Penerimaan kas berhasil dibuat.')
       replaceRecordTab('/cash-bank/cash-receipts/create', { label: res.data.number, path: `/cash-bank/cash-receipts/${res.data.id}` })
-    } catch { toast.error('Gagal menyimpan penerimaan kas.') }
+    } catch (saveError) {
+      // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
+      // bukan hanya toast generik "Gagal menyimpan".
+      applyApiValidationErrors(saveError, setError)
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan penerimaan kas.'))
+    }
   })
 
-  const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Diposting.') } catch { toast.error('Gagal posting.') } }
+  const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting.')) } }
   const handleVoid = async (reason: string) => { await voidReceipt.mutateAsync({ id: Number(id), reason }); toast.success('Berhasil di-void.'); setVoidOpen(false) }
 
   const columns: LineItemColumn<EditableLine>[] = [
@@ -78,11 +95,11 @@ export default function CashReceiptFormPage() {
         headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={receipt?.number} actions={actions} />}>
         <div className="space-y-3">
           <FormSection title="Header">
-            <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label><Input {...register('receipt_date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />{errors.receipt_date && <p className="text-[11px] text-red-500">{errors.receipt_date.message}</p>}</div>
+            <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label><Input {...register('receipt_date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.receipt_date))} /><FieldError message={errors.receipt_date?.message} /></div>
             <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Kas/Bank <span className="text-red-500">*</span></Label><SearchableSelect value={watch('cash_bank_account_id') ?? null} onChange={(v) => setValue('cash_bank_account_id', v as number)} onSearch={coaApi.search} placeholder="Pilih akun kas/bank..." disabled={!isEditable} error={errors.cash_bank_account_id?.message} selectedOptions={receipt?.cash_bank_account ? [{ value: receipt.cash_bank_account.id, label: receipt.cash_bank_account.name }] : []} /></div>
-            <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kontak</Label><SearchableSelect value={watch('contact_id') ?? null} onChange={(v) => setValue('contact_id', v)} onSearch={kontakApi.search} placeholder="Pilih kontak..." disabled={!isEditable} selectedOptions={receipt?.contact ? [{ value: receipt.contact.id, label: receipt.contact.name }] : []} /></div>
-            <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jumlah <span className="text-red-500">*</span></Label><Input {...register('amount', { valueAsNumber: true })} type="number" disabled={!isEditable} className="h-9 text-[13px] text-right tabular-nums" min={0} />{errors.amount && <p className="text-[11px] text-red-500">{errors.amount.message}</p>}</div>
-            <div className="flex flex-col gap-1 md:col-span-2"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label><Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} /></div>
+            <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kontak</Label><SearchableSelect value={watch('contact_id') ?? null} onChange={(v) => setValue('contact_id', v)} onSearch={kontakApi.search} placeholder="Pilih kontak..." disabled={!isEditable} error={errors.contact_id?.message} selectedOptions={receipt?.contact ? [{ value: receipt.contact.id, label: receipt.contact.name }] : []} /></div>
+            <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jumlah <span className="text-red-500">*</span></Label><Input {...register('amount', { valueAsNumber: true })} type="number" disabled={!isEditable} className={cn('h-9 text-[13px] text-right tabular-nums', fieldErrorClass(errors.amount))} min={0} /><FieldError message={errors.amount?.message} /></div>
+            <div className="flex flex-col gap-1 md:col-span-2"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label><Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} /><FieldError message={errors.notes?.message} /></div>
           </FormSection>
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Alokasi Akun (Opsional)</p>

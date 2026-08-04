@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
@@ -32,11 +33,18 @@ export default function SalesReturnListPage() {
   const [selectedRows, setSelectedRows] = useState<string[]>([])
   const [bulkVoidIds, setBulkVoidIds] = useState<string[]>([])
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [prevSearch, setPrevSearch] = useState('')
+  if (search !== prevSearch) {
+    setPrevSearch(search)
+    setPage(0)
+  }
   const { void: voidReturn } = useSalesReturnMutations()
 
   const { data, isLoading, isFetching } = useSalesReturnList({
     page: page + 1,
     per_page: 25,
+    search: search || undefined,
     customer_id: filterCustomer ?? undefined,
   })
 
@@ -199,6 +207,7 @@ export default function SalesReturnListPage() {
           </PermissionGuard>
         }
       >
+        <ListSearchBar value={search} onChange={setSearch} placeholder="Cari nomor retur, customer..." className="mb-3" />
         <DataTable
           data={visibleRows}
           columns={columns}

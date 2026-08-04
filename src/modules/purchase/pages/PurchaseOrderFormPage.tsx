@@ -11,8 +11,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { usePurchaseOrder, usePurchaseOrderMutations } from '../hooks/usePurchaseOrderList'
 import { toPurchaseOrderPayload } from '../services/purchaseOrderAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
@@ -20,7 +22,7 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { purchaseOrderSchema, type PurchaseOrderFormValues } from '../schemas/purchaseOrderSchema'
 import type { DocumentStatus } from '@/types/common.types'
-import { toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
 import { useRecordTab } from '@/hooks/useRecordTab'
 
 interface EditableLine {
@@ -48,6 +50,20 @@ function toPurchaseOrderLine(line: EditableLine): Omit<EditableLine, 'received_q
 }
 
 export default function PurchaseOrderFormPage() {
+  const { id } = useParams()
+  const [outerSearchParams] = useSearchParams()
+  // `/purchase/orders/create` dan `/purchase/orders/:id` merender komponen yang sama, dan
+  // React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya param
+  // yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang sebelumnya
+  // dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru setiap kali id
+  // record berubah. Mode create juga bisa datang dari `?from_request=<PR id>` (konversi PR →
+  // PO) — itu dianggap instance yang berbeda dari create kosong biasa, jadi ikut jadi bagian
+  // key supaya berpindah antar "create dari PR X" dan "create kosong" juga dapat instance bersih.
+  const fromRequestId = outerSearchParams.get('from_request')
+  return <PurchaseOrderFormPageContent key={id ?? fromRequestId ?? 'create'} />
+}
+
+function PurchaseOrderFormPageContent() {
   // `navigate` masih dipakai alur deep link yang tidak lahir dari tab.
   const navigate = useNavigate()
   const { replaceRecordTab } = useRecordTab()
@@ -61,7 +77,7 @@ export default function PurchaseOrderFormPage() {
   const po = data?.data
   const { create, createFromRequest, update, approve, confirm, cancel } = usePurchaseOrderMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<PurchaseOrderFormValues>({
+  const { register, handleSubmit, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<PurchaseOrderFormValues>({
     resolver: zodResolver(purchaseOrderSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -80,7 +96,7 @@ export default function PurchaseOrderFormPage() {
       setCreatingFromRequest(true)
       createFromRequest.mutateAsync(Number(prId))
         .then((res) => navigate(`/purchase/orders/${res.data.id}`, { replace: true }))
-        .catch(() => toast.error('Gagal membuat PO dari PR.'))
+        .catch((convertError: unknown) => toast.error(getApiErrorMessage(convertError, 'Gagal membuat PO dari PR.')))
         .finally(() => setCreatingFromRequest(false))
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -110,12 +126,17 @@ export default function PurchaseOrderFormPage() {
         await update.mutateAsync({ id: Number(id), payload })
         toast.success('Purchase Order berhasil diperbarui.')
       }
-    } catch { toast.error('Gagal menyimpan Purchase Order.') }
+    } catch (saveError) {
+      // Backend memakai nama kolom DB (`order_date`, `expected_date`), form memakai
+      // `date` dan `expected_delivery_date` — lihat `toPurchaseOrderPayload`.
+      applyApiValidationErrors(saveError, setError, { order_date: 'date', expected_date: 'expected_delivery_date' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Purchase Order.'))
+    }
   })
 
-  const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); toast.success('PO di-approve.') } catch { toast.error('Gagal approve PO.') } }
-  const handleConfirm = async () => { try { await confirm.mutateAsync(Number(id)); toast.success('PO dikonfirmasi.') } catch { toast.error('Gagal konfirmasi PO.') } }
-  const handleCancel = async () => { try { await cancel.mutateAsync(Number(id)); toast.success('PO dibatalkan.') } catch { toast.error('Gagal membatalkan PO.') } }
+  const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); toast.success('PO di-approve.') } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve PO.')) } }
+  const handleConfirm = async () => { try { await confirm.mutateAsync(Number(id)); toast.success('PO dikonfirmasi.') } catch (confirmError) { toast.error(getApiErrorMessage(confirmError, 'Gagal konfirmasi PO.')) } }
+  const handleCancel = async () => { try { await cancel.mutateAsync(Number(id)); toast.success('PO dibatalkan.') } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan PO.')) } }
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('purchase.orders.create')) {
@@ -212,8 +233,8 @@ export default function PurchaseOrderFormPage() {
 
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
-            <Input {...register('date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-            {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+            <Input {...register('date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+            <FieldError message={errors.date?.message} />
           </div>
 
           <div className="flex flex-col gap-1">
@@ -224,13 +245,15 @@ export default function PurchaseOrderFormPage() {
               onSearch={paymentTermsApi.search}
               placeholder="Pilih syarat pembayaran..."
               disabled={!isEditable}
+              error={errors.payment_term_id?.message}
               selectedOptions={po?.payment_term ? [{ value: po.payment_term.id, label: po.payment_term.name }] : []}
             />
           </div>
 
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tgl Pengiriman</Label>
-            <Input {...register('expected_delivery_date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
+            <Input {...register('expected_delivery_date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.expected_delivery_date))} />
+            <FieldError message={errors.expected_delivery_date?.message} />
           </div>
 
           {po?.purchase_request_number && (
@@ -242,7 +265,8 @@ export default function PurchaseOrderFormPage() {
 
           <div className="flex flex-col gap-1 md:col-span-2">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-            <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+            <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+            <FieldError message={errors.notes?.message} />
           </div>
         </FormSection>
 

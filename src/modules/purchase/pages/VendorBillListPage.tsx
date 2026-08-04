@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Plus, Trash2, AlertTriangle } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { EmptyState } from '@/components/shared/feedback/EmptyState'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
@@ -27,8 +27,8 @@ export default function VendorBillListPage() {
   const { toast } = useToast()
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState<25 | 50 | 100>(25)
-  const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
+  const [prevSearch, setPrevSearch] = useState('')
   const [filterStatuses, setFilterStatuses] = useState<VendorBillStatus[]>([])
   const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [filterVendor, setFilterVendor] = useState<number | null>(null)
@@ -37,14 +37,10 @@ export default function VendorBillListPage() {
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
   const { void: voidBill } = useVendorBillMutations()
 
-  // Debounce input pencarian agar tidak refetch tiap ketukan.
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setSearch(searchInput.trim())
-      setPage(0)
-    }, 350)
-    return () => window.clearTimeout(timer)
-  }, [searchInput])
+  if (search !== prevSearch) {
+    setPrevSearch(search)
+    setPage(0)
+  }
 
   const { data, isLoading, isFetching, isError, refetch } = useVendorBillList({
     page: page + 1,
@@ -159,21 +155,13 @@ export default function VendorBillListPage() {
     <FilterSidebar
       activeCount={activeFilters}
       onReset={() => {
-        setSearchInput('')
+        setSearch('')
         setFilterStatuses([])
         setDateRange({ from: '', to: '' })
         setFilterVendor(null)
         resetSelection()
       }}
     >
-      <FilterSection title="Cari">
-        <Input
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Nomor bill, vendor..."
-          className="h-8 text-[13px]"
-        />
-      </FilterSection>
       <MultiCheckboxFilter
         title="Status"
         options={STATUSES.map((status) => ({ value: status, label: status.replace('_', ' ') }))}
@@ -219,6 +207,7 @@ export default function VendorBillListPage() {
           </PermissionGuard>
         }
       >
+        <ListSearchBar value={search} onChange={setSearch} placeholder="Cari nomor bill, vendor..." className="mb-3" />
         {isError ? (
           <EmptyState
             icon={AlertTriangle}

@@ -13,16 +13,18 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { useStockAdjustment, useStockAdjustmentMutations } from '../hooks/useStockAdjustmentList'
 import { stockAdjustmentSchema, stockAdjustmentLineSchema, type StockAdjustmentFormValues } from '../schemas/stockAdjustmentSchema'
 import type { DocumentStatus } from '@/types/common.types'
 import type { StockAdjustmentLineType } from '../types/stockAdjustment.types'
-import { toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
 import { useRecordTab } from '@/hooks/useRecordTab'
 
 interface EditableLine {
@@ -39,6 +41,16 @@ interface SelectOption { value: number; label: string; sublabel?: string }
 const DEFAULT_LINE: EditableLine = { product_id: null, warehouse_id: null, adjustment_type: 'increase', quantity: 1, unit_cost: 0, reason: '' }
 
 export default function StockAdjustmentFormPage() {
+  const { id } = useParams()
+  // `/inventory/adjustments/create` dan `/inventory/adjustments/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <StockAdjustmentFormPageContent key={id ?? 'create'} />
+}
+
+function StockAdjustmentFormPageContent() {
   const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
@@ -49,7 +61,7 @@ export default function StockAdjustmentFormPage() {
   const adj = data?.data
   const { create, update, approve, post, void: voidAdj } = useStockAdjustmentMutations()
 
-  const { control, getValues, register, handleSubmit, setValue, reset, formState: { errors, isSubmitting } } = useForm<StockAdjustmentFormValues>({
+  const { control, getValues, register, handleSubmit, setValue, reset, setError, formState: { errors, isSubmitting } } = useForm<StockAdjustmentFormValues>({
     resolver: zodResolver(stockAdjustmentSchema),
     defaultValues: { adjustment_date: new Date().toISOString().slice(0, 10) },
   })
@@ -185,16 +197,21 @@ export default function StockAdjustmentFormPage() {
         formDraft.clearDraft()
         toast.success('Penyesuaian berhasil diperbarui.')
       }
-    } catch { toast.error('Gagal menyimpan penyesuaian.') }
+    } catch (saveError) {
+      // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
+      // bukan hanya toast generik "Gagal menyimpan".
+      applyApiValidationErrors(saveError, setError)
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan penyesuaian.'))
+    }
   })
 
   const handleApprove = async () => {
     try { await approve.mutateAsync(Number(id)); formDraft.clearDraft(); toast.success('Penyesuaian di-approve.') }
-    catch { toast.error('Gagal approve.') }
+    catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve.')) }
   }
   const handlePost = async () => {
     try { await post.mutateAsync(Number(id)); formDraft.clearDraft(); toast.success('Penyesuaian berhasil diposting.') }
-    catch { toast.error('Gagal posting.') }
+    catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting.')) }
   }
   const handleVoid = async (reason: string) => {
     await voidAdj.mutateAsync({ id: Number(id), reason })
@@ -307,20 +324,22 @@ export default function StockAdjustmentFormPage() {
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
-              <Input {...register('adjustment_date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.adjustment_date && <p className="text-[11px] text-red-500">{errors.adjustment_date.message}</p>}
+              <Input {...register('adjustment_date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.adjustment_date))} />
+              <FieldError message={errors.adjustment_date?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Gudang Default</Label>
-              <SearchableSelect value={warehouseId ?? null} onChange={(v) => setValue('warehouse_id', v)} onSearch={gudangApi.search} placeholder="Pilih gudang..." disabled={!isEditable} selectedOptions={adj?.warehouse ? [{ value: adj.warehouse.id, label: adj.warehouse.name }] : []} />
+              <SearchableSelect value={warehouseId ?? null} onChange={(v) => setValue('warehouse_id', v)} onSearch={gudangApi.search} placeholder="Pilih gudang..." disabled={!isEditable} error={errors.warehouse_id?.message} selectedOptions={adj?.warehouse ? [{ value: adj.warehouse.id, label: adj.warehouse.name }] : []} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Alasan</Label>
-              <Input {...register('reason')} disabled={!isEditable} placeholder="Alasan penyesuaian..." className="h-9 text-[13px]" />
+              <Input {...register('reason')} disabled={!isEditable} placeholder="Alasan penyesuaian..." className={cn('h-9 text-[13px]', fieldErrorClass(errors.reason))} />
+              <FieldError message={errors.reason?.message} />
             </div>
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
           </FormSection>
 

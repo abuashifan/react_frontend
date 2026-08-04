@@ -13,6 +13,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
@@ -23,7 +25,7 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { salesInvoiceSchema, type SalesInvoiceFormValues } from '../schemas/salesInvoiceSchema'
 import type { DocumentStatus } from '@/types/common.types'
-import { toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
 
 interface EditableLine {
   product_id: number | null
@@ -43,6 +45,18 @@ function lineBase(l: EditableLine) {
 
 
 export default function SalesInvoiceFormPage() {
+  const { id } = useParams()
+  // `/sales/invoices/create` dan `/sales/invoices/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah. `usePersistentFormDraft` di bawah
+  // sudah dikunci per `id` lewat draftKey-nya sendiri, jadi mount baru tetap memuat ulang
+  // draft yang tersimpan dengan benar.
+  return <SalesInvoiceFormPageContent key={id ?? 'create'} />
+}
+
+function SalesInvoiceFormPageContent() {
   const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
@@ -53,7 +67,7 @@ export default function SalesInvoiceFormPage() {
   const invoice = data?.data
   const { create, update, approve, post, void: voidInv } = useSalesInvoiceMutations()
 
-  const { control, getValues, register, handleSubmit, setValue, reset, formState: { errors, isSubmitting } } = useForm<SalesInvoiceFormValues>({
+  const { control, getValues, register, handleSubmit, setValue, setError, reset, formState: { errors, isSubmitting } } = useForm<SalesInvoiceFormValues>({
     resolver: zodResolver(salesInvoiceSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -145,7 +159,11 @@ export default function SalesInvoiceFormPage() {
         formDraft.clearDraft()
         toast.success('Invoice berhasil diperbarui.')
       }
-    } catch { toast.error('Gagal menyimpan Invoice.') }
+    } catch (saveError) {
+      // Backend memvalidasi tanggal sebagai `invoice_date`, form memakai `date`.
+      applyApiValidationErrors(saveError, setError, { invoice_date: 'date' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Invoice.'))
+    }
   })
 
   const handleApprove = async () => {
@@ -153,7 +171,7 @@ export default function SalesInvoiceFormPage() {
       await approve.mutateAsync(Number(id))
       formDraft.clearDraft()
       toast.success('Invoice berhasil di-approve.')
-    } catch { toast.error('Gagal approve invoice.') }
+    } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve invoice.')) }
   }
 
   const handlePost = async () => {
@@ -161,7 +179,7 @@ export default function SalesInvoiceFormPage() {
       await post.mutateAsync(Number(id))
       formDraft.clearDraft()
       toast.success('Invoice berhasil diposting.')
-    } catch { toast.error('Gagal memposting invoice.') }
+    } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal memposting invoice.')) }
   }
 
   const handleVoid = async (reason: string) => {
@@ -305,13 +323,14 @@ export default function SalesInvoiceFormPage() {
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Tanggal <span className="text-red-500">*</span>
               </Label>
-              <Input {...register('date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+              <Input {...register('date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+              <FieldError message={errors.date?.message} />
             </div>
 
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jatuh Tempo</Label>
-              <Input {...register('due_date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
+              <Input {...register('due_date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.due_date))} />
+              <FieldError message={errors.due_date?.message} />
             </div>
 
             <div className="flex flex-col gap-1">
@@ -322,6 +341,7 @@ export default function SalesInvoiceFormPage() {
                 onSearch={paymentTermsApi.search}
                 placeholder="Pilih syarat pembayaran..."
                 disabled={!isEditable}
+                error={errors.payment_term_id?.message}
                 selectedOptions={invoice?.payment_term ? [{ value: invoice.payment_term.id, label: invoice.payment_term.name }] : []}
               />
             </div>
@@ -337,7 +357,8 @@ export default function SalesInvoiceFormPage() {
 
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
           </FormSection>
 

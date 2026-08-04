@@ -13,16 +13,18 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { useStockMovement, useStockMovementMutations } from '../hooks/useStockMovementList'
 import { stockMovementSchema, stockMovementLineSchema, type StockMovementFormValues } from '../schemas/stockMovementSchema'
 import type { DocumentStatus } from '@/types/common.types'
 import type { StockMovementType } from '../types/stockMovement.types'
-import { toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
 import { useRecordTab } from '@/hooks/useRecordTab'
 
 const MANUAL_TYPES: { value: StockMovementType; label: string }[] = [
@@ -43,6 +45,16 @@ interface EditableLine {
 const DEFAULT_LINE: EditableLine = { product_id: null, product: null, warehouse_id: null, warehouse: null, quantity: 1, unit_cost: 0 }
 
 export default function StockMovementFormPage() {
+  const { id } = useParams()
+  // `/inventory/movements/create` dan `/inventory/movements/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <StockMovementFormPageContent key={id ?? 'create'} />
+}
+
+function StockMovementFormPageContent() {
   const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
@@ -53,7 +65,7 @@ export default function StockMovementFormPage() {
   const movement = data?.data
   const { create, post, void: voidMovement } = useStockMovementMutations()
 
-  const { register, handleSubmit, setValue, watch, getValues, control, reset, formState: { errors, isSubmitting } } = useForm<StockMovementFormValues>({
+  const { register, handleSubmit, setValue, watch, getValues, control, reset, setError, formState: { errors, isSubmitting } } = useForm<StockMovementFormValues>({
     resolver: zodResolver(stockMovementSchema),
     defaultValues: { movement_date: new Date().toISOString().slice(0, 10), movement_type: 'adjustment_in' },
   })
@@ -130,12 +142,17 @@ export default function StockMovementFormPage() {
       formDraft.clearDraft()
       toast.success('Mutasi stok berhasil dibuat.')
       replaceRecordTab('/inventory/movements/create', { label: res.data.number, path: `/inventory/movements/${res.data.id}` })
-    } catch { toast.error('Gagal menyimpan mutasi stok.') }
+    } catch (saveError) {
+      // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
+      // bukan hanya toast generik "Gagal menyimpan".
+      applyApiValidationErrors(saveError, setError)
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan mutasi stok.'))
+    }
   })
 
   const handlePost = async () => {
     try { await post.mutateAsync(Number(id)); toast.success('Mutasi berhasil diposting.') }
-    catch { toast.error('Gagal posting mutasi.') }
+    catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting mutasi.')) }
   }
 
   const handleVoid = async (reason: string) => {
@@ -220,13 +237,13 @@ export default function StockMovementFormPage() {
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
-              <Input {...register('movement_date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.movement_date && <p className="text-[11px] text-red-500">{errors.movement_date.message}</p>}
+              <Input {...register('movement_date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.movement_date))} />
+              <FieldError message={errors.movement_date?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tipe <span className="text-red-500">*</span></Label>
               <Select value={watch('movement_type')} onValueChange={(v) => setValue('movement_type', v as StockMovementType)} disabled={!isCreate}>
-                <SelectTrigger className="h-9 text-[13px]">
+                <SelectTrigger className={cn('h-9 text-[13px]', fieldErrorClass(errors.movement_type))}>
                   <SelectValue placeholder="Pilih tipe..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -235,14 +252,17 @@ export default function StockMovementFormPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <FieldError message={errors.movement_type?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Deskripsi</Label>
-              <Input {...register('description')} disabled={!isEditable} placeholder="Deskripsi..." className="h-9 text-[13px]" />
+              <Input {...register('description')} disabled={!isEditable} placeholder="Deskripsi..." className={cn('h-9 text-[13px]', fieldErrorClass(errors.description))} />
+              <FieldError message={errors.description?.message} />
             </div>
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
           </FormSection>
 

@@ -5,9 +5,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
-import { formatDate } from '@/lib/utils'
+import { cn, fieldErrorClass, formatDate } from '@/lib/utils'
+import { getApiErrorMessage, getApiValidationErrors } from '@/lib/apiError'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { useFiscalYearStatus, useFiscalYearMutations } from '../hooks/useFiscalYear'
 
@@ -20,24 +22,41 @@ export default function FiscalYearPage() {
   const [closingDate, setClosingDate] = useState('')
   const [retainedEarningsId, setRetainedEarningsId] = useState<number | null>(null)
   const [reopenReason, setReopenReason] = useState('')
+  // Halaman ini tidak memakai react-hook-form, jadi pesan error per field disimpan
+  // manual supaya isian yang ditolak backend tetap ditandai, bukan cuma toast.
+  const [closeErrors, setCloseErrors] = useState<Record<string, string>>({})
+  const [reopenError, setReopenError] = useState<string | undefined>()
 
   const fy = data?.data?.active_fiscal_year
 
   const handleClose = async () => {
     if (!fy) return
+    setCloseErrors({})
     try {
       await close.mutateAsync({ id: fy.id, payload: { closing_entry_date: closingDate || undefined, retained_earnings_account_id: retainedEarningsId ?? undefined } })
       toast.success('Tahun fiskal berhasil ditutup.')
-    } catch { toast.error('Gagal menutup tahun fiskal.') }
+    } catch (error) {
+      setCloseErrors(getApiValidationErrors(error))
+      toast.error(getApiErrorMessage(error, 'Gagal menutup tahun fiskal.'))
+    }
   }
 
   const handleReopen = async () => {
-    if (!fy || !reopenReason.trim()) { toast.error('Alasan reopen wajib diisi.'); return }
+    if (!fy) return
+    if (!reopenReason.trim()) {
+      setReopenError('Alasan reopen wajib diisi.')
+      toast.error('Alasan reopen wajib diisi.')
+      return
+    }
+    setReopenError(undefined)
     try {
       await reopen.mutateAsync({ id: fy.id, payload: { reopen_reason: reopenReason } })
       toast.success('Tahun fiskal berhasil dibuka kembali.')
       setReopenReason('')
-    } catch { toast.error('Gagal membuka kembali tahun fiskal.') }
+    } catch (error) {
+      setReopenError(getApiValidationErrors(error).reopen_reason)
+      toast.error(getApiErrorMessage(error, 'Gagal membuka kembali tahun fiskal.'))
+    }
   }
 
   if (isLoading) {
@@ -78,11 +97,12 @@ export default function FiscalYearPage() {
           <FormSection title="Tutup Tahun Fiskal">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal Jurnal Penutup</Label>
-              <Input type="date" value={closingDate} onChange={(e) => setClosingDate(e.target.value)} className="h-9 text-[13px]" />
+              <Input type="date" value={closingDate} onChange={(e) => setClosingDate(e.target.value)} className={cn('h-9 text-[13px]', fieldErrorClass(closeErrors.closing_entry_date))} />
+              <FieldError message={closeErrors.closing_entry_date} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Laba Ditahan</Label>
-              <SearchableSelect value={retainedEarningsId} onChange={(v) => setRetainedEarningsId(v)} onSearch={coaApi.search} placeholder="Pilih akun laba ditahan..." />
+              <SearchableSelect value={retainedEarningsId} onChange={(v) => setRetainedEarningsId(v)} onSearch={coaApi.search} placeholder="Pilih akun laba ditahan..." error={closeErrors.retained_earnings_account_id} />
             </div>
             <div className="md:col-span-2">
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-[12px] text-amber-800">
@@ -101,7 +121,8 @@ export default function FiscalYearPage() {
           <FormSection title="Buka Kembali Tahun Fiskal">
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Alasan Reopen <span className="text-red-500">*</span></Label>
-              <Input value={reopenReason} onChange={(e) => setReopenReason(e.target.value)} placeholder="Alasan membuka kembali tahun fiskal..." className="h-9 text-[13px]" />
+              <Input value={reopenReason} onChange={(e) => { setReopenReason(e.target.value); setReopenError(undefined) }} placeholder="Alasan membuka kembali tahun fiskal..." className={cn('h-9 text-[13px]', fieldErrorClass(reopenError))} />
+              <FieldError message={reopenError} />
             </div>
             <div className="md:col-span-2">
               <Button onClick={() => void handleReopen()} disabled={reopen.isPending} className="h-9 bg-[#5c9ead] px-4 text-[13px] hover:bg-[#4a8a9c]">

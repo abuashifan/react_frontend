@@ -102,3 +102,16 @@ export function formatNumber(value: number | string | null | undefined, decimals
     maximumFractionDigits: decimals,
   }).format(n)
 }
+
+/**
+ * Kelas border merah untuk input/trigger yang error — gabungkan lewat `cn()`.
+ * Dipasangkan dengan `<FieldError>` supaya field yang gagal validasi benar-benar
+ * terlihat ditandai, bukan hanya disebut di toast.
+ *
+ * ```tsx
+ * <Input {...register('product_code')} className={cn('h-9 text-[13px]', fieldErrorClass(errors.product_code))} />
+ * ```
+ */
+export function fieldErrorClass(error: unknown): string {
+  return error ? 'border-red-500 focus-visible:ring-red-500' : ''
+}

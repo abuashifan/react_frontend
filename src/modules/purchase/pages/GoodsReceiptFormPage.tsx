@@ -11,8 +11,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { cn, fieldErrorClass } from '@/lib/utils'
 import { useGoodsReceipt, useGoodsReceiptMutations } from '../hooks/useGoodsReceiptList'
 import { toGoodsReceiptPayload } from '../services/goodsReceiptAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
@@ -41,6 +44,16 @@ function toGoodsReceiptLine(line: EditableLine): Omit<EditableLine, 'billed_quan
 }
 
 export default function GoodsReceiptFormPage() {
+  const { id } = useParams()
+  // `/purchase/goods-receipts/create` dan `/purchase/goods-receipts/:id` merender komponen
+  // yang sama, dan React Router tidak me-remount otomatis saat berpindah di antara keduanya
+  // (hanya param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <GoodsReceiptFormPageContent key={id ?? 'create'} />
+}
+
+function GoodsReceiptFormPageContent() {
   const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
@@ -51,7 +64,7 @@ export default function GoodsReceiptFormPage() {
   const gr = data?.data
   const { create, receive, cancel, void: voidGr } = useGoodsReceiptMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<GoodsReceiptFormValues>({
+  const { register, handleSubmit, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<GoodsReceiptFormValues>({
     resolver: zodResolver(goodsReceiptSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -80,16 +93,20 @@ export default function GoodsReceiptFormPage() {
       const res = await create.mutateAsync(toGoodsReceiptPayload(values, lines.map(toGoodsReceiptLine)))
       toast.success('Penerimaan barang berhasil dibuat.')
       replaceRecordTab('/purchase/goods-receipts/create', { label: res.data.number, path: `/purchase/goods-receipts/${res.data.id}` })
-    } catch { toast.error('Gagal menyimpan penerimaan barang.') }
+    } catch (saveError) {
+      // Backend memakai nama kolom DB (`receipt_date`), form memakai `date`.
+      applyApiValidationErrors(saveError, setError, { receipt_date: 'date' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan penerimaan barang.'))
+    }
   })
 
   const handleReceive = async () => {
     try { await receive.mutateAsync(Number(id)); toast.success('Barang berhasil diterima.') }
-    catch { toast.error('Gagal menerima barang.') }
+    catch (receiveError) { toast.error(getApiErrorMessage(receiveError, 'Gagal menerima barang.')) }
   }
   const handleCancel = async () => {
     try { await cancel.mutateAsync(Number(id)); toast.success('GR dibatalkan.') }
-    catch { toast.error('Gagal membatalkan GR.') }
+    catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan GR.')) }
   }
   const handleVoid = async (reason: string) => {
     await voidGr.mutateAsync({ id: Number(id), reason })
@@ -180,8 +197,8 @@ export default function GoodsReceiptFormPage() {
 
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
-              <Input {...register('date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+              <Input {...register('date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+              <FieldError message={errors.date?.message} />
             </div>
 
             <div className="flex flex-col gap-1">
@@ -192,6 +209,7 @@ export default function GoodsReceiptFormPage() {
                 onSearch={gudangApi.search}
                 placeholder="Pilih gudang..."
                 disabled={!isEditable}
+                error={errors.warehouse_id?.message}
                 selectedOptions={gr?.warehouse ? [{ value: gr.warehouse.id, label: gr.warehouse.name }] : []}
               />
             </div>
@@ -205,7 +223,8 @@ export default function GoodsReceiptFormPage() {
 
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
           </FormSection>
 

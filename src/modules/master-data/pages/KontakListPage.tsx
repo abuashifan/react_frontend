@@ -4,6 +4,7 @@ import { useRecordTab } from '@/hooks/useRecordTab'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar } from '@/components/shared/layout/FilterSidebar'
 import { SingleCheckboxFilter } from '@/components/shared/filter/SingleCheckboxFilter'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { ActiveStatusBadge } from '@/components/shared/badge/ActiveStatusBadge'
@@ -92,13 +93,21 @@ export default function KontakListPage() {
   // Default: hanya tampilkan kontak aktif. Pilih "Semua" di filter Status untuk menampilkan semuanya.
   const [filterActive, setFilterActive] = useState<boolean | undefined>(true)
   const [selectedRows, setSelectedRows] = useState<string[]>([])
+  const [search, setSearch] = useState('')
+  const [prevSearch, setPrevSearch] = useState('')
   const { data, isLoading, isFetching } = useKontakList({
     page,
     per_page: perPage,
     is_customer: filterType === 'customer' || filterType === 'both' ? true : undefined,
     is_supplier: filterType === 'supplier' || filterType === 'both' ? true : undefined,
     is_active: filterActive,
+    search: search || undefined,
   })
+
+  if (search !== prevSearch) {
+    setPrevSearch(search)
+    setPage(1)
+  }
   const { activate, deactivate } = useKontakMutations()
 
   const activeFilterCount = [filterType, filterActive].filter((v) => v !== undefined).length
@@ -185,6 +194,13 @@ export default function KontakListPage() {
         </PermissionGuard>
       }
     >
+      <ListSearchBar
+        value={search}
+        onChange={setSearch}
+        placeholder="Cari kode, nama, telepon, atau email kontak..."
+        className="mb-3"
+      />
+
       <DataTable
         data={data?.data ?? []}
         columns={columns}

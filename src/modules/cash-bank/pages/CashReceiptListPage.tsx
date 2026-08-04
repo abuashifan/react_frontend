@@ -7,6 +7,7 @@ import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatus
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
 import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
@@ -24,6 +25,8 @@ export default function CashReceiptListPage() {
   const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
+  const [search, setSearch] = useState('')
+  const [prevSearch, setPrevSearch] = useState('')
   const [filterStatuses, setFilterStatuses] = useState<CashBankStatus[]>([])
   const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [selectedRows, setSelectedRows] = useState<string[]>([])
@@ -31,7 +34,18 @@ export default function CashReceiptListPage() {
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
   const { void: voidReceipt } = useCashReceiptMutations()
 
-  const { data, isLoading, isFetching } = useCashReceiptList({ page: page + 1, per_page: 25 })
+  const resetSelection = () => {
+    setPage(0)
+    setSelectedRows([])
+  }
+
+  if (search !== prevSearch) {
+    setPrevSearch(search)
+    setPage(0)
+    setSelectedRows([])
+  }
+
+  const { data, isLoading, isFetching } = useCashReceiptList({ page: page + 1, per_page: 25, search: search || undefined })
   const rows = useMemo(() => data?.data ?? [], [data])
   const visibleRows = useMemo(
     () =>
@@ -44,11 +58,6 @@ export default function CashReceiptListPage() {
   )
 
   const activeFilters = [filterStatuses.length > 0, dateRange.from, dateRange.to].filter(Boolean).length
-
-  const resetSelection = () => {
-    setPage(0)
-    setSelectedRows([])
-  }
 
   const bulkActions: BulkAction[] = [
     {
@@ -165,6 +174,7 @@ export default function CashReceiptListPage() {
           </PermissionGuard>
         }
       >
+        <ListSearchBar value={search} onChange={setSearch} placeholder="Cari nomor penerimaan..." className="mb-3" />
         <DataTable
           data={visibleRows}
           columns={columns}

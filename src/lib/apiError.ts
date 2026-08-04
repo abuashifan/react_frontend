@@ -3,6 +3,45 @@ import type { ApiError } from '@/types/api.types'
 
 type ValidationErrorMap = Record<string, string>
 
+/**
+ * Pesan Indonesia untuk `code` error backend yang sering dilihat user.
+ *
+ * Backend mengirim `message` dalam bahasa Inggris (mis. "Product code is already
+ * in use."). Peta ini dipakai lebih dulu supaya user melihat penyebab yang jelas
+ * dan berbahasa Indonesia, bukan sekadar fallback generik "Gagal menyimpan".
+ * Kode yang belum terdaftar otomatis jatuh ke `message` dari backend.
+ */
+const API_ERROR_MESSAGES_ID: Record<string, string> = {
+  DUPLICATE_ACCOUNT_CODE: 'Kode akun sudah digunakan. Gunakan kode lain.',
+  DUPLICATE_CONTACT_CODE: 'Kode kontak sudah digunakan. Gunakan kode lain.',
+  DUPLICATE_DEPARTMENT_CODE: 'Kode departemen sudah digunakan. Gunakan kode lain.',
+  DUPLICATE_PAYMENT_TERM_CODE: 'Kode syarat bayar sudah digunakan. Gunakan kode lain.',
+  DUPLICATE_PRODUCT_CODE: 'Kode produk sudah digunakan. Gunakan kode lain.',
+  DUPLICATE_PROJECT_CODE: 'Kode proyek sudah digunakan. Gunakan kode lain.',
+  DUPLICATE_UNIT_CODE: 'Kode satuan sudah digunakan. Gunakan kode lain.',
+  DUPLICATE_WAREHOUSE_CODE: 'Kode gudang sudah digunakan. Gunakan kode lain.',
+  DOCUMENT_NUMBER_DUPLICATE: 'Nomor dokumen sudah digunakan.',
+  ACCOUNT_HAS_ACTIVE_CHILDREN: 'Akun tidak bisa dinonaktifkan karena masih punya sub-akun aktif.',
+  ACCOUNT_INACTIVE: 'Akun yang dipilih tidak aktif.',
+  ACCOUNT_MAPPING_MISSING: 'Pemetaan akun belum diatur. Lengkapi di Pengaturan > Pemetaan Akun.',
+  ACCOUNT_NOT_FOUND: 'Akun tidak ditemukan.',
+  ACCOUNT_TYPE_NOT_ALLOWED: 'Tipe akun tidak diizinkan untuk transaksi ini.',
+  INVALID_PARENT_ACCOUNT: 'Akun induk tidak valid.',
+  INVALID_PARENT_CATEGORY: 'Kategori induk tidak valid.',
+  PARENT_ACCOUNT_NOT_FOUND: 'Akun induk tidak ditemukan.',
+  PARENT_CATEGORY_NOT_FOUND: 'Kategori induk tidak ditemukan.',
+  INVALID_CASH_BANK_ACCOUNT_TYPE: 'Akun kas/bank hanya boleh bertipe Aset.',
+  CANNOT_DEACTIVATE_DEFAULT_WAREHOUSE: 'Gudang default tidak bisa dinonaktifkan.',
+  ACCOUNTING_PERIOD_CLOSED: 'Periode akuntansi sudah ditutup.',
+  FISCAL_YEAR_CLOSED: 'Tahun fiskal sudah ditutup.',
+  BACKDATED_TRANSACTION_NOT_ALLOWED: 'Transaksi mundur tidak diizinkan.',
+  FUTURE_TRANSACTION_NOT_ALLOWED: 'Transaksi bertanggal masa depan tidak diizinkan.',
+  OPENING_BALANCE_UNBALANCED: 'Saldo awal belum seimbang antara debit dan kredit.',
+  EDIT_REASON_REQUIRED: 'Alasan perubahan wajib diisi.',
+  PERMISSION_DENIED: 'Anda tidak punya izin untuk aksi ini.',
+  FORBIDDEN: 'Anda tidak punya izin untuk aksi ini.',
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -33,8 +72,27 @@ function apiErrorFrom(error: unknown): Partial<ApiError> | null {
   return null
 }
 
-export function getApiErrorMessage(error: unknown, fallback = 'Terjadi kesalahan.'): string {
+/** Pesan Indonesia untuk `code` error backend, jika kodenya dikenal. */
+function localizedMessageFor(error: unknown): string | null {
   const apiError = apiErrorFrom(error)
+  const code = apiError?.code
+  if (typeof code !== 'string') return null
+  return API_ERROR_MESSAGES_ID[code] ?? null
+}
+
+export function getApiErrorMessage(error: unknown, fallback = 'Terjadi kesalahan.'): string {
+  const localized = localizedMessageFor(error)
+  if (localized) return localized
+
+  const apiError = apiErrorFrom(error)
+
+  // Pesan validasi backend berbahasa Inggris ("Please review the highlighted
+  // fields."). Detail per field sudah tampil di bawah input lewat
+  // `applyApiValidationErrors`, jadi toast cukup mengarahkan ke sana.
+  if (apiError?.code === 'VALIDATION_ERROR') {
+    return 'Periksa kembali isian yang ditandai.'
+  }
+
   if (typeof apiError?.message === 'string' && apiError.message.trim() !== '') {
     return apiError.message
   }
@@ -73,11 +131,17 @@ export function applyApiValidationErrors<TFieldValues extends FieldValues>(
   fieldMap: Partial<Record<string, FieldPath<TFieldValues>>> = {},
 ): boolean {
   const errors = getApiValidationErrors(error)
+  const entries = Object.entries(errors)
+
+  // Kalau error hanya menyoal satu field dan kodenya dikenal (mis.
+  // DUPLICATE_PRODUCT_CODE), tampilkan pesan Indonesia di field itu supaya
+  // konsisten dengan toast — bukan pesan mentah berbahasa Inggris dari backend.
+  const localized = entries.length === 1 ? localizedMessageFor(error) : null
   let applied = false
 
-  Object.entries(errors).forEach(([backendField, message]) => {
+  entries.forEach(([backendField, message]) => {
     const field = fieldMap[backendField] ?? (backendField as FieldPath<TFieldValues>)
-    setError(field, { type: 'server', message })
+    setError(field, { type: 'server', message: localized ?? message })
     applied = true
   })
 

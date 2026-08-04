@@ -11,6 +11,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { cn, fieldErrorClass } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { useRecordTab } from '@/hooks/useRecordTab'
@@ -46,6 +49,18 @@ function toOrderLine(line: EditableLine): Omit<EditableLine, 'delivered_quantity
 }
 
 export default function SalesOrderFormPage() {
+  const { id } = useParams()
+  // `/sales/orders/create` dan `/sales/orders/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah. Alur ?from_quotation tetap aman:
+  // begitu konversi selesai, `navigate(..., { replace: true })` mengubah `id` di URL
+  // sehingga key ini otomatis berubah juga.
+  return <SalesOrderFormPageContent key={id ?? 'create'} />
+}
+
+function SalesOrderFormPageContent() {
   // `navigate` masih dipakai alur deep link ?from_quotation yang tidak lahir dari tab.
   const navigate = useNavigate()
   const { replaceRecordTab } = useRecordTab()
@@ -59,7 +74,7 @@ export default function SalesOrderFormPage() {
   const order = data?.data
   const { create, createFromQuotation, update, approve, confirm, cancel } = useSalesOrderMutations()
 
-  const { control, register, handleSubmit, setValue, reset, formState: { errors, isSubmitting } } = useForm<SalesOrderFormValues>({
+  const { control, register, handleSubmit, setValue, setError, reset, formState: { errors, isSubmitting } } = useForm<SalesOrderFormValues>({
     resolver: zodResolver(salesOrderSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -79,7 +94,7 @@ export default function SalesOrderFormPage() {
       const timer = window.setTimeout(() => setCreatingFromQuotation(true), 0)
       createFromQuotation.mutateAsync(Number(quotationId))
         .then((res) => navigate(`/sales/orders/${res.data.id}`, { replace: true }))
-        .catch(() => toast.error('Gagal membuat SO dari quotation.'))
+        .catch((convertError: unknown) => toast.error(getApiErrorMessage(convertError, 'Gagal membuat SO dari quotation.')))
         .finally(() => setCreatingFromQuotation(false))
       return () => window.clearTimeout(timer)
     }
@@ -123,28 +138,34 @@ export default function SalesOrderFormPage() {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines: lines.map(toOrderLine) } })
         toast.success('Sales Order berhasil diperbarui.')
       }
-    } catch { toast.error('Gagal menyimpan Sales Order.') }
+    } catch (saveError) {
+      // Backend memakai `order_date`/`shipping_address`, form memakai
+      // `date`/`delivery_address` — dipetakan supaya pesan error mendarat di
+      // input yang benar.
+      applyApiValidationErrors(saveError, setError, { order_date: 'date', shipping_address: 'delivery_address' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Sales Order.'))
+    }
   })
 
   const handleApprove = async () => {
     try {
       await approve.mutateAsync(Number(id))
       toast.success('Sales Order berhasil di-approve.')
-    } catch { toast.error('Gagal approve Sales Order.') }
+    } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve Sales Order.')) }
   }
 
   const handleConfirm = async () => {
     try {
       await confirm.mutateAsync(Number(id))
       toast.success('Sales Order berhasil dikonfirmasi.')
-    } catch { toast.error('Gagal konfirmasi Sales Order.') }
+    } catch (confirmError) { toast.error(getApiErrorMessage(confirmError, 'Gagal konfirmasi Sales Order.')) }
   }
 
   const handleCancel = async () => {
     try {
       await cancel.mutateAsync(Number(id))
       toast.success('Sales Order dibatalkan.')
-    } catch { toast.error('Gagal membatalkan Sales Order.') }
+    } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan Sales Order.')) }
   }
 
   const actions: DocumentActionButton[] = []
@@ -283,8 +304,8 @@ export default function SalesOrderFormPage() {
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
               Tanggal <span className="text-red-500">*</span>
             </Label>
-            <Input {...register('date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-            {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+            <Input {...register('date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+            <FieldError message={errors.date?.message} />
           </div>
 
           <div className="flex flex-col gap-1">
@@ -295,13 +316,15 @@ export default function SalesOrderFormPage() {
               onSearch={paymentTermsApi.search}
               placeholder="Pilih syarat pembayaran..."
               disabled={!isEditable}
+              error={errors.payment_term_id?.message}
               selectedOptions={order?.payment_term ? [{ value: order.payment_term.id, label: order.payment_term.name }] : []}
             />
           </div>
 
           <div className="flex flex-col gap-1 md:col-span-2">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Alamat Pengiriman</Label>
-            <Textarea {...register('delivery_address')} disabled={!isEditable} placeholder="Alamat pengiriman..." className="resize-none text-[13px]" rows={2} />
+            <Textarea {...register('delivery_address')} disabled={!isEditable} placeholder="Alamat pengiriman..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.delivery_address))} rows={2} />
+            <FieldError message={errors.delivery_address?.message} />
           </div>
 
           {order?.quotation_number && (
@@ -313,7 +336,8 @@ export default function SalesOrderFormPage() {
 
           <div className="flex flex-col gap-1 md:col-span-2">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-            <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+            <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+            <FieldError message={errors.notes?.message} />
           </div>
         </FormSection>
 

@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { useRecordTab } from '@/hooks/useRecordTab'
@@ -20,7 +22,7 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { salesOrderApi } from '../services/salesOrderApi'
 import { quotationSchema, type QuotationFormValues } from '../schemas/quotationSchema'
 import type { DocumentStatus } from '@/types/common.types'
-import { toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
 
 interface EditableLine {
   product_id: number | null
@@ -38,6 +40,16 @@ function lineSubtotal(l: EditableLine) {
 }
 
 export default function QuotationFormPage() {
+  const { id } = useParams()
+  // `/sales/quotations/create` dan `/sales/quotations/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <QuotationFormPageContent key={id ?? 'create'} />
+}
+
+function QuotationFormPageContent() {
   const { openRecordTab, replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
@@ -48,7 +60,7 @@ export default function QuotationFormPage() {
   const quotation = data?.data
   const { create, update, send, approve, accept, reject, cancel } = useQuotationMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<QuotationFormValues>({
+  const { register, handleSubmit, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<QuotationFormValues>({
     resolver: zodResolver(quotationSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -96,8 +108,12 @@ export default function QuotationFormPage() {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
         toast.success('Draft berhasil diperbarui.')
       }
-    } catch {
-      toast.error('Gagal menyimpan draft.')
+    } catch (saveError) {
+      // Backend memvalidasi dengan nama field-nya sendiri (`quotation_date`,
+      // `valid_until`), jadi dipetakan ke nama field form supaya pesannya muncul
+      // tepat di input yang salah, bukan hilang.
+      applyApiValidationErrors(saveError, setError, { quotation_date: 'date', valid_until: 'expiry_date' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan draft.'))
     }
   })
 
@@ -105,35 +121,35 @@ export default function QuotationFormPage() {
     try {
       await send.mutateAsync(Number(id))
       toast.success('Quotation berhasil dikirim.')
-    } catch { toast.error('Gagal mengirim quotation.') }
+    } catch (sendError) { toast.error(getApiErrorMessage(sendError, 'Gagal mengirim quotation.')) }
   }
 
   const handleApprove = async () => {
     try {
       await approve.mutateAsync(Number(id))
       toast.success('Quotation berhasil di-approve.')
-    } catch { toast.error('Gagal approve quotation.') }
+    } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve quotation.')) }
   }
 
   const handleAccept = async () => {
     try {
       await accept.mutateAsync(Number(id))
       toast.success('Quotation diterima.')
-    } catch { toast.error('Gagal menerima quotation.') }
+    } catch (acceptError) { toast.error(getApiErrorMessage(acceptError, 'Gagal menerima quotation.')) }
   }
 
   const handleReject = async () => {
     try {
       await reject.mutateAsync(Number(id))
       toast.success('Quotation ditolak.')
-    } catch { toast.error('Gagal menolak quotation.') }
+    } catch (rejectError) { toast.error(getApiErrorMessage(rejectError, 'Gagal menolak quotation.')) }
   }
 
   const handleCancel = async () => {
     try {
       await cancel.mutateAsync(Number(id))
       toast.success('Quotation dibatalkan.')
-    } catch { toast.error('Gagal membatalkan quotation.') }
+    } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan quotation.')) }
   }
 
   const handleConvertToSO = async () => {
@@ -144,7 +160,7 @@ export default function QuotationFormPage() {
       // Hasil konversi jadi tab baru, bukan menggantikan tab quotation asalnya —
       // user biasanya masih perlu melihat dokumen sumbernya.
       openRecordTab({ label: res.data.number, path: `/sales/orders/${res.data.id}` })
-    } catch { toast.error('Gagal membuat Sales Order.') }
+    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat Sales Order.')) }
     finally { setConverting(false) }
   }
 
@@ -299,18 +315,20 @@ export default function QuotationFormPage() {
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
               Tanggal <span className="text-red-500">*</span>
             </Label>
-            <Input {...register('date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-            {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+            <Input {...register('date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+            <FieldError message={errors.date?.message} />
           </div>
 
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Expired Date</Label>
-            <Input {...register('expiry_date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
+            <Input {...register('expiry_date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.expiry_date))} />
+            <FieldError message={errors.expiry_date?.message} />
           </div>
 
           <div className="flex flex-col gap-1 md:col-span-2">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-            <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan tambahan..." className="resize-none text-[13px]" rows={2} />
+            <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan tambahan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+            <FieldError message={errors.notes?.message} />
           </div>
         </FormSection>
 

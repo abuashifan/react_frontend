@@ -9,11 +9,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { useSatuanList, useSatuanMutations } from '../hooks/useSimpleLists'
 import { satuanSchema, type SatuanFormValues } from '../schemas/satuanSchema'
 import type { Satuan } from '../types/satuan.types'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { cn, fieldErrorClass } from '@/lib/utils'
 
 export default function SatuanPage() {
   const { toast } = useToast()
@@ -27,6 +30,7 @@ export default function SatuanPage() {
     register,
     handleSubmit,
     reset,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<SatuanFormValues>({
     resolver: zodResolver(satuanSchema),
@@ -55,8 +59,10 @@ export default function SatuanPage() {
         toast.success('Satuan berhasil dibuat.')
       }
       setDialogOpen(false)
-    } catch {
-      toast.error('Gagal menyimpan satuan.')
+    } catch (error) {
+      // DUPLICATE_UNIT_CODE dsb. ditandai di field terkait sekaligus di toast.
+      applyApiValidationErrors(error, setError)
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan satuan.'))
     }
   }
 
@@ -65,8 +71,8 @@ export default function SatuanPage() {
     try {
       await deactivate.mutateAsync(item.id)
       toast.success('Satuan berhasil dinonaktifkan.')
-    } catch {
-      toast.error('Gagal menonaktifkan satuan.')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal menonaktifkan satuan.'))
     }
   }
 
@@ -147,20 +153,20 @@ export default function SatuanPage() {
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Nama <span className="text-red-500">*</span>
               </Label>
-              <Input {...register('name')} placeholder="Kilogram" className="h-9 text-[13px]" />
-              {errors.name && <p className="text-[11px] text-red-500">{errors.name.message}</p>}
+              <Input {...register('name')} placeholder="Kilogram" className={cn('h-9 text-[13px]', fieldErrorClass(errors.name))} />
+              <FieldError message={errors.name?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Kode <span className="text-red-500">*</span>
               </Label>
-              <Input {...register('code')} placeholder="kg" className="h-9 text-[13px]" />
-              {errors.code && <p className="text-[11px] text-red-500">{errors.code.message}</p>}
+              <Input {...register('code')} placeholder="kg" className={cn('h-9 text-[13px]', fieldErrorClass(errors.code))} />
+              <FieldError message={errors.code?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Presisi Desimal</Label>
-              <Input {...register('precision', { valueAsNumber: true })} type="number" min="0" max="8" className="h-9 text-[13px] tabular-nums" />
-              {errors.precision && <p className="text-[11px] text-red-500">{errors.precision.message}</p>}
+              <Input {...register('precision', { valueAsNumber: true })} type="number" min="0" max="8" className={cn('h-9 text-[13px] tabular-nums', fieldErrorClass(errors.precision))} />
+              <FieldError message={errors.precision?.message} />
             </div>
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" className="h-8 text-[13px]" onClick={() => setDialogOpen(false)}>Batal</Button>

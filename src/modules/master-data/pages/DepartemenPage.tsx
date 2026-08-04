@@ -10,11 +10,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { useDepartemenList, useDepartemenMutations } from '../hooks/useSimpleLists'
 import { departemenSchema, type DepartemenFormValues } from '../schemas/departemenSchema'
 import type { Departemen } from '../types/departemen.types'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { cn, fieldErrorClass } from '@/lib/utils'
 
 export default function DepartemenPage() {
   const { toast } = useToast()
@@ -28,6 +31,7 @@ export default function DepartemenPage() {
     register,
     handleSubmit,
     reset,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<DepartemenFormValues>({ resolver: zodResolver(departemenSchema) })
 
@@ -53,8 +57,10 @@ export default function DepartemenPage() {
         toast.success('Departemen berhasil dibuat.')
       }
       setDialogOpen(false)
-    } catch {
-      toast.error('Gagal menyimpan departemen.')
+    } catch (error) {
+      // DUPLICATE_DEPARTMENT_CODE dsb. ditandai di field terkait sekaligus di toast.
+      applyApiValidationErrors(error, setError)
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan departemen.'))
     }
   }
 
@@ -63,8 +69,8 @@ export default function DepartemenPage() {
     try {
       await deactivate.mutateAsync(item.id)
       toast.success('Departemen berhasil dinonaktifkan.')
-    } catch {
-      toast.error('Gagal menonaktifkan departemen.')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal menonaktifkan departemen.'))
     }
   }
 
@@ -144,8 +150,8 @@ export default function DepartemenPage() {
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Nama <span className="text-red-500">*</span>
               </Label>
-              <Input {...register('name')} placeholder="Keuangan" className="h-9 text-[13px]" />
-              {errors.name && <p className="text-[11px] text-red-500">{errors.name.message}</p>}
+              <Input {...register('name')} placeholder="Keuangan" className={cn('h-9 text-[13px]', fieldErrorClass(errors.name))} />
+              <FieldError message={errors.name?.message} />
             </div>
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" className="h-8 text-[13px]" onClick={() => setDialogOpen(false)}>Batal</Button>

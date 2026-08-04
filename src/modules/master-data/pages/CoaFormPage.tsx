@@ -7,6 +7,7 @@ import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSaveActions } from '@/components/shared/layout/FormSaveActions'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -15,6 +16,8 @@ import { useToast } from '@/hooks/useToast'
 import { useCoa, useCoaMutations } from '../hooks/useCoaList'
 import { coaApi } from '../services/coaApi'
 import { coaSchema, type CoaFormValues } from '../schemas/coaSchema'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { cn, fieldErrorClass } from '@/lib/utils'
 
 const COA_TYPES = [
   { value: 'asset', label: 'Aset' },
@@ -25,6 +28,16 @@ const COA_TYPES = [
 ]
 
 export default function CoaFormPage() {
+  const { id } = useParams()
+  // `/master-data/coa/create` dan `/master-data/coa/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <CoaFormPageContent key={id ?? 'create'} />
+}
+
+function CoaFormPageContent() {
   const { replaceRecordTab, closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
@@ -39,6 +52,7 @@ export default function CoaFormPage() {
     register,
     handleSubmit,
     setValue,
+    setError,
     watch,
     reset,
     formState: { errors, isSubmitting },
@@ -69,8 +83,11 @@ export default function CoaFormPage() {
         await update.mutateAsync({ id: Number(id), payload: values })
         toast.success('Akun berhasil diperbarui.')
       }
-    } catch {
-      toast.error('Gagal menyimpan akun.')
+    } catch (error) {
+      // Surface penyebab spesifik dari backend (mis. DUPLICATE_ACCOUNT_CODE atau
+      // INVALID_PARENT_ACCOUNT) di field terkait sekaligus di toast.
+      applyApiValidationErrors(error, setError)
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan akun.'))
     }
   }
 
@@ -105,16 +122,16 @@ export default function CoaFormPage() {
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
               Kode Akun <span className="text-red-500">*</span>
             </Label>
-            <Input {...register('account_code')} placeholder="1-1100" className="h-9 text-[13px]" />
-            {errors.account_code && <p className="text-[11px] text-red-500">{errors.account_code.message}</p>}
+            <Input {...register('account_code')} placeholder="1-1100" className={cn('h-9 text-[13px]', fieldErrorClass(errors.account_code))} />
+            <FieldError message={errors.account_code?.message} />
           </div>
 
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
               Nama Akun <span className="text-red-500">*</span>
             </Label>
-            <Input {...register('account_name')} placeholder="Kas" className="h-9 text-[13px]" />
-            {errors.account_name && <p className="text-[11px] text-red-500">{errors.account_name.message}</p>}
+            <Input {...register('account_name')} placeholder="Kas" className={cn('h-9 text-[13px]', fieldErrorClass(errors.account_name))} />
+            <FieldError message={errors.account_name?.message} />
           </div>
 
           <div className="flex flex-col gap-1">
@@ -122,7 +139,7 @@ export default function CoaFormPage() {
               Tipe Akun <span className="text-red-500">*</span>
             </Label>
             <Select value={watch('account_type')} onValueChange={(v) => setValue('account_type', v as CoaFormValues['account_type'])}>
-              <SelectTrigger className="h-9 text-[13px]">
+              <SelectTrigger className={cn('h-9 text-[13px]', fieldErrorClass(errors.account_type))}>
                 <SelectValue placeholder="Pilih tipe..." />
               </SelectTrigger>
               <SelectContent>
@@ -131,7 +148,7 @@ export default function CoaFormPage() {
                 ))}
               </SelectContent>
             </Select>
-            {errors.account_type && <p className="text-[11px] text-red-500">{errors.account_type.message}</p>}
+            <FieldError message={errors.account_type?.message} />
           </div>
 
           <div className="flex flex-col gap-1">
@@ -143,6 +160,7 @@ export default function CoaFormPage() {
               onChange={(v) => setValue('parent_account_id', v)}
               onSearch={coaApi.search}
               placeholder="Pilih akun induk..."
+              error={errors.parent_account_id?.message}
               selectedOptions={coa?.parent ? [{ value: coa.parent.id, label: coa.parent.account_name, sublabel: coa.parent.account_code }] : []}
             />
           </div>
@@ -154,9 +172,10 @@ export default function CoaFormPage() {
             <Textarea
               {...register('description')}
               placeholder="Keterangan akun (opsional)"
-              className="text-[13px] resize-none"
+              className={cn('text-[13px] resize-none', fieldErrorClass(errors.description))}
               rows={3}
             />
+            <FieldError message={errors.description?.message} />
           </div>
         </FormSection>
       </div>

@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
@@ -29,7 +30,7 @@ import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { fixedAssetCategoryApi } from '@/modules/fixed-assets/services/fixedAssetCategoryApi'
 import { vendorBillSchema, validateVendorBillLines, type VendorBillFormValues, type VendorBillLineErrors } from '../schemas/vendorBillSchema'
 import type { DocumentStatus } from '@/types/common.types'
-import { toDateInputValue, formatCurrency } from '@/lib/utils'
+import { cn, fieldErrorClass, toDateInputValue, formatCurrency } from '@/lib/utils'
 import type { VendorBillLineClassification } from '../types/vendorBill.types'
 import { applyApiValidationErrors, getApiErrorMessage, isApiNotFound } from '@/lib/apiError'
 import { NotFoundPage, ServerErrorPage } from '@/modules/errors/ErrorPage'
@@ -55,6 +56,17 @@ function lineBase(l: EditableLine) {
 }
 
 export default function VendorBillFormPage() {
+  const { id } = useParams()
+  // `/purchase/bills/create` dan `/purchase/bills/:id` merender komponen yang sama, dan
+  // React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya param
+  // yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang sebelumnya
+  // dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru setiap kali id
+  // record (atau mode create) berubah. Source picker (PO/GR) di dalam mode create adalah
+  // state lokal non-URL, jadi tidak perlu ikut menjadi bagian key ini.
+  return <VendorBillFormPageContent key={id ?? 'create'} />
+}
+
+function VendorBillFormPageContent() {
   const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
@@ -84,8 +96,8 @@ export default function VendorBillFormPage() {
         : await createFromGoodsReceipt.mutateAsync(sourceId)
       toast.success('Tagihan dibuat dari dokumen sumber.')
       replaceRecordTab('/purchase/bills/create', { label: res.data.bill_number, path: `/purchase/bills/${res.data.id}` })
-    } catch {
-      toast.error('Gagal membuat tagihan dari dokumen sumber.')
+    } catch (convertError) {
+      toast.error(getApiErrorMessage(convertError, 'Gagal membuat tagihan dari dokumen sumber.'))
     }
   }
   const isConverting = createFromPurchaseOrder.isPending || createFromGoodsReceipt.isPending
@@ -428,22 +440,22 @@ export default function VendorBillFormPage() {
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="date" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
-              <Input {...register('date')} id="date" type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+              <Input {...register('date')} id="date" type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+              <FieldError message={errors.date?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="due_date" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jatuh Tempo</Label>
-              <Input {...register('due_date')} id="due_date" type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.due_date && <p className="text-[11px] text-red-500">{errors.due_date.message}</p>}
+              <Input {...register('due_date')} id="due_date" type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.due_date))} />
+              <FieldError message={errors.due_date?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Syarat Pembayaran</Label>
-              <SearchableSelect value={paymentTermId ?? null} onChange={(v) => setValue('payment_term_id', v)} onSearch={paymentTermsApi.search} placeholder="Pilih syarat pembayaran..." disabled={!isEditable} selectedOptions={bill?.payment_term ? [{ value: bill.payment_term.id, label: bill.payment_term.name }] : []} />
+              <SearchableSelect value={paymentTermId ?? null} onChange={(v) => setValue('payment_term_id', v)} onSearch={paymentTermsApi.search} placeholder="Pilih syarat pembayaran..." disabled={!isEditable} error={errors.payment_term_id?.message} selectedOptions={bill?.payment_term ? [{ value: bill.payment_term.id, label: bill.payment_term.name }] : []} />
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="applied_vendor_deposit_amount" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Deposit Vendor Terpakai</Label>
-              <Input {...register('applied_vendor_deposit_amount', { valueAsNumber: true })} id="applied_vendor_deposit_amount" type="number" min={0} disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.applied_vendor_deposit_amount && <p className="text-[11px] text-red-500">{errors.applied_vendor_deposit_amount.message}</p>}
+              <Input {...register('applied_vendor_deposit_amount', { valueAsNumber: true })} id="applied_vendor_deposit_amount" type="number" min={0} disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.applied_vendor_deposit_amount))} />
+              <FieldError message={errors.applied_vendor_deposit_amount?.message} />
             </div>
             {(bill?.purchase_order_number || bill?.goods_receipt_number) && (
               <div className="flex flex-col gap-1">
@@ -453,7 +465,8 @@ export default function VendorBillFormPage() {
             )}
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label htmlFor="notes" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} id="notes" disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} id="notes" disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
             <div className="md:col-span-2 rounded-md border border-[#e2e8f0] bg-[#f8fafc] p-3 text-[12px] text-[#334155]">
               <div className="flex items-center justify-between gap-3">

@@ -11,10 +11,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
-import { formatCurrency, toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, formatCurrency, toDateInputValue } from '@/lib/utils'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { useJournalEntry, useJournalEntryMutations } from '../hooks/useJournalEntryList'
 import { journalEntrySchema, type JournalEntryFormValues } from '../schemas/journalEntrySchema'
@@ -34,6 +35,16 @@ interface EditableLine {
 const DEFAULT_LINE: EditableLine = { account_id: null, account_option: null, description: '', debit: 0, credit: 0 }
 
 export default function JournalFormPage() {
+  const { id } = useParams()
+  // `/accounting/journals/create` dan `/accounting/journals/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <JournalFormPageContent key={id ?? 'create'} />
+}
+
+function JournalFormPageContent() {
   const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
@@ -177,12 +188,13 @@ export default function JournalFormPage() {
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
-              <Input {...register('journal_date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.journal_date && <p className="text-[11px] text-red-500">{errors.journal_date.message}</p>}
+              <Input {...register('journal_date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.journal_date))} />
+              <FieldError message={errors.journal_date?.message} />
             </div>
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Deskripsi</Label>
-              <Textarea {...register('description')} disabled={!isEditable} placeholder="Deskripsi jurnal..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('description')} disabled={!isEditable} placeholder="Deskripsi jurnal..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.description))} rows={2} />
+              <FieldError message={errors.description?.message} />
             </div>
           </FormSection>
 

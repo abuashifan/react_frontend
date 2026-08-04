@@ -4,6 +4,7 @@ import { useRecordTab } from '@/hooks/useRecordTab'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar } from '@/components/shared/layout/FilterSidebar'
 import { SingleCheckboxFilter } from '@/components/shared/filter/SingleCheckboxFilter'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { ActiveStatusBadge } from '@/components/shared/badge/ActiveStatusBadge'
 import { Button } from '@/components/ui/button'
@@ -146,12 +147,14 @@ export default function CoaListPage() {
   // Default: hanya tampilkan akun aktif. Pilih "Semua" di filter Status untuk menampilkan semuanya.
   const [filterActive, setFilterActive] = useState<boolean | undefined>(true)
   const [togglingId, setTogglingId] = useState<number | null>(null)
+  const [search, setSearch] = useState('')
 
   const { data, isLoading } = useCoaList({
     page: 1,
     per_page: 100,
     account_type: filterType,
     is_active: filterActive,
+    search: search || undefined,
   })
 
   const { activate, deactivate } = useCoaMutations()
@@ -236,6 +239,13 @@ export default function CoaListPage() {
         </PermissionGuard>
       }
     >
+      <ListSearchBar
+        value={search}
+        onChange={setSearch}
+        placeholder="Cari kode atau nama akun..."
+        className="mb-3"
+      />
+
       {/* Bulk action bar */}
       {selectedIds.length > 0 && (
         <div className="mb-2 flex items-center justify-between rounded-lg border border-[#5c9ead] bg-[#EFF9FB] px-4 py-2">

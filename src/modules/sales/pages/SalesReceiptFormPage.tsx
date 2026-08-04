@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { useRecordTab } from '@/hooks/useRecordTab'
@@ -17,7 +19,7 @@ import { useSalesReceipt, useSalesReceiptMutations, useCustomerOpenInvoices } fr
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { salesReceiptSchema, type SalesReceiptFormValues } from '../schemas/salesReceiptSchema'
-import { formatCurrency } from '@/lib/utils'
+import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
 import type { DocumentStatus } from '@/types/common.types'
 
 interface ReceiptLine {
@@ -28,6 +30,16 @@ interface ReceiptLine {
 }
 
 export default function SalesReceiptFormPage() {
+  const { id } = useParams()
+  // `/sales/receipts/create` dan `/sales/receipts/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <SalesReceiptFormPageContent key={id ?? 'create'} />
+}
+
+function SalesReceiptFormPageContent() {
   const { replaceRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
@@ -38,7 +50,7 @@ export default function SalesReceiptFormPage() {
   const receipt = data?.data
   const { create, post, void: voidRec } = useSalesReceiptMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<SalesReceiptFormValues>({
+  const { register, handleSubmit, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<SalesReceiptFormValues>({
     resolver: zodResolver(salesReceiptSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -86,14 +98,18 @@ export default function SalesReceiptFormPage() {
         label: res.data.number,
         path: `/sales/receipts/${res.data.id}`,
       })
-    } catch { toast.error('Gagal menyimpan penerimaan.') }
+    } catch (saveError) {
+      // Backend memvalidasi tanggal sebagai `receipt_date`, form memakai `date`.
+      applyApiValidationErrors(saveError, setError, { receipt_date: 'date' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan penerimaan.'))
+    }
   })
 
   const handlePost = async () => {
     try {
       await post.mutateAsync(Number(id))
       toast.success('Penerimaan berhasil diposting.')
-    } catch { toast.error('Gagal memposting penerimaan.') }
+    } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal memposting penerimaan.')) }
   }
 
   const handleVoid = async (reason: string) => {
@@ -170,8 +186,8 @@ export default function SalesReceiptFormPage() {
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Tanggal <span className="text-red-500">*</span>
               </Label>
-              <Input {...register('date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+              <Input {...register('date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+              <FieldError message={errors.date?.message} />
             </div>
 
             <div className="flex flex-col gap-1">
@@ -191,7 +207,8 @@ export default function SalesReceiptFormPage() {
 
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
           </FormSection>
 
@@ -274,10 +291,13 @@ export default function SalesReceiptFormPage() {
               )}
             </div>
 
-            <div className="mt-3 flex justify-end">
+            {/* `amount` tidak punya input sendiri — nilainya dihitung dari baris invoice,
+                jadi error-nya ditandai di baris total ini supaya tetap terlihat. */}
+            <div className="mt-3 flex flex-col items-end gap-1">
               <div className="text-[14px] font-semibold text-[#24323a]">
                 Total: <span className="tabular-nums">{formatCurrency(totalAmount)}</span>
               </div>
+              <FieldError message={errors.amount?.message} />
             </div>
           </div>
         </div>
