@@ -15,6 +15,7 @@ import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { useSalesReturnList, useSalesReturnMutations } from '../hooks/useSalesReturnList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
@@ -98,16 +99,17 @@ export default function SalesReturnListPage() {
       const results = await Promise.allSettled(selectedReturns.map((salesReturn) => voidReturn.mutateAsync({ id: Number(salesReturn.id), reason })))
       const successCount = results.filter((result) => result.status === 'fulfilled').length
       const failureCount = results.length - successCount
+      const failureDetail = getBulkFailureDetail(results)
 
       if (failureCount === 0) {
         toast.success(`${successCount} retur penjualan berhasil di-void.`)
       } else if (successCount === 0) {
-        toast.error(`Gagal void ${failureCount} retur penjualan.`)
+        toast.error(`Gagal void ${failureCount} retur penjualan.${failureDetail ? ` ${failureDetail}` : ''}`)
       } else {
-        toast.warning(`${successCount} retur penjualan berhasil di-void, ${failureCount} gagal.`)
+        toast.warning(`${successCount} retur penjualan berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
       }
-    } catch {
-      toast.error('Gagal memproses bulk void.')
+    } catch (bulkError) {
+      toast.error(getApiErrorMessage(bulkError, 'Gagal memproses bulk void.'))
     } finally {
       setBulkVoidOpen(false)
       setBulkVoidIds([])

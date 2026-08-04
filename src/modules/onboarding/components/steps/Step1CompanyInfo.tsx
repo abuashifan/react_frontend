@@ -22,6 +22,7 @@ import { companyInfoSchema, type CompanyInfoValues } from '../../schemas/company
 import { setupApi } from '../../services/onboardingApi'
 import { companySettingsApi } from '@/modules/settings/services/companySettingsApi'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage } from '@/lib/apiError'
 
 const FISCAL_MONTH_OPTIONS = [
   { value: '1', label: 'Januari' },
@@ -59,8 +60,8 @@ export function Step1CompanyInfo({ defaultValues, onComplete }: Props) {
       // Tandai progres step di backend (best-effort).
       try { await setupApi.validateStep('company_profile') } catch { /* progres non-blocking */ }
       onComplete(values)
-    } catch {
-      toast.error('Gagal menyimpan informasi perusahaan. Coba lagi.')
+    } catch (saveError) {
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan informasi perusahaan. Coba lagi.'))
     }
   }
 

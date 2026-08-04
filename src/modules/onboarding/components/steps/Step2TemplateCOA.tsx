@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { setupApi } from '../../services/onboardingApi'
 import { useToast } from '@/hooks/useToast'
 import { COA_TEMPLATES } from '../../constants'
+import { getApiErrorMessage } from '@/lib/apiError'
 
 // Static preview per template (would come from API in production)
 const TEMPLATE_PREVIEW: Record<string, string[]> = {
@@ -70,8 +71,8 @@ export function Step2TemplateCOA({ currentTemplate, mappingCompleted, onComplete
       try { await setupApi.validateStep('chart_of_accounts') } catch { /* progres non-blocking */ }
       const tpl = COA_TEMPLATES.find((t) => t.id === selected)!
       onComplete(selected, tpl.label)
-    } catch {
-      toast.error('Gagal melanjutkan. Coba lagi.')
+    } catch (continueError) {
+      toast.error(getApiErrorMessage(continueError, 'Gagal melanjutkan. Coba lagi.'))
     } finally {
       setIsSubmitting(false)
     }

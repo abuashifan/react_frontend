@@ -21,6 +21,7 @@ import { coaApi } from '@/modules/master-data/services/coaApi'
 import { customerDepositSchema, type CustomerDepositFormValues } from '../schemas/customerDepositSchema'
 import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
 import type { DocumentStatus } from '@/types/common.types'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 export default function CustomerDepositFormPage() {
   const { id } = useParams()
@@ -43,7 +44,7 @@ function CustomerDepositFormPageContent() {
   const deposit = data?.data
   const { create, post, void: voidDep } = useCustomerDepositMutations()
 
-  const { register, handleSubmit, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<CustomerDepositFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<CustomerDepositFormValues>({
     resolver: zodResolver(customerDepositSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -65,9 +66,22 @@ function CustomerDepositFormPageContent() {
     }
   }, [deposit, reset])
 
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<CustomerDepositFormValues>({
+    draftKey: `sales.customer-deposit.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+  })
+
   const handleSave = handleSubmit(async (values) => {
     try {
       const res = await create.mutateAsync(values)
+      formDraft.clearDraft()
       toast.success('Deposit berhasil disimpan.')
       replaceRecordTab('/sales/customer-deposits/create', {
         label: res.data.number,
@@ -83,12 +97,14 @@ function CustomerDepositFormPageContent() {
   const handlePost = async () => {
     try {
       await post.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Deposit berhasil diposting.')
     } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal memposting deposit.')) }
   }
 
   const handleVoid = async (reason: string) => {
     await voidDep.mutateAsync({ id: Number(id), reason })
+    formDraft.clearDraft()
     toast.success('Deposit berhasil di-void.')
     setVoidOpen(false)
   }

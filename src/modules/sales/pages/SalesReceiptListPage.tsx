@@ -15,6 +15,7 @@ import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { useSalesReceiptList, useSalesReceiptMutations } from '../hooks/useSalesReceiptList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
@@ -100,16 +101,17 @@ export default function SalesReceiptListPage() {
       )
       const successCount = results.filter((result) => result.status === 'fulfilled').length
       const failureCount = results.length - successCount
+      const failureDetail = getBulkFailureDetail(results)
 
       if (failureCount === 0) {
         toast.success(`${successCount} penerimaan penjualan berhasil di-void.`)
       } else if (successCount === 0) {
-        toast.error(`Gagal void ${failureCount} penerimaan penjualan.`)
+        toast.error(`Gagal void ${failureCount} penerimaan penjualan.${failureDetail ? ` ${failureDetail}` : ''}`)
       } else {
-        toast.warning(`${successCount} penerimaan penjualan berhasil di-void, ${failureCount} gagal.`)
+        toast.warning(`${successCount} penerimaan penjualan berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
       }
-    } catch {
-      toast.error('Gagal memproses bulk void.')
+    } catch (bulkError) {
+      toast.error(getApiErrorMessage(bulkError, 'Gagal memproses bulk void.'))
     } finally {
       setBulkVoidOpen(false)
       setBulkVoidIds([])

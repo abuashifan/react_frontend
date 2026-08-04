@@ -23,6 +23,7 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { salesOrderSchema, type SalesOrderFormValues } from '../schemas/salesOrderSchema'
 import type { DocumentStatus } from '@/types/common.types'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine {
   product_id: number | null
@@ -74,7 +75,7 @@ function SalesOrderFormPageContent() {
   const order = data?.data
   const { create, createFromQuotation, update, approve, confirm, cancel } = useSalesOrderMutations()
 
-  const { control, register, handleSubmit, setValue, setError, reset, formState: { errors, isSubmitting } } = useForm<SalesOrderFormValues>({
+  const { control, register, handleSubmit, getValues, setValue, setError, reset, formState: { errors, isSubmitting } } = useForm<SalesOrderFormValues>({
     resolver: zodResolver(salesOrderSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -125,10 +126,25 @@ function SalesOrderFormPageContent() {
     }
   }, [order, reset])
 
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<SalesOrderFormValues, EditableLine[]>({
+    draftKey: `sales.order.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
+  })
+
   const handleSaveDraft = handleSubmit(async (values) => {
     try {
       if (isCreate) {
         const res = await create.mutateAsync({ ...values, lines: lines.map(toOrderLine) })
+        formDraft.clearDraft()
         toast.success('Sales Order berhasil dibuat.')
         replaceRecordTab('/sales/orders/create', {
           label: res.data.number,
@@ -136,6 +152,7 @@ function SalesOrderFormPageContent() {
         })
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines: lines.map(toOrderLine) } })
+        formDraft.clearDraft()
         toast.success('Sales Order berhasil diperbarui.')
       }
     } catch (saveError) {
@@ -150,6 +167,7 @@ function SalesOrderFormPageContent() {
   const handleApprove = async () => {
     try {
       await approve.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Sales Order berhasil di-approve.')
     } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve Sales Order.')) }
   }
@@ -157,6 +175,7 @@ function SalesOrderFormPageContent() {
   const handleConfirm = async () => {
     try {
       await confirm.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Sales Order berhasil dikonfirmasi.')
     } catch (confirmError) { toast.error(getApiErrorMessage(confirmError, 'Gagal konfirmasi Sales Order.')) }
   }
@@ -164,6 +183,7 @@ function SalesOrderFormPageContent() {
   const handleCancel = async () => {
     try {
       await cancel.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Sales Order dibatalkan.')
     } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan Sales Order.')) }
   }

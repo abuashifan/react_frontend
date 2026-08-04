@@ -104,6 +104,22 @@ export function getApiErrorMessage(error: unknown, fallback = 'Terjadi kesalahan
   return fallback
 }
 
+/**
+ * Alasan gagal dari aksi massal (`Promise.allSettled`) — mis. bulk void.
+ *
+ * Tanpa ini toast hanya menyebut jumlah ("Gagal void 3 invoice.") tanpa sebab,
+ * padahal penyebabnya biasanya sama untuk semua baris (periode tertutup, tidak
+ * punya izin, dokumen sudah dipakai). Kembalikan '' bila tidak ada yang gagal.
+ */
+export function getBulkFailureDetail(results: PromiseSettledResult<unknown>[]): string {
+  const firstRejected = results.find(
+    (result): result is PromiseRejectedResult => result.status === 'rejected',
+  )
+  if (!firstRejected) return ''
+
+  return getApiErrorMessage(firstRejected.reason, '')
+}
+
 export function getApiValidationErrors(error: unknown): ValidationErrorMap {
   const apiError = apiErrorFrom(error)
   if (!isRecord(apiError?.errors)) return {}

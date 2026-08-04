@@ -65,6 +65,7 @@ function BankTransferFormPageContent() {
   const handleDiscardDraft = () => {
     reset({ transfer_date: new Date().toISOString().slice(0, 10) })
     formDraft.discardDraft()
+    formDraft.clearDraft()
     toast.success('Draft lokal dibuang.')
   }
 

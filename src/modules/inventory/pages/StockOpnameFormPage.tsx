@@ -109,6 +109,7 @@ function StockOpnameFormPageContent() {
     if (isNaN(qty) || qty < 0) { toast.error('Masukkan qty fisik yang valid.'); return }
     try {
       await updateLine.mutateAsync({ id: Number(id), lineId, physical_quantity: qty, reason: input.reason || undefined })
+      formDraft.clearDraft()
       toast.success('Qty fisik tersimpan.')
     } catch (lineError) { toast.error(getApiErrorMessage(lineError, 'Gagal menyimpan qty fisik.')) }
   }
@@ -135,6 +136,7 @@ function StockOpnameFormPageContent() {
 
   const handleVoid = async (reason: string) => {
     await voidOpname.mutateAsync({ id: Number(id), reason })
+    formDraft.clearDraft()
     toast.success('Opname berhasil di-void.')
     setVoidOpen(false)
   }

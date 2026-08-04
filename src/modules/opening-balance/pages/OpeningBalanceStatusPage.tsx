@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/useToast'
 import { formatCurrency, cn } from '@/lib/utils'
 import { useOBStatus, useOBMutations } from '../hooks/useOpeningBalance'
 import type { OBBatchStatus } from '../types/openingBalance.types'
+import { getApiErrorMessage } from '@/lib/apiError'
 
 const STATUS_BADGE: Record<OBBatchStatus, { label: string; className: string }> = {
   draft: { label: 'Draft', className: 'bg-[#FEF3C7] text-[#92400E] hover:bg-[#FEF3C7]' },
@@ -30,7 +31,7 @@ export default function OpeningBalanceStatusPage() {
       const res = await createBatch.mutateAsync({ opening_date: new Date().toISOString().slice(0, 10) })
       toast.success('Batch saldo awal dibuat.')
       navigate(`/opening-balance/${res.data.id}`)
-    } catch { toast.error('Gagal membuat batch saldo awal.') }
+    } catch (startError) { toast.error(getApiErrorMessage(startError, 'Gagal membuat batch saldo awal.')) }
   }
 
   if (isLoading) {

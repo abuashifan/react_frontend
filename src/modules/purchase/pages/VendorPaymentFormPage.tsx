@@ -23,6 +23,7 @@ import { vendorPaymentSchema, type VendorPaymentFormValues } from '../schemas/ve
 import type { DocumentStatus } from '@/types/common.types'
 import type { VendorPaymentLinePayload } from '../types/vendorPayment.types'
 import { useRecordTab } from '@/hooks/useRecordTab'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface BillLine {
   vendor_bill_id: number
@@ -54,7 +55,7 @@ function VendorPaymentFormPageContent() {
   const payment = data?.data
   const { create, post, void: voidPayment } = useVendorPaymentMutations()
 
-  const { register, handleSubmit, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<VendorPaymentFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<VendorPaymentFormValues>({
     resolver: zodResolver(vendorPaymentSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -90,10 +91,23 @@ function VendorPaymentFormPageContent() {
     }
   }
 
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<VendorPaymentFormValues>({
+    draftKey: `purchase.vendor-payment.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+  })
+
   const handleSave = handleSubmit(async (values) => {
     try {
       const lines: VendorPaymentLinePayload[] = billLines.map((l) => ({ vendor_bill_id: l.vendor_bill_id, amount: l.amount }))
       const res = await create.mutateAsync({ ...toVendorPaymentPayload(values), lines })
+      formDraft.clearDraft()
       toast.success('Pembayaran vendor berhasil dibuat.')
       replaceRecordTab('/purchase/payments/create', { label: res.data.number, path: `/purchase/payments/${res.data.id}` })
     } catch (saveError) {
@@ -106,6 +120,7 @@ function VendorPaymentFormPageContent() {
   const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Pembayaran berhasil diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting pembayaran.')) } }
   const handleVoid = async (reason: string) => {
     await voidPayment.mutateAsync({ id: Number(id), reason })
+    formDraft.clearDraft()
     toast.success('Pembayaran berhasil di-void.')
     setVoidOpen(false)
   }

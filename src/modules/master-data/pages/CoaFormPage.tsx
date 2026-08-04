@@ -18,6 +18,7 @@ import { coaApi } from '../services/coaApi'
 import { coaSchema, type CoaFormValues } from '../schemas/coaSchema'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { cn, fieldErrorClass } from '@/lib/utils'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 const COA_TYPES = [
   { value: 'asset', label: 'Aset' },
@@ -50,7 +51,7 @@ function CoaFormPageContent() {
 
   const {
     register,
-    handleSubmit,
+    handleSubmit, control, getValues,
     setValue,
     setError,
     watch,
@@ -73,14 +74,28 @@ function CoaFormPageContent() {
     }
   }, [coa, reset])
 
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<CoaFormValues>({
+    draftKey: `master-data.coa.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+  })
+
   const onSubmit = async (values: CoaFormValues) => {
     try {
       if (isCreate) {
         const res = await create.mutateAsync(values)
+        formDraft.clearDraft()
         toast.success('Akun berhasil dibuat.')
         replaceRecordTab('/master-data/coa/create', { label: res.data.account_code, path: `/master-data/coa/${res.data.id}` })
       } else {
         await update.mutateAsync({ id: Number(id), payload: values })
+        formDraft.clearDraft()
         toast.success('Akun berhasil diperbarui.')
       }
     } catch (error) {

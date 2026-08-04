@@ -13,6 +13,7 @@ import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilt
 import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { useBankTransferList, useBankTransferMutations } from '../hooks/useCashBankList'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { BankTransfer, CashBankStatus } from '../types/cashBank.types'
@@ -93,16 +94,17 @@ export default function BankTransferListPage() {
       )
       const successCount = results.filter((result) => result.status === 'fulfilled').length
       const failureCount = results.length - successCount
+      const failureDetail = getBulkFailureDetail(results)
 
       if (failureCount === 0) {
         toast.success(`${successCount} transfer bank berhasil di-void.`)
       } else if (successCount === 0) {
-        toast.error(`Gagal void ${failureCount} transfer bank.`)
+        toast.error(`Gagal void ${failureCount} transfer bank.${failureDetail ? ` ${failureDetail}` : ''}`)
       } else {
-        toast.warning(`${successCount} transfer bank berhasil di-void, ${failureCount} gagal.`)
+        toast.warning(`${successCount} transfer bank berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
       }
-    } catch {
-      toast.error('Gagal memproses bulk void.')
+    } catch (bulkError) {
+      toast.error(getApiErrorMessage(bulkError, 'Gagal memproses bulk void.'))
     } finally {
       setBulkVoidOpen(false)
       setBulkVoidIds([])

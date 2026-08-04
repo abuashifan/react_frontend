@@ -23,6 +23,7 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { salesInvoiceApi } from '../services/salesInvoiceApi'
 import { proformaSchema, type ProformaFormValues } from '../schemas/proformaSchema'
 import type { DocumentStatus } from '@/types/common.types'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine {
   product_id: number | null
@@ -60,7 +61,7 @@ function ProformaFormPageContent() {
   const proforma = data?.data
   const { create, update, issue, accept, cancel } = useProformaMutations()
 
-  const { register, handleSubmit, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<ProformaFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<ProformaFormValues>({
     resolver: zodResolver(proformaSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -90,10 +91,25 @@ function ProformaFormPageContent() {
     }
   }, [proforma, reset])
 
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<ProformaFormValues, EditableLine[]>({
+    draftKey: `sales.proforma.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
+  })
+
   const handleSaveDraft = handleSubmit(async (values) => {
     try {
       if (isCreate) {
         const res = await create.mutateAsync({ ...values, lines })
+        formDraft.clearDraft()
         toast.success('Proforma berhasil dibuat.')
         replaceRecordTab('/sales/proformas/create', {
           label: res.data.number,
@@ -101,6 +117,7 @@ function ProformaFormPageContent() {
         })
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
+        formDraft.clearDraft()
         toast.success('Proforma berhasil diperbarui.')
       }
     } catch (saveError) {
@@ -113,6 +130,7 @@ function ProformaFormPageContent() {
   const handleIssue = async () => {
     try {
       await issue.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Proforma berhasil diterbitkan.')
     } catch (issueError) { toast.error(getApiErrorMessage(issueError, 'Gagal menerbitkan proforma.')) }
   }
@@ -120,6 +138,7 @@ function ProformaFormPageContent() {
   const handleAccept = async () => {
     try {
       await accept.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Proforma diterima.')
     } catch (acceptError) { toast.error(getApiErrorMessage(acceptError, 'Gagal menerima proforma.')) }
   }
@@ -127,6 +146,7 @@ function ProformaFormPageContent() {
   const handleCancel = async () => {
     try {
       await cancel.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Proforma dibatalkan.')
     } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan proforma.')) }
   }
@@ -135,6 +155,7 @@ function ProformaFormPageContent() {
     setConverting(true)
     try {
       const res = await salesInvoiceApi.createFromProforma(Number(id))
+      formDraft.clearDraft()
       toast.success('Invoice berhasil dibuat dari proforma.')
       // Hasil konversi jadi tab baru, bukan menggantikan tab proforma asalnya.
       openRecordTab({ label: res.data.number, path: `/sales/invoices/${res.data.id}` })

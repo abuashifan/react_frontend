@@ -6,6 +6,7 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { onboardingApi } from '../../services/onboardingApi'
 import { useToast } from '@/hooks/useToast'
 import type { SelectOption } from '@/types/common.types'
+import { getApiErrorMessage } from '@/lib/apiError'
 
 interface Props {
   onComplete: () => void
@@ -71,8 +72,8 @@ export function Step3AccountMapping({ onComplete, onBack }: Props) {
         toast.success('Perubahan pemetaan akun disimpan.')
       }
       onComplete()
-    } catch {
-      toast.error('Gagal menyimpan perubahan pemetaan akun. Coba lagi.')
+    } catch (saveError) {
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan perubahan pemetaan akun. Coba lagi.'))
     } finally {
       setIsSubmitting(false)
     }

@@ -152,6 +152,7 @@ function StockAdjustmentFormPageContent() {
       setLines([{ ...DEFAULT_LINE }])
     }
     formDraft.discardDraft()
+    formDraft.clearDraft()
     toast.success('Draft lokal dibuang.')
   }
 

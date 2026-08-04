@@ -22,6 +22,7 @@ import { journalEntrySchema, type JournalEntryFormValues } from '../schemas/jour
 import type { DocumentStatus, SelectOption } from '@/types/common.types'
 import type { BudgetWarning } from '../types/journalEntry.types'
 import { useRecordTab } from '@/hooks/useRecordTab'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine {
   account_id: number | null
@@ -55,7 +56,7 @@ function JournalFormPageContent() {
   const journal = data?.data
   const { create, update, approve, post, void: voidJournal } = useJournalEntryMutations()
 
-  const { register, handleSubmit, reset, setError, formState: { errors, isSubmitting } } = useForm<JournalEntryFormValues>({
+  const { register, handleSubmit, control, getValues, reset, setError, formState: { errors, isSubmitting } } = useForm<JournalEntryFormValues>({
     resolver: zodResolver(journalEntrySchema),
     defaultValues: { journal_date: new Date().toISOString().slice(0, 10) },
   })
@@ -87,15 +88,31 @@ function JournalFormPageContent() {
     }
   }, [journal, reset])
 
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<JournalEntryFormValues, EditableLine[]>({
+    draftKey: `accounting.journal.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
+  })
+
   const handleSave = handleSubmit(async (values) => {
     const linePayloads = lines.map((l, i) => ({ account_id: l.account_id!, description: l.description || null, debit: l.debit || undefined, credit: l.credit || undefined, line_order: i + 1 }))
     try {
       if (isCreate) {
         const res = await create.mutateAsync({ ...values, lines: linePayloads })
+        formDraft.clearDraft()
         toast.success('Jurnal berhasil dibuat.')
         replaceRecordTab('/accounting/journals/create', { label: res.data.journal_number, path: `/accounting/journals/${res.data.id}` })
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads } })
+        formDraft.clearDraft()
         toast.success('Jurnal berhasil diperbarui.')
       }
     } catch (error) {
@@ -109,6 +126,7 @@ function JournalFormPageContent() {
     if (!isBalanced) { toast.error('Total debit harus sama dengan total kredit.'); return }
     try {
       const res = await post.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Jurnal berhasil diposting.')
       const warnings = (res.meta?.warnings ?? []) as BudgetWarning[]
       warnings.forEach((w) => {
@@ -121,6 +139,7 @@ function JournalFormPageContent() {
   const handleVoid = async (reason: string) => {
     try {
       await voidJournal.mutateAsync({ id: Number(id), reason })
+      formDraft.clearDraft()
       toast.success('Jurnal berhasil di-void.')
       setVoidOpen(false)
     } catch (error) {

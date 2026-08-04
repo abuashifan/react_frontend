@@ -23,6 +23,7 @@ import { salesOrderApi } from '../services/salesOrderApi'
 import { quotationSchema, type QuotationFormValues } from '../schemas/quotationSchema'
 import type { DocumentStatus } from '@/types/common.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine {
   product_id: number | null
@@ -60,7 +61,7 @@ function QuotationFormPageContent() {
   const quotation = data?.data
   const { create, update, send, approve, accept, reject, cancel } = useQuotationMutations()
 
-  const { register, handleSubmit, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<QuotationFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<QuotationFormValues>({
     resolver: zodResolver(quotationSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -95,10 +96,25 @@ function QuotationFormPageContent() {
     setLines((prev) => prev.map((l, i) => i === index ? { ...l, [field]: value } : l))
   }
 
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<QuotationFormValues, EditableLine[]>({
+    draftKey: `sales.quotation.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
+  })
+
   const handleSaveDraft = handleSubmit(async (values) => {
     try {
       if (isCreate) {
         const res = await create.mutateAsync({ ...values, lines })
+        formDraft.clearDraft()
         toast.success('Draft berhasil disimpan.')
         replaceRecordTab('/sales/quotations/create', {
           label: res.data.number,
@@ -106,6 +122,7 @@ function QuotationFormPageContent() {
         })
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
+        formDraft.clearDraft()
         toast.success('Draft berhasil diperbarui.')
       }
     } catch (saveError) {
@@ -120,6 +137,7 @@ function QuotationFormPageContent() {
   const handleSend = async () => {
     try {
       await send.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Quotation berhasil dikirim.')
     } catch (sendError) { toast.error(getApiErrorMessage(sendError, 'Gagal mengirim quotation.')) }
   }
@@ -127,6 +145,7 @@ function QuotationFormPageContent() {
   const handleApprove = async () => {
     try {
       await approve.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Quotation berhasil di-approve.')
     } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve quotation.')) }
   }
@@ -134,6 +153,7 @@ function QuotationFormPageContent() {
   const handleAccept = async () => {
     try {
       await accept.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Quotation diterima.')
     } catch (acceptError) { toast.error(getApiErrorMessage(acceptError, 'Gagal menerima quotation.')) }
   }
@@ -141,6 +161,7 @@ function QuotationFormPageContent() {
   const handleReject = async () => {
     try {
       await reject.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Quotation ditolak.')
     } catch (rejectError) { toast.error(getApiErrorMessage(rejectError, 'Gagal menolak quotation.')) }
   }
@@ -148,6 +169,7 @@ function QuotationFormPageContent() {
   const handleCancel = async () => {
     try {
       await cancel.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Quotation dibatalkan.')
     } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan quotation.')) }
   }
@@ -156,6 +178,7 @@ function QuotationFormPageContent() {
     setConverting(true)
     try {
       const res = await salesOrderApi.createFromQuotation(Number(id))
+      formDraft.clearDraft()
       toast.success('Sales Order berhasil dibuat.')
       // Hasil konversi jadi tab baru, bukan menggantikan tab quotation asalnya —
       // user biasanya masih perlu melihat dokumen sumbernya.

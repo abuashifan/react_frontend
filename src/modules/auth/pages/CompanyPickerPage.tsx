@@ -10,6 +10,7 @@ import { companyApi } from '../services/companyApi'
 import { cn } from '@/lib/utils'
 import { APP_NAME } from '@/lib/constants'
 import type { Company } from '@/types/auth.types'
+import { getApiErrorMessage } from '@/lib/apiError'
 
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -88,8 +89,8 @@ export function CompanyPickerPage() {
       setPermissions(permissionsResponse.data.permissions)
 
       navigate('/', { replace: true })
-    } catch {
-      toast.error('Gagal memilih perusahaan. Coba lagi.')
+    } catch (selectError) {
+      toast.error(getApiErrorMessage(selectError, 'Gagal memilih perusahaan. Coba lagi.'))
       setLoadingId(null)
     }
   }

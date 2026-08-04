@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { useCoaList, useCoaMutations } from '../hooks/useCoaList'
 import type { Coa, CoaType } from '../types/coa.types'
 import { cn } from '@/lib/utils'
@@ -178,28 +179,46 @@ export default function CoaListPage() {
         await activate.mutateAsync(node.id)
         toast.success(`Akun "${node.account_name}" diaktifkan.`)
       }
-    } catch {
-      toast.error('Gagal mengubah status akun.')
+    } catch (error) {
+      // mis. ACCOUNT_HAS_ACTIVE_CHILDREN saat menonaktifkan akun induk.
+      toast.error(getApiErrorMessage(error, 'Gagal mengubah status akun.'))
     } finally {
       setTogglingId(null)
     }
   }
 
-  const handleBulkActivate = async () => {
-    for (const id of selectedIds) {
-      await activate.mutateAsync(Number(id))
+  /**
+   * Jalankan aksi massal per akun terpilih.
+   *
+   * Pakai `allSettled` (bukan loop `await` berurutan) supaya satu akun yang gagal
+   * — mis. akun induk yang masih punya sub-akun aktif — tidak menghentikan sisanya
+   * tanpa kabar apa pun ke user.
+   */
+  const runBulkStatusChange = async (
+    targetActive: boolean,
+    mutateAsync: (id: number) => Promise<unknown>,
+  ) => {
+    const total = selectedIds.length
+    const verb = targetActive ? 'diaktifkan' : 'dinonaktifkan'
+
+    const results = await Promise.allSettled(selectedIds.map((id) => mutateAsync(Number(id))))
+    const successCount = results.filter((result) => result.status === 'fulfilled').length
+    const failureCount = results.length - successCount
+    const failureDetail = getBulkFailureDetail(results)
+
+    if (failureCount === 0) {
+      toast.success(`${total} akun ${verb}.`)
+    } else if (successCount === 0) {
+      toast.error(`Gagal ${targetActive ? 'mengaktifkan' : 'menonaktifkan'} ${failureCount} akun.${failureDetail ? ` ${failureDetail}` : ''}`)
+    } else {
+      toast.warning(`${successCount} akun ${verb}, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
     }
-    toast.success(`${selectedIds.length} akun diaktifkan.`)
     setSelectedIds([])
   }
 
-  const handleBulkDeactivate = async () => {
-    for (const id of selectedIds) {
-      await deactivate.mutateAsync(Number(id))
-    }
-    toast.success(`${selectedIds.length} akun dinonaktifkan.`)
-    setSelectedIds([])
-  }
+  const handleBulkActivate = () => runBulkStatusChange(true, (id) => activate.mutateAsync(id))
+
+  const handleBulkDeactivate = () => runBulkStatusChange(false, (id) => deactivate.mutateAsync(id))
 
   const activeFilterCount = [filterType, filterActive].filter((v) => v !== undefined).length
 

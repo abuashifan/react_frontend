@@ -14,6 +14,7 @@ import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilt
 import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { useVendorDepositList, useVendorDepositMutations } from '../hooks/useVendorDepositList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
@@ -99,16 +100,17 @@ export default function VendorDepositListPage() {
       const results = await Promise.allSettled(selectedDeposits.map((deposit) => voidDeposit.mutateAsync({ id: Number(deposit.id), reason })))
       const successCount = results.filter((result) => result.status === 'fulfilled').length
       const failureCount = results.length - successCount
+      const failureDetail = getBulkFailureDetail(results)
 
       if (failureCount === 0) {
         toast.success(`${successCount} deposit vendor berhasil di-void.`)
       } else if (successCount === 0) {
-        toast.error(`Gagal void ${failureCount} deposit vendor.`)
+        toast.error(`Gagal void ${failureCount} deposit vendor.${failureDetail ? ` ${failureDetail}` : ''}`)
       } else {
-        toast.warning(`${successCount} deposit vendor berhasil di-void, ${failureCount} gagal.`)
+        toast.warning(`${successCount} deposit vendor berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
       }
-    } catch {
-      toast.error('Gagal memproses bulk void.')
+    } catch (bulkError) {
+      toast.error(getApiErrorMessage(bulkError, 'Gagal memproses bulk void.'))
     } finally {
       setBulkVoidOpen(false)
       setBulkVoidIds([])

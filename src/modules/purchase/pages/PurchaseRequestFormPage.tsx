@@ -23,6 +23,7 @@ import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { purchaseRequestSchema, type PurchaseRequestFormValues } from '../schemas/purchaseRequestSchema'
 import type { DocumentStatus } from '@/types/common.types'
 import { useRecordTab } from '@/hooks/useRecordTab'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine {
   product_id: number | null
@@ -59,7 +60,7 @@ function PurchaseRequestFormPageContent() {
   const pr = data?.data
   const { create, update, submit, approve, reject, cancel } = usePurchaseRequestMutations()
 
-  const { register, handleSubmit, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<PurchaseRequestFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<PurchaseRequestFormValues>({
     resolver: zodResolver(purchaseRequestSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -83,15 +84,31 @@ function PurchaseRequestFormPageContent() {
     }
   }, [pr, reset])
 
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<PurchaseRequestFormValues, EditableLine[]>({
+    draftKey: `purchase.request.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
+  })
+
   const handleSave = handleSubmit(async (values) => {
     try {
       const payload = toPurchaseRequestPayload(values, lines.map(({ product, ...line }) => line))
       if (isCreate) {
         const res = await create.mutateAsync(payload)
+        formDraft.clearDraft()
         toast.success('Purchase Request berhasil dibuat.')
         replaceRecordTab('/purchase/requests/create', { label: res.data.number, path: `/purchase/requests/${res.data.id}` })
       } else {
         await update.mutateAsync({ id: Number(id), payload })
+        formDraft.clearDraft()
         toast.success('Purchase Request berhasil diperbarui.')
       }
     } catch (saveError) {

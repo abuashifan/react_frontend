@@ -21,6 +21,7 @@ import { paymentTermsApi } from '../services/paymentTermsApi'
 import { kontakSchema, type KontakFormValues } from '../schemas/kontakSchema'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { cn, fieldErrorClass } from '@/lib/utils'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 export default function KontakFormPage() {
   const { id } = useParams()
@@ -45,7 +46,7 @@ function KontakFormPageContent() {
 
   const {
     register,
-    handleSubmit,
+    handleSubmit, control, getValues,
     setValue,
     setError,
     watch,
@@ -77,6 +78,18 @@ function KontakFormPageContent() {
     }
   }, [kontak, reset])
 
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<KontakFormValues>({
+    draftKey: `master-data.contact.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+  })
+
   const onSubmit = async (values: KontakFormValues) => {
     const { contact_type, ...rest } = values
     const payload = {
@@ -91,10 +104,12 @@ function KontakFormPageContent() {
     try {
       if (isCreate) {
         const res = await create.mutateAsync(payload)
+        formDraft.clearDraft()
         toast.success('Kontak berhasil dibuat.')
         replaceRecordTab('/master-data/contacts/create', { label: res.data.name, path: `/master-data/contacts/${res.data.id}` })
       } else {
         await update.mutateAsync({ id: Number(id), payload })
+        formDraft.clearDraft()
         toast.success('Kontak berhasil diperbarui.')
       }
     } catch (error) {
@@ -111,9 +126,11 @@ function KontakFormPageContent() {
       if (kontak.is_active) {
         if (!confirm(`Nonaktifkan kontak "${kontak.name}"?`)) return
         await deactivate.mutateAsync(kontak.id)
+        formDraft.clearDraft()
         toast.success('Kontak berhasil dinonaktifkan.')
       } else {
         await activate.mutateAsync(kontak.id)
+        formDraft.clearDraft()
         toast.success('Kontak berhasil diaktifkan.')
       }
     } catch (error) {

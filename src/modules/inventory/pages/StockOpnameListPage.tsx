@@ -15,6 +15,7 @@ import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilt
 import { EmptyState } from '@/components/shared/feedback/EmptyState'
 import { formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { useStockOpnameList, useStockOpnameMutations } from '../hooks/useStockOpnameList'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
@@ -88,16 +89,17 @@ export default function StockOpnameListPage() {
       const results = await Promise.allSettled(selectedOpnames.map((opname) => voidOpname.mutateAsync({ id: Number(opname.id), reason })))
       const successCount = results.filter((result) => result.status === 'fulfilled').length
       const failureCount = results.length - successCount
+      const failureDetail = getBulkFailureDetail(results)
 
       if (failureCount === 0) {
         toast.success(`${successCount} opname stok berhasil di-void.`)
       } else if (successCount === 0) {
-        toast.error(`Gagal void ${failureCount} opname stok.`)
+        toast.error(`Gagal void ${failureCount} opname stok.${failureDetail ? ` ${failureDetail}` : ''}`)
       } else {
-        toast.warning(`${successCount} opname stok berhasil di-void, ${failureCount} gagal.`)
+        toast.warning(`${successCount} opname stok berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
       }
-    } catch {
-      toast.error('Gagal memproses bulk void.')
+    } catch (bulkError) {
+      toast.error(getApiErrorMessage(bulkError, 'Gagal memproses bulk void.'))
     } finally {
       setBulkVoidOpen(false)
       setBulkVoidIds([])

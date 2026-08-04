@@ -94,6 +94,7 @@ function VendorBillFormPageContent() {
       const res = sourceMode === 'purchase_order'
         ? await createFromPurchaseOrder.mutateAsync(sourceId)
         : await createFromGoodsReceipt.mutateAsync(sourceId)
+      formDraft.clearDraft()
       toast.success('Tagihan dibuat dari dokumen sumber.')
       replaceRecordTab('/purchase/bills/create', { label: res.data.bill_number, path: `/purchase/bills/${res.data.id}` })
     } catch (convertError) {
@@ -195,6 +196,7 @@ function VendorBillFormPageContent() {
       setLines([{ ...DEFAULT_LINE }])
     }
     formDraft.discardDraft()
+    formDraft.clearDraft()
     toast.success('Draft lokal dibuang.')
   }
 

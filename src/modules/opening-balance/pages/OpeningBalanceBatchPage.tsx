@@ -15,6 +15,7 @@ import { openingBalanceApi } from '../services/openingBalanceApi'
 import { formatCurrency, cn } from '@/lib/utils'
 import { useOBBatch, useOBMutations } from '../hooks/useOpeningBalance'
 import type { OBBatchStatus, OBPreview } from '../types/openingBalance.types'
+import { getApiErrorMessage } from '@/lib/apiError'
 
 const STATUS_BADGE: Record<OBBatchStatus, { label: string; className: string }> = {
   draft: { label: 'Draft', className: 'bg-[#FEF3C7] text-[#92400E] hover:bg-[#FEF3C7]' },
@@ -91,7 +92,7 @@ export default function OpeningBalanceBatchPage() {
     try {
       await replaceLines.mutateAsync({ batchId: id, lines: lines.map((l) => ({ account_id: l.account_id, debit: l.debit || undefined, credit: l.credit || undefined, description: l.description || undefined })) })
       toast.success('Baris saldo awal disimpan.')
-    } catch { toast.error('Gagal menyimpan baris.') }
+    } catch (saveError) { toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan baris.')) }
   }
 
   const handleValidate = async () => {

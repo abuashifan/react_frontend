@@ -14,6 +14,7 @@ import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilt
 import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
 import { formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { useGoodsReceiptList, useGoodsReceiptMutations } from '../hooks/useGoodsReceiptList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
@@ -99,16 +100,17 @@ export default function GoodsReceiptListPage() {
       const results = await Promise.allSettled(selectedGoodsReceipts.map((goodsReceipt) => voidGoodsReceipt.mutateAsync({ id: Number(goodsReceipt.id), reason })))
       const successCount = results.filter((result) => result.status === 'fulfilled').length
       const failureCount = results.length - successCount
+      const failureDetail = getBulkFailureDetail(results)
 
       if (failureCount === 0) {
         toast.success(`${successCount} penerimaan barang berhasil di-void.`)
       } else if (successCount === 0) {
-        toast.error(`Gagal void ${failureCount} penerimaan barang.`)
+        toast.error(`Gagal void ${failureCount} penerimaan barang.${failureDetail ? ` ${failureDetail}` : ''}`)
       } else {
-        toast.warning(`${successCount} penerimaan barang berhasil di-void, ${failureCount} gagal.`)
+        toast.warning(`${successCount} penerimaan barang berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
       }
-    } catch {
-      toast.error('Gagal memproses bulk void.')
+    } catch (bulkError) {
+      toast.error(getApiErrorMessage(bulkError, 'Gagal memproses bulk void.'))
     } finally {
       setBulkVoidOpen(false)
       setBulkVoidIds([])

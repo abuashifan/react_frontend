@@ -23,6 +23,7 @@ import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { purchaseReturnSchema, type PurchaseReturnFormValues } from '../schemas/purchaseReturnSchema'
 import type { DocumentStatus } from '@/types/common.types'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine {
   product_id: number | null
@@ -59,7 +60,7 @@ function PurchaseReturnFormPageContent() {
   const ret = data?.data
   const { create, approve, post, void: voidRet } = usePurchaseReturnMutations()
 
-  const { register, handleSubmit, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<PurchaseReturnFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<PurchaseReturnFormValues>({
     resolver: zodResolver(purchaseReturnSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -77,9 +78,24 @@ function PurchaseReturnFormPageContent() {
     }
   }, [ret, reset])
 
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<PurchaseReturnFormValues, EditableLine[]>({
+    draftKey: `purchase.return.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
+  })
+
   const handleSave = handleSubmit(async (values) => {
     try {
       await create.mutateAsync(toPurchaseReturnPayload(values, lines.map(({ product, ...line }) => line)))
+      formDraft.clearDraft()
       toast.success('Retur pembelian berhasil dibuat.')
     } catch (saveError) {
       // Backend memakai nama kolom DB (`return_date`), form memakai `date`.
@@ -92,6 +108,7 @@ function PurchaseReturnFormPageContent() {
   const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Retur berhasil diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting retur.')) } }
   const handleVoid = async (reason: string) => {
     await voidRet.mutateAsync({ id: Number(id), reason })
+    formDraft.clearDraft()
     toast.success('Retur berhasil di-void.')
     setVoidOpen(false)
   }

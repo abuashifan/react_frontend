@@ -24,6 +24,7 @@ import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { goodsReceiptSchema, type GoodsReceiptFormValues } from '../schemas/goodsReceiptSchema'
 import type { DocumentStatus } from '@/types/common.types'
 import { useRecordTab } from '@/hooks/useRecordTab'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine {
   product_id: number | null
@@ -64,7 +65,7 @@ function GoodsReceiptFormPageContent() {
   const gr = data?.data
   const { create, receive, cancel, void: voidGr } = useGoodsReceiptMutations()
 
-  const { register, handleSubmit, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<GoodsReceiptFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<GoodsReceiptFormValues>({
     resolver: zodResolver(goodsReceiptSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -88,9 +89,24 @@ function GoodsReceiptFormPageContent() {
     }
   }, [gr, reset])
 
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<GoodsReceiptFormValues, EditableLine[]>({
+    draftKey: `purchase.goods-receipt.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
+  })
+
   const handleSave = handleSubmit(async (values) => {
     try {
       const res = await create.mutateAsync(toGoodsReceiptPayload(values, lines.map(toGoodsReceiptLine)))
+      formDraft.clearDraft()
       toast.success('Penerimaan barang berhasil dibuat.')
       replaceRecordTab('/purchase/goods-receipts/create', { label: res.data.number, path: `/purchase/goods-receipts/${res.data.id}` })
     } catch (saveError) {
@@ -110,6 +126,7 @@ function GoodsReceiptFormPageContent() {
   }
   const handleVoid = async (reason: string) => {
     await voidGr.mutateAsync({ id: Number(id), reason })
+    formDraft.clearDraft()
     toast.success('GR berhasil di-void.')
     setVoidOpen(false)
   }

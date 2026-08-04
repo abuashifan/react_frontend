@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { setupApi } from '../../services/onboardingApi'
 import { useCompanyStore } from '@/stores/useCompanyStore'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage } from '@/lib/apiError'
 
 interface WizardSummary {
   templateLabel: string | null
@@ -38,8 +39,8 @@ export function Step6Complete({ summary, onBack }: Props) {
       }
       toast.success('Setup perusahaan selesai! Selamat datang di Seaside Escape ERP.')
       navigate('/')
-    } catch {
-      toast.error('Setup belum dapat diselesaikan. Pastikan semua langkah wajib sudah valid.')
+    } catch (finishError) {
+      toast.error(getApiErrorMessage(finishError, 'Setup belum dapat diselesaikan. Pastikan semua langkah wajib sudah valid.'))
       setIsFinishing(false)
     }
   }

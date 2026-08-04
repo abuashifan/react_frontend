@@ -11,6 +11,7 @@ import { ActiveStatusBadge } from '@/components/shared/badge/ActiveStatusBadge'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/useToast'
+import { getBulkFailureDetail } from '@/lib/apiError'
 import { useKontakList, useKontakMutations } from '../hooks/useKontakList'
 import type { Kontak, KontakType } from '../types/kontak.types'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
@@ -129,13 +130,14 @@ export default function KontakListPage() {
     const results = await Promise.allSettled(eligible.map((k) => mutateAsync(k.id)))
     const successCount = results.filter((r) => r.status === 'fulfilled').length
     const failureCount = results.length - successCount
+    const failureDetail = getBulkFailureDetail(results)
 
     if (failureCount === 0) {
       toast.success(`${successCount} kontak berhasil ${verb}.`)
     } else if (successCount === 0) {
-      toast.error(`Gagal ${targetActive ? 'mengaktifkan' : 'menonaktifkan'} ${failureCount} kontak.`)
+      toast.error(`Gagal ${targetActive ? 'mengaktifkan' : 'menonaktifkan'} ${failureCount} kontak.${failureDetail ? ` ${failureDetail}` : ''}`)
     } else {
-      toast.warning(`${successCount} kontak ${verb}, ${failureCount} gagal.`)
+      toast.warning(`${successCount} kontak ${verb}, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
     }
     setSelectedRows([])
   }

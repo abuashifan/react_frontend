@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Download, FileSpreadsheet } from 'lucide-react'
 import { reportsApi } from '../services/reportsApi'
 import type { ReportParams } from '../types/reports.types'
+import { getApiErrorMessage } from '@/lib/apiError'
 
 const today = new Date().toISOString().slice(0, 10)
 const firstOfMonth = today.slice(0, 8) + '01'
@@ -24,8 +25,8 @@ export default function EfakturExportPage() {
     try {
       if (kind === 'sales') await reportsApi.downloadEfakturSales(params)
       else await reportsApi.downloadEfakturPurchase(params)
-    } catch {
-      setError('Gagal mengunduh berkas E-Faktur. Coba lagi.')
+    } catch (downloadError) {
+      setError(getApiErrorMessage(downloadError, 'Gagal mengunduh berkas E-Faktur. Coba lagi.'))
     } finally {
       setDownloading(null)
     }

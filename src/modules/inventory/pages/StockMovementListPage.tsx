@@ -15,6 +15,7 @@ import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilt
 import { EmptyState } from '@/components/shared/feedback/EmptyState'
 import { formatNumber, formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { useStockMovementList, useStockMovementMutations } from '../hooks/useStockMovementList'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
@@ -119,16 +120,17 @@ export default function StockMovementListPage() {
       const results = await Promise.allSettled(selectedMovements.map((movement) => voidMovement.mutateAsync({ id: Number(movement.id), reason })))
       const successCount = results.filter((result) => result.status === 'fulfilled').length
       const failureCount = results.length - successCount
+      const failureDetail = getBulkFailureDetail(results)
 
       if (failureCount === 0) {
         toast.success(`${successCount} mutasi stok berhasil di-void.`)
       } else if (successCount === 0) {
-        toast.error(`Gagal void ${failureCount} mutasi stok.`)
+        toast.error(`Gagal void ${failureCount} mutasi stok.${failureDetail ? ` ${failureDetail}` : ''}`)
       } else {
-        toast.warning(`${successCount} mutasi stok berhasil di-void, ${failureCount} gagal.`)
+        toast.warning(`${successCount} mutasi stok berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
       }
-    } catch {
-      toast.error('Gagal memproses bulk void.')
+    } catch (bulkError) {
+      toast.error(getApiErrorMessage(bulkError, 'Gagal memproses bulk void.'))
     } finally {
       setBulkVoidOpen(false)
       setBulkVoidIds([])

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Check, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { getApiErrorMessage } from '@/lib/apiError'
 
 interface FieldDef {
   name: string
@@ -60,8 +61,8 @@ export function MasterDataQuickAdd({
       await onAdd(data)
       setForm({})
       setIsAdding(false)
-    } catch {
-      setError('Gagal menyimpan. Coba lagi.')
+    } catch (submitError) {
+      setError(getApiErrorMessage(submitError, 'Gagal menyimpan. Coba lagi.'))
     } finally {
       setIsSubmitting(false)
     }

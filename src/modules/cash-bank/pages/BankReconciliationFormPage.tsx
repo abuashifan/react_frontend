@@ -23,6 +23,7 @@ import { bankReconciliationSchema, type BankReconciliationFormValues } from '../
 import type { DocumentStatus } from '@/types/common.types'
 import type { BankReconciliationLine } from '../types/cashBank.types'
 import { useRecordTab } from '@/hooks/useRecordTab'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 export default function BankReconciliationFormPage() {
   const { id } = useParams()
@@ -45,7 +46,7 @@ function BankReconciliationFormPageContent() {
   const { create, update, refreshLines, markLines } = useBankReconciliationMutations()
   const [selectedLineIds, setSelectedLineIds] = useState<Set<number>>(new Set())
   const [clearedDate, setClearedDate] = useState(new Date().toISOString().slice(0, 10))
-  const { register, handleSubmit, setValue, watch, reset, setError, formState: { errors, isSubmitting } } = useForm<BankReconciliationFormValues>({ resolver: zodResolver(bankReconciliationSchema), defaultValues: { statement_start_date: new Date().toISOString().slice(0, 10), statement_end_date: new Date().toISOString().slice(0, 10) } })
+  const { register, handleSubmit, control, getValues, setValue, watch, reset, setError, formState: { errors, isSubmitting } } = useForm<BankReconciliationFormValues>({ resolver: zodResolver(bankReconciliationSchema), defaultValues: { statement_start_date: new Date().toISOString().slice(0, 10), statement_end_date: new Date().toISOString().slice(0, 10) } })
   const status = (reconciliation?.status ?? 'draft') as DocumentStatus
   // Rekonsiliasi bank selalu berstatus draft di backend (tidak ada finalize/void).
   const isDraft = isCreate || reconciliation?.status === 'draft'
@@ -57,14 +58,28 @@ function BankReconciliationFormPageContent() {
     }
   }, [reconciliation, reset])
 
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<BankReconciliationFormValues>({
+    draftKey: `cash-bank.bank-reconciliation.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+  })
+
   const handleSave = handleSubmit(async (values) => {
     try {
       if (isCreate) {
         const res = await create.mutateAsync(values)
+        formDraft.clearDraft()
         toast.success('Rekonsiliasi bank berhasil dibuat.')
         replaceRecordTab('/cash-bank/bank-reconciliations/create', { label: res.data.number, path: `/cash-bank/bank-reconciliations/${res.data.id}` })
       } else {
         await update.mutateAsync({ id: Number(id), payload: values })
+        formDraft.clearDraft()
         toast.success('Rekonsiliasi bank berhasil diperbarui.')
       }
     } catch (saveError) {
@@ -84,6 +99,7 @@ function BankReconciliationFormPageContent() {
     if (selectedLineIds.size === 0) { toast.error('Pilih minimal satu transaksi.'); return }
     try {
       await markLines.mutateAsync({ id: Number(id), lineIds: Array.from(selectedLineIds), cleared, clearedDate: cleared ? clearedDate : undefined })
+      formDraft.clearDraft()
       toast.success(cleared ? 'Ditandai cleared.' : 'Ditandai uncleared.')
       setSelectedLineIds(new Set())
     } catch (markError) { toast.error(getApiErrorMessage(markError, 'Gagal menandai transaksi.')) }

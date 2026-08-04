@@ -23,6 +23,7 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { deliveryOrderSchema, type DeliveryOrderFormValues } from '../schemas/deliveryOrderSchema'
 import type { DocumentStatus } from '@/types/common.types'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine {
   product_id: number | null
@@ -54,7 +55,7 @@ function DeliveryOrderFormPageContent() {
   const order = data?.data
   const { create, update, ready, ship, deliver, cancel, void: voidDo } = useDeliveryOrderMutations()
 
-  const { register, handleSubmit, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<DeliveryOrderFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<DeliveryOrderFormValues>({
     resolver: zodResolver(deliveryOrderSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -84,10 +85,25 @@ function DeliveryOrderFormPageContent() {
     }
   }, [order, reset])
 
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<DeliveryOrderFormValues, EditableLine[]>({
+    draftKey: `sales.delivery-order.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
+  })
+
   const handleSaveDraft = handleSubmit(async (values) => {
     try {
       if (isCreate) {
         const res = await create.mutateAsync({ ...values, lines })
+        formDraft.clearDraft()
         toast.success('Delivery Order berhasil dibuat.')
         replaceRecordTab('/sales/delivery-orders/create', {
           label: res.data.number,
@@ -95,6 +111,7 @@ function DeliveryOrderFormPageContent() {
         })
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
+        formDraft.clearDraft()
         toast.success('Delivery Order berhasil diperbarui.')
       }
     } catch (saveError) {
@@ -109,6 +126,7 @@ function DeliveryOrderFormPageContent() {
   const handleReady = async () => {
     try {
       await ready.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('DO siap dikirim.')
     } catch (readyError) { toast.error(getApiErrorMessage(readyError, 'Gagal mengubah status DO.')) }
   }
@@ -116,6 +134,7 @@ function DeliveryOrderFormPageContent() {
   const handleShip = async () => {
     try {
       await ship.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('DO dalam pengiriman.')
     } catch (shipError) { toast.error(getApiErrorMessage(shipError, 'Gagal mengubah status DO.')) }
   }
@@ -124,6 +143,7 @@ function DeliveryOrderFormPageContent() {
     setDeliverConfirming(true)
     try {
       await deliver.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Pengiriman berhasil dikonfirmasi.')
     } catch (deliverError) { toast.error(getApiErrorMessage(deliverError, 'Gagal mengkonfirmasi pengiriman.')) }
     finally { setDeliverConfirming(false) }
@@ -132,12 +152,14 @@ function DeliveryOrderFormPageContent() {
   const handleCancel = async () => {
     try {
       await cancel.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('DO dibatalkan.')
     } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan DO.')) }
   }
 
   const handleVoid = async (reason: string) => {
     await voidDo.mutateAsync({ id: Number(id), reason })
+    formDraft.clearDraft()
     toast.success('DO berhasil di-void.')
     setVoidOpen(false)
   }

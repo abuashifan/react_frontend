@@ -157,6 +157,7 @@ function StockMovementFormPageContent() {
 
   const handleVoid = async (reason: string) => {
     await voidMovement.mutateAsync({ id: Number(id), reason })
+    formDraft.clearDraft()
     toast.success('Mutasi berhasil di-void.')
     setVoidOpen(false)
   }

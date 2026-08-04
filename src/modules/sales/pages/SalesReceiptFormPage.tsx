@@ -21,6 +21,7 @@ import { coaApi } from '@/modules/master-data/services/coaApi'
 import { salesReceiptSchema, type SalesReceiptFormValues } from '../schemas/salesReceiptSchema'
 import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
 import type { DocumentStatus } from '@/types/common.types'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface ReceiptLine {
   sales_invoice_id: number
@@ -50,7 +51,7 @@ function SalesReceiptFormPageContent() {
   const receipt = data?.data
   const { create, post, void: voidRec } = useSalesReceiptMutations()
 
-  const { register, handleSubmit, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<SalesReceiptFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<SalesReceiptFormValues>({
     resolver: zodResolver(salesReceiptSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -87,12 +88,29 @@ function SalesReceiptFormPageContent() {
     setValue('amount', totalAmount)
   }, [totalAmount, setValue])
 
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<SalesReceiptFormValues, ReceiptLine[]>({
+    draftKey: `sales.receipt.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    // Baris penerimaan diturunkan dari invoice terpilih dan default-nya kosong,
+    // jadi draft cukup dipulihkan apa adanya.
+    onRestoreExtra: setLines,
+  })
+
   const handleSave = handleSubmit(async (values) => {
     try {
       const res = await create.mutateAsync({
         ...values,
         lines: lines.map(({ sales_invoice_id, amount }) => ({ sales_invoice_id, amount })),
       })
+      formDraft.clearDraft()
       toast.success('Penerimaan berhasil disimpan.')
       replaceRecordTab('/sales/receipts/create', {
         label: res.data.number,
@@ -108,12 +126,14 @@ function SalesReceiptFormPageContent() {
   const handlePost = async () => {
     try {
       await post.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Penerimaan berhasil diposting.')
     } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal memposting penerimaan.')) }
   }
 
   const handleVoid = async (reason: string) => {
     await voidRec.mutateAsync({ id: Number(id), reason })
+    formDraft.clearDraft()
     toast.success('Penerimaan berhasil di-void.')
     setVoidOpen(false)
   }

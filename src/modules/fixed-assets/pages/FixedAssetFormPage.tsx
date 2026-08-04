@@ -204,12 +204,18 @@ function FixedAssetFormPageContent() {
     }
   }, [asset, disposedQuantityValue, proceedsAmountValue])
 
+
+  // Catatan: form ini dikendalikan lewat prop `values` RHF (bukan `reset`), sehingga
+  // setiap perubahan `formValues` menyinkronkan ulang isian dari server. Draft
+  // localStorage akan terus ditimpa oleh sinkronisasi itu, jadi sengaja tidak dipakai
+  // di sini sampai form dipindah ke pola `reset`.
+
   const handleSave = handleSubmit(async (values) => {
     try {
       const payload = cleanForm(values)
       if (isCreate) {
         const res = await mutations.create.mutateAsync(payload)
-        toast.success('Aktiva tetap berhasil dibuat.')
+            toast.success('Aktiva tetap berhasil dibuat.')
         replaceRecordTab('/fixed-assets/create', { label: res.data.asset_number ?? `FA-${res.data.id}`, path: `/fixed-assets/${res.data.id}` })
       } else if (assetId) {
         await mutations.update.mutateAsync({ id: assetId, payload })

@@ -22,6 +22,7 @@ import { cashReceiptSchema, type CashReceiptFormValues } from '../schemas/cashBa
 import type { DocumentStatus } from '@/types/common.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
 import { useRecordTab } from '@/hooks/useRecordTab'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine { account_id: number | null; account?: { id: number; code: string; name: string } | null; amount: number; description: string }
 const DEFAULT_LINE: EditableLine = { account_id: null, account: null, amount: 0, description: '' }
@@ -45,7 +46,7 @@ function CashReceiptFormPageContent() {
   const { data, isLoading } = useCashReceipt(id ? Number(id) : undefined)
   const receipt = data?.data
   const { create, post, void: voidReceipt } = useCashReceiptMutations()
-  const { register, handleSubmit, setValue, watch, reset, setError, formState: { errors, isSubmitting } } = useForm<CashReceiptFormValues>({ resolver: zodResolver(cashReceiptSchema), defaultValues: { receipt_date: new Date().toISOString().slice(0, 10) } })
+  const { register, handleSubmit, control, getValues, setValue, watch, reset, setError, formState: { errors, isSubmitting } } = useForm<CashReceiptFormValues>({ resolver: zodResolver(cashReceiptSchema), defaultValues: { receipt_date: new Date().toISOString().slice(0, 10) } })
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
   const [isVoidOpen, setVoidOpen] = useState(false)
   const status = (receipt?.status ?? 'draft') as DocumentStatus
@@ -58,10 +59,25 @@ function CashReceiptFormPageContent() {
     }
   }, [receipt, reset])
 
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<CashReceiptFormValues, EditableLine[]>({
+    draftKey: `cash-bank.cash-receipt.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
+  })
+
   const handleSave = handleSubmit(async (values) => {
     const linePayloads = lines.filter((l) => l.account_id).map((l) => ({ account_id: l.account_id!, amount: l.amount, description: l.description || null }))
     try {
       const res = await create.mutateAsync({ ...values, lines: linePayloads.length ? linePayloads : undefined })
+      formDraft.clearDraft()
       toast.success('Penerimaan kas berhasil dibuat.')
       replaceRecordTab('/cash-bank/cash-receipts/create', { label: res.data.number, path: `/cash-bank/cash-receipts/${res.data.id}` })
     } catch (saveError) {
