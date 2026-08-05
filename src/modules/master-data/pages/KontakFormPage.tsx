@@ -159,7 +159,12 @@ function KontakFormPageContent() {
         <>
           {!isCreate && kontak && <ActiveStatusBadge isActive={kontak.is_active} />}
           <FormSaveActions
-            onCancel={() => closeRecordTab(id ? `/master-data/contacts/${id}` : '/master-data/contacts/create', '/master-data/contacts')}
+            onCancel={() => {
+            // Batal berarti membuang isian — draft tidak boleh ikut hidup lagi
+            // saat form create dibuka berikutnya.
+            formDraft.clearDraft()
+            closeRecordTab(id ? `/master-data/contacts/${id}` : '/master-data/contacts/create', '/master-data/contacts')
+          }}
             onSave={handleSubmit(onSubmit)}
             isSaving={isSubmitting}
           >

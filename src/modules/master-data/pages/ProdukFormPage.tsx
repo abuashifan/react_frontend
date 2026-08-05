@@ -302,7 +302,12 @@ function ProdukFormPageContent() {
       ]}
       headerActions={
         <FormSaveActions
-          onCancel={() => closeRecordTab(id ? `/master-data/products/${id}` : '/master-data/products/create', '/master-data/products')}
+          onCancel={() => {
+            // Batal berarti membuang isian — draft tidak boleh ikut hidup lagi
+            // saat form create dibuka berikutnya.
+            formDraft.clearDraft()
+            closeRecordTab(id ? `/master-data/products/${id}` : '/master-data/products/create', '/master-data/products')
+          }}
           onSave={handleSubmit(onSubmit)}
           isSaving={isSubmitting}
         >

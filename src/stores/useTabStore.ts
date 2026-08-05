@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
+import { clearFormDraftForPath } from '@/lib/formDraftStorage'
 
 export type ModuleKey =
   | 'dashboard'
@@ -152,6 +153,13 @@ export const useTabStore = create<TabState & TabActions>()(
             : [DASHBOARD_TAB, ...state.primaryTabs.filter((tab) => tab.id !== tabId)]
           const nextSecondaryTabs = { ...state.secondaryTabs }
           const nextActiveSecondary = { ...state.activeSecondaryTabId }
+
+          // Tab modul ditutup ikut menutup semua tab form di dalamnya — buang juga
+          // draft-nya, sama seperti menutup tab form satu per satu.
+          ;(state.secondaryTabs[tabId] ?? []).forEach((tab) => {
+            if (tab.type === 'form' && tab.path) clearFormDraftForPath(tab.path)
+          })
+
           delete nextSecondaryTabs[tabId]
           delete nextActiveSecondary[tabId]
 
@@ -231,6 +239,12 @@ export const useTabStore = create<TabState & TabActions>()(
           const tabs = state.secondaryTabs[primaryTabId] ?? []
           const closingTab = tabs.find((tab) => tab.id === secondaryTabId)
           if (closingTab?.pinned) return state
+
+          // Menutup tab form = isian yang belum tersimpan memang dibuang. Tanpa ini
+          // draft-nya tetap hidup dan mengisi form create berikutnya.
+          if (closingTab?.type === 'form' && closingTab.path) {
+            clearFormDraftForPath(closingTab.path)
+          }
 
           const closingIndex = tabs.findIndex((tab) => tab.id === secondaryTabId)
           const nextTabs = tabs.filter((tab) => tab.id !== secondaryTabId)

@@ -125,7 +125,12 @@ function CoaFormPageContent() {
       ]}
       headerActions={
         <FormSaveActions
-          onCancel={() => closeRecordTab(id ? `/master-data/coa/${id}` : '/master-data/coa/create', '/master-data/coa')}
+          onCancel={() => {
+            // Batal berarti membuang isian — draft tidak boleh ikut hidup lagi
+            // saat form create dibuka berikutnya.
+            formDraft.clearDraft()
+            closeRecordTab(id ? `/master-data/coa/${id}` : '/master-data/coa/create', '/master-data/coa')
+          }}
           onSave={handleSubmit(onSubmit)}
           isSaving={isSubmitting}
         />
