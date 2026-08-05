@@ -18,7 +18,7 @@ export function FormSaveActions({
   onCancel,
   onSave,
   isSaving,
-  saveLabel = 'Simpan',
+  saveLabel = 'Simpan & Tutup',
   savingLabel = 'Menyimpan...',
   cancelLabel = 'Batal',
   saveDisabled,

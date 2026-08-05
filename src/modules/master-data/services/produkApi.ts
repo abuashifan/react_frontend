@@ -7,6 +7,10 @@ export const produkApi = {
   list: (params: ProdukListParams) =>
     http.get<unknown, PaginatedResponse<Produk>>('/master-data/products', { params }),
 
+  /** Semua produk tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<Produk[]>>('/master-data/products'),
+
   get: (id: number) =>
     http.get<unknown, ApiResponse<Produk>>(`/master-data/products/${id}`),
 

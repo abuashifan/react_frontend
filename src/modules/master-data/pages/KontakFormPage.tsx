@@ -8,6 +8,7 @@ import { FormSaveActions } from '@/components/shared/layout/FormSaveActions'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { ActiveStatusBadge } from '@/components/shared/badge/ActiveStatusBadge'
 import { Button } from '@/components/ui/button'
@@ -18,10 +19,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/useToast'
 import { useKontak, useKontakMutations } from '../hooks/useKontakList'
 import { paymentTermsApi } from '../services/paymentTermsApi'
+import { kontakApi } from '../services/kontakApi'
 import { kontakSchema, type KontakFormValues } from '../schemas/kontakSchema'
+import type { Kontak } from '../types/kontak.types'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { cn, fieldErrorClass } from '@/lib/utils'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 
 export default function KontakFormPage() {
   const { id } = useParams()
@@ -34,7 +38,7 @@ export default function KontakFormPage() {
 }
 
 function KontakFormPageContent() {
-  const { replaceRecordTab, closeRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -90,35 +94,39 @@ function KontakFormPageContent() {
     reset,
   })
 
-  const onSubmit = async (values: KontakFormValues) => {
-    const { contact_type, ...rest } = values
-    const payload = {
-      ...rest,
-      contact_code: values.contact_code || undefined,
-      email: values.email || undefined,
-      phone: values.phone || undefined,
-      is_customer: contact_type === 'customer' || contact_type === 'both',
-      is_supplier: contact_type === 'supplier' || contact_type === 'both',
-      ...(contact_type !== 'both' ? { contact_type } : {}),
-    }
-    try {
-      if (isCreate) {
-        const res = await create.mutateAsync(payload)
-        formDraft.clearDraft()
-        toast.success('Kontak berhasil dibuat.')
-        replaceRecordTab('/master-data/contacts/create', { label: res.data.name, path: `/master-data/contacts/${res.data.id}` })
-      } else {
-        await update.mutateAsync({ id: Number(id), payload })
-        formDraft.clearDraft()
-        toast.success('Kontak berhasil diperbarui.')
+  const currentPath = id ? `/master-data/contacts/${id}` : '/master-data/contacts/create'
+
+  const { saveAndClose, navProps } = useRecordFormNavigation<KontakFormValues, Kontak>({
+    id,
+    basePath: '/master-data/contacts',
+    createLabel: 'Kontak Baru',
+    getRecordLabel: (record) => record.name,
+    sequenceQueryKey: ['master-data-kontak', 'sequence'],
+    fetchAll: async () => (await kontakApi.listAll()).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      const { contact_type, ...rest } = values
+      const payload = {
+        ...rest,
+        contact_code: values.contact_code || undefined,
+        email: values.email || undefined,
+        phone: values.phone || undefined,
+        is_customer: contact_type === 'customer' || contact_type === 'both',
+        is_supplier: contact_type === 'supplier' || contact_type === 'both',
+        ...(contact_type !== 'both' ? { contact_type } : {}),
       }
-    } catch (error) {
+      if (creating) await create.mutateAsync(payload)
+      else await update.mutateAsync({ id: Number(id), payload })
+    },
+    onSaved: () => formDraft.clearDraft(),
+    successMessage: (creating) => (creating ? 'Kontak berhasil dibuat.' : 'Kontak berhasil diperbarui.'),
+    onError: (error) => {
       // Penyebab spesifik dari backend (mis. DUPLICATE_CONTACT_CODE) ditandai di
       // field terkait sekaligus ditampilkan di toast.
       applyApiValidationErrors(error, setError)
       toast.error(getApiErrorMessage(error, 'Gagal menyimpan kontak.'))
-    }
-  }
+    },
+  })
 
   const handleToggleActive = async () => {
     if (!kontak) return
@@ -160,14 +168,15 @@ function KontakFormPageContent() {
           {!isCreate && kontak && <ActiveStatusBadge isActive={kontak.is_active} />}
           <FormSaveActions
             onCancel={() => {
-            // Batal berarti membuang isian — draft tidak boleh ikut hidup lagi
-            // saat form create dibuka berikutnya.
-            formDraft.clearDraft()
-            closeRecordTab(id ? `/master-data/contacts/${id}` : '/master-data/contacts/create', '/master-data/contacts')
-          }}
-            onSave={handleSubmit(onSubmit)}
+              // Batal berarti membuang isian — draft tidak boleh ikut hidup lagi
+              // saat form create dibuka berikutnya.
+              formDraft.clearDraft()
+              closeRecordTab(currentPath, '/master-data/contacts')
+            }}
+            onSave={saveAndClose}
             isSaving={isSubmitting}
           >
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
             {!isCreate && kontak && (
               <PermissionGuard permission={kontak.is_active ? 'contacts.deactivate' : 'contacts.edit'}>
                 <Button

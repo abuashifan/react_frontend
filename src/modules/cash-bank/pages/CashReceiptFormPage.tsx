@@ -38,7 +38,7 @@ export default function CashReceiptFormPage() {
 }
 
 function CashReceiptFormPageContent() {
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -79,10 +79,10 @@ function CashReceiptFormPageContent() {
   const handleSave = handleSubmit(async (values) => {
     const linePayloads = lines.filter((l) => l.account_id).map((l) => ({ account_id: l.account_id!, amount: l.amount, description: l.description || null }))
     try {
-      const res = await create.mutateAsync({ ...values, lines: linePayloads.length ? linePayloads : undefined })
+      await create.mutateAsync({ ...values, lines: linePayloads.length ? linePayloads : undefined })
       formDraft.clearDraft()
       toast.success('Penerimaan kas berhasil dibuat.')
-      replaceRecordTab('/cash-bank/cash-receipts/create', { label: res.data.number, path: `/cash-bank/cash-receipts/${res.data.id}` })
+      closeRecordTab('/cash-bank/cash-receipts/create', '/cash-bank/cash-receipts')
     } catch (saveError) {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
       // bukan hanya toast generik "Gagal menyimpan".
@@ -102,7 +102,7 @@ function CashReceiptFormPageContent() {
   ]
 
   const actions: DocumentActionButton[] = []
-  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
   if (!isCreate && receipt?.status === 'draft' && can('cash_bank.post')) actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
   if (!isCreate && receipt?.status === 'posted' && can('cash_bank.void')) actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
 

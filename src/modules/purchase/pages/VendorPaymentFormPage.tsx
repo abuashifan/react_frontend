@@ -43,7 +43,7 @@ export default function VendorPaymentFormPage() {
 }
 
 function VendorPaymentFormPageContent() {
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -106,10 +106,10 @@ function VendorPaymentFormPageContent() {
   const handleSave = handleSubmit(async (values) => {
     try {
       const lines: VendorPaymentLinePayload[] = billLines.map((l) => ({ vendor_bill_id: l.vendor_bill_id, amount: l.amount }))
-      const res = await create.mutateAsync({ ...toVendorPaymentPayload(values), lines })
+      await create.mutateAsync({ ...toVendorPaymentPayload(values), lines })
       formDraft.clearDraft()
       toast.success('Pembayaran vendor berhasil dibuat.')
-      replaceRecordTab('/purchase/payments/create', { label: res.data.number, path: `/purchase/payments/${res.data.id}` })
+      closeRecordTab('/purchase/payments/create', '/purchase/payments')
     } catch (saveError) {
       // Backend memakai nama kolom DB (`payment_date`), form memakai `date`.
       applyApiValidationErrors(saveError, setError, { payment_date: 'date' })
@@ -127,7 +127,7 @@ function VendorPaymentFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isCreate && can('purchase.payments.create')) {
-    actions.push({ id: 'save', label: 'Simpan', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (payment?.status === 'draft' && can('purchase.payments.post')) {

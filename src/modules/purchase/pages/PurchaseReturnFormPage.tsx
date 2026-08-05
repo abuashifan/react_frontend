@@ -122,7 +122,7 @@ function PurchaseReturnFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('purchase.returns.create')) {
-    actions.push({ id: 'save', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (ret?.status === 'draft' && can('purchase.returns.approve')) {

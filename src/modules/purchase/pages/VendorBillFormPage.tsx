@@ -67,7 +67,7 @@ export default function VendorBillFormPage() {
 }
 
 function VendorBillFormPageContent() {
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -91,12 +91,11 @@ function VendorBillFormPageContent() {
   const handleConvertFromSource = async () => {
     if (!sourceId) return
     try {
-      const res = sourceMode === 'purchase_order'
-        ? await createFromPurchaseOrder.mutateAsync(sourceId)
-        : await createFromGoodsReceipt.mutateAsync(sourceId)
+      if (sourceMode === 'purchase_order') await createFromPurchaseOrder.mutateAsync(sourceId)
+      else await createFromGoodsReceipt.mutateAsync(sourceId)
       formDraft.clearDraft()
       toast.success('Tagihan dibuat dari dokumen sumber.')
-      replaceRecordTab('/purchase/bills/create', { label: res.data.bill_number, path: `/purchase/bills/${res.data.id}` })
+      closeRecordTab('/purchase/bills/create', '/purchase/bills')
     } catch (convertError) {
       toast.error(getApiErrorMessage(convertError, 'Gagal membuat tagihan dari dokumen sumber.'))
     }
@@ -219,14 +218,15 @@ function VendorBillFormPageContent() {
     const payload = toVendorBillPayload(values, lines)
     try {
       if (isCreate) {
-        const res = await create.mutateAsync(payload)
+        await create.mutateAsync(payload)
         formDraft.clearDraft()
         toast.success('Tagihan vendor berhasil dibuat.')
-        replaceRecordTab('/purchase/bills/create', { label: res.data.bill_number, path: `/purchase/bills/${res.data.id}` })
+        closeRecordTab('/purchase/bills/create', '/purchase/bills')
       } else {
         await update.mutateAsync({ id: Number(id), payload })
         formDraft.clearDraft()
         toast.success('Tagihan vendor berhasil diperbarui.')
+        closeRecordTab(`/purchase/bills/${id}`, '/purchase/bills')
       }
     } catch (saveError) {
       setApiLineErrors(getApiLineErrors(saveError))
@@ -252,7 +252,7 @@ function VendorBillFormPageContent() {
   const canSaveBill = isCreate ? can('purchase.bills.create') : can('purchase.bills.edit')
 
   if (isEditable && canSaveBill) {
-    actions.push({ id: 'save', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
   }
   if (isEditable && formDraft.isRestored) {
     actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: handleDiscardDraft })

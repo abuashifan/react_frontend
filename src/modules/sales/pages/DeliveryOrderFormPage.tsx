@@ -45,7 +45,7 @@ export default function DeliveryOrderFormPage() {
 }
 
 function DeliveryOrderFormPageContent() {
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -108,17 +108,15 @@ function DeliveryOrderFormPageContent() {
   const handleSaveDraft = handleSubmit(async (values) => {
     try {
       if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines })
+        await create.mutateAsync({ ...values, lines })
         formDraft.clearDraft()
         toast.success('Delivery Order berhasil dibuat.')
-        replaceRecordTab('/sales/delivery-orders/create', {
-          label: res.data.number,
-          path: `/sales/delivery-orders/${res.data.id}`,
-        })
+        closeRecordTab('/sales/delivery-orders/create', '/sales/delivery-orders')
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
         formDraft.clearDraft()
         toast.success('Delivery Order berhasil diperbarui.')
+        closeRecordTab(`/sales/delivery-orders/${id}`, '/sales/delivery-orders')
       }
     } catch (saveError) {
       // Backend memakai `delivery_date`/`shipping_address`, form memakai
@@ -173,7 +171,7 @@ function DeliveryOrderFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('sales.delivery-orders.create')) {
-    actions.push({ id: 'save_draft', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
+    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (order?.status === 'draft' && can('sales.delivery-orders.update')) {

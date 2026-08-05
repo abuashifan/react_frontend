@@ -7,6 +7,10 @@ export const coaApi = {
   list: (params: CoaListParams) =>
     http.get<unknown, PaginatedResponse<Coa>>('/master-data/chart-of-accounts', { params }),
 
+  /** Semua akun tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<Coa[]>>('/master-data/chart-of-accounts'),
+
   get: (id: number) =>
     http.get<unknown, ApiResponse<Coa>>(`/master-data/chart-of-accounts/${id}`),
 

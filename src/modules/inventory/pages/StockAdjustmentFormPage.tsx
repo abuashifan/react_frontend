@@ -51,7 +51,7 @@ export default function StockAdjustmentFormPage() {
 }
 
 function StockAdjustmentFormPageContent() {
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -193,14 +193,15 @@ function StockAdjustmentFormPageContent() {
     }))
     try {
       if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines: linePayloads })
+        await create.mutateAsync({ ...values, lines: linePayloads })
         formDraft.clearDraft()
         toast.success('Penyesuaian berhasil dibuat.')
-        replaceRecordTab('/inventory/adjustments/create', { label: res.data.number, path: `/inventory/adjustments/${res.data.id}` })
+        closeRecordTab('/inventory/adjustments/create', '/inventory/adjustments')
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads } })
         formDraft.clearDraft()
         toast.success('Penyesuaian berhasil diperbarui.')
+        closeRecordTab(`/inventory/adjustments/${id}`, '/inventory/adjustments')
       }
     } catch (saveError) {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
@@ -290,7 +291,7 @@ function StockAdjustmentFormPageContent() {
   if (isEditable) {
     const savePerm = isCreate ? 'inventory.adjustments.create' : 'inventory.adjustments.edit'
     if (can(savePerm)) {
-      actions.push({ id: 'save', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+      actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
     }
   }
   if (isEditable && formDraft.isRestored) {

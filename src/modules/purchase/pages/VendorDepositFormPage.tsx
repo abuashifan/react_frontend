@@ -36,7 +36,7 @@ export default function VendorDepositFormPage() {
 }
 
 function VendorDepositFormPageContent() {
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -74,10 +74,10 @@ function VendorDepositFormPageContent() {
 
   const handleSave = handleSubmit(async (values) => {
     try {
-      const res = await create.mutateAsync(toVendorDepositPayload(values))
+      await create.mutateAsync(toVendorDepositPayload(values))
       formDraft.clearDraft()
       toast.success('Deposit vendor berhasil dibuat.')
-      replaceRecordTab('/purchase/vendor-deposits/create', { label: res.data.number, path: `/purchase/vendor-deposits/${res.data.id}` })
+      closeRecordTab('/purchase/vendor-deposits/create', '/purchase/vendor-deposits')
     } catch (saveError) {
       // Backend memakai nama kolom DB (`deposit_date`), form memakai `date`.
       applyApiValidationErrors(saveError, setError, { deposit_date: 'date' })
@@ -95,7 +95,7 @@ function VendorDepositFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isCreate && can('purchase.deposits.create')) {
-    actions.push({ id: 'save', label: 'Simpan', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (deposit?.status === 'draft' && can('purchase.deposits.post')) {

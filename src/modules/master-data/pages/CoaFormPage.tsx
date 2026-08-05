@@ -8,6 +8,7 @@ import { FormSaveActions } from '@/components/shared/layout/FormSaveActions'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -16,9 +17,11 @@ import { useToast } from '@/hooks/useToast'
 import { useCoa, useCoaMutations } from '../hooks/useCoaList'
 import { coaApi } from '../services/coaApi'
 import { coaSchema, type CoaFormValues } from '../schemas/coaSchema'
+import type { Coa } from '../types/coa.types'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { cn, fieldErrorClass } from '@/lib/utils'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 
 const COA_TYPES = [
   { value: 'asset', label: 'Aset' },
@@ -39,7 +42,7 @@ export default function CoaFormPage() {
 }
 
 function CoaFormPageContent() {
-  const { replaceRecordTab, closeRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -86,25 +89,29 @@ function CoaFormPageContent() {
     reset,
   })
 
-  const onSubmit = async (values: CoaFormValues) => {
-    try {
-      if (isCreate) {
-        const res = await create.mutateAsync(values)
-        formDraft.clearDraft()
-        toast.success('Akun berhasil dibuat.')
-        replaceRecordTab('/master-data/coa/create', { label: res.data.account_code, path: `/master-data/coa/${res.data.id}` })
-      } else {
-        await update.mutateAsync({ id: Number(id), payload: values })
-        formDraft.clearDraft()
-        toast.success('Akun berhasil diperbarui.')
-      }
-    } catch (error) {
+  const currentPath = id ? `/master-data/coa/${id}` : '/master-data/coa/create'
+
+  const { saveAndClose, navProps } = useRecordFormNavigation<CoaFormValues, Coa>({
+    id,
+    basePath: '/master-data/coa',
+    createLabel: 'Akun Baru',
+    getRecordLabel: (record) => record.account_code,
+    sequenceQueryKey: ['master-data-coa', 'sequence'],
+    fetchAll: async () => (await coaApi.listAll()).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      if (creating) await create.mutateAsync(values)
+      else await update.mutateAsync({ id: Number(id), payload: values })
+    },
+    onSaved: () => formDraft.clearDraft(),
+    successMessage: (creating) => (creating ? 'Akun berhasil dibuat.' : 'Akun berhasil diperbarui.'),
+    onError: (error) => {
       // Surface penyebab spesifik dari backend (mis. DUPLICATE_ACCOUNT_CODE atau
       // INVALID_PARENT_ACCOUNT) di field terkait sekaligus di toast.
       applyApiValidationErrors(error, setError)
       toast.error(getApiErrorMessage(error, 'Gagal menyimpan akun.'))
-    }
-  }
+    },
+  })
 
   if (!isCreate && isLoading) {
     return (
@@ -129,11 +136,13 @@ function CoaFormPageContent() {
             // Batal berarti membuang isian — draft tidak boleh ikut hidup lagi
             // saat form create dibuka berikutnya.
             formDraft.clearDraft()
-            closeRecordTab(id ? `/master-data/coa/${id}` : '/master-data/coa/create', '/master-data/coa')
+            closeRecordTab(currentPath, '/master-data/coa')
           }}
-          onSave={handleSubmit(onSubmit)}
+          onSave={saveAndClose}
           isSaving={isSubmitting}
-        />
+        >
+          <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+        </FormSaveActions>
       }
     >
       <div className="space-y-3">

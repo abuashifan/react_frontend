@@ -8,6 +8,7 @@ import { FormSaveActions } from '@/components/shared/layout/FormSaveActions'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,13 +16,16 @@ import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useProduk, useProdukMutations } from '../hooks/useProdukList'
 import { useAccountMappings } from '../hooks/useAccountMappings'
 import { coaApi } from '../services/coaApi'
 import { satuanApi } from '../services/satuanApi'
 import { kategoriProdukApi } from '../services/kategoriProdukApi'
+import { produkApi } from '../services/produkApi'
 import { produkSchema, type ProdukFormValues } from '../schemas/produkSchema'
+import type { Produk } from '../types/produk.types'
 import type { AccountMapping } from '../types/accountMapping.types'
 import { cn, fieldErrorClass } from '@/lib/utils'
 
@@ -128,7 +132,7 @@ export default function ProdukFormPage() {
 }
 
 function ProdukFormPageContent() {
-  const { replaceRecordTab, closeRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -236,25 +240,29 @@ function ProdukFormPageContent() {
     onRestoreExtra: setAccountMode,
   })
 
-  const onSubmit = async (values: ProdukFormValues) => {
-    try {
-      if (isCreate) {
-        const res = await create.mutateAsync(values)
-        formDraft.clearDraft()
-        toast.success('Produk berhasil dibuat.')
-        replaceRecordTab('/master-data/products/create', { label: res.data.product_name, path: `/master-data/products/${res.data.id}` })
-      } else {
-        await update.mutateAsync({ id: Number(id), payload: values })
-        formDraft.clearDraft()
-        toast.success('Produk berhasil diperbarui.')
-      }
-    } catch (error) {
+  const currentPath = id ? `/master-data/products/${id}` : '/master-data/products/create'
+
+  const { saveAndClose, navProps } = useRecordFormNavigation<ProdukFormValues, Produk>({
+    id,
+    basePath: '/master-data/products',
+    createLabel: 'Produk Baru',
+    getRecordLabel: (record) => record.product_name,
+    sequenceQueryKey: ['master-data-produk', 'sequence'],
+    fetchAll: async () => (await produkApi.listAll()).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      if (creating) await create.mutateAsync(values)
+      else await update.mutateAsync({ id: Number(id), payload: values })
+    },
+    onSaved: () => formDraft.clearDraft(),
+    successMessage: (creating) => (creating ? 'Produk berhasil dibuat.' : 'Produk berhasil diperbarui.'),
+    onError: (error) => {
       // Tampilkan penyebab spesifik dari backend (mis. kode produk duplikat) di
       // field terkait sekaligus di toast, bukan pesan generik "Gagal menyimpan".
       applyApiValidationErrors(error, setError)
       toast.error(getApiErrorMessage(error, 'Gagal menyimpan produk.'))
-    }
-  }
+    },
+  })
 
   const handleDiscardDraft = () => {
     formDraft.discardDraft()
@@ -306,11 +314,12 @@ function ProdukFormPageContent() {
             // Batal berarti membuang isian — draft tidak boleh ikut hidup lagi
             // saat form create dibuka berikutnya.
             formDraft.clearDraft()
-            closeRecordTab(id ? `/master-data/products/${id}` : '/master-data/products/create', '/master-data/products')
+            closeRecordTab(currentPath, '/master-data/products')
           }}
-          onSave={handleSubmit(onSubmit)}
+          onSave={saveAndClose}
           isSaving={isSubmitting}
         >
+          <RecordNavButtons {...navProps} isBusy={isSubmitting} />
           {formDraft.isRestored && (
             <Button variant="ghost" className="h-8 text-[13px] text-[#64748b]" onClick={handleDiscardDraft}>
               Buang Draft

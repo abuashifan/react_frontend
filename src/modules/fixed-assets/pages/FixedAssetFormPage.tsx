@@ -113,7 +113,7 @@ export default function FixedAssetFormPage() {
 }
 
 function FixedAssetFormPageContent() {
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const assetId = id ? Number(id) : undefined
@@ -214,12 +214,13 @@ function FixedAssetFormPageContent() {
     try {
       const payload = cleanForm(values)
       if (isCreate) {
-        const res = await mutations.create.mutateAsync(payload)
-            toast.success('Aktiva tetap berhasil dibuat.')
-        replaceRecordTab('/fixed-assets/create', { label: res.data.asset_number ?? `FA-${res.data.id}`, path: `/fixed-assets/${res.data.id}` })
+        await mutations.create.mutateAsync(payload)
+        toast.success('Aktiva tetap berhasil dibuat.')
+        closeRecordTab('/fixed-assets/create', '/fixed-assets')
       } else if (assetId) {
         await mutations.update.mutateAsync({ id: assetId, payload })
         toast.success('Aktiva tetap berhasil diperbarui.')
+        closeRecordTab(`/fixed-assets/${id}`, '/fixed-assets')
       }
     } catch (error) {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,

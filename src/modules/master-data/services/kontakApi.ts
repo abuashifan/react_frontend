@@ -7,6 +7,10 @@ export const kontakApi = {
   list: (params: KontakListParams) =>
     http.get<unknown, PaginatedResponse<Kontak>>('/master-data/contacts', { params }),
 
+  /** Semua kontak tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<Kontak[]>>('/master-data/contacts'),
+
   get: (id: number) =>
     http.get<unknown, ApiResponse<Kontak>>(`/master-data/contacts/${id}`),
 

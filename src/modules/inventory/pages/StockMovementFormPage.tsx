@@ -55,7 +55,7 @@ export default function StockMovementFormPage() {
 }
 
 function StockMovementFormPageContent() {
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -142,10 +142,10 @@ function StockMovementFormPageContent() {
         quantity: l.quantity,
         unit_cost: l.unit_cost || null,
       }))
-      const res = await create.mutateAsync({ ...values, movement_type: values.movement_type as StockMovementType, lines: linePayloads })
+      await create.mutateAsync({ ...values, movement_type: values.movement_type as StockMovementType, lines: linePayloads })
       formDraft.clearDraft()
       toast.success('Mutasi stok berhasil dibuat.')
-      replaceRecordTab('/inventory/movements/create', { label: res.data.number, path: `/inventory/movements/${res.data.id}` })
+      closeRecordTab('/inventory/movements/create', '/inventory/movements')
     } catch (saveError) {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
       // bukan hanya toast generik "Gagal menyimpan".
@@ -207,7 +207,7 @@ function StockMovementFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isCreate && can('inventory.movements.create')) {
-    actions.push({ id: 'save', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
   }
   if (isCreate && formDraft.isRestored) {
     actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: () => { reset({ movement_date: new Date().toISOString().slice(0, 10), movement_type: 'adjustment_in' }); setLines([{ ...DEFAULT_LINE }]); formDraft.discardDraft(); toast.success('Draft lokal dibuang.') } })

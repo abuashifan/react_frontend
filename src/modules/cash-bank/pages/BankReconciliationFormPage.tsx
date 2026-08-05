@@ -36,7 +36,7 @@ export default function BankReconciliationFormPage() {
 }
 
 function BankReconciliationFormPageContent() {
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -73,14 +73,15 @@ function BankReconciliationFormPageContent() {
   const handleSave = handleSubmit(async (values) => {
     try {
       if (isCreate) {
-        const res = await create.mutateAsync(values)
+        await create.mutateAsync(values)
         formDraft.clearDraft()
         toast.success('Rekonsiliasi bank berhasil dibuat.')
-        replaceRecordTab('/cash-bank/bank-reconciliations/create', { label: res.data.number, path: `/cash-bank/bank-reconciliations/${res.data.id}` })
+        closeRecordTab('/cash-bank/bank-reconciliations/create', '/cash-bank/bank-reconciliations')
       } else {
         await update.mutateAsync({ id: Number(id), payload: values })
         formDraft.clearDraft()
         toast.success('Rekonsiliasi bank berhasil diperbarui.')
+        closeRecordTab(`/cash-bank/bank-reconciliations/${id}`, '/cash-bank/bank-reconciliations')
       }
     } catch (saveError) {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
@@ -118,8 +119,8 @@ function BankReconciliationFormPageContent() {
   const clearedTotal = clearedLines.reduce((sum, l) => sum + (l.direction === 'in' ? l.amount : -l.amount), 0)
 
   const actions: DocumentActionButton[] = []
-  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan', variant: 'primary', onClick: () => void handleSave(), isLoading: isSubmitting })
-  if (!isCreate && isDraft && can('cash_bank.edit')) actions.push({ id: 'update', label: 'Simpan Perubahan', variant: 'primary', onClick: () => void handleSave(), isLoading: isSubmitting || update.isPending })
+  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'primary', onClick: () => void handleSave(), isLoading: isSubmitting })
+  if (!isCreate && isDraft && can('cash_bank.edit')) actions.push({ id: 'update', label: 'Simpan & Tutup', variant: 'primary', onClick: () => void handleSave(), isLoading: isSubmitting || update.isPending })
 
   if (!isCreate && isLoading) return <FormLayout title="Rekonsiliasi Bank" breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Rekonsiliasi Bank', path: '/cash-bank/bank-reconciliations' }, { label: 'Memuat...' }]}><div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat...</div></FormLayout>
 

@@ -46,7 +46,7 @@ export default function JournalFormPage() {
 }
 
 function JournalFormPageContent() {
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -112,14 +112,15 @@ function JournalFormPageContent() {
     const linePayloads = lines.map((l, i) => ({ account_id: l.account_id!, description: l.description || null, debit: l.debit || undefined, credit: l.credit || undefined, line_order: i + 1 }))
     try {
       if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines: linePayloads })
+        await create.mutateAsync({ ...values, lines: linePayloads })
         formDraft.clearDraft()
         toast.success('Jurnal berhasil dibuat.')
-        replaceRecordTab('/accounting/journals/create', { label: res.data.journal_number, path: `/accounting/journals/${res.data.id}` })
+        closeRecordTab('/accounting/journals/create', '/accounting/journals')
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads } })
         formDraft.clearDraft()
         toast.success('Jurnal berhasil diperbarui.')
+        closeRecordTab(`/accounting/journals/${id}`, '/accounting/journals')
       }
     } catch (error) {
       setLineErrors(getApiLineErrors(error))
@@ -178,7 +179,7 @@ function JournalFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('journal.create')) {
-    actions.push({ id: 'save', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (journal?.status === 'draft' && can('journal.approve')) {

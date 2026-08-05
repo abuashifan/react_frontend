@@ -50,7 +50,7 @@ export default function SalesReturnFormPage() {
 }
 
 function SalesReturnFormPageContent() {
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -112,17 +112,15 @@ function SalesReturnFormPageContent() {
   const handleSaveDraft = handleSubmit(async (values) => {
     try {
       if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines })
+        await create.mutateAsync({ ...values, lines })
         formDraft.clearDraft()
         toast.success('Retur berhasil disimpan.')
-        replaceRecordTab('/sales/returns/create', {
-          label: res.data.number,
-          path: `/sales/returns/${res.data.id}`,
-        })
+        closeRecordTab('/sales/returns/create', '/sales/returns')
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
         formDraft.clearDraft()
         toast.success('Retur berhasil diperbarui.')
+        closeRecordTab(`/sales/returns/${id}`, '/sales/returns')
       }
     } catch (saveError) {
       // Backend memvalidasi tanggal sebagai `return_date`, form memakai `date`.
@@ -157,7 +155,7 @@ function SalesReturnFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('sales.returns.create')) {
-    actions.push({ id: 'save_draft', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
+    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (ret?.status === 'draft' && can('sales.returns.approve')) {

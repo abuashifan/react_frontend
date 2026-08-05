@@ -51,7 +51,7 @@ export default function ProformaFormPage() {
 }
 
 function ProformaFormPageContent() {
-  const { openRecordTab, replaceRecordTab } = useRecordTab()
+  const { openRecordTab, closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -114,17 +114,15 @@ function ProformaFormPageContent() {
   const handleSaveDraft = handleSubmit(async (values) => {
     try {
       if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines })
+        await create.mutateAsync({ ...values, lines })
         formDraft.clearDraft()
         toast.success('Proforma berhasil dibuat.')
-        replaceRecordTab('/sales/proformas/create', {
-          label: res.data.number,
-          path: `/sales/proformas/${res.data.id}`,
-        })
+        closeRecordTab('/sales/proformas/create', '/sales/proformas')
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
         formDraft.clearDraft()
         toast.success('Proforma berhasil diperbarui.')
+        closeRecordTab(`/sales/proformas/${id}`, '/sales/proformas')
       }
     } catch (saveError) {
       // Backend memvalidasi tanggal sebagai `proforma_date`, form memakai `date`.
@@ -172,7 +170,7 @@ function ProformaFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('sales.proformas.create')) {
-    actions.push({ id: 'save_draft', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
+    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (proforma?.status === 'draft' && can('sales.proformas.update')) {

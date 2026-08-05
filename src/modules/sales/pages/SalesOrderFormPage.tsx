@@ -64,7 +64,7 @@ export default function SalesOrderFormPage() {
 function SalesOrderFormPageContent() {
   // `navigate` masih dipakai alur deep link ?from_quotation yang tidak lahir dari tab.
   const navigate = useNavigate()
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const isCreate = !id
@@ -149,17 +149,15 @@ function SalesOrderFormPageContent() {
   const handleSaveDraft = handleSubmit(async (values) => {
     try {
       if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines: lines.map(toOrderLine) })
+        await create.mutateAsync({ ...values, lines: lines.map(toOrderLine) })
         formDraft.clearDraft()
         toast.success('Sales Order berhasil dibuat.')
-        replaceRecordTab('/sales/orders/create', {
-          label: res.data.number,
-          path: `/sales/orders/${res.data.id}`,
-        })
+        closeRecordTab('/sales/orders/create', '/sales/orders')
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines: lines.map(toOrderLine) } })
         formDraft.clearDraft()
         toast.success('Sales Order berhasil diperbarui.')
+        closeRecordTab(`/sales/orders/${id}`, '/sales/orders')
       }
     } catch (saveError) {
       // Backend memakai `order_date`/`shipping_address`, form memakai
@@ -197,7 +195,7 @@ function SalesOrderFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('sales.orders.create')) {
-    actions.push({ id: 'save_draft', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
+    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (order?.status === 'draft' && can('sales.orders.approve')) {

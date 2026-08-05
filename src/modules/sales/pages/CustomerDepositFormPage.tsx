@@ -34,7 +34,7 @@ export default function CustomerDepositFormPage() {
 }
 
 function CustomerDepositFormPageContent() {
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -80,13 +80,10 @@ function CustomerDepositFormPageContent() {
 
   const handleSave = handleSubmit(async (values) => {
     try {
-      const res = await create.mutateAsync(values)
+      await create.mutateAsync(values)
       formDraft.clearDraft()
       toast.success('Deposit berhasil disimpan.')
-      replaceRecordTab('/sales/customer-deposits/create', {
-        label: res.data.number,
-        path: `/sales/customer-deposits/${res.data.id}`,
-      })
+      closeRecordTab('/sales/customer-deposits/create', '/sales/customer-deposits')
     } catch (saveError) {
       // Backend memvalidasi tanggal sebagai `deposit_date`, form memakai `date`.
       applyApiValidationErrors(saveError, setError, { deposit_date: 'date' })
@@ -111,7 +108,7 @@ function CustomerDepositFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isCreate && can('sales.deposits.create')) {
-    actions.push({ id: 'save', label: 'Simpan', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (deposit?.status === 'draft' && can('sales.deposits.post')) {

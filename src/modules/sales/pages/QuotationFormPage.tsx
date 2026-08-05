@@ -51,7 +51,7 @@ export default function QuotationFormPage() {
 }
 
 function QuotationFormPageContent() {
-  const { openRecordTab, replaceRecordTab } = useRecordTab()
+  const { openRecordTab, closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -119,17 +119,15 @@ function QuotationFormPageContent() {
   const handleSaveDraft = handleSubmit(async (values) => {
     try {
       if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines })
+        await create.mutateAsync({ ...values, lines })
         formDraft.clearDraft()
         toast.success('Draft berhasil disimpan.')
-        replaceRecordTab('/sales/quotations/create', {
-          label: res.data.number,
-          path: `/sales/quotations/${res.data.id}`,
-        })
+        closeRecordTab('/sales/quotations/create', '/sales/quotations')
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
         formDraft.clearDraft()
         toast.success('Draft berhasil diperbarui.')
+        closeRecordTab(`/sales/quotations/${id}`, '/sales/quotations')
       }
     } catch (saveError) {
       // Backend memvalidasi dengan nama field-nya sendiri (`quotation_date`,
@@ -196,7 +194,7 @@ function QuotationFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('sales.quotations.create')) {
-    actions.push({ id: 'save_draft', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
+    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (quotation?.status === 'draft' && can('sales.quotations.update')) {

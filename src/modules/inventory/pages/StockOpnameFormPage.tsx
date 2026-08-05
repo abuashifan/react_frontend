@@ -35,7 +35,7 @@ export default function StockOpnameFormPage() {
 }
 
 function StockOpnameFormPageContent() {
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -85,10 +85,10 @@ function StockOpnameFormPageContent() {
 
   const handleCreate = handleSubmit(async (values) => {
     try {
-      const res = await create.mutateAsync(values)
+      await create.mutateAsync(values)
       formDraft.clearDraft()
       toast.success('Opname berhasil dibuat.')
-      replaceRecordTab('/inventory/opnames/create', { label: res.data.number, path: `/inventory/opnames/${res.data.id}` })
+      closeRecordTab('/inventory/opnames/create', '/inventory/opnames')
     } catch (saveError) {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
       // bukan hanya toast generik "Gagal membuat opname".

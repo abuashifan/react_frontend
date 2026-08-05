@@ -33,7 +33,7 @@ export default function BankTransferFormPage() {
 }
 
 function BankTransferFormPageContent() {
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -71,10 +71,10 @@ function BankTransferFormPageContent() {
 
   const handleSave = handleSubmit(async (values) => {
     try {
-      const res = await create.mutateAsync(values)
+      await create.mutateAsync(values)
       formDraft.clearDraft()
       toast.success('Transfer bank berhasil dibuat.')
-      replaceRecordTab('/cash-bank/bank-transfers/create', { label: res.data.number, path: `/cash-bank/bank-transfers/${res.data.id}` })
+      closeRecordTab('/cash-bank/bank-transfers/create', '/cash-bank/bank-transfers')
     } catch (saveError) {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
       // bukan hanya toast generik "Gagal menyimpan".
@@ -87,7 +87,7 @@ function BankTransferFormPageContent() {
   const handleVoid = async (reason: string) => { await voidTransfer.mutateAsync({ id: Number(id), reason }); formDraft.clearDraft(); toast.success('Berhasil di-void.'); setVoidOpen(false) }
 
   const actions: DocumentActionButton[] = []
-  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
   if (isEditable && formDraft.isRestored) actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: handleDiscardDraft })
   if (!isCreate && transfer?.status === 'draft' && can('cash_bank.post')) actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
   if (!isCreate && transfer?.status === 'posted' && can('cash_bank.void')) actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })

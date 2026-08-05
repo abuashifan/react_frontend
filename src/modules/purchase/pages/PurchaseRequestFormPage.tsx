@@ -50,7 +50,7 @@ export default function PurchaseRequestFormPage() {
 }
 
 function PurchaseRequestFormPageContent() {
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -108,14 +108,15 @@ function PurchaseRequestFormPageContent() {
     try {
       const payload = toPurchaseRequestPayload(values, lines.map(({ product, ...line }) => line))
       if (isCreate) {
-        const res = await create.mutateAsync(payload)
+        await create.mutateAsync(payload)
         formDraft.clearDraft()
         toast.success('Purchase Request berhasil dibuat.')
-        replaceRecordTab('/purchase/requests/create', { label: res.data.number, path: `/purchase/requests/${res.data.id}` })
+        closeRecordTab('/purchase/requests/create', '/purchase/requests')
       } else {
         await update.mutateAsync({ id: Number(id), payload })
         formDraft.clearDraft()
         toast.success('Purchase Request berhasil diperbarui.')
+        closeRecordTab(`/purchase/requests/${id}`, '/purchase/requests')
       }
     } catch (saveError) {
       // Backend memakai nama kolom DB (`request_date`), form memakai `date`.
@@ -144,7 +145,7 @@ function PurchaseRequestFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('purchase.requests.create')) {
-    actions.push({ id: 'save', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (pr?.status === 'draft' && can('purchase.requests.edit')) {

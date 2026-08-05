@@ -57,7 +57,7 @@ export default function SalesInvoiceFormPage() {
 }
 
 function SalesInvoiceFormPageContent() {
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -154,17 +154,15 @@ function SalesInvoiceFormPageContent() {
   const handleSaveDraft = handleSubmit(async (values) => {
     try {
       if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines })
+        await create.mutateAsync({ ...values, lines })
         formDraft.clearDraft()
         toast.success('Invoice berhasil dibuat.')
-        replaceRecordTab('/sales/invoices/create', {
-          label: res.data.number,
-          path: `/sales/invoices/${res.data.id}`,
-        })
+        closeRecordTab('/sales/invoices/create', '/sales/invoices')
       } else {
         await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
         formDraft.clearDraft()
         toast.success('Invoice berhasil diperbarui.')
+        closeRecordTab(`/sales/invoices/${id}`, '/sales/invoices')
       }
     } catch (saveError) {
       // Backend memvalidasi tanggal sebagai `invoice_date`, form memakai `date`.
@@ -199,7 +197,7 @@ function SalesInvoiceFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('sales.invoices.create')) {
-    actions.push({ id: 'save_draft', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
+    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
   }
   if (isEditable && formDraft.isRestored) {
     actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: handleDiscardDraft })

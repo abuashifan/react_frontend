@@ -261,6 +261,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____FormSection.tsx
 | | | | |____FormSummary.tsx
 | | | | |____LineItemsTable.tsx
+| | | | |____RecordNavButtons.tsx
 | | | | |____SearchableSelect.tsx
 | | | |____filter/
 | | | | |____DateRangeFilterSection.tsx
@@ -313,6 +314,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____useOpenPrimaryTab.ts
 | | |____usePermission.ts
 | | |____usePersistentFormDraft.ts
+| | |____useRecordFormNavigation.ts
+| | |____useRecordSequence.ts
 | | |____useRecordTab.ts
 | | |____useSessionTimeout.ts
 | | |____useTabFormState.ts

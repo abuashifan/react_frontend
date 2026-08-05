@@ -67,7 +67,7 @@ export default function PurchaseOrderFormPage() {
 function PurchaseOrderFormPageContent() {
   // `navigate` masih dipakai alur deep link yang tidak lahir dari tab.
   const navigate = useNavigate()
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const isCreate = !id
@@ -140,14 +140,15 @@ function PurchaseOrderFormPageContent() {
     try {
       const payload = toPurchaseOrderPayload(values, lines.map(toPurchaseOrderLine))
       if (isCreate) {
-        const res = await create.mutateAsync(payload)
+        await create.mutateAsync(payload)
         formDraft.clearDraft()
         toast.success('Purchase Order berhasil dibuat.')
-        replaceRecordTab('/purchase/orders/create', { label: res.data.number, path: `/purchase/orders/${res.data.id}` })
+        closeRecordTab('/purchase/orders/create', '/purchase/orders')
       } else {
         await update.mutateAsync({ id: Number(id), payload })
         formDraft.clearDraft()
         toast.success('Purchase Order berhasil diperbarui.')
+        closeRecordTab(`/purchase/orders/${id}`, '/purchase/orders')
       }
     } catch (saveError) {
       // Backend memakai nama kolom DB (`order_date`, `expected_date`), form memakai
@@ -164,7 +165,7 @@ function PurchaseOrderFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('purchase.orders.create')) {
-    actions.push({ id: 'save', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (po?.status === 'draft' && can('purchase.orders.approve')) {

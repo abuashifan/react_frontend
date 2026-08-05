@@ -41,7 +41,7 @@ export default function SalesReceiptFormPage() {
 }
 
 function SalesReceiptFormPageContent() {
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -106,16 +106,13 @@ function SalesReceiptFormPageContent() {
 
   const handleSave = handleSubmit(async (values) => {
     try {
-      const res = await create.mutateAsync({
+      await create.mutateAsync({
         ...values,
         lines: lines.map(({ sales_invoice_id, amount }) => ({ sales_invoice_id, amount })),
       })
       formDraft.clearDraft()
       toast.success('Penerimaan berhasil disimpan.')
-      replaceRecordTab('/sales/receipts/create', {
-        label: res.data.number,
-        path: `/sales/receipts/${res.data.id}`,
-      })
+      closeRecordTab('/sales/receipts/create', '/sales/receipts')
     } catch (saveError) {
       // Backend memvalidasi tanggal sebagai `receipt_date`, form memakai `date`.
       applyApiValidationErrors(saveError, setError, { receipt_date: 'date' })
@@ -140,7 +137,7 @@ function SalesReceiptFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isCreate && can('sales.receipts.create')) {
-    actions.push({ id: 'save', label: 'Simpan', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (receipt?.status === 'draft' && can('sales.receipts.post')) {

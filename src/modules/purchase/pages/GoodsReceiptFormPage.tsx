@@ -55,7 +55,7 @@ export default function GoodsReceiptFormPage() {
 }
 
 function GoodsReceiptFormPageContent() {
-  const { replaceRecordTab } = useRecordTab()
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -111,10 +111,10 @@ function GoodsReceiptFormPageContent() {
 
   const handleSave = handleSubmit(async (values) => {
     try {
-      const res = await create.mutateAsync(toGoodsReceiptPayload(values, lines.map(toGoodsReceiptLine)))
+      await create.mutateAsync(toGoodsReceiptPayload(values, lines.map(toGoodsReceiptLine)))
       formDraft.clearDraft()
       toast.success('Penerimaan barang berhasil dibuat.')
-      replaceRecordTab('/purchase/goods-receipts/create', { label: res.data.number, path: `/purchase/goods-receipts/${res.data.id}` })
+      closeRecordTab('/purchase/goods-receipts/create', '/purchase/goods-receipts')
     } catch (saveError) {
       // Backend memakai nama kolom DB (`receipt_date`), form memakai `date`.
       setLineErrors(getApiLineErrors(saveError))
@@ -140,7 +140,7 @@ function GoodsReceiptFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('purchase.goods-receipts.create')) {
-    actions.push({ id: 'save', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (gr?.status === 'draft' && can('purchase.goods-receipts.receive')) {
