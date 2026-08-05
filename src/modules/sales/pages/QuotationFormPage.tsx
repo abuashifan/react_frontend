@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
-import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { useRecordTab } from '@/hooks/useRecordTab'
@@ -67,6 +67,12 @@ function QuotationFormPageContent() {
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+
+  // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
+
+  // ditolak ikut ditandai, bukan cuma toast.
+
+  const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
   const [isConverting, setConverting] = useState(false)
 
   const status = (quotation?.status ?? 'draft') as DocumentStatus
@@ -129,6 +135,7 @@ function QuotationFormPageContent() {
       // Backend memvalidasi dengan nama field-nya sendiri (`quotation_date`,
       // `valid_until`), jadi dipetakan ke nama field form supaya pesannya muncul
       // tepat di input yang salah, bukan hilang.
+      setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { quotation_date: 'date', valid_until: 'expiry_date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan draft.'))
     }
@@ -358,6 +365,7 @@ function QuotationFormPageContent() {
         <div>
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Item</p>
           <LineItemsTable
+          errors={lineErrors}
             items={lines}
             columns={columns}
             onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}

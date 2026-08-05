@@ -1,6 +1,20 @@
+import { Fragment } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn, formatCurrency } from '@/lib/utils'
+import type { LineItemErrorMap } from '@/lib/apiError'
+
+/**
+ * Cocokkan nama field dari backend dengan kolom tabel.
+ *
+ * `column.id` tidak selalu sama persis dengan nama field backend — mis. kolom
+ * `product` untuk field `product_id`, atau kolom `discount` untuk
+ * `discount_value`. Pencocokan dibuat toleran supaya sel yang benar ikut ditandai;
+ * kalau tetap tidak ketemu, pesannya tetap tampil sebagai pesan baris.
+ */
+function fieldMatchesColumn(field: string, columnId: string): boolean {
+  return field === columnId || field.startsWith(`${columnId}_`) || columnId.startsWith(`${field}_`)
+}
 
 export interface LineItemColumn<T> {
   id: string
@@ -26,6 +40,11 @@ interface LineItemsTableProps<T> {
   addLabel?: string
   emptyLabel?: string
   currency?: string
+  /**
+   * Error per baris dari backend (lihat `getApiLineErrors`). Baris yang punya
+   * error ditandai merah dan pesannya ditampilkan di bawah baris tersebut.
+   */
+  errors?: LineItemErrorMap
 }
 
 /** Reusable horizontal table for transaction line items. */
@@ -40,7 +59,9 @@ export function LineItemsTable<T>({
   addLabel = 'Tambah Item',
   emptyLabel = 'Belum ada item',
   currency = 'IDR',
+  errors,
 }: LineItemsTableProps<T>) {
+  const columnCount = columns.length + (getSubtotal ? 3 : 2)
   return (
     <div className="overflow-hidden rounded-lg border border-[#d9e2e5] bg-white">
       <div className="overflow-x-auto">
@@ -83,22 +104,40 @@ export function LineItemsTable<T>({
                 </td>
               </tr>
             ) : (
-              items.map((item, index) => (
+              items.map((item, index) => {
+                const rowErrors = errors?.[index]
+                const rowMessages = rowErrors ? Object.values(rowErrors) : []
+
+                return (
+                <Fragment key={index}>
                 <tr
-                  key={index}
                   className={cn(
                     'group border-b border-[#f1f5f9] last:border-b-0',
                     !isReadOnly && 'hover:bg-[#f8fbfc]',
+                    rowMessages.length > 0 && 'bg-red-50/60',
                   )}
                 >
-                  <td className="px-2 py-2 text-center text-[12px] text-[#94a3b8]">{index + 1}</td>
-                  {columns.map((column) => (
+                  <td
+                    className={cn(
+                      'px-2 py-2 text-center text-[12px] text-[#94a3b8]',
+                      rowMessages.length > 0 && 'border-l-2 border-red-500 font-semibold text-red-600',
+                    )}
+                  >
+                    {index + 1}
+                  </td>
+                  {columns.map((column) => {
+                    const cellHasError = rowErrors
+                      ? Object.keys(rowErrors).some((field) => fieldMatchesColumn(field, column.id))
+                      : false
+
+                    return (
                     <td
                       key={column.id}
                       className={cn(
                         'px-2.5 py-2 align-top',
                         column.align === 'right' && 'text-right tabular-nums',
                         column.align === 'center' && 'text-center',
+                        cellHasError && 'rounded-sm ring-1 ring-inset ring-red-400',
                       )}
                     >
                       {column.render({
@@ -108,7 +147,8 @@ export function LineItemsTable<T>({
                         onUpdate: (field, value) => onUpdate(index, field, value),
                       })}
                     </td>
-                  ))}
+                    )
+                  })}
                   {getSubtotal && (
                     <td className="px-2.5 py-2 text-right font-medium tabular-nums text-[#24323a]">
                       {formatCurrency(getSubtotal(item), currency)}
@@ -127,7 +167,23 @@ export function LineItemsTable<T>({
                     )}
                   </td>
                 </tr>
-              ))
+
+                {/* Pesan error baris ditampilkan utuh di sini — kolomnya mungkin tidak
+                    punya padanan sel (mis. field backend tanpa kolom di tabel), jadi
+                    jangan sampai ada pesan yang hilang. */}
+                {rowMessages.length > 0 && (
+                  <tr className="border-b border-[#f1f5f9] bg-red-50/60">
+                    <td />
+                    <td colSpan={columnCount - 1} className="px-2.5 pb-2 pt-0">
+                      {rowMessages.map((message) => (
+                        <p key={message} className="text-[11px] text-red-500">{message}</p>
+                      ))}
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
+                )
+              })
             )}
           </tbody>
         </table>

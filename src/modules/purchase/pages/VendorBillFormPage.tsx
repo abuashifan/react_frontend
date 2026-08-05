@@ -32,7 +32,7 @@ import { vendorBillSchema, validateVendorBillLines, type VendorBillFormValues, t
 import type { DocumentStatus } from '@/types/common.types'
 import { cn, fieldErrorClass, toDateInputValue, formatCurrency } from '@/lib/utils'
 import type { VendorBillLineClassification } from '../types/vendorBill.types'
-import { applyApiValidationErrors, getApiErrorMessage, isApiNotFound } from '@/lib/apiError'
+import { applyApiValidationErrors, getApiErrorMessage, isApiNotFound, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { NotFoundPage, ServerErrorPage } from '@/modules/errors/ErrorPage'
 import { useRecordTab } from '@/hooks/useRecordTab'
 
@@ -113,6 +113,10 @@ function VendorBillFormPageContent() {
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
   const [lineErrors, setLineErrors] = useState<VendorBillLineErrors>({})
+  // Terpisah dari `lineErrors` di atas: yang itu hasil validasi sisi klien dan
+  // dirender per-sel, sedangkan ini error baris dari backend (lines.0.quantity)
+  // yang ditandai oleh LineItemsTable.
+  const [apiLineErrors, setApiLineErrors] = useState<LineItemErrorMap>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
   const [confirmAction, setConfirmAction] = useState<'approve' | 'post' | null>(null)
 
@@ -225,6 +229,7 @@ function VendorBillFormPageContent() {
         toast.success('Tagihan vendor berhasil diperbarui.')
       }
     } catch (saveError) {
+      setApiLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { bill_date: 'date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan tagihan vendor.'))
     }
@@ -505,6 +510,7 @@ function VendorBillFormPageContent() {
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Item</p>
             <LineItemsTable
+          errors={apiLineErrors}
               items={lines} columns={columns}
               onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
               onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}

@@ -14,7 +14,7 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
-import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { cn, fieldErrorClass, formatCurrency, toDateInputValue } from '@/lib/utils'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { useJournalEntry, useJournalEntryMutations } from '../hooks/useJournalEntryList'
@@ -62,6 +62,12 @@ function JournalFormPageContent() {
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE, DEFAULT_LINE])
+
+  // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
+
+  // ditolak ikut ditandai, bukan cuma toast.
+
+  const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
 
   const status = (journal?.status ?? 'draft') as DocumentStatus
@@ -116,6 +122,7 @@ function JournalFormPageContent() {
         toast.success('Jurnal berhasil diperbarui.')
       }
     } catch (error) {
+      setLineErrors(getApiLineErrors(error))
       applyApiValidationErrors(error, setError)
       toast.error(getApiErrorMessage(error, 'Gagal menyimpan jurnal.'))
     }
@@ -220,6 +227,7 @@ function JournalFormPageContent() {
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Baris Jurnal</p>
             <LineItemsTable
+          errors={lineErrors}
               items={lines} columns={columns}
               onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
               onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}

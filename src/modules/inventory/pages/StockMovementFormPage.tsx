@@ -17,7 +17,7 @@ import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
-import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { useStockMovement, useStockMovementMutations } from '../hooks/useStockMovementList'
@@ -72,6 +72,10 @@ function StockMovementFormPageContent() {
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
   const [lineErrors, setLineErrors] = useState<Record<number, Partial<Record<keyof EditableLine, string>>>>({})
+  // Terpisah dari `lineErrors` di atas: yang itu hasil validasi sisi klien dan
+  // dirender per-sel, sedangkan ini error baris dari backend (lines.0.quantity)
+  // yang ditandai oleh LineItemsTable.
+  const [apiLineErrors, setApiLineErrors] = useState<LineItemErrorMap>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
   const [isPostConfirmOpen, setPostConfirmOpen] = useState(false)
 
@@ -145,6 +149,7 @@ function StockMovementFormPageContent() {
     } catch (saveError) {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
       // bukan hanya toast generik "Gagal menyimpan".
+      setApiLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError)
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan mutasi stok.'))
     }
@@ -270,6 +275,7 @@ function StockMovementFormPageContent() {
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Item</p>
             <LineItemsTable
+          errors={apiLineErrors}
               items={lines} columns={columns}
               onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
               onRemove={(i) => { setLines((prev) => prev.filter((_, idx) => idx !== i)); setLineErrors((prev) => { const n: typeof prev = {}; Object.keys(prev).forEach((k) => { const ki = Number(k); if (ki !== i) n[ki > i ? ki - 1 : ki] = prev[ki] }); return n }) }}

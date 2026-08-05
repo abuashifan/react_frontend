@@ -14,7 +14,7 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
-import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { useCashReceipt, useCashReceiptMutations } from '../hooks/useCashBankList'
@@ -48,6 +48,9 @@ function CashReceiptFormPageContent() {
   const { create, post, void: voidReceipt } = useCashReceiptMutations()
   const { register, handleSubmit, control, getValues, setValue, watch, reset, setError, formState: { errors, isSubmitting } } = useForm<CashReceiptFormValues>({ resolver: zodResolver(cashReceiptSchema), defaultValues: { receipt_date: new Date().toISOString().slice(0, 10) } })
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
+  // ditolak ikut ditandai, bukan cuma toast.
+  const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
   const status = (receipt?.status ?? 'draft') as DocumentStatus
   const isEditable = isCreate
@@ -83,6 +86,7 @@ function CashReceiptFormPageContent() {
     } catch (saveError) {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
       // bukan hanya toast generik "Gagal menyimpan".
+      setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError)
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan penerimaan kas.'))
     }
@@ -119,7 +123,8 @@ function CashReceiptFormPageContent() {
           </FormSection>
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Alokasi Akun (Opsional)</p>
-            <LineItemsTable items={lines} columns={columns} onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])} onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))} onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))} isReadOnly={!isEditable} addLabel="Tambah Baris" />
+            <LineItemsTable
+          errors={lineErrors} items={lines} columns={columns} onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])} onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))} onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))} isReadOnly={!isEditable} addLabel="Tambah Baris" />
           </div>
         </div>
       </FormLayout>

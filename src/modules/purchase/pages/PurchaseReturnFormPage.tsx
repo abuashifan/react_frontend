@@ -15,7 +15,7 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
-import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { cn, fieldErrorClass } from '@/lib/utils'
 import { usePurchaseReturn, usePurchaseReturnMutations } from '../hooks/usePurchaseReturnList'
 import { toPurchaseReturnPayload } from '../services/purchaseReturnAdapter'
@@ -67,6 +67,12 @@ function PurchaseReturnFormPageContent() {
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
 
+  // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
+
+  // ditolak ikut ditandai, bukan cuma toast.
+
+  const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
+
   const status = (ret?.status ?? 'draft') as DocumentStatus
   const isEditable = isCreate || ret?.status === 'draft'
   const subtotal = lines.reduce((s, l) => s + lineSubtotal(l), 0)
@@ -99,6 +105,7 @@ function PurchaseReturnFormPageContent() {
       toast.success('Retur pembelian berhasil dibuat.')
     } catch (saveError) {
       // Backend memakai nama kolom DB (`return_date`), form memakai `date`.
+      setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { return_date: 'date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan retur pembelian.'))
     }
@@ -178,7 +185,8 @@ function PurchaseReturnFormPageContent() {
           </FormSection>
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Item</p>
-            <LineItemsTable items={lines} columns={columns} onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])} onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))} onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))} getSubtotal={lineSubtotal} isReadOnly={!isEditable} addLabel="Tambah Item" />
+            <LineItemsTable
+          errors={lineErrors} items={lines} columns={columns} onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])} onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))} onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))} getSubtotal={lineSubtotal} isReadOnly={!isEditable} addLabel="Tambah Item" />
             <FormSummary subtotal={subtotal} grandTotal={subtotal} />
           </div>
         </div>

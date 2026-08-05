@@ -14,7 +14,7 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
-import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { usePurchaseOrder, usePurchaseOrderMutations } from '../hooks/usePurchaseOrderList'
 import { toPurchaseOrderPayload } from '../services/purchaseOrderAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
@@ -84,6 +84,12 @@ function PurchaseOrderFormPageContent() {
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+
+  // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
+
+  // ditolak ikut ditandai, bukan cuma toast.
+
+  const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
   const [isCreatingFromRequest, setCreatingFromRequest] = useState(false)
 
   const status = (po?.status ?? 'draft') as DocumentStatus
@@ -146,6 +152,7 @@ function PurchaseOrderFormPageContent() {
     } catch (saveError) {
       // Backend memakai nama kolom DB (`order_date`, `expected_date`), form memakai
       // `date` dan `expected_delivery_date` — lihat `toPurchaseOrderPayload`.
+      setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { order_date: 'date', expected_date: 'expected_delivery_date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Purchase Order.'))
     }
@@ -290,6 +297,7 @@ function PurchaseOrderFormPageContent() {
         <div>
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Item</p>
           <LineItemsTable
+          errors={lineErrors}
             items={lines}
             columns={columns}
             onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}

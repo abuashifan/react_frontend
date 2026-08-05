@@ -14,7 +14,7 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
-import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { cn, fieldErrorClass } from '@/lib/utils'
 import { useGoodsReceipt, useGoodsReceiptMutations } from '../hooks/useGoodsReceiptList'
 import { toGoodsReceiptPayload } from '../services/goodsReceiptAdapter'
@@ -71,6 +71,12 @@ function GoodsReceiptFormPageContent() {
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+
+  // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
+
+  // ditolak ikut ditandai, bukan cuma toast.
+
+  const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
 
   const status = (gr?.status ?? 'draft') as DocumentStatus
@@ -111,6 +117,7 @@ function GoodsReceiptFormPageContent() {
       replaceRecordTab('/purchase/goods-receipts/create', { label: res.data.number, path: `/purchase/goods-receipts/${res.data.id}` })
     } catch (saveError) {
       // Backend memakai nama kolom DB (`receipt_date`), form memakai `date`.
+      setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { receipt_date: 'date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan penerimaan barang.'))
     }
@@ -248,6 +255,7 @@ function GoodsReceiptFormPageContent() {
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Item</p>
             <LineItemsTable
+          errors={lineErrors}
               items={lines}
               columns={columns}
               onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}

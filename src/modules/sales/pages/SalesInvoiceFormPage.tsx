@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
-import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
@@ -75,6 +75,12 @@ function SalesInvoiceFormPageContent() {
   const paymentTermId = useWatch({ control, name: 'payment_term_id' })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+
+  // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
+
+  // ditolak ikut ditandai, bukan cuma toast.
+
+  const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
 
   const status = (invoice?.status ?? 'draft') as DocumentStatus
@@ -162,6 +168,7 @@ function SalesInvoiceFormPageContent() {
       }
     } catch (saveError) {
       // Backend memvalidasi tanggal sebagai `invoice_date`, form memakai `date`.
+      setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { invoice_date: 'date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Invoice.'))
     }
@@ -366,6 +373,7 @@ function SalesInvoiceFormPageContent() {
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Item</p>
             <LineItemsTable
+          errors={lineErrors}
               items={lines}
               columns={columns}
               onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}

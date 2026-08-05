@@ -104,6 +104,42 @@ export function getApiErrorMessage(error: unknown, fallback = 'Terjadi kesalahan
   return fallback
 }
 
+/** Error per baris item: `{ 0: { quantity: 'pesan' }, 2: { unit_price: 'pesan' } }`. */
+export type LineItemErrorMap = Record<number, Record<string, string>>
+
+/**
+ * Ambil error baris item dari respons validasi backend.
+ *
+ * Laravel memvalidasi `lines.*.quantity`, sehingga error kembali dengan key
+ * `lines.0.quantity`. Tanpa dipetakan ke indeks baris, pesan itu tidak pernah
+ * sampai ke tabel item — user cuma dapat toast tanpa tahu baris mana yang salah.
+ */
+export function getApiLineErrors(error: unknown, arrayKey = 'lines'): LineItemErrorMap {
+  const prefix = `${arrayKey}.`
+  const result: LineItemErrorMap = {}
+
+  Object.entries(getApiValidationErrors(error)).forEach(([field, message]) => {
+    if (!field.startsWith(prefix)) return
+
+    const [indexPart, ...fieldParts] = field.slice(prefix.length).split('.')
+    const rowIndex = Number(indexPart)
+    if (!Number.isInteger(rowIndex) || rowIndex < 0) return
+
+    // `lines.0` tanpa nama field (mis. aturan pada baris itu sendiri) disimpan
+    // dengan kunci arrayKey supaya tetap tampil sebagai pesan baris.
+    const fieldName = fieldParts.join('.') || arrayKey
+
+    // Laravel menyebut path lengkap di pesannya ("The lines.0.account_id field is
+    // required."). Nomor barisnya sudah terlihat dari baris yang ditandai, jadi
+    // buang path itu agar catatannya ringkas.
+    const cleaned = message.replaceAll(`${prefix}${rowIndex}.`, '')
+
+    result[rowIndex] = { ...(result[rowIndex] ?? {}), [fieldName]: cleaned }
+  })
+
+  return result
+}
+
 /**
  * Alasan gagal dari aksi massal (`Promise.allSettled`) — mis. bulk void.
  *

@@ -14,7 +14,7 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
-import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { cn, fieldErrorClass } from '@/lib/utils'
 import { usePurchaseRequest, usePurchaseRequestMutations } from '../hooks/usePurchaseRequestList'
 import { toPurchaseRequestPayload } from '../services/purchaseRequestAdapter'
@@ -67,6 +67,12 @@ function PurchaseRequestFormPageContent() {
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
 
+  // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
+
+  // ditolak ikut ditandai, bukan cuma toast.
+
+  const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
+
   const status = (pr?.status ?? 'draft') as DocumentStatus
   const isEditable = isCreate || pr?.status === 'draft'
   const subtotal = lines.reduce((s, l) => s + lineSubtotal(l), 0)
@@ -113,6 +119,7 @@ function PurchaseRequestFormPageContent() {
       }
     } catch (saveError) {
       // Backend memakai nama kolom DB (`request_date`), form memakai `date`.
+      setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { request_date: 'date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Purchase Request.'))
     }
@@ -234,6 +241,7 @@ function PurchaseRequestFormPageContent() {
         <div>
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Item</p>
           <LineItemsTable
+          errors={lineErrors}
             items={lines}
             columns={columns}
             onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
