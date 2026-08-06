@@ -22,7 +22,6 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { deliveryOrderSchema, type DeliveryOrderFormValues } from '../schemas/deliveryOrderSchema'
 import { deliveryOrderApi } from '../services/deliveryOrderApi'
-import type { DeliveryOrder } from '../types/deliveryOrder.types'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
@@ -107,13 +106,12 @@ function DeliveryOrderFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<DeliveryOrderFormValues, DeliveryOrder>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<DeliveryOrderFormValues>({
     id,
     basePath: '/sales/delivery-orders',
     createLabel: 'Delivery Order Baru',
-    getRecordLabel: (record) => record.number,
-    sequenceQueryKey: ['sales', 'delivery-orders', 'sequence'],
-    fetchAll: async () => (await deliveryOrderApi.listAll()).data,
+    sequenceQueryKey: ['sales', 'delivery-orders', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await deliveryOrderApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values, creating) => {
       if (creating) await create.mutateAsync({ ...values, lines })

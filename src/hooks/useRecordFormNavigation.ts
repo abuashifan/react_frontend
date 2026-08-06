@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import type { FieldValues, UseFormHandleSubmit } from 'react-hook-form'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { useToast } from '@/hooks/useToast'
-import { useRecordSequence } from '@/hooks/useRecordSequence'
+import { useRecordSequence, type AdjacentRecord, type AdjacentRecords } from '@/hooks/useRecordSequence'
 
 /**
  * Dilempar dari `save` untuk membatalkan simpan **tanpa** memanggil `onError`.
@@ -13,18 +13,16 @@ import { useRecordSequence } from '@/hooks/useRecordSequence'
  */
 export class FormValidationAbort extends Error {}
 
-interface UseRecordFormNavigationOptions<TValues extends FieldValues, TRecord extends { id: number }> {
+interface UseRecordFormNavigationOptions<TValues extends FieldValues> {
   /** Id record dari route; `undefined` saat form create. */
   id?: string
   /** Prefix rute modul, mis. `/master-data/coa` (dipakai untuk `/create` dan `/:id`). */
   basePath: string
   /** Judul tab untuk form kosong, mis. `Akun Baru`. */
   createLabel: string
-  /** Judul tab saat membuka record, mis. `(record) => record.account_code`. */
-  getRecordLabel: (record: TRecord) => string
   sequenceQueryKey: unknown[]
-  /** Ambil seluruh record modul untuk membangun urutan input. */
-  fetchAll: () => Promise<TRecord[]>
+  /** Ambil tetangga dari endpoint `/{resource}/adjacent`; labelnya ikut dari server. */
+  fetchAdjacent: (id?: number) => Promise<AdjacentRecords>
   handleSubmit: UseFormHandleSubmit<TValues>
   /** Simpan isian. Lempar error agar `onError` yang menanganinya. */
   save: (values: TValues, isCreate: boolean) => Promise<void>
@@ -65,29 +63,28 @@ export interface RecordFormNavigation {
  * disimpan, jadi Prev/Next berubah jadi navigasi murni — tombolnya tetap ada
  * supaya user bisa menelusuri dokumen tanpa kembali ke daftar.
  */
-export function useRecordFormNavigation<TValues extends FieldValues, TRecord extends { id: number }>({
+export function useRecordFormNavigation<TValues extends FieldValues>({
   id,
   basePath,
   createLabel,
-  getRecordLabel,
   sequenceQueryKey,
-  fetchAll,
+  fetchAdjacent,
   handleSubmit,
   save,
   onSaved,
   successMessage,
   onError,
   canSave = true,
-}: UseRecordFormNavigationOptions<TValues, TRecord>): RecordFormNavigation {
+}: UseRecordFormNavigationOptions<TValues>): RecordFormNavigation {
   const { replaceRecordTab, closeRecordTab } = useRecordTab()
   const { toast } = useToast()
 
   const isCreate = !id
   const currentPath = id ? `${basePath}/${id}` : `${basePath}/create`
 
-  const sequence = useRecordSequence<TRecord>({
+  const sequence = useRecordSequence({
     queryKey: sequenceQueryKey,
-    fetchAll,
+    fetchAdjacent,
     currentId: id ? Number(id) : undefined,
   })
 
@@ -115,9 +112,9 @@ export function useRecordFormNavigation<TValues extends FieldValues, TRecord ext
   )
 
   const openRecord = useCallback(
-    (record: TRecord) =>
-      replaceRecordTab(currentPath, { label: getRecordLabel(record), path: `${basePath}/${record.id}` }),
-    [basePath, currentPath, getRecordLabel, replaceRecordTab],
+    (record: AdjacentRecord) =>
+      replaceRecordTab(currentPath, { label: record.label, path: `${basePath}/${record.id}` }),
+    [basePath, currentPath, replaceRecordTab],
   )
 
   return {

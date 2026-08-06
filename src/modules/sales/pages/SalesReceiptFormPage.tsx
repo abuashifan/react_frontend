@@ -19,7 +19,6 @@ import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { salesReceiptSchema, type SalesReceiptFormValues } from '../schemas/salesReceiptSchema'
 import { salesReceiptApi } from '../services/salesReceiptApi'
-import type { SalesReceipt } from '../types/salesReceipt.types'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
@@ -106,13 +105,12 @@ function SalesReceiptFormPageContent() {
     onRestoreExtra: setLines,
   })
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<SalesReceiptFormValues, SalesReceipt>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<SalesReceiptFormValues>({
     id,
     basePath: '/sales/receipts',
     createLabel: 'Penerimaan Baru',
-    getRecordLabel: (record) => record.number,
-    sequenceQueryKey: ['sales', 'receipts', 'sequence'],
-    fetchAll: async () => (await salesReceiptApi.listAll()).data,
+    sequenceQueryKey: ['sales', 'receipts', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await salesReceiptApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values) => {
       await create.mutateAsync({

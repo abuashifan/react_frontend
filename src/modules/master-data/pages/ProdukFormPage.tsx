@@ -25,7 +25,6 @@ import { satuanApi } from '../services/satuanApi'
 import { kategoriProdukApi } from '../services/kategoriProdukApi'
 import { produkApi } from '../services/produkApi'
 import { produkSchema, type ProdukFormValues } from '../schemas/produkSchema'
-import type { Produk } from '../types/produk.types'
 import type { AccountMapping } from '../types/accountMapping.types'
 import { cn, fieldErrorClass } from '@/lib/utils'
 
@@ -242,13 +241,12 @@ function ProdukFormPageContent() {
 
   const currentPath = id ? `/master-data/products/${id}` : '/master-data/products/create'
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<ProdukFormValues, Produk>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<ProdukFormValues>({
     id,
     basePath: '/master-data/products',
     createLabel: 'Produk Baru',
-    getRecordLabel: (record) => record.product_name,
-    sequenceQueryKey: ['master-data-produk', 'sequence'],
-    fetchAll: async () => (await produkApi.listAll()).data,
+    sequenceQueryKey: ['master-data-produk', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await produkApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values, creating) => {
       if (creating) await create.mutateAsync(values)

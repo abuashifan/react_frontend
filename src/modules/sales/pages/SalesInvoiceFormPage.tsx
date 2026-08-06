@@ -24,7 +24,6 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { salesInvoiceSchema, type SalesInvoiceFormValues } from '../schemas/salesInvoiceSchema'
 import { salesInvoiceApi } from '../services/salesInvoiceApi'
-import type { SalesInvoice } from '../types/salesInvoice.types'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
@@ -153,13 +152,12 @@ function SalesInvoiceFormPageContent() {
     toast.success('Draft lokal dibuang.')
   }
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<SalesInvoiceFormValues, SalesInvoice>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<SalesInvoiceFormValues>({
     id,
     basePath: '/sales/invoices',
     createLabel: 'Invoice Baru',
-    getRecordLabel: (record) => record.number,
-    sequenceQueryKey: ['sales', 'invoices', 'sequence'],
-    fetchAll: async () => (await salesInvoiceApi.listAll()).data,
+    sequenceQueryKey: ['sales', 'invoices', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await salesInvoiceApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values, creating) => {
       if (creating) await create.mutateAsync({ ...values, lines })

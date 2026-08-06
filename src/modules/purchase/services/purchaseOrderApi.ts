@@ -1,5 +1,6 @@
 import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
+import type { AdjacentRecords } from '@/types/common.types'
 import type {
   PurchaseOrder,
   RawPurchaseOrder,
@@ -12,9 +13,9 @@ export const purchaseOrderApi = {
   list: (params: PurchaseOrderListParams) =>
     http.get<unknown, PaginatedResponse<RawPurchaseOrder>>('/purchase/orders', { params }),
 
-  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
-  listAll: () =>
-    http.get<unknown, ApiResponse<RawPurchaseOrder[]>>('/purchase/orders'),
+  /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
+  adjacent: (id?: number) =>
+    http.get<unknown, ApiResponse<AdjacentRecords>>('/purchase/orders/adjacent', { params: { id } }),
 
   get: (id: number) =>
     http.get<unknown, ApiResponse<RawPurchaseOrder>>(`/purchase/orders/${id}`),

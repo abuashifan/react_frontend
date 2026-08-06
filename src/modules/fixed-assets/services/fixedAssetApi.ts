@@ -1,5 +1,6 @@
 import { http } from '@/services/http'
 import type { ApiResponse } from '@/types/api.types'
+import type { AdjacentRecords } from '@/types/common.types'
 import type {
   CapitalizeFixedAssetPayload,
   CreateFixedAssetPayload,
@@ -23,9 +24,9 @@ export const fixedAssetApi = {
       params: cleanParams(params),
     }),
 
-  /** Semua record tanpa filter — dipakai membangun urutan Prev/Next di form. */
-  listAll: () =>
-    http.get<unknown, ApiResponse<FixedAsset[]>>('/fixed-assets'),
+  /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
+  adjacent: (id?: number) =>
+    http.get<unknown, ApiResponse<AdjacentRecords>>('/fixed-assets/adjacent', { params: { id } }),
 
   get: (id: number) =>
     http.get<unknown, ApiResponse<FixedAsset>>(`/fixed-assets/${id}`),

@@ -22,7 +22,6 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { purchaseRequestSchema, type PurchaseRequestFormValues } from '../schemas/purchaseRequestSchema'
 import { purchaseRequestApi } from '../services/purchaseRequestApi'
-import type { RawPurchaseRequest } from '../types/purchaseRequest.types'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
@@ -106,13 +105,12 @@ function PurchaseRequestFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<PurchaseRequestFormValues, RawPurchaseRequest>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<PurchaseRequestFormValues>({
     id,
     basePath: '/purchase/requests',
     createLabel: 'Purchase Request Baru',
-    getRecordLabel: (record) => record.request_number,
-    sequenceQueryKey: ['purchase', 'requests', 'sequence'],
-    fetchAll: async () => (await purchaseRequestApi.listAll()).data,
+    sequenceQueryKey: ['purchase', 'requests', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await purchaseRequestApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values, creating) => {
       const payload = toPurchaseRequestPayload(values, lines.map(({ product, ...line }) => line))

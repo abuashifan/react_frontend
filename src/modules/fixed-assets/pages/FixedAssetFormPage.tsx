@@ -211,13 +211,12 @@ function FixedAssetFormPageContent() {
   // localStorage akan terus ditimpa oleh sinkronisasi itu, jadi sengaja tidak dipakai
   // di sini sampai form dipindah ke pola `reset`.
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<FixedAssetFormValues, FixedAsset>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<FixedAssetFormValues>({
     id,
     basePath: '/fixed-assets',
     createLabel: 'Aktiva Baru',
-    getRecordLabel: (record) => record.asset_number ?? record.number ?? record.name,
-    sequenceQueryKey: ['fixed-assets', 'sequence'],
-    fetchAll: async () => (await fixedAssetApi.listAll()).data,
+    sequenceQueryKey: ['fixed-assets', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await fixedAssetApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values, creating) => {
       const payload = cleanForm(values)

@@ -21,7 +21,6 @@ import { useKontak, useKontakMutations } from '../hooks/useKontakList'
 import { paymentTermsApi } from '../services/paymentTermsApi'
 import { kontakApi } from '../services/kontakApi'
 import { kontakSchema, type KontakFormValues } from '../schemas/kontakSchema'
-import type { Kontak } from '../types/kontak.types'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { cn, fieldErrorClass } from '@/lib/utils'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
@@ -96,13 +95,12 @@ function KontakFormPageContent() {
 
   const currentPath = id ? `/master-data/contacts/${id}` : '/master-data/contacts/create'
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<KontakFormValues, Kontak>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<KontakFormValues>({
     id,
     basePath: '/master-data/contacts',
     createLabel: 'Kontak Baru',
-    getRecordLabel: (record) => record.name,
-    sequenceQueryKey: ['master-data-kontak', 'sequence'],
-    fetchAll: async () => (await kontakApi.listAll()).data,
+    sequenceQueryKey: ['master-data-kontak', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await kontakApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values, creating) => {
       const { contact_type, ...rest } = values

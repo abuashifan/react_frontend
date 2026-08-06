@@ -21,7 +21,6 @@ import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { vendorPaymentSchema, type VendorPaymentFormValues } from '../schemas/vendorPaymentSchema'
 import { vendorPaymentApi } from '../services/vendorPaymentApi'
-import type { RawVendorPayment } from '../types/vendorPayment.types'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
@@ -105,13 +104,12 @@ function VendorPaymentFormPageContent() {
     reset,
   })
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<VendorPaymentFormValues, RawVendorPayment>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<VendorPaymentFormValues>({
     id,
     basePath: '/purchase/payments',
     createLabel: 'Pembayaran Vendor Baru',
-    getRecordLabel: (record) => record.payment_number,
-    sequenceQueryKey: ['purchase', 'payments', 'sequence'],
-    fetchAll: async () => (await vendorPaymentApi.listAll()).data,
+    sequenceQueryKey: ['purchase', 'payments', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await vendorPaymentApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values) => {
       const lines: VendorPaymentLinePayload[] = billLines.map((l) => ({ vendor_bill_id: l.vendor_bill_id, amount: l.amount }))

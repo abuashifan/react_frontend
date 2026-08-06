@@ -23,7 +23,6 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { useStockAdjustment, useStockAdjustmentMutations } from '../hooks/useStockAdjustmentList'
 import { stockAdjustmentSchema, stockAdjustmentLineSchema, type StockAdjustmentFormValues } from '../schemas/stockAdjustmentSchema'
 import { stockAdjustmentApi } from '../services/stockAdjustmentApi'
-import type { StockAdjustment } from '../types/stockAdjustment.types'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation, FormValidationAbort } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
@@ -181,13 +180,12 @@ function StockAdjustmentFormPageContent() {
     return valid
   }
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<StockAdjustmentFormValues, StockAdjustment>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<StockAdjustmentFormValues>({
     id,
     basePath: '/inventory/adjustments',
     createLabel: 'Penyesuaian Stok Baru',
-    getRecordLabel: (record) => record.number,
-    sequenceQueryKey: ['inventory', 'stock-adjustments', 'sequence'],
-    fetchAll: async () => (await stockAdjustmentApi.listAll()).data,
+    sequenceQueryKey: ['inventory', 'stock-adjustments', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await stockAdjustmentApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values, creating) => {
       // Validasi baris milik form ini jalan sebelum request; melemparnya sebagai

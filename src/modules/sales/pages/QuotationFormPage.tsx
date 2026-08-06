@@ -23,7 +23,6 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { salesOrderApi } from '../services/salesOrderApi'
 import { quotationApi } from '../services/quotationApi'
 import { quotationSchema, type QuotationFormValues } from '../schemas/quotationSchema'
-import type { SalesQuotation } from '../types/quotation.types'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
@@ -120,15 +119,14 @@ function QuotationFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<QuotationFormValues, SalesQuotation>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<QuotationFormValues>({
     id,
     basePath: '/sales/quotations',
     createLabel: 'Quotation Baru',
-    getRecordLabel: (record) => record.number,
     // Prefix harus sama dengan yang di-invalidate mutation (`['sales', 'quotations']`)
     // supaya urutan ikut disegarkan begitu ada record baru tersimpan.
-    sequenceQueryKey: ['sales', 'quotations', 'sequence'],
-    fetchAll: async () => (await quotationApi.listAll()).data,
+    sequenceQueryKey: ['sales', 'quotations', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await quotationApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values, creating) => {
       if (creating) await create.mutateAsync({ ...values, lines })

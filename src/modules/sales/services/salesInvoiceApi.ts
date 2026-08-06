@@ -1,5 +1,6 @@
 import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
+import type { AdjacentRecords } from '@/types/common.types'
 import type {
   SalesInvoice,
   SalesInvoiceListParams,
@@ -11,9 +12,9 @@ export const salesInvoiceApi = {
   list: (params: SalesInvoiceListParams) =>
     http.get<unknown, PaginatedResponse<SalesInvoice>>('/sales/invoices', { params }),
 
-  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
-  listAll: () =>
-    http.get<unknown, ApiResponse<SalesInvoice[]>>('/sales/invoices'),
+  /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
+  adjacent: (id?: number) =>
+    http.get<unknown, ApiResponse<AdjacentRecords>>('/sales/invoices/adjacent', { params: { id } }),
 
   get: (id: number) =>
     http.get<unknown, ApiResponse<SalesInvoice>>(`/sales/invoices/${id}`),

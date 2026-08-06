@@ -23,7 +23,6 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { salesInvoiceApi } from '../services/salesInvoiceApi'
 import { proformaSchema, type ProformaFormValues } from '../schemas/proformaSchema'
 import { proformaApi } from '../services/proformaApi'
-import type { ProformaInvoice } from '../types/proforma.types'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
@@ -115,13 +114,12 @@ function ProformaFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<ProformaFormValues, ProformaInvoice>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<ProformaFormValues>({
     id,
     basePath: '/sales/proformas',
     createLabel: 'Proforma Baru',
-    getRecordLabel: (record) => record.number,
-    sequenceQueryKey: ['sales', 'proformas', 'sequence'],
-    fetchAll: async () => (await proformaApi.listAll()).data,
+    sequenceQueryKey: ['sales', 'proformas', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await proformaApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values, creating) => {
       if (creating) await create.mutateAsync({ ...values, lines })

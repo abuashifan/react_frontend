@@ -1,5 +1,6 @@
 import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
+import type { AdjacentRecords } from '@/types/common.types'
 import type {
   StockMovement,
   StockMovementListParams,
@@ -10,9 +11,9 @@ export const stockMovementApi = {
   list: (params: StockMovementListParams) =>
     http.get<unknown, PaginatedResponse<StockMovement>>('/inventory/stock-movements', { params }),
 
-  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
-  listAll: () =>
-    http.get<unknown, ApiResponse<StockMovement[]>>('/inventory/stock-movements'),
+  /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
+  adjacent: (id?: number) =>
+    http.get<unknown, ApiResponse<AdjacentRecords>>('/inventory/stock-movements/adjacent', { params: { id } }),
 
   get: (id: number) =>
     http.get<unknown, ApiResponse<StockMovement>>(`/inventory/stock-movements/${id}`),

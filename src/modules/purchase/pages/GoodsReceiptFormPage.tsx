@@ -23,7 +23,6 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { goodsReceiptSchema, type GoodsReceiptFormValues } from '../schemas/goodsReceiptSchema'
 import { goodsReceiptApi } from '../services/goodsReceiptApi'
-import type { RawGoodsReceipt } from '../types/goodsReceipt.types'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
@@ -111,13 +110,12 @@ function GoodsReceiptFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<GoodsReceiptFormValues, RawGoodsReceipt>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<GoodsReceiptFormValues>({
     id,
     basePath: '/purchase/goods-receipts',
     createLabel: 'Penerimaan Barang Baru',
-    getRecordLabel: (record) => record.receipt_number,
-    sequenceQueryKey: ['purchase', 'goods-receipts', 'sequence'],
-    fetchAll: async () => (await goodsReceiptApi.listAll()).data,
+    sequenceQueryKey: ['purchase', 'goods-receipts', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await goodsReceiptApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values) => {
       await create.mutateAsync(toGoodsReceiptPayload(values, lines.map(toGoodsReceiptLine)))

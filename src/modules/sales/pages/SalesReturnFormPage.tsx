@@ -22,7 +22,6 @@ import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { salesReturnSchema, type SalesReturnFormValues } from '../schemas/salesReturnSchema'
 import { salesReturnApi } from '../services/salesReturnApi'
-import type { SalesReturn } from '../types/salesReturn.types'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
@@ -111,13 +110,12 @@ function SalesReturnFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<SalesReturnFormValues, SalesReturn>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<SalesReturnFormValues>({
     id,
     basePath: '/sales/returns',
     createLabel: 'Retur Penjualan Baru',
-    getRecordLabel: (record) => record.number,
-    sequenceQueryKey: ['sales', 'returns', 'sequence'],
-    fetchAll: async () => (await salesReturnApi.listAll()).data,
+    sequenceQueryKey: ['sales', 'returns', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await salesReturnApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values, creating) => {
       if (creating) await create.mutateAsync({ ...values, lines })

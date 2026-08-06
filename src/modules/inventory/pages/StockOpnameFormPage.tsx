@@ -21,7 +21,6 @@ import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { useStockOpname, useStockOpnameMutations } from '../hooks/useStockOpnameList'
 import { stockOpnameSchema, type StockOpnameFormValues } from '../schemas/stockOpnameSchema'
 import { stockOpnameApi } from '../services/stockOpnameApi'
-import type { StockOpname } from '../types/stockOpname.types'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
@@ -85,13 +84,12 @@ function StockOpnameFormPageContent() {
     enabled: isCreate,
   })
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<StockOpnameFormValues, StockOpname>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<StockOpnameFormValues>({
     id,
     basePath: '/inventory/opnames',
     createLabel: 'Opname Baru',
-    getRecordLabel: (record) => record.number,
-    sequenceQueryKey: ['inventory', 'stock-opnames', 'sequence'],
-    fetchAll: async () => (await stockOpnameApi.listAll()).data,
+    sequenceQueryKey: ['inventory', 'stock-opnames', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await stockOpnameApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values) => {
       await create.mutateAsync(values)

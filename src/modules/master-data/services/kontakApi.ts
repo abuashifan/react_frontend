@@ -1,15 +1,15 @@
 import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
-import type { SelectOption } from '@/types/common.types'
+import type { SelectOption, AdjacentRecords } from '@/types/common.types'
 import type { Kontak, KontakListParams, CreateKontakPayload, UpdateKontakPayload } from '../types/kontak.types'
 
 export const kontakApi = {
   list: (params: KontakListParams) =>
     http.get<unknown, PaginatedResponse<Kontak>>('/master-data/contacts', { params }),
 
-  /** Semua kontak tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
-  listAll: () =>
-    http.get<unknown, ApiResponse<Kontak[]>>('/master-data/contacts'),
+  /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
+  adjacent: (id?: number) =>
+    http.get<unknown, ApiResponse<AdjacentRecords>>('/master-data/contacts/adjacent', { params: { id } }),
 
   get: (id: number) =>
     http.get<unknown, ApiResponse<Kontak>>(`/master-data/contacts/${id}`),

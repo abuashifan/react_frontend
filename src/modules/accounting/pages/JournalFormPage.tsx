@@ -20,7 +20,6 @@ import { coaApi } from '@/modules/master-data/services/coaApi'
 import { useJournalEntry, useJournalEntryMutations } from '../hooks/useJournalEntryList'
 import { journalEntrySchema, type JournalEntryFormValues } from '../schemas/journalEntrySchema'
 import { journalEntryApi } from '../services/journalEntryApi'
-import type { JournalEntry } from '../types/journalEntry.types'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus, SelectOption } from '@/types/common.types'
@@ -110,13 +109,12 @@ function JournalFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<JournalEntryFormValues, JournalEntry>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<JournalEntryFormValues>({
     id,
     basePath: '/accounting/journals',
     createLabel: 'Jurnal Baru',
-    getRecordLabel: (record) => record.journal_number,
-    sequenceQueryKey: ['accounting', 'journals', 'sequence'],
-    fetchAll: async () => (await journalEntryApi.listAll()).data,
+    sequenceQueryKey: ['accounting', 'journals', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await journalEntryApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values, creating) => {
       const linePayloads = lines.map((l, i) => ({ account_id: l.account_id!, description: l.description || null, debit: l.debit || undefined, credit: l.credit || undefined, line_order: i + 1 }))

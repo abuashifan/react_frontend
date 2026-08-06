@@ -1,5 +1,6 @@
 import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
+import type { AdjacentRecords } from '@/types/common.types'
 import type {
   VendorPayment,
   RawVendorPayment,
@@ -12,9 +13,9 @@ export const vendorPaymentApi = {
   list: (params: VendorPaymentListParams) =>
     http.get<unknown, PaginatedResponse<RawVendorPayment>>('/purchase/payments', { params }),
 
-  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
-  listAll: () =>
-    http.get<unknown, ApiResponse<RawVendorPayment[]>>('/purchase/payments'),
+  /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
+  adjacent: (id?: number) =>
+    http.get<unknown, ApiResponse<AdjacentRecords>>('/purchase/payments/adjacent', { params: { id } }),
 
   get: (id: number) =>
     http.get<unknown, ApiResponse<RawVendorPayment>>(`/purchase/payments/${id}`),

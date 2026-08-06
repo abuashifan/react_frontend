@@ -30,7 +30,6 @@ import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { fixedAssetCategoryApi } from '@/modules/fixed-assets/services/fixedAssetCategoryApi'
 import { vendorBillSchema, validateVendorBillLines, type VendorBillFormValues, type VendorBillLineErrors } from '../schemas/vendorBillSchema'
 import { vendorBillApi } from '../services/vendorBillApi'
-import type { RawVendorBill } from '../types/vendorBill.types'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation, FormValidationAbort } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
@@ -207,13 +206,12 @@ function VendorBillFormPageContent() {
     toast.success('Draft lokal dibuang.')
   }
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<VendorBillFormValues, RawVendorBill>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<VendorBillFormValues>({
     id,
     basePath: '/purchase/bills',
     createLabel: 'Tagihan Vendor Baru',
-    getRecordLabel: (record) => record.bill_number,
-    sequenceQueryKey: ['purchase', 'bills', 'sequence'],
-    fetchAll: async () => (await vendorBillApi.listAll()).data,
+    sequenceQueryKey: ['purchase', 'bills', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await vendorBillApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values, creating) => {
       // Validasi baris milik form ini jalan sebelum request; melemparnya sebagai

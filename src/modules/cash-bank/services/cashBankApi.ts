@@ -1,5 +1,6 @@
 import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
+import type { AdjacentRecords } from '@/types/common.types'
 import type {
   CashReceipt, CashPayment, BankTransfer, BankReconciliation,
   CashBankListParams, CreateCashReceiptPayload, CreateCashPaymentPayload,
@@ -9,9 +10,9 @@ import type {
 export const cashReceiptApi = {
   list: (params: CashBankListParams) =>
     http.get<unknown, PaginatedResponse<CashReceipt>>('/cash-bank/cash-receipts', { params }),
-  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
-  listAll: () =>
-    http.get<unknown, ApiResponse<CashReceipt[]>>('/cash-bank/cash-receipts'),
+  /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
+  adjacent: (id?: number) =>
+    http.get<unknown, ApiResponse<AdjacentRecords>>('/cash-bank/cash-receipts/adjacent', { params: { id } }),
   get: (id: number) =>
     http.get<unknown, ApiResponse<CashReceipt>>(`/cash-bank/cash-receipts/${id}`),
   create: (payload: CreateCashReceiptPayload) =>
@@ -25,9 +26,9 @@ export const cashReceiptApi = {
 export const cashPaymentApi = {
   list: (params: CashBankListParams) =>
     http.get<unknown, PaginatedResponse<CashPayment>>('/cash-bank/cash-payments', { params }),
-  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
-  listAll: () =>
-    http.get<unknown, ApiResponse<CashPayment[]>>('/cash-bank/cash-payments'),
+  /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
+  adjacent: (id?: number) =>
+    http.get<unknown, ApiResponse<AdjacentRecords>>('/cash-bank/cash-payments/adjacent', { params: { id } }),
   get: (id: number) =>
     http.get<unknown, ApiResponse<CashPayment>>(`/cash-bank/cash-payments/${id}`),
   create: (payload: CreateCashPaymentPayload) =>
@@ -41,9 +42,9 @@ export const cashPaymentApi = {
 export const bankTransferApi = {
   list: (params: CashBankListParams) =>
     http.get<unknown, PaginatedResponse<BankTransfer>>('/cash-bank/bank-transfers', { params }),
-  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
-  listAll: () =>
-    http.get<unknown, ApiResponse<BankTransfer[]>>('/cash-bank/bank-transfers'),
+  /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
+  adjacent: (id?: number) =>
+    http.get<unknown, ApiResponse<AdjacentRecords>>('/cash-bank/bank-transfers/adjacent', { params: { id } }),
   get: (id: number) =>
     http.get<unknown, ApiResponse<BankTransfer>>(`/cash-bank/bank-transfers/${id}`),
   create: (payload: CreateBankTransferPayload) =>
@@ -60,9 +61,9 @@ export const bankTransferApi = {
 export const bankReconciliationApi = {
   list: (params: Omit<CashBankListParams, 'status'> & { status?: string }) =>
     http.get<unknown, PaginatedResponse<BankReconciliation>>('/cash-bank/bank-reconciliations', { params }),
-  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
-  listAll: () =>
-    http.get<unknown, ApiResponse<BankReconciliation[]>>('/cash-bank/bank-reconciliations'),
+  /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
+  adjacent: (id?: number) =>
+    http.get<unknown, ApiResponse<AdjacentRecords>>('/cash-bank/bank-reconciliations/adjacent', { params: { id } }),
   get: (id: number) =>
     http.get<unknown, ApiResponse<BankReconciliation>>(`/cash-bank/bank-reconciliations/${id}`),
   create: (payload: CreateBankReconciliationPayload) =>

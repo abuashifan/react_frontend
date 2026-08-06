@@ -21,7 +21,6 @@ import { cn, fieldErrorClass, formatCurrency, formatDate, toDateInputValue } fro
 import { useBankReconciliation, useBankReconciliationMutations } from '../hooks/useCashBankList'
 import { bankReconciliationSchema, type BankReconciliationFormValues } from '../schemas/cashBankSchemas'
 import { bankReconciliationApi } from '../services/cashBankApi'
-import type { BankReconciliation } from '../types/cashBank.types'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
@@ -72,13 +71,12 @@ function BankReconciliationFormPageContent() {
     reset,
   })
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<BankReconciliationFormValues, BankReconciliation>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<BankReconciliationFormValues>({
     id,
     basePath: '/cash-bank/bank-reconciliations',
     createLabel: 'Rekonsiliasi Baru',
-    getRecordLabel: (record) => record.number,
-    sequenceQueryKey: ['cash-bank', 'reconciliations', 'sequence'],
-    fetchAll: async () => (await bankReconciliationApi.listAll()).data,
+    sequenceQueryKey: ['cash-bank', 'reconciliations', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await bankReconciliationApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values, creating) => {
       if (creating) await create.mutateAsync(values)

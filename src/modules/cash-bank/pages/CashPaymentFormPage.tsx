@@ -20,7 +20,6 @@ import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { useCashPayment, useCashPaymentMutations } from '../hooks/useCashBankList'
 import { cashPaymentSchema, type CashPaymentFormValues } from '../schemas/cashBankSchemas'
 import { cashPaymentApi } from '../services/cashBankApi'
-import type { CashPayment } from '../types/cashBank.types'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
@@ -78,13 +77,12 @@ function CashPaymentFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<CashPaymentFormValues, CashPayment>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<CashPaymentFormValues>({
     id,
     basePath: '/cash-bank/cash-payments',
     createLabel: 'Pengeluaran Kas Baru',
-    getRecordLabel: (record) => record.number,
-    sequenceQueryKey: ['cash-bank', 'payments', 'sequence'],
-    fetchAll: async () => (await cashPaymentApi.listAll()).data,
+    sequenceQueryKey: ['cash-bank', 'payments', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await cashPaymentApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values) => {
       const linePayloads = lines.filter((l) => l.account_id).map((l) => ({ account_id: l.account_id!, amount: l.amount, description: l.description || null }))

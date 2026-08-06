@@ -22,7 +22,6 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { salesOrderSchema, type SalesOrderFormValues } from '../schemas/salesOrderSchema'
 import { salesOrderApi } from '../services/salesOrderApi'
-import type { SalesOrder } from '../types/salesOrder.types'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
@@ -148,13 +147,12 @@ function SalesOrderFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<SalesOrderFormValues, SalesOrder>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<SalesOrderFormValues>({
     id,
     basePath: '/sales/orders',
     createLabel: 'Sales Order Baru',
-    getRecordLabel: (record) => record.number,
-    sequenceQueryKey: ['sales', 'orders', 'sequence'],
-    fetchAll: async () => (await salesOrderApi.listAll()).data,
+    sequenceQueryKey: ['sales', 'orders', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await salesOrderApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values, creating) => {
       if (creating) await create.mutateAsync({ ...values, lines: lines.map(toOrderLine) })

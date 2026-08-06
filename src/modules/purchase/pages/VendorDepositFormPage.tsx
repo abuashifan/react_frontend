@@ -21,7 +21,6 @@ import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { vendorDepositSchema, type VendorDepositFormValues } from '../schemas/vendorDepositSchema'
 import { vendorDepositApi } from '../services/vendorDepositApi'
-import type { RawVendorDeposit } from '../types/vendorDeposit.types'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
@@ -74,13 +73,12 @@ function VendorDepositFormPageContent() {
     reset,
   })
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<VendorDepositFormValues, RawVendorDeposit>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<VendorDepositFormValues>({
     id,
     basePath: '/purchase/vendor-deposits',
     createLabel: 'Deposit Vendor Baru',
-    getRecordLabel: (record) => record.deposit_number,
-    sequenceQueryKey: ['purchase', 'vendor-deposits', 'sequence'],
-    fetchAll: async () => (await vendorDepositApi.listAll()).data,
+    sequenceQueryKey: ['purchase', 'vendor-deposits', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await vendorDepositApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values) => {
       await create.mutateAsync(toVendorDepositPayload(values))

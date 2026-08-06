@@ -1,15 +1,15 @@
 import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
-import type { SelectOption } from '@/types/common.types'
+import type { SelectOption, AdjacentRecords } from '@/types/common.types'
 import type { Coa, CoaListParams, CreateCoaPayload, UpdateCoaPayload } from '../types/coa.types'
 
 export const coaApi = {
   list: (params: CoaListParams) =>
     http.get<unknown, PaginatedResponse<Coa>>('/master-data/chart-of-accounts', { params }),
 
-  /** Semua akun tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
-  listAll: () =>
-    http.get<unknown, ApiResponse<Coa[]>>('/master-data/chart-of-accounts'),
+  /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
+  adjacent: (id?: number) =>
+    http.get<unknown, ApiResponse<AdjacentRecords>>('/master-data/chart-of-accounts/adjacent', { params: { id } }),
 
   get: (id: number) =>
     http.get<unknown, ApiResponse<Coa>>(`/master-data/chart-of-accounts/${id}`),

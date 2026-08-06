@@ -1,70 +1,62 @@
-import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import type { AdjacentRecord, AdjacentRecords } from '@/types/common.types'
 
-interface UseRecordSequenceOptions<T extends { id: number }> {
-  /** Kunci cache TanStack Query, mis. `['master-data-produk', 'sequence']`. */
+export type { AdjacentRecord, AdjacentRecords }
+
+interface UseRecordSequenceOptions {
+  /** Kunci cache TanStack Query, mis. `['sales', 'invoices', 'adjacent']`. */
   queryKey: unknown[]
-  /** Ambil seluruh record modul (endpoint list tanpa page/per_page mengembalikan semuanya). */
-  fetchAll: () => Promise<T[]>
+  /** Ambil tetangga dari endpoint `/{resource}/adjacent`; `id` kosong = form create. */
+  fetchAdjacent: (id?: number) => Promise<AdjacentRecords>
   /** Id record yang sedang dibuka; `undefined` saat form create. */
   currentId?: number
   enabled?: boolean
 }
 
-export interface RecordSequence<T> {
+export interface RecordSequence {
   /** Record yang diinput sebelum record ini, `undefined` bila sudah paling awal. */
-  prev?: T
+  prev?: AdjacentRecord
   /** Record yang diinput sesudah record ini, `undefined` bila sudah paling akhir. */
-  next?: T
+  next?: AdjacentRecord
   /** Sudah di record terbaru (atau sedang membuat baru) — Next berarti simpan lalu form kosong. */
   isAtNewest: boolean
-  /** Urutan sudah termuat dan record ini ada di dalamnya. */
+  /** Jawaban dari server sudah diterima. */
   isReady: boolean
 }
 
 /**
- * Urutan record dalam satu modul untuk navigasi Prev/Next di form.
+ * Tetangga record dalam satu modul untuk navigasi Prev/Next di form.
  *
- * Diurutkan berdasarkan `id` (urutan input), bukan urutan tampil di daftar —
- * daftar Produk urut nama dan COA urut kode akun, sehingga "record sebelumnya"
- * di sana bukan record yang diinput sebelumnya.
+ * Backend menjawabnya dengan dua query ber-index yang masing-masing mengembalikan
+ * satu baris, jadi biayanya tetap berapa pun besar tabelnya. Sebelumnya seluruh
+ * record modul ditarik ke klien hanya untuk mencari dua tetangga.
+ *
+ * Urutannya memakai `id` (urutan input), bukan urutan tampil daftar — daftar
+ * Produk urut nama dan COA urut kode akun, sehingga "record sebelumnya" di sana
+ * bukan record yang diinput sebelumnya.
  */
-export function useRecordSequence<T extends { id: number }>({
+export function useRecordSequence({
   queryKey,
-  fetchAll,
+  fetchAdjacent,
   currentId,
   enabled = true,
-}: UseRecordSequenceOptions<T>): RecordSequence<T> {
-  const { data } = useQuery({
-    queryKey,
-    queryFn: fetchAll,
+}: UseRecordSequenceOptions): RecordSequence {
+  const { data, isSuccess } = useQuery({
+    // `currentId` bagian dari key: tetangga tiap record berbeda, jadi tidak
+    // boleh berbagi entri cache yang sama.
+    queryKey: [...queryKey, currentId ?? 'create'],
+    queryFn: () => fetchAdjacent(currentId),
     enabled,
-    // Urutan jarang berubah di tengah pengisian form; hindari refetch tiap fokus.
+    // Tetangga jarang berubah di tengah pengisian form; hindari refetch tiap fokus.
     staleTime: 30_000,
   })
 
-  return useMemo(() => {
-    const records = [...(data ?? [])].sort((a, b) => a.id - b.id)
-
-    if (records.length === 0) {
-      return { isAtNewest: true, isReady: false }
-    }
-
-    // Form create belum punya id: posisinya dianggap sesudah record terakhir.
-    if (currentId === undefined) {
-      return { prev: records[records.length - 1], isAtNewest: true, isReady: true }
-    }
-
-    const index = records.findIndex((record) => record.id === currentId)
-    if (index === -1) {
-      return { isAtNewest: false, isReady: false }
-    }
-
-    return {
-      prev: index > 0 ? records[index - 1] : undefined,
-      next: index < records.length - 1 ? records[index + 1] : undefined,
-      isAtNewest: index === records.length - 1,
-      isReady: true,
-    }
-  }, [currentId, data])
+  return {
+    prev: data?.prev ?? undefined,
+    next: data?.next ?? undefined,
+    // Tanpa `next` berarti sudah paling akhir — termasuk saat form create,
+    // yang memang selalu berada sesudah record terakhir.
+    isAtNewest: !data?.next,
+    isReady: isSuccess,
+  }
 }

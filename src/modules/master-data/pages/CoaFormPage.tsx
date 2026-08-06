@@ -17,7 +17,6 @@ import { useToast } from '@/hooks/useToast'
 import { useCoa, useCoaMutations } from '../hooks/useCoaList'
 import { coaApi } from '../services/coaApi'
 import { coaSchema, type CoaFormValues } from '../schemas/coaSchema'
-import type { Coa } from '../types/coa.types'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { cn, fieldErrorClass } from '@/lib/utils'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
@@ -91,13 +90,12 @@ function CoaFormPageContent() {
 
   const currentPath = id ? `/master-data/coa/${id}` : '/master-data/coa/create'
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<CoaFormValues, Coa>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<CoaFormValues>({
     id,
     basePath: '/master-data/coa',
     createLabel: 'Akun Baru',
-    getRecordLabel: (record) => record.account_code,
-    sequenceQueryKey: ['master-data-coa', 'sequence'],
-    fetchAll: async () => (await coaApi.listAll()).data,
+    sequenceQueryKey: ['master-data-coa', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await coaApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values, creating) => {
       if (creating) await create.mutateAsync(values)

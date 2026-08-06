@@ -19,7 +19,6 @@ import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { customerDepositSchema, type CustomerDepositFormValues } from '../schemas/customerDepositSchema'
 import { customerDepositApi } from '../services/customerDepositApi'
-import type { CustomerDeposit } from '../types/customerDeposit.types'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
@@ -80,13 +79,12 @@ function CustomerDepositFormPageContent() {
     reset,
   })
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<CustomerDepositFormValues, CustomerDeposit>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<CustomerDepositFormValues>({
     id,
     basePath: '/sales/customer-deposits',
     createLabel: 'Deposit Baru',
-    getRecordLabel: (record) => record.number,
-    sequenceQueryKey: ['sales', 'customer-deposits', 'sequence'],
-    fetchAll: async () => (await customerDepositApi.listAll()).data,
+    sequenceQueryKey: ['sales', 'customer-deposits', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await customerDepositApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values) => {
       await create.mutateAsync(values)

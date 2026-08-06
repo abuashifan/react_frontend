@@ -19,7 +19,6 @@ import { coaApi } from '@/modules/master-data/services/coaApi'
 import { useBankTransfer, useBankTransferMutations } from '../hooks/useCashBankList'
 import { bankTransferSchema, type BankTransferFormValues } from '../schemas/cashBankSchemas'
 import { bankTransferApi } from '../services/cashBankApi'
-import type { BankTransfer } from '../types/cashBank.types'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
@@ -71,13 +70,12 @@ function BankTransferFormPageContent() {
     toast.success('Draft lokal dibuang.')
   }
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<BankTransferFormValues, BankTransfer>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<BankTransferFormValues>({
     id,
     basePath: '/cash-bank/bank-transfers',
     createLabel: 'Transfer Bank Baru',
-    getRecordLabel: (record) => record.number,
-    sequenceQueryKey: ['cash-bank', 'transfers', 'sequence'],
-    fetchAll: async () => (await bankTransferApi.listAll()).data,
+    sequenceQueryKey: ['cash-bank', 'transfers', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await bankTransferApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values) => {
       await create.mutateAsync(values)

@@ -1,5 +1,6 @@
 import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
+import type { AdjacentRecords } from '@/types/common.types'
 import type {
   CustomerDeposit,
   CustomerDepositListParams,
@@ -11,9 +12,9 @@ export const customerDepositApi = {
   list: (params: CustomerDepositListParams) =>
     http.get<unknown, PaginatedResponse<CustomerDeposit>>('/sales/customer-deposits', { params }),
 
-  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
-  listAll: () =>
-    http.get<unknown, ApiResponse<CustomerDeposit[]>>('/sales/customer-deposits'),
+  /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
+  adjacent: (id?: number) =>
+    http.get<unknown, ApiResponse<AdjacentRecords>>('/sales/customer-deposits/adjacent', { params: { id } }),
 
   get: (id: number) =>
     http.get<unknown, ApiResponse<CustomerDeposit>>(`/sales/customer-deposits/${id}`),

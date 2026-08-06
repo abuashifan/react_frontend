@@ -23,7 +23,6 @@ import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { purchaseReturnSchema, type PurchaseReturnFormValues } from '../schemas/purchaseReturnSchema'
 import { purchaseReturnApi } from '../services/purchaseReturnApi'
-import type { RawPurchaseReturn } from '../types/purchaseReturn.types'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
@@ -102,13 +101,12 @@ function PurchaseReturnFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const { saveAndClose, navProps } = useRecordFormNavigation<PurchaseReturnFormValues, RawPurchaseReturn>({
+  const { saveAndClose, navProps } = useRecordFormNavigation<PurchaseReturnFormValues>({
     id,
     basePath: '/purchase/returns',
     createLabel: 'Retur Pembelian Baru',
-    getRecordLabel: (record) => record.return_number,
-    sequenceQueryKey: ['purchase', 'returns', 'sequence'],
-    fetchAll: async () => (await purchaseReturnApi.listAll()).data,
+    sequenceQueryKey: ['purchase', 'returns', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await purchaseReturnApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values) => {
       await create.mutateAsync(toPurchaseReturnPayload(values, lines.map(({ product, ...line }) => line)))
