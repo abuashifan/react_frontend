@@ -91,6 +91,14 @@ export default function JournalListPage() {
 
   const sidebar = (
     <FilterSidebar activeCount={activeFilterCount} onReset={() => { setFilterStatus(undefined); setDateFrom(''); setDateTo('') }}>
+      <div className="border-b border-[#f1f5f9] px-4 py-3">
+        <ListSearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Cari nomor jurnal atau deskripsi..."
+          className="w-full max-w-none"
+        />
+      </div>
       <FilterSection title="Tanggal">
         <div className="flex flex-col gap-1">
           <span className="text-[11px] text-[#64748b]">Dari</span>
@@ -125,7 +133,6 @@ export default function JournalListPage() {
         </PermissionGuard>
       }
     >
-      <ListSearchBar value={search} onChange={setSearch} placeholder="Cari nomor jurnal atau deskripsi..." className="mb-3" />
       <DataTable
         data={data?.data ?? []}
         columns={columns}
