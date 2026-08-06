@@ -20,9 +20,12 @@ import { toVendorPaymentPayload } from '../services/vendorPaymentAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { vendorPaymentSchema, type VendorPaymentFormValues } from '../schemas/vendorPaymentSchema'
+import { vendorPaymentApi } from '../services/vendorPaymentApi'
+import type { RawVendorPayment } from '../types/vendorPayment.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import type { VendorPaymentLinePayload } from '../types/vendorPayment.types'
-import { useRecordTab } from '@/hooks/useRecordTab'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface BillLine {
@@ -43,7 +46,6 @@ export default function VendorPaymentFormPage() {
 }
 
 function VendorPaymentFormPageContent() {
-  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -103,18 +105,27 @@ function VendorPaymentFormPageContent() {
     reset,
   })
 
-  const handleSave = handleSubmit(async (values) => {
-    try {
+  const { saveAndClose, navProps } = useRecordFormNavigation<VendorPaymentFormValues, RawVendorPayment>({
+    id,
+    basePath: '/purchase/payments',
+    createLabel: 'Pembayaran Vendor Baru',
+    getRecordLabel: (record) => record.payment_number,
+    sequenceQueryKey: ['purchase', 'payments', 'sequence'],
+    fetchAll: async () => (await vendorPaymentApi.listAll()).data,
+    handleSubmit,
+    save: async (values) => {
       const lines: VendorPaymentLinePayload[] = billLines.map((l) => ({ vendor_bill_id: l.vendor_bill_id, amount: l.amount }))
       await create.mutateAsync({ ...toVendorPaymentPayload(values), lines })
-      formDraft.clearDraft()
-      toast.success('Pembayaran vendor berhasil dibuat.')
-      closeRecordTab('/purchase/payments/create', '/purchase/payments')
-    } catch (saveError) {
+    },
+    onSaved: () => formDraft.clearDraft(),
+    successMessage: () => 'Pembayaran vendor berhasil dibuat.',
+    onError: (saveError) => {
       // Backend memakai nama kolom DB (`payment_date`), form memakai `date`.
       applyApiValidationErrors(saveError, setError, { payment_date: 'date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan pembayaran vendor.'))
-    }
+    },
+    // Pembayaran tersimpan langsung terposting: hanya form create yang bisa disimpan.
+    canSave: isCreate,
   })
 
   const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Pembayaran berhasil diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting pembayaran.')) } }
@@ -127,7 +138,7 @@ function VendorPaymentFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isCreate && can('purchase.payments.create')) {
-    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (payment?.status === 'draft' && can('purchase.payments.post')) {
@@ -153,7 +164,12 @@ function VendorPaymentFormPageContent() {
         documentNumber={payment?.number}
         status={status}
         breadcrumb={[{ label: 'Pembelian' }, { label: 'Pembayaran', path: '/purchase/payments' }, { label: isCreate ? 'Buat Pembayaran' : (payment?.number ?? '') }]}
-        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={payment?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={payment?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           <FormSection title="Header">

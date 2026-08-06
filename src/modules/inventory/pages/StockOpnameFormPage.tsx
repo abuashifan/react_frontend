@@ -20,9 +20,12 @@ import { cn, fieldErrorClass, formatNumber, formatDate } from '@/lib/utils'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { useStockOpname, useStockOpnameMutations } from '../hooks/useStockOpnameList'
 import { stockOpnameSchema, type StockOpnameFormValues } from '../schemas/stockOpnameSchema'
+import { stockOpnameApi } from '../services/stockOpnameApi'
+import type { StockOpname } from '../types/stockOpname.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import type { StockOpnameLine } from '../types/stockOpname.types'
-import { useRecordTab } from '@/hooks/useRecordTab'
 
 export default function StockOpnameFormPage() {
   const { id } = useParams()
@@ -35,7 +38,6 @@ export default function StockOpnameFormPage() {
 }
 
 function StockOpnameFormPageContent() {
-  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -83,18 +85,28 @@ function StockOpnameFormPageContent() {
     enabled: isCreate,
   })
 
-  const handleCreate = handleSubmit(async (values) => {
-    try {
+  const { saveAndClose, navProps } = useRecordFormNavigation<StockOpnameFormValues, StockOpname>({
+    id,
+    basePath: '/inventory/opnames',
+    createLabel: 'Opname Baru',
+    getRecordLabel: (record) => record.number,
+    sequenceQueryKey: ['inventory', 'stock-opnames', 'sequence'],
+    fetchAll: async () => (await stockOpnameApi.listAll()).data,
+    handleSubmit,
+    save: async (values) => {
       await create.mutateAsync(values)
-      formDraft.clearDraft()
-      toast.success('Opname berhasil dibuat.')
-      closeRecordTab('/inventory/opnames/create', '/inventory/opnames')
-    } catch (saveError) {
+    },
+    onSaved: () => formDraft.clearDraft(),
+    successMessage: () => 'Opname berhasil dibuat.',
+    onError: (saveError) => {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
       // bukan hanya toast generik "Gagal membuat opname".
       applyApiValidationErrors(saveError, setError)
       toast.error(getApiErrorMessage(saveError, 'Gagal membuat opname.'))
-    }
+    },
+    // Opname yang sudah ada dikelola lewat aksi baris (Generate/Hitung/Finalisasi),
+    // bukan lewat simpan header — jadi hanya form create yang bisa disimpan.
+    canSave: isCreate,
   })
 
   const handleGenerateLines = async () => {
@@ -145,7 +157,7 @@ function StockOpnameFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isCreate && can('inventory.opname.create')) {
-    actions.push({ id: 'save', label: 'Buat Opname', variant: 'primary', onClick: () => void handleCreate(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'primary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (isCreate && formDraft.isRestored) {
     actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: () => { reset({ opname_date: new Date().toISOString().slice(0, 10) }); formDraft.discardDraft(); toast.success('Draft lokal dibuang.') } })
@@ -182,7 +194,12 @@ function StockOpnameFormPageContent() {
         documentNumber={opname?.number}
         status={status}
         breadcrumb={[{ label: 'Inventori' }, { label: 'Opname', path: '/inventory/opnames' }, { label: isCreate ? 'Buat Opname' : (opname?.number ?? '') }]}
-        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={opname?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={opname?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           <FormSection title="Header">

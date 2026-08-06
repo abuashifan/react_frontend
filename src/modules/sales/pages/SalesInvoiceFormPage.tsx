@@ -18,12 +18,15 @@ import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type Li
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
-import { useRecordTab } from '@/hooks/useRecordTab'
 import { useSalesInvoice, useSalesInvoiceMutations } from '../hooks/useSalesInvoiceList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { salesInvoiceSchema, type SalesInvoiceFormValues } from '../schemas/salesInvoiceSchema'
+import { salesInvoiceApi } from '../services/salesInvoiceApi'
+import type { SalesInvoice } from '../types/salesInvoice.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
 
@@ -57,7 +60,6 @@ export default function SalesInvoiceFormPage() {
 }
 
 function SalesInvoiceFormPageContent() {
-  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -151,25 +153,30 @@ function SalesInvoiceFormPageContent() {
     toast.success('Draft lokal dibuang.')
   }
 
-  const handleSaveDraft = handleSubmit(async (values) => {
-    try {
-      if (isCreate) {
-        await create.mutateAsync({ ...values, lines })
-        formDraft.clearDraft()
-        toast.success('Invoice berhasil dibuat.')
-        closeRecordTab('/sales/invoices/create', '/sales/invoices')
-      } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
-        formDraft.clearDraft()
-        toast.success('Invoice berhasil diperbarui.')
-        closeRecordTab(`/sales/invoices/${id}`, '/sales/invoices')
-      }
-    } catch (saveError) {
+  const { saveAndClose, navProps } = useRecordFormNavigation<SalesInvoiceFormValues, SalesInvoice>({
+    id,
+    basePath: '/sales/invoices',
+    createLabel: 'Invoice Baru',
+    getRecordLabel: (record) => record.number,
+    sequenceQueryKey: ['sales', 'invoices', 'sequence'],
+    fetchAll: async () => (await salesInvoiceApi.listAll()).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      if (creating) await create.mutateAsync({ ...values, lines })
+      else await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setLineErrors({})
+    },
+    successMessage: (creating) => (creating ? 'Invoice berhasil dibuat.' : 'Invoice berhasil diperbarui.'),
+    onError: (saveError) => {
       // Backend memvalidasi tanggal sebagai `invoice_date`, form memakai `date`.
       setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { invoice_date: 'date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Invoice.'))
-    }
+    },
+    canSave: isEditable,
   })
 
   const handleApprove = async () => {
@@ -197,7 +204,7 @@ function SalesInvoiceFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('sales.invoices.create')) {
-    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
+    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (isEditable && formDraft.isRestored) {
     actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: handleDiscardDraft })
@@ -300,7 +307,12 @@ function SalesInvoiceFormPageContent() {
           { label: 'Invoice', path: '/sales/invoices' },
           { label: isCreate ? 'Buat Invoice' : (invoice?.number ?? '') },
         ]}
-        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={invoice?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={invoice?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           {hasPostedDependences && (

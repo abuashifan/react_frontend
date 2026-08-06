@@ -20,9 +20,12 @@ import { toVendorDepositPayload } from '../services/vendorDepositAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { vendorDepositSchema, type VendorDepositFormValues } from '../schemas/vendorDepositSchema'
+import { vendorDepositApi } from '../services/vendorDepositApi'
+import type { RawVendorDeposit } from '../types/vendorDeposit.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { useState } from 'react'
-import { useRecordTab } from '@/hooks/useRecordTab'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 export default function VendorDepositFormPage() {
@@ -36,7 +39,6 @@ export default function VendorDepositFormPage() {
 }
 
 function VendorDepositFormPageContent() {
-  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -72,17 +74,26 @@ function VendorDepositFormPageContent() {
     reset,
   })
 
-  const handleSave = handleSubmit(async (values) => {
-    try {
+  const { saveAndClose, navProps } = useRecordFormNavigation<VendorDepositFormValues, RawVendorDeposit>({
+    id,
+    basePath: '/purchase/vendor-deposits',
+    createLabel: 'Deposit Vendor Baru',
+    getRecordLabel: (record) => record.deposit_number,
+    sequenceQueryKey: ['purchase', 'vendor-deposits', 'sequence'],
+    fetchAll: async () => (await vendorDepositApi.listAll()).data,
+    handleSubmit,
+    save: async (values) => {
       await create.mutateAsync(toVendorDepositPayload(values))
-      formDraft.clearDraft()
-      toast.success('Deposit vendor berhasil dibuat.')
-      closeRecordTab('/purchase/vendor-deposits/create', '/purchase/vendor-deposits')
-    } catch (saveError) {
+    },
+    onSaved: () => formDraft.clearDraft(),
+    successMessage: () => 'Deposit vendor berhasil dibuat.',
+    onError: (saveError) => {
       // Backend memakai nama kolom DB (`deposit_date`), form memakai `date`.
       applyApiValidationErrors(saveError, setError, { deposit_date: 'date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan deposit vendor.'))
-    }
+    },
+    // Deposit tersimpan langsung terposting: hanya form create yang bisa disimpan.
+    canSave: isCreate,
   })
 
   const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Deposit berhasil diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting deposit.')) } }
@@ -95,7 +106,7 @@ function VendorDepositFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isCreate && can('purchase.deposits.create')) {
-    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (deposit?.status === 'draft' && can('purchase.deposits.post')) {
@@ -121,7 +132,12 @@ function VendorDepositFormPageContent() {
         documentNumber={deposit?.number}
         status={status}
         breadcrumb={[{ label: 'Pembelian' }, { label: 'Deposit Vendor', path: '/purchase/vendor-deposits' }, { label: isCreate ? 'Buat Deposit' : (deposit?.number ?? '') }]}
-        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={deposit?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={deposit?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           <FormSection title="Header">

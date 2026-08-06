@@ -14,11 +14,14 @@ import { FieldError } from '@/components/shared/form/FieldError'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
-import { useRecordTab } from '@/hooks/useRecordTab'
 import { useCustomerDeposit, useCustomerDepositMutations } from '../hooks/useCustomerDepositList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { customerDepositSchema, type CustomerDepositFormValues } from '../schemas/customerDepositSchema'
+import { customerDepositApi } from '../services/customerDepositApi'
+import type { CustomerDeposit } from '../types/customerDeposit.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
@@ -34,7 +37,6 @@ export default function CustomerDepositFormPage() {
 }
 
 function CustomerDepositFormPageContent() {
-  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -78,17 +80,26 @@ function CustomerDepositFormPageContent() {
     reset,
   })
 
-  const handleSave = handleSubmit(async (values) => {
-    try {
+  const { saveAndClose, navProps } = useRecordFormNavigation<CustomerDepositFormValues, CustomerDeposit>({
+    id,
+    basePath: '/sales/customer-deposits',
+    createLabel: 'Deposit Baru',
+    getRecordLabel: (record) => record.number,
+    sequenceQueryKey: ['sales', 'customer-deposits', 'sequence'],
+    fetchAll: async () => (await customerDepositApi.listAll()).data,
+    handleSubmit,
+    save: async (values) => {
       await create.mutateAsync(values)
-      formDraft.clearDraft()
-      toast.success('Deposit berhasil disimpan.')
-      closeRecordTab('/sales/customer-deposits/create', '/sales/customer-deposits')
-    } catch (saveError) {
+    },
+    onSaved: () => formDraft.clearDraft(),
+    successMessage: () => 'Deposit berhasil disimpan.',
+    onError: (saveError) => {
       // Backend memvalidasi tanggal sebagai `deposit_date`, form memakai `date`.
       applyApiValidationErrors(saveError, setError, { deposit_date: 'date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan deposit.'))
-    }
+    },
+    // Deposit tersimpan langsung terposting: hanya form create yang bisa disimpan.
+    canSave: isEditable,
   })
 
   const handlePost = async () => {
@@ -108,7 +119,7 @@ function CustomerDepositFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isCreate && can('sales.deposits.create')) {
-    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (deposit?.status === 'draft' && can('sales.deposits.post')) {
@@ -138,7 +149,12 @@ function CustomerDepositFormPageContent() {
           { label: 'Deposit Customer', path: '/sales/customer-deposits' },
           { label: isCreate ? 'Buat Deposit' : (deposit?.number ?? '') },
         ]}
-        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={deposit?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={deposit?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           <FormSection title="Informasi Deposit">

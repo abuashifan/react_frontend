@@ -11,6 +11,10 @@ export const salesReturnApi = {
   list: (params: SalesReturnListParams) =>
     http.get<unknown, PaginatedResponse<SalesReturn>>('/sales/returns', { params }),
 
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<SalesReturn[]>>('/sales/returns'),
+
   get: (id: number) =>
     http.get<unknown, ApiResponse<SalesReturn>>(`/sales/returns/${id}`),
 

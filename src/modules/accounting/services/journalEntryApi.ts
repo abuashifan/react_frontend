@@ -11,6 +11,10 @@ export const journalEntryApi = {
   list: (params: JournalEntryListParams) =>
     http.get<unknown, PaginatedResponse<JournalEntry>>('/journals', { params }),
 
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<JournalEntry[]>>('/journals'),
+
   get: (id: number) =>
     http.get<unknown, ApiResponse<JournalEntry>>(`/journals/${id}`),
 

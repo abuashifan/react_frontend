@@ -20,9 +20,12 @@ import { coaApi } from '@/modules/master-data/services/coaApi'
 import { cn, fieldErrorClass, formatCurrency, formatDate, toDateInputValue } from '@/lib/utils'
 import { useBankReconciliation, useBankReconciliationMutations } from '../hooks/useCashBankList'
 import { bankReconciliationSchema, type BankReconciliationFormValues } from '../schemas/cashBankSchemas'
+import { bankReconciliationApi } from '../services/cashBankApi'
+import type { BankReconciliation } from '../types/cashBank.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import type { BankReconciliationLine } from '../types/cashBank.types'
-import { useRecordTab } from '@/hooks/useRecordTab'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 export default function BankReconciliationFormPage() {
@@ -36,7 +39,6 @@ export default function BankReconciliationFormPage() {
 }
 
 function BankReconciliationFormPageContent() {
-  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -70,25 +72,27 @@ function BankReconciliationFormPageContent() {
     reset,
   })
 
-  const handleSave = handleSubmit(async (values) => {
-    try {
-      if (isCreate) {
-        await create.mutateAsync(values)
-        formDraft.clearDraft()
-        toast.success('Rekonsiliasi bank berhasil dibuat.')
-        closeRecordTab('/cash-bank/bank-reconciliations/create', '/cash-bank/bank-reconciliations')
-      } else {
-        await update.mutateAsync({ id: Number(id), payload: values })
-        formDraft.clearDraft()
-        toast.success('Rekonsiliasi bank berhasil diperbarui.')
-        closeRecordTab(`/cash-bank/bank-reconciliations/${id}`, '/cash-bank/bank-reconciliations')
-      }
-    } catch (saveError) {
+  const { saveAndClose, navProps } = useRecordFormNavigation<BankReconciliationFormValues, BankReconciliation>({
+    id,
+    basePath: '/cash-bank/bank-reconciliations',
+    createLabel: 'Rekonsiliasi Baru',
+    getRecordLabel: (record) => record.number,
+    sequenceQueryKey: ['cash-bank', 'reconciliations', 'sequence'],
+    fetchAll: async () => (await bankReconciliationApi.listAll()).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      if (creating) await create.mutateAsync(values)
+      else await update.mutateAsync({ id: Number(id), payload: values })
+    },
+    onSaved: () => formDraft.clearDraft(),
+    successMessage: (creating) => (creating ? 'Rekonsiliasi bank berhasil dibuat.' : 'Rekonsiliasi bank berhasil diperbarui.'),
+    onError: (saveError) => {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
       // bukan hanya toast generik "Gagal menyimpan".
       applyApiValidationErrors(saveError, setError)
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan rekonsiliasi bank.'))
-    }
+    },
+    canSave: isEditable,
   })
 
   const handleRefresh = async () => {
@@ -119,8 +123,8 @@ function BankReconciliationFormPageContent() {
   const clearedTotal = clearedLines.reduce((sum, l) => sum + (l.direction === 'in' ? l.amount : -l.amount), 0)
 
   const actions: DocumentActionButton[] = []
-  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'primary', onClick: () => void handleSave(), isLoading: isSubmitting })
-  if (!isCreate && isDraft && can('cash_bank.edit')) actions.push({ id: 'update', label: 'Simpan & Tutup', variant: 'primary', onClick: () => void handleSave(), isLoading: isSubmitting || update.isPending })
+  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'primary', onClick: saveAndClose, isLoading: isSubmitting })
+  if (!isCreate && isDraft && can('cash_bank.edit')) actions.push({ id: 'update', label: 'Simpan & Tutup', variant: 'primary', onClick: saveAndClose, isLoading: isSubmitting || update.isPending })
 
   if (!isCreate && isLoading) return <FormLayout title="Rekonsiliasi Bank" breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Rekonsiliasi Bank', path: '/cash-bank/bank-reconciliations' }, { label: 'Memuat...' }]}><div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat...</div></FormLayout>
 
@@ -128,7 +132,12 @@ function BankReconciliationFormPageContent() {
     <>
       <FormLayout title={isCreate ? 'Buat Rekonsiliasi Bank' : 'Rekonsiliasi Bank'} documentNumber={reconciliation?.number} status={status} readOnly={!isEditable}
         breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Rekonsiliasi Bank', path: '/cash-bank/bank-reconciliations' }, { label: isCreate ? 'Buat' : (reconciliation?.number ?? '') }]}
-        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={reconciliation?.number} actions={actions} />}>
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={reconciliation?.number} actions={actions} />
+          </>
+        }>
         <div className="space-y-4">
           <FormSection title="Header">
             <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Bank <span className="text-red-500">*</span></Label><SearchableSelect value={watch('cash_bank_account_id') ?? null} onChange={(v) => setValue('cash_bank_account_id', v as number)} onSearch={coaApi.search} placeholder="Pilih akun bank..." disabled={!isEditable} error={errors.cash_bank_account_id?.message} selectedOptions={reconciliation?.cash_bank_account ? [{ value: reconciliation.cash_bank_account.id, label: reconciliation.cash_bank_account.name }] : []} /></div>

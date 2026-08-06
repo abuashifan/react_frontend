@@ -14,11 +14,14 @@ import { FieldError } from '@/components/shared/form/FieldError'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
-import { useRecordTab } from '@/hooks/useRecordTab'
 import { useSalesReceipt, useSalesReceiptMutations, useCustomerOpenInvoices } from '../hooks/useSalesReceiptList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { salesReceiptSchema, type SalesReceiptFormValues } from '../schemas/salesReceiptSchema'
+import { salesReceiptApi } from '../services/salesReceiptApi'
+import type { SalesReceipt } from '../types/salesReceipt.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
@@ -41,7 +44,6 @@ export default function SalesReceiptFormPage() {
 }
 
 function SalesReceiptFormPageContent() {
-  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -104,20 +106,29 @@ function SalesReceiptFormPageContent() {
     onRestoreExtra: setLines,
   })
 
-  const handleSave = handleSubmit(async (values) => {
-    try {
+  const { saveAndClose, navProps } = useRecordFormNavigation<SalesReceiptFormValues, SalesReceipt>({
+    id,
+    basePath: '/sales/receipts',
+    createLabel: 'Penerimaan Baru',
+    getRecordLabel: (record) => record.number,
+    sequenceQueryKey: ['sales', 'receipts', 'sequence'],
+    fetchAll: async () => (await salesReceiptApi.listAll()).data,
+    handleSubmit,
+    save: async (values) => {
       await create.mutateAsync({
         ...values,
         lines: lines.map(({ sales_invoice_id, amount }) => ({ sales_invoice_id, amount })),
       })
-      formDraft.clearDraft()
-      toast.success('Penerimaan berhasil disimpan.')
-      closeRecordTab('/sales/receipts/create', '/sales/receipts')
-    } catch (saveError) {
+    },
+    onSaved: () => formDraft.clearDraft(),
+    successMessage: () => 'Penerimaan berhasil disimpan.',
+    onError: (saveError) => {
       // Backend memvalidasi tanggal sebagai `receipt_date`, form memakai `date`.
       applyApiValidationErrors(saveError, setError, { receipt_date: 'date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan penerimaan.'))
-    }
+    },
+    // Penerimaan tersimpan langsung terposting: hanya form create yang bisa disimpan.
+    canSave: isEditable,
   })
 
   const handlePost = async () => {
@@ -137,7 +148,7 @@ function SalesReceiptFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isCreate && can('sales.receipts.create')) {
-    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (receipt?.status === 'draft' && can('sales.receipts.post')) {
@@ -180,7 +191,12 @@ function SalesReceiptFormPageContent() {
           { label: 'Penerimaan', path: '/sales/receipts' },
           { label: isCreate ? 'Buat Penerimaan' : (receipt?.number ?? '') },
         ]}
-        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={receipt?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={receipt?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           <FormSection title="Informasi Penerimaan">

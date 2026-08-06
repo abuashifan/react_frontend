@@ -13,6 +13,10 @@ export const vendorDepositApi = {
   list: (params: VendorDepositListParams) =>
     http.get<unknown, PaginatedResponse<RawVendorDeposit>>('/purchase/vendor-deposits', { params }),
 
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<RawVendorDeposit[]>>('/purchase/vendor-deposits'),
+
   get: (id: number) =>
     http.get<unknown, ApiResponse<RawVendorDeposit>>(`/purchase/vendor-deposits/${id}`),
 

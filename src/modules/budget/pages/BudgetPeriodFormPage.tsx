@@ -89,8 +89,14 @@ export default function BudgetPeriodFormPage() {
 
         <div className="flex gap-2 justify-end">
           <Button type="button" variant="outline" onClick={() => navigate('/budget')}>Batal</Button>
+          {/*
+            Halaman ini di luar sistem tab (rute `/budget/periods/new`, dan
+            `/budget/periods/:id` adalah halaman detail, bukan form), jadi tidak ada
+            record sebelum/sesudah yang bisa dituju — Prev/Next tidak dipasang.
+            Simpan tetap meninggalkan form ini menuju detail periode.
+          */}
           <Button type="submit" disabled={isSubmitting || createMut.isPending}>
-            {createMut.isPending ? 'Menyimpan...' : 'Simpan'}
+            {createMut.isPending ? 'Menyimpan...' : 'Simpan & Tutup'}
           </Button>
         </div>
       </form>

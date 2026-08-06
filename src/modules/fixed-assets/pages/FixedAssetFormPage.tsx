@@ -22,7 +22,6 @@ import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { proyekApi } from '@/modules/master-data/services/proyekApi'
 import { fixedAssetCategoryApi } from '../services/fixedAssetCategoryApi'
-import { useRecordTab } from '@/hooks/useRecordTab'
 import { useFixedAsset } from '../hooks/useFixedAssetList'
 import { useFixedAssetMutations } from '../hooks/useFixedAssetMutations'
 import {
@@ -34,6 +33,9 @@ import {
   type FixedAssetFormValues,
 } from '../schemas/fixedAssetSchema'
 import type { FixedAsset, FixedAssetStatus } from '../types/fixedAsset.types'
+import { fixedAssetApi } from '../services/fixedAssetApi'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 
 function HistoryEmpty({ message }: { message: string }) {
   return <p className="text-[12px] text-[#94a3b8]">{message}</p>
@@ -113,7 +115,6 @@ export default function FixedAssetFormPage() {
 }
 
 function FixedAssetFormPageContent() {
-  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const assetId = id ? Number(id) : undefined
@@ -210,24 +211,27 @@ function FixedAssetFormPageContent() {
   // localStorage akan terus ditimpa oleh sinkronisasi itu, jadi sengaja tidak dipakai
   // di sini sampai form dipindah ke pola `reset`.
 
-  const handleSave = handleSubmit(async (values) => {
-    try {
+  const { saveAndClose, navProps } = useRecordFormNavigation<FixedAssetFormValues, FixedAsset>({
+    id,
+    basePath: '/fixed-assets',
+    createLabel: 'Aktiva Baru',
+    getRecordLabel: (record) => record.asset_number ?? record.number ?? record.name,
+    sequenceQueryKey: ['fixed-assets', 'sequence'],
+    fetchAll: async () => (await fixedAssetApi.listAll()).data,
+    handleSubmit,
+    save: async (values, creating) => {
       const payload = cleanForm(values)
-      if (isCreate) {
-        await mutations.create.mutateAsync(payload)
-        toast.success('Aktiva tetap berhasil dibuat.')
-        closeRecordTab('/fixed-assets/create', '/fixed-assets')
-      } else if (assetId) {
-        await mutations.update.mutateAsync({ id: assetId, payload })
-        toast.success('Aktiva tetap berhasil diperbarui.')
-        closeRecordTab(`/fixed-assets/${id}`, '/fixed-assets')
-      }
-    } catch (error) {
+      if (creating) await mutations.create.mutateAsync(payload)
+      else if (assetId) await mutations.update.mutateAsync({ id: assetId, payload })
+    },
+    successMessage: (creating) => (creating ? 'Aktiva tetap berhasil dibuat.' : 'Aktiva tetap berhasil diperbarui.'),
+    onError: (error) => {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
       // bukan hanya toast generik "Gagal menyimpan".
       applyApiValidationErrors(error, setError)
       toast.error(getApiErrorMessage(error, 'Gagal menyimpan aktiva tetap.'))
-    }
+    },
+    canSave: isEditable,
   })
 
   const handleCapitalize = async (values: CapitalizeFixedAssetFormValues) => {
@@ -265,9 +269,10 @@ function FixedAssetFormPageContent() {
   const headerActions = (
     <>
       <StatusBadge status={status} />
+      <RecordNavButtons {...navProps} isBusy={isSubmitting} />
       {isEditable && can(isCreate ? 'fixed_assets.create' : 'fixed_assets.edit') && (
-        <Button type="button" variant="outline" className="h-8 px-4 text-[13px]" disabled={isSubmitting || mutations.create.isPending || mutations.update.isPending} onClick={() => void handleSave()}>
-          {isSubmitting ? 'Menyimpan...' : 'Simpan'}
+        <Button type="button" variant="outline" className="h-8 px-4 text-[13px]" disabled={isSubmitting || mutations.create.isPending || mutations.update.isPending} onClick={saveAndClose}>
+          {isSubmitting ? 'Menyimpan...' : 'Simpan & Tutup'}
         </Button>
       )}
       {canCapitalize && (

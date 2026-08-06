@@ -4,6 +4,15 @@ import { useRecordTab } from '@/hooks/useRecordTab'
 import { useToast } from '@/hooks/useToast'
 import { useRecordSequence } from '@/hooks/useRecordSequence'
 
+/**
+ * Dilempar dari `save` untuk membatalkan simpan **tanpa** memanggil `onError`.
+ *
+ * Dipakai form yang punya validasi sendiri sebelum request (mis. validasi baris
+ * di Vendor Bill / Penyesuaian Stok) dan sudah menampilkan pesannya — tanpa ini
+ * user akan melihat toast error kedua yang lebih generik.
+ */
+export class FormValidationAbort extends Error {}
+
 interface UseRecordFormNavigationOptions<TValues extends FieldValues, TRecord extends { id: number }> {
   /** Id record dari route; `undefined` saat form create. */
   id?: string
@@ -23,6 +32,12 @@ interface UseRecordFormNavigationOptions<TValues extends FieldValues, TRecord ex
   onSaved?: () => void
   successMessage: (isCreate: boolean) => string
   onError: (error: unknown) => void
+  /**
+   * Isian masih bisa disimpan. Dokumen transaksi yang sudah diposting bersifat
+   * read-only: tidak ada yang perlu disimpan, jadi Prev/Next langsung berpindah.
+   * Default `true` (master data selalu bisa disimpan).
+   */
+  canSave?: boolean
 }
 
 export interface RecordFormNavigation {
@@ -45,6 +60,10 @@ export interface RecordFormNavigation {
  * tetap di tempat dengan field yang ditandai dan navigasi dibatalkan. Urutannya
  * memakai `useRecordSequence` (urut id = urutan input), sehingga tidak terpengaruh
  * sort/filter daftar.
+ *
+ * Untuk dokumen yang sudah diposting (`canSave: false`) tidak ada yang bisa
+ * disimpan, jadi Prev/Next berubah jadi navigasi murni — tombolnya tetap ada
+ * supaya user bisa menelusuri dokumen tanpa kembali ke daftar.
  */
 export function useRecordFormNavigation<TValues extends FieldValues, TRecord extends { id: number }>({
   id,
@@ -58,6 +77,7 @@ export function useRecordFormNavigation<TValues extends FieldValues, TRecord ext
   onSaved,
   successMessage,
   onError,
+  canSave = true,
 }: UseRecordFormNavigationOptions<TValues, TRecord>): RecordFormNavigation {
   const { replaceRecordTab, closeRecordTab } = useRecordTab()
   const { toast } = useToast()
@@ -72,18 +92,26 @@ export function useRecordFormNavigation<TValues extends FieldValues, TRecord ext
   })
 
   const saveThen = useCallback(
-    (after: () => void) =>
-      handleSubmit(async (values) => {
+    (after: () => void): (() => void) => {
+      // Read-only: tidak ada isian yang perlu disimpan, dan menjalankan validasi
+      // di sini justru memblokir navigasi pada dokumen yang memang tidak diisi user.
+      if (!canSave) return after
+
+      return handleSubmit(async (values) => {
         try {
           await save(values, isCreate)
           onSaved?.()
           toast.success(successMessage(isCreate))
           after()
         } catch (error) {
+          // Form membatalkan simpannya sendiri dan sudah menampilkan pesan —
+          // jangan teruskan ke onError supaya tidak muncul toast kedua.
+          if (error instanceof FormValidationAbort) return
           onError(error)
         }
-      }),
-    [handleSubmit, isCreate, onError, onSaved, save, successMessage, toast],
+      })
+    },
+    [canSave, handleSubmit, isCreate, onError, onSaved, save, successMessage, toast],
   )
 
   const openRecord = useCallback(

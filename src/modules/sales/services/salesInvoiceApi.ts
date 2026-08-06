@@ -11,6 +11,10 @@ export const salesInvoiceApi = {
   list: (params: SalesInvoiceListParams) =>
     http.get<unknown, PaginatedResponse<SalesInvoice>>('/sales/invoices', { params }),
 
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<SalesInvoice[]>>('/sales/invoices'),
+
   get: (id: number) =>
     http.get<unknown, ApiResponse<SalesInvoice>>(`/sales/invoices/${id}`),
 

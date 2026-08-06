@@ -22,10 +22,13 @@ import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { useStockAdjustment, useStockAdjustmentMutations } from '../hooks/useStockAdjustmentList'
 import { stockAdjustmentSchema, stockAdjustmentLineSchema, type StockAdjustmentFormValues } from '../schemas/stockAdjustmentSchema'
+import { stockAdjustmentApi } from '../services/stockAdjustmentApi'
+import type { StockAdjustment } from '../types/stockAdjustment.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation, FormValidationAbort } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import type { StockAdjustmentLineType } from '../types/stockAdjustment.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
-import { useRecordTab } from '@/hooks/useRecordTab'
 
 interface EditableLine {
   product_id: number | null
@@ -51,7 +54,6 @@ export default function StockAdjustmentFormPage() {
 }
 
 function StockAdjustmentFormPageContent() {
-  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -179,37 +181,50 @@ function StockAdjustmentFormPageContent() {
     return valid
   }
 
-  const handleSave = handleSubmit(async (values) => {
-    if (lines.length === 0) { toast.error('Tambahkan minimal satu item.'); return }
-    if (!validateLines()) { toast.error('Periksa kembali item yang belum lengkap.'); return }
-
-    const linePayloads = lines.map((l) => ({
-      product_id: l.product_id!,
-      warehouse_id: l.warehouse_id!,
-      adjustment_type: l.adjustment_type,
-      quantity: l.quantity,
-      unit_cost: l.unit_cost || null,
-      reason: l.reason || null,
-    }))
-    try {
-      if (isCreate) {
-        await create.mutateAsync({ ...values, lines: linePayloads })
-        formDraft.clearDraft()
-        toast.success('Penyesuaian berhasil dibuat.')
-        closeRecordTab('/inventory/adjustments/create', '/inventory/adjustments')
-      } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads } })
-        formDraft.clearDraft()
-        toast.success('Penyesuaian berhasil diperbarui.')
-        closeRecordTab(`/inventory/adjustments/${id}`, '/inventory/adjustments')
+  const { saveAndClose, navProps } = useRecordFormNavigation<StockAdjustmentFormValues, StockAdjustment>({
+    id,
+    basePath: '/inventory/adjustments',
+    createLabel: 'Penyesuaian Stok Baru',
+    getRecordLabel: (record) => record.number,
+    sequenceQueryKey: ['inventory', 'stock-adjustments', 'sequence'],
+    fetchAll: async () => (await stockAdjustmentApi.listAll()).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      // Validasi baris milik form ini jalan sebelum request; melemparnya sebagai
+      // FormValidationAbort menghentikan simpan sekaligus navigasi.
+      if (lines.length === 0) {
+        toast.error('Tambahkan minimal satu item.')
+        throw new FormValidationAbort()
       }
-    } catch (saveError) {
+      if (!validateLines()) {
+        toast.error('Periksa kembali item yang belum lengkap.')
+        throw new FormValidationAbort()
+      }
+
+      const linePayloads = lines.map((l) => ({
+        product_id: l.product_id!,
+        warehouse_id: l.warehouse_id!,
+        adjustment_type: l.adjustment_type,
+        quantity: l.quantity,
+        unit_cost: l.unit_cost || null,
+        reason: l.reason || null,
+      }))
+      if (creating) await create.mutateAsync({ ...values, lines: linePayloads })
+      else await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads } })
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setApiLineErrors({})
+    },
+    successMessage: (creating) => (creating ? 'Penyesuaian berhasil dibuat.' : 'Penyesuaian berhasil diperbarui.'),
+    onError: (saveError) => {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
       // bukan hanya toast generik "Gagal menyimpan".
       setApiLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError)
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan penyesuaian.'))
-    }
+    },
+    canSave: isEditable,
   })
 
   const handleApprove = async () => {
@@ -291,7 +306,7 @@ function StockAdjustmentFormPageContent() {
   if (isEditable) {
     const savePerm = isCreate ? 'inventory.adjustments.create' : 'inventory.adjustments.edit'
     if (can(savePerm)) {
-      actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+      actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
     }
   }
   if (isEditable && formDraft.isRestored) {
@@ -325,7 +340,12 @@ function StockAdjustmentFormPageContent() {
         status={status}
         readOnly={!isEditable}
         breadcrumb={[{ label: 'Inventori' }, { label: 'Penyesuaian', path: '/inventory/adjustments' }, { label: isCreate ? 'Buat Penyesuaian' : (adj?.number ?? '') }]}
-        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={adj?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={adj?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           <FormSection title="Header">

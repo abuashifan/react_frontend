@@ -18,9 +18,12 @@ import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { useBankTransfer, useBankTransferMutations } from '../hooks/useCashBankList'
 import { bankTransferSchema, type BankTransferFormValues } from '../schemas/cashBankSchemas'
+import { bankTransferApi } from '../services/cashBankApi'
+import type { BankTransfer } from '../types/cashBank.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
-import { useRecordTab } from '@/hooks/useRecordTab'
 
 export default function BankTransferFormPage() {
   const { id } = useParams()
@@ -33,7 +36,6 @@ export default function BankTransferFormPage() {
 }
 
 function BankTransferFormPageContent() {
-  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -69,25 +71,33 @@ function BankTransferFormPageContent() {
     toast.success('Draft lokal dibuang.')
   }
 
-  const handleSave = handleSubmit(async (values) => {
-    try {
+  const { saveAndClose, navProps } = useRecordFormNavigation<BankTransferFormValues, BankTransfer>({
+    id,
+    basePath: '/cash-bank/bank-transfers',
+    createLabel: 'Transfer Bank Baru',
+    getRecordLabel: (record) => record.number,
+    sequenceQueryKey: ['cash-bank', 'transfers', 'sequence'],
+    fetchAll: async () => (await bankTransferApi.listAll()).data,
+    handleSubmit,
+    save: async (values) => {
       await create.mutateAsync(values)
-      formDraft.clearDraft()
-      toast.success('Transfer bank berhasil dibuat.')
-      closeRecordTab('/cash-bank/bank-transfers/create', '/cash-bank/bank-transfers')
-    } catch (saveError) {
+    },
+    onSaved: () => formDraft.clearDraft(),
+    successMessage: () => 'Transfer bank berhasil dibuat.',
+    onError: (saveError) => {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
       // bukan hanya toast generik "Gagal menyimpan".
       applyApiValidationErrors(saveError, setError)
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan transfer bank.'))
-    }
+    },
+    canSave: isEditable,
   })
 
   const handlePost = async () => { try { await post.mutateAsync(Number(id)); formDraft.clearDraft(); toast.success('Diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting.')) } }
   const handleVoid = async (reason: string) => { await voidTransfer.mutateAsync({ id: Number(id), reason }); formDraft.clearDraft(); toast.success('Berhasil di-void.'); setVoidOpen(false) }
 
   const actions: DocumentActionButton[] = []
-  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   if (isEditable && formDraft.isRestored) actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: handleDiscardDraft })
   if (!isCreate && transfer?.status === 'draft' && can('cash_bank.post')) actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
   if (!isCreate && transfer?.status === 'posted' && can('cash_bank.void')) actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
@@ -98,7 +108,12 @@ function BankTransferFormPageContent() {
     <>
       <FormLayout title={isCreate ? 'Buat Transfer Bank' : 'Transfer Bank'} documentNumber={transfer?.number} status={status} readOnly={!isEditable}
         breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Transfer Bank', path: '/cash-bank/bank-transfers' }, { label: isCreate ? 'Buat' : (transfer?.number ?? '') }]}
-        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={transfer?.number} actions={actions} />}>
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={transfer?.number} actions={actions} />
+          </>
+        }>
         <FormSection title="Header">
           <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label><Input {...register('transfer_date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.transfer_date))} /><FieldError message={errors.transfer_date?.message} /></div>
           <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Dari Akun <span className="text-red-500">*</span></Label><SearchableSelect value={fromAccountId ?? null} onChange={(v) => setValue('from_cash_bank_account_id', v as number)} onSearch={coaApi.search} placeholder="Pilih akun asal..." disabled={!isEditable} error={errors.from_cash_bank_account_id?.message} selectedOptions={transfer?.from_cash_bank_account ? [{ value: transfer.from_cash_bank_account.id, label: transfer.from_cash_bank_account.name }] : []} /></div>

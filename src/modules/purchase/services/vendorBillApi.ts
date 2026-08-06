@@ -11,6 +11,10 @@ export const vendorBillApi = {
   list: (params: VendorBillListParams) =>
     http.get<unknown, PaginatedResponse<RawVendorBill>>('/purchase/bills', { params }),
 
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<RawVendorBill[]>>('/purchase/bills'),
+
   get: (id: number) =>
     http.get<unknown, ApiResponse<RawVendorBill>>(`/purchase/bills/${id}`),
 

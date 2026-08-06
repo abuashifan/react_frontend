@@ -11,6 +11,10 @@ export const customerDepositApi = {
   list: (params: CustomerDepositListParams) =>
     http.get<unknown, PaginatedResponse<CustomerDeposit>>('/sales/customer-deposits', { params }),
 
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<CustomerDeposit[]>>('/sales/customer-deposits'),
+
   get: (id: number) =>
     http.get<unknown, ApiResponse<CustomerDeposit>>(`/sales/customer-deposits/${id}`),
 

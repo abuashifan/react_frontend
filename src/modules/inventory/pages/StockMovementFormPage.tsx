@@ -22,10 +22,13 @@ import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { useStockMovement, useStockMovementMutations } from '../hooks/useStockMovementList'
 import { stockMovementSchema, stockMovementLineSchema, type StockMovementFormValues } from '../schemas/stockMovementSchema'
+import { stockMovementApi } from '../services/stockMovementApi'
+import type { StockMovement } from '../types/stockMovement.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation, FormValidationAbort } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import type { StockMovementType } from '../types/stockMovement.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
-import { useRecordTab } from '@/hooks/useRecordTab'
 
 const MANUAL_TYPES: { value: StockMovementType; label: string }[] = [
   { value: 'adjustment_in', label: 'Penyesuaian Masuk' },
@@ -55,7 +58,6 @@ export default function StockMovementFormPage() {
 }
 
 function StockMovementFormPageContent() {
-  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -131,11 +133,26 @@ function StockMovementFormPageContent() {
     return valid
   }
 
-  const handleSave = handleSubmit(async (values) => {
-    if (lines.length === 0) { toast.error('Tambahkan minimal satu item.'); return }
-    if (!validateLines()) { toast.error('Periksa kembali item yang belum lengkap.'); return }
+  const { saveAndClose, navProps } = useRecordFormNavigation<StockMovementFormValues, StockMovement>({
+    id,
+    basePath: '/inventory/movements',
+    createLabel: 'Mutasi Stok Baru',
+    getRecordLabel: (record) => record.number,
+    sequenceQueryKey: ['inventory', 'stock-movements', 'sequence'],
+    fetchAll: async () => (await stockMovementApi.listAll()).data,
+    handleSubmit,
+    save: async (values) => {
+      // Validasi baris milik form ini jalan sebelum request; melemparnya sebagai
+      // FormValidationAbort menghentikan simpan sekaligus navigasi.
+      if (lines.length === 0) {
+        toast.error('Tambahkan minimal satu item.')
+        throw new FormValidationAbort()
+      }
+      if (!validateLines()) {
+        toast.error('Periksa kembali item yang belum lengkap.')
+        throw new FormValidationAbort()
+      }
 
-    try {
       const linePayloads = lines.map((l) => ({
         product_id: l.product_id!,
         warehouse_id: l.warehouse_id!,
@@ -143,16 +160,20 @@ function StockMovementFormPageContent() {
         unit_cost: l.unit_cost || null,
       }))
       await create.mutateAsync({ ...values, movement_type: values.movement_type as StockMovementType, lines: linePayloads })
+    },
+    onSaved: () => {
       formDraft.clearDraft()
-      toast.success('Mutasi stok berhasil dibuat.')
-      closeRecordTab('/inventory/movements/create', '/inventory/movements')
-    } catch (saveError) {
+      setApiLineErrors({})
+    },
+    successMessage: () => 'Mutasi stok berhasil dibuat.',
+    onError: (saveError) => {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
       // bukan hanya toast generik "Gagal menyimpan".
       setApiLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError)
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan mutasi stok.'))
-    }
+    },
+    canSave: isEditable,
   })
 
   const handlePost = async () => {
@@ -207,7 +228,7 @@ function StockMovementFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isCreate && can('inventory.movements.create')) {
-    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (isCreate && formDraft.isRestored) {
     actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: () => { reset({ movement_date: new Date().toISOString().slice(0, 10), movement_type: 'adjustment_in' }); setLines([{ ...DEFAULT_LINE }]); formDraft.discardDraft(); toast.success('Draft lokal dibuang.') } })
@@ -237,7 +258,12 @@ function StockMovementFormPageContent() {
         status={status}
         readOnly={!isEditable}
         breadcrumb={[{ label: 'Inventori' }, { label: 'Mutasi Stok', path: '/inventory/movements' }, { label: isCreate ? 'Buat Mutasi' : (movement?.number ?? '') }]}
-        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={movement?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={movement?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           <FormSection title="Header">

@@ -16,12 +16,15 @@ import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type Li
 import { cn, fieldErrorClass } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
-import { useRecordTab } from '@/hooks/useRecordTab'
 import { useSalesOrder, useSalesOrderMutations } from '../hooks/useSalesOrderList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { salesOrderSchema, type SalesOrderFormValues } from '../schemas/salesOrderSchema'
+import { salesOrderApi } from '../services/salesOrderApi'
+import type { SalesOrder } from '../types/salesOrder.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
@@ -64,7 +67,6 @@ export default function SalesOrderFormPage() {
 function SalesOrderFormPageContent() {
   // `navigate` masih dipakai alur deep link ?from_quotation yang tidak lahir dari tab.
   const navigate = useNavigate()
-  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const isCreate = !id
@@ -146,27 +148,32 @@ function SalesOrderFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const handleSaveDraft = handleSubmit(async (values) => {
-    try {
-      if (isCreate) {
-        await create.mutateAsync({ ...values, lines: lines.map(toOrderLine) })
-        formDraft.clearDraft()
-        toast.success('Sales Order berhasil dibuat.')
-        closeRecordTab('/sales/orders/create', '/sales/orders')
-      } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines: lines.map(toOrderLine) } })
-        formDraft.clearDraft()
-        toast.success('Sales Order berhasil diperbarui.')
-        closeRecordTab(`/sales/orders/${id}`, '/sales/orders')
-      }
-    } catch (saveError) {
+  const { saveAndClose, navProps } = useRecordFormNavigation<SalesOrderFormValues, SalesOrder>({
+    id,
+    basePath: '/sales/orders',
+    createLabel: 'Sales Order Baru',
+    getRecordLabel: (record) => record.number,
+    sequenceQueryKey: ['sales', 'orders', 'sequence'],
+    fetchAll: async () => (await salesOrderApi.listAll()).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      if (creating) await create.mutateAsync({ ...values, lines: lines.map(toOrderLine) })
+      else await update.mutateAsync({ id: Number(id), payload: { ...values, lines: lines.map(toOrderLine) } })
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setLineErrors({})
+    },
+    successMessage: (creating) => (creating ? 'Sales Order berhasil dibuat.' : 'Sales Order berhasil diperbarui.'),
+    onError: (saveError) => {
       // Backend memakai `order_date`/`shipping_address`, form memakai
       // `date`/`delivery_address` — dipetakan supaya pesan error mendarat di
       // input yang benar.
       setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { order_date: 'date', shipping_address: 'delivery_address' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Sales Order.'))
-    }
+    },
+    canSave: isEditable,
   })
 
   const handleApprove = async () => {
@@ -195,7 +202,7 @@ function SalesOrderFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('sales.orders.create')) {
-    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
+    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (order?.status === 'draft' && can('sales.orders.approve')) {
@@ -306,7 +313,12 @@ function SalesOrderFormPageContent() {
         { label: 'Sales Order', path: '/sales/orders' },
         { label: isCreate ? 'Buat SO' : (order?.number ?? '') },
       ]}
-      headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={order?.number} actions={actions} />}
+      headerActions={
+        <>
+          <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+          <DocumentActionBar placement="header" documentStatus={status} documentNumber={order?.number} actions={actions} />
+        </>
+      }
     >
       <div className="space-y-3">
         <FormSection title="Header">

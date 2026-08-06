@@ -10,6 +10,10 @@ export const stockMovementApi = {
   list: (params: StockMovementListParams) =>
     http.get<unknown, PaginatedResponse<StockMovement>>('/inventory/stock-movements', { params }),
 
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<StockMovement[]>>('/inventory/stock-movements'),
+
   get: (id: number) =>
     http.get<unknown, ApiResponse<StockMovement>>(`/inventory/stock-movements/${id}`),
 

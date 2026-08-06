@@ -22,6 +22,10 @@ import { toPurchaseReturnPayload } from '../services/purchaseReturnAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { purchaseReturnSchema, type PurchaseReturnFormValues } from '../schemas/purchaseReturnSchema'
+import { purchaseReturnApi } from '../services/purchaseReturnApi'
+import type { RawPurchaseReturn } from '../types/purchaseReturn.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
@@ -98,17 +102,29 @@ function PurchaseReturnFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const handleSave = handleSubmit(async (values) => {
-    try {
+  const { saveAndClose, navProps } = useRecordFormNavigation<PurchaseReturnFormValues, RawPurchaseReturn>({
+    id,
+    basePath: '/purchase/returns',
+    createLabel: 'Retur Pembelian Baru',
+    getRecordLabel: (record) => record.return_number,
+    sequenceQueryKey: ['purchase', 'returns', 'sequence'],
+    fetchAll: async () => (await purchaseReturnApi.listAll()).data,
+    handleSubmit,
+    save: async (values) => {
       await create.mutateAsync(toPurchaseReturnPayload(values, lines.map(({ product, ...line }) => line)))
+    },
+    onSaved: () => {
       formDraft.clearDraft()
-      toast.success('Retur pembelian berhasil dibuat.')
-    } catch (saveError) {
+      setLineErrors({})
+    },
+    successMessage: () => 'Retur pembelian berhasil dibuat.',
+    onError: (saveError) => {
       // Backend memakai nama kolom DB (`return_date`), form memakai `date`.
       setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { return_date: 'date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan retur pembelian.'))
-    }
+    },
+    canSave: isEditable,
   })
 
   const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); toast.success('Retur di-approve.') } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve retur.')) } }
@@ -122,7 +138,7 @@ function PurchaseReturnFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('purchase.returns.create')) {
-    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (ret?.status === 'draft' && can('purchase.returns.approve')) {
@@ -158,7 +174,12 @@ function PurchaseReturnFormPageContent() {
         documentNumber={ret?.number}
         status={status}
         breadcrumb={[{ label: 'Pembelian' }, { label: 'Retur', path: '/purchase/returns' }, { label: isCreate ? 'Buat Retur' : (ret?.number ?? '') }]}
-        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={ret?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={ret?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           <FormSection title="Header">

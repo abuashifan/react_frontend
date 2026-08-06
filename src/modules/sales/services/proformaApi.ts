@@ -11,6 +11,10 @@ export const proformaApi = {
   list: (params: ProformaListParams) =>
     http.get<unknown, PaginatedResponse<ProformaInvoice>>('/sales/proformas', { params }),
 
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<ProformaInvoice[]>>('/sales/proformas'),
+
   get: (id: number) =>
     http.get<unknown, ApiResponse<ProformaInvoice>>(`/sales/proformas/${id}`),
 

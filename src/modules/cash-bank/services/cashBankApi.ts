@@ -9,6 +9,9 @@ import type {
 export const cashReceiptApi = {
   list: (params: CashBankListParams) =>
     http.get<unknown, PaginatedResponse<CashReceipt>>('/cash-bank/cash-receipts', { params }),
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<CashReceipt[]>>('/cash-bank/cash-receipts'),
   get: (id: number) =>
     http.get<unknown, ApiResponse<CashReceipt>>(`/cash-bank/cash-receipts/${id}`),
   create: (payload: CreateCashReceiptPayload) =>
@@ -22,6 +25,9 @@ export const cashReceiptApi = {
 export const cashPaymentApi = {
   list: (params: CashBankListParams) =>
     http.get<unknown, PaginatedResponse<CashPayment>>('/cash-bank/cash-payments', { params }),
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<CashPayment[]>>('/cash-bank/cash-payments'),
   get: (id: number) =>
     http.get<unknown, ApiResponse<CashPayment>>(`/cash-bank/cash-payments/${id}`),
   create: (payload: CreateCashPaymentPayload) =>
@@ -35,6 +41,9 @@ export const cashPaymentApi = {
 export const bankTransferApi = {
   list: (params: CashBankListParams) =>
     http.get<unknown, PaginatedResponse<BankTransfer>>('/cash-bank/bank-transfers', { params }),
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<BankTransfer[]>>('/cash-bank/bank-transfers'),
   get: (id: number) =>
     http.get<unknown, ApiResponse<BankTransfer>>(`/cash-bank/bank-transfers/${id}`),
   create: (payload: CreateBankTransferPayload) =>
@@ -51,6 +60,9 @@ export const bankTransferApi = {
 export const bankReconciliationApi = {
   list: (params: Omit<CashBankListParams, 'status'> & { status?: string }) =>
     http.get<unknown, PaginatedResponse<BankReconciliation>>('/cash-bank/bank-reconciliations', { params }),
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<BankReconciliation[]>>('/cash-bank/bank-reconciliations'),
   get: (id: number) =>
     http.get<unknown, ApiResponse<BankReconciliation>>(`/cash-bank/bank-reconciliations/${id}`),
   create: (payload: CreateBankReconciliationPayload) =>

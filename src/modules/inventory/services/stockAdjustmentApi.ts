@@ -11,6 +11,10 @@ export const stockAdjustmentApi = {
   list: (params: StockAdjustmentListParams) =>
     http.get<unknown, PaginatedResponse<StockAdjustment>>('/inventory/stock-adjustments', { params }),
 
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<StockAdjustment[]>>('/inventory/stock-adjustments'),
+
   get: (id: number) =>
     http.get<unknown, ApiResponse<StockAdjustment>>(`/inventory/stock-adjustments/${id}`),
 

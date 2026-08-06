@@ -23,6 +23,10 @@ export const fixedAssetApi = {
       params: cleanParams(params),
     }),
 
+  /** Semua record tanpa filter — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<FixedAsset[]>>('/fixed-assets'),
+
   get: (id: number) =>
     http.get<unknown, ApiResponse<FixedAsset>>(`/fixed-assets/${id}`),
 

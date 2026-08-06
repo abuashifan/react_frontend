@@ -29,6 +29,10 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { fixedAssetCategoryApi } from '@/modules/fixed-assets/services/fixedAssetCategoryApi'
 import { vendorBillSchema, validateVendorBillLines, type VendorBillFormValues, type VendorBillLineErrors } from '../schemas/vendorBillSchema'
+import { vendorBillApi } from '../services/vendorBillApi'
+import type { RawVendorBill } from '../types/vendorBill.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation, FormValidationAbort } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { cn, fieldErrorClass, toDateInputValue, formatCurrency } from '@/lib/utils'
 import type { VendorBillLineClassification } from '../types/vendorBill.types'
@@ -203,36 +207,44 @@ function VendorBillFormPageContent() {
     toast.success('Draft lokal dibuang.')
   }
 
-  const handleSave = handleSubmit(async (values) => {
-    if (lines.length === 0) {
-      toast.error('Tambahkan minimal satu item.')
-      return
-    }
-    const lineValidation = validateVendorBillLines(lines)
-    if (Object.keys(lineValidation).length > 0) {
-      setLineErrors(lineValidation)
-      toast.error('Periksa item: ada baris yang belum valid.')
-      return
-    }
-    setLineErrors({})
-    const payload = toVendorBillPayload(values, lines)
-    try {
-      if (isCreate) {
-        await create.mutateAsync(payload)
-        formDraft.clearDraft()
-        toast.success('Tagihan vendor berhasil dibuat.')
-        closeRecordTab('/purchase/bills/create', '/purchase/bills')
-      } else {
-        await update.mutateAsync({ id: Number(id), payload })
-        formDraft.clearDraft()
-        toast.success('Tagihan vendor berhasil diperbarui.')
-        closeRecordTab(`/purchase/bills/${id}`, '/purchase/bills')
+  const { saveAndClose, navProps } = useRecordFormNavigation<VendorBillFormValues, RawVendorBill>({
+    id,
+    basePath: '/purchase/bills',
+    createLabel: 'Tagihan Vendor Baru',
+    getRecordLabel: (record) => record.bill_number,
+    sequenceQueryKey: ['purchase', 'bills', 'sequence'],
+    fetchAll: async () => (await vendorBillApi.listAll()).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      // Validasi baris milik form ini jalan sebelum request; melemparnya sebagai
+      // FormValidationAbort menghentikan simpan sekaligus navigasi.
+      if (lines.length === 0) {
+        toast.error('Tambahkan minimal satu item.')
+        throw new FormValidationAbort()
       }
-    } catch (saveError) {
+      const lineValidation = validateVendorBillLines(lines)
+      if (Object.keys(lineValidation).length > 0) {
+        setLineErrors(lineValidation)
+        toast.error('Periksa item: ada baris yang belum valid.')
+        throw new FormValidationAbort()
+      }
+      setLineErrors({})
+
+      const payload = toVendorBillPayload(values, lines)
+      if (creating) await create.mutateAsync(payload)
+      else await update.mutateAsync({ id: Number(id), payload })
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setApiLineErrors({})
+    },
+    successMessage: (creating) => (creating ? 'Tagihan vendor berhasil dibuat.' : 'Tagihan vendor berhasil diperbarui.'),
+    onError: (saveError) => {
       setApiLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { bill_date: 'date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan tagihan vendor.'))
-    }
+    },
+    canSave: isEditable,
   })
 
   const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); formDraft.clearDraft(); toast.success('Bill di-approve.') } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve bill.')) } finally { setConfirmAction(null) } }
@@ -252,7 +264,7 @@ function VendorBillFormPageContent() {
   const canSaveBill = isCreate ? can('purchase.bills.create') : can('purchase.bills.edit')
 
   if (isEditable && canSaveBill) {
-    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (isEditable && formDraft.isRestored) {
     actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: handleDiscardDraft })
@@ -364,7 +376,12 @@ function VendorBillFormPageContent() {
         status={status}
         readOnly={!isEditable}
         breadcrumb={[{ label: 'Pembelian' }, { label: 'Tagihan', path: '/purchase/bills' }, { label: isCreate ? 'Buat Bill' : (bill?.number ?? '') }]}
-        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={bill?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={bill?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           {hasPaidDependences && (

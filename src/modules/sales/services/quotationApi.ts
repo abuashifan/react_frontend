@@ -12,6 +12,10 @@ export const quotationApi = {
   list: (params: SalesQuotationListParams) =>
     http.get<unknown, PaginatedResponse<SalesQuotation>>('/sales/quotations', { params }),
 
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<SalesQuotation[]>>('/sales/quotations'),
+
   get: (id: number) =>
     http.get<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}`),
 

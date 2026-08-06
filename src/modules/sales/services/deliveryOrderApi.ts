@@ -11,6 +11,10 @@ export const deliveryOrderApi = {
   list: (params: DeliveryOrderListParams) =>
     http.get<unknown, PaginatedResponse<DeliveryOrder>>('/sales/delivery-orders', { params }),
 
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<DeliveryOrder[]>>('/sales/delivery-orders'),
+
   get: (id: number) =>
     http.get<unknown, ApiResponse<DeliveryOrder>>(`/sales/delivery-orders/${id}`),
 

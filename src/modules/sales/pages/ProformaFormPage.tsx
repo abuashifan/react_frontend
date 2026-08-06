@@ -22,6 +22,10 @@ import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { salesInvoiceApi } from '../services/salesInvoiceApi'
 import { proformaSchema, type ProformaFormValues } from '../schemas/proformaSchema'
+import { proformaApi } from '../services/proformaApi'
+import type { ProformaInvoice } from '../types/proforma.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
@@ -51,7 +55,7 @@ export default function ProformaFormPage() {
 }
 
 function ProformaFormPageContent() {
-  const { openRecordTab, closeRecordTab } = useRecordTab()
+  const { openRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -111,25 +115,30 @@ function ProformaFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const handleSaveDraft = handleSubmit(async (values) => {
-    try {
-      if (isCreate) {
-        await create.mutateAsync({ ...values, lines })
-        formDraft.clearDraft()
-        toast.success('Proforma berhasil dibuat.')
-        closeRecordTab('/sales/proformas/create', '/sales/proformas')
-      } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
-        formDraft.clearDraft()
-        toast.success('Proforma berhasil diperbarui.')
-        closeRecordTab(`/sales/proformas/${id}`, '/sales/proformas')
-      }
-    } catch (saveError) {
+  const { saveAndClose, navProps } = useRecordFormNavigation<ProformaFormValues, ProformaInvoice>({
+    id,
+    basePath: '/sales/proformas',
+    createLabel: 'Proforma Baru',
+    getRecordLabel: (record) => record.number,
+    sequenceQueryKey: ['sales', 'proformas', 'sequence'],
+    fetchAll: async () => (await proformaApi.listAll()).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      if (creating) await create.mutateAsync({ ...values, lines })
+      else await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setLineErrors({})
+    },
+    successMessage: (creating) => (creating ? 'Proforma berhasil dibuat.' : 'Proforma berhasil diperbarui.'),
+    onError: (saveError) => {
       // Backend memvalidasi tanggal sebagai `proforma_date`, form memakai `date`.
       setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { proforma_date: 'date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Proforma.'))
-    }
+    },
+    canSave: isEditable,
   })
 
   const handleIssue = async () => {
@@ -170,7 +179,7 @@ function ProformaFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('sales.proformas.create')) {
-    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
+    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (proforma?.status === 'draft' && can('sales.proformas.update')) {
@@ -262,7 +271,12 @@ function ProformaFormPageContent() {
         { label: 'Proforma', path: '/sales/proformas' },
         { label: isCreate ? 'Buat Proforma' : (proforma?.number ?? '') },
       ]}
-      headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={proforma?.number} actions={actions} />}
+      headerActions={
+        <>
+          <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+          <DocumentActionBar placement="header" documentStatus={status} documentNumber={proforma?.number} actions={actions} />
+        </>
+      }
     >
       <div className="space-y-3">
         <FormSection title="Header">

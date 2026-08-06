@@ -16,12 +16,15 @@ import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type Li
 import { cn, fieldErrorClass } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
-import { useRecordTab } from '@/hooks/useRecordTab'
 import { useDeliveryOrder, useDeliveryOrderMutations } from '../hooks/useDeliveryOrderList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { deliveryOrderSchema, type DeliveryOrderFormValues } from '../schemas/deliveryOrderSchema'
+import { deliveryOrderApi } from '../services/deliveryOrderApi'
+import type { DeliveryOrder } from '../types/deliveryOrder.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
@@ -45,7 +48,6 @@ export default function DeliveryOrderFormPage() {
 }
 
 function DeliveryOrderFormPageContent() {
-  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -105,27 +107,32 @@ function DeliveryOrderFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const handleSaveDraft = handleSubmit(async (values) => {
-    try {
-      if (isCreate) {
-        await create.mutateAsync({ ...values, lines })
-        formDraft.clearDraft()
-        toast.success('Delivery Order berhasil dibuat.')
-        closeRecordTab('/sales/delivery-orders/create', '/sales/delivery-orders')
-      } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
-        formDraft.clearDraft()
-        toast.success('Delivery Order berhasil diperbarui.')
-        closeRecordTab(`/sales/delivery-orders/${id}`, '/sales/delivery-orders')
-      }
-    } catch (saveError) {
+  const { saveAndClose, navProps } = useRecordFormNavigation<DeliveryOrderFormValues, DeliveryOrder>({
+    id,
+    basePath: '/sales/delivery-orders',
+    createLabel: 'Delivery Order Baru',
+    getRecordLabel: (record) => record.number,
+    sequenceQueryKey: ['sales', 'delivery-orders', 'sequence'],
+    fetchAll: async () => (await deliveryOrderApi.listAll()).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      if (creating) await create.mutateAsync({ ...values, lines })
+      else await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setLineErrors({})
+    },
+    successMessage: (creating) => (creating ? 'Delivery Order berhasil dibuat.' : 'Delivery Order berhasil diperbarui.'),
+    onError: (saveError) => {
       // Backend memakai `delivery_date`/`shipping_address`, form memakai
       // `date`/`delivery_address` — dipetakan supaya pesan error mendarat di
       // input yang benar.
       setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { delivery_date: 'date', shipping_address: 'delivery_address' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Delivery Order.'))
-    }
+    },
+    canSave: isEditable,
   })
 
   const handleReady = async () => {
@@ -171,7 +178,7 @@ function DeliveryOrderFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('sales.delivery-orders.create')) {
-    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
+    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (order?.status === 'draft' && can('sales.delivery-orders.update')) {
@@ -249,7 +256,12 @@ function DeliveryOrderFormPageContent() {
           { label: 'Delivery Order', path: '/sales/delivery-orders' },
           { label: isCreate ? 'Buat DO' : (order?.number ?? '') },
         ]}
-        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={order?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={order?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           <FormSection title="Header">

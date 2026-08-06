@@ -19,9 +19,12 @@ import { cn, fieldErrorClass, formatCurrency, toDateInputValue } from '@/lib/uti
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { useJournalEntry, useJournalEntryMutations } from '../hooks/useJournalEntryList'
 import { journalEntrySchema, type JournalEntryFormValues } from '../schemas/journalEntrySchema'
+import { journalEntryApi } from '../services/journalEntryApi'
+import type { JournalEntry } from '../types/journalEntry.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus, SelectOption } from '@/types/common.types'
 import type { BudgetWarning } from '../types/journalEntry.types'
-import { useRecordTab } from '@/hooks/useRecordTab'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine {
@@ -46,7 +49,6 @@ export default function JournalFormPage() {
 }
 
 function JournalFormPageContent() {
-  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -108,25 +110,30 @@ function JournalFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const handleSave = handleSubmit(async (values) => {
-    const linePayloads = lines.map((l, i) => ({ account_id: l.account_id!, description: l.description || null, debit: l.debit || undefined, credit: l.credit || undefined, line_order: i + 1 }))
-    try {
-      if (isCreate) {
-        await create.mutateAsync({ ...values, lines: linePayloads })
-        formDraft.clearDraft()
-        toast.success('Jurnal berhasil dibuat.')
-        closeRecordTab('/accounting/journals/create', '/accounting/journals')
-      } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads } })
-        formDraft.clearDraft()
-        toast.success('Jurnal berhasil diperbarui.')
-        closeRecordTab(`/accounting/journals/${id}`, '/accounting/journals')
-      }
-    } catch (error) {
+  const { saveAndClose, navProps } = useRecordFormNavigation<JournalEntryFormValues, JournalEntry>({
+    id,
+    basePath: '/accounting/journals',
+    createLabel: 'Jurnal Baru',
+    getRecordLabel: (record) => record.journal_number,
+    sequenceQueryKey: ['accounting', 'journals', 'sequence'],
+    fetchAll: async () => (await journalEntryApi.listAll()).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      const linePayloads = lines.map((l, i) => ({ account_id: l.account_id!, description: l.description || null, debit: l.debit || undefined, credit: l.credit || undefined, line_order: i + 1 }))
+      if (creating) await create.mutateAsync({ ...values, lines: linePayloads })
+      else await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads } })
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setLineErrors({})
+    },
+    successMessage: (creating) => (creating ? 'Jurnal berhasil dibuat.' : 'Jurnal berhasil diperbarui.'),
+    onError: (error) => {
       setLineErrors(getApiLineErrors(error))
       applyApiValidationErrors(error, setError)
       toast.error(getApiErrorMessage(error, 'Gagal menyimpan jurnal.'))
-    }
+    },
+    canSave: isEditable,
   })
 
   const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); toast.success('Jurnal di-approve.') } catch (error) { toast.error(getApiErrorMessage(error, 'Gagal approve.')) } }
@@ -179,7 +186,7 @@ function JournalFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('journal.create')) {
-    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (journal?.status === 'draft' && can('journal.approve')) {
@@ -209,7 +216,12 @@ function JournalFormPageContent() {
         status={status}
         readOnly={!isEditable}
         breadcrumb={[{ label: 'Akuntansi' }, { label: 'Jurnal', path: '/accounting/journals' }, { label: isCreate ? 'Buat Jurnal' : (journal?.journal_number ?? '') }]}
-        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={journal?.journal_number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={journal?.journal_number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           <FormSection title="Header">

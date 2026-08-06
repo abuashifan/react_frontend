@@ -12,6 +12,10 @@ export const vendorPaymentApi = {
   list: (params: VendorPaymentListParams) =>
     http.get<unknown, PaginatedResponse<RawVendorPayment>>('/purchase/payments', { params }),
 
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<RawVendorPayment[]>>('/purchase/payments'),
+
   get: (id: number) =>
     http.get<unknown, ApiResponse<RawVendorPayment>>(`/purchase/payments/${id}`),
 

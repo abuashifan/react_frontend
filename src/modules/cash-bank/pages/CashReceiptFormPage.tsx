@@ -19,9 +19,12 @@ import { coaApi } from '@/modules/master-data/services/coaApi'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { useCashReceipt, useCashReceiptMutations } from '../hooks/useCashBankList'
 import { cashReceiptSchema, type CashReceiptFormValues } from '../schemas/cashBankSchemas'
+import { cashReceiptApi } from '../services/cashBankApi'
+import type { CashReceipt } from '../types/cashBank.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
-import { useRecordTab } from '@/hooks/useRecordTab'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine { account_id: number | null; account?: { id: number; code: string; name: string } | null; amount: number; description: string }
@@ -38,7 +41,6 @@ export default function CashReceiptFormPage() {
 }
 
 function CashReceiptFormPageContent() {
-  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -76,20 +78,31 @@ function CashReceiptFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const handleSave = handleSubmit(async (values) => {
-    const linePayloads = lines.filter((l) => l.account_id).map((l) => ({ account_id: l.account_id!, amount: l.amount, description: l.description || null }))
-    try {
+  const { saveAndClose, navProps } = useRecordFormNavigation<CashReceiptFormValues, CashReceipt>({
+    id,
+    basePath: '/cash-bank/cash-receipts',
+    createLabel: 'Penerimaan Kas Baru',
+    getRecordLabel: (record) => record.number,
+    sequenceQueryKey: ['cash-bank', 'receipts', 'sequence'],
+    fetchAll: async () => (await cashReceiptApi.listAll()).data,
+    handleSubmit,
+    save: async (values) => {
+      const linePayloads = lines.filter((l) => l.account_id).map((l) => ({ account_id: l.account_id!, amount: l.amount, description: l.description || null }))
       await create.mutateAsync({ ...values, lines: linePayloads.length ? linePayloads : undefined })
+    },
+    onSaved: () => {
       formDraft.clearDraft()
-      toast.success('Penerimaan kas berhasil dibuat.')
-      closeRecordTab('/cash-bank/cash-receipts/create', '/cash-bank/cash-receipts')
-    } catch (saveError) {
+      setLineErrors({})
+    },
+    successMessage: () => 'Penerimaan kas berhasil dibuat.',
+    onError: (saveError) => {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
       // bukan hanya toast generik "Gagal menyimpan".
       setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError)
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan penerimaan kas.'))
-    }
+    },
+    canSave: isEditable,
   })
 
   const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting.')) } }
@@ -102,7 +115,7 @@ function CashReceiptFormPageContent() {
   ]
 
   const actions: DocumentActionButton[] = []
-  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   if (!isCreate && receipt?.status === 'draft' && can('cash_bank.post')) actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
   if (!isCreate && receipt?.status === 'posted' && can('cash_bank.void')) actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
 
@@ -112,7 +125,12 @@ function CashReceiptFormPageContent() {
     <>
       <FormLayout title={isCreate ? 'Buat Penerimaan Kas' : 'Penerimaan Kas'} documentNumber={receipt?.number} status={status} readOnly={!isEditable}
         breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Penerimaan Kas', path: '/cash-bank/cash-receipts' }, { label: isCreate ? 'Buat' : (receipt?.number ?? '') }]}
-        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={receipt?.number} actions={actions} />}>
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={receipt?.number} actions={actions} />
+          </>
+        }>
         <div className="space-y-3">
           <FormSection title="Header">
             <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label><Input {...register('receipt_date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.receipt_date))} /><FieldError message={errors.receipt_date?.message} /></div>

@@ -12,6 +12,10 @@ export const purchaseRequestApi = {
   list: (params: PurchaseRequestListParams) =>
     http.get<unknown, PaginatedResponse<RawPurchaseRequest>>('/purchase/requests', { params }),
 
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<RawPurchaseRequest[]>>('/purchase/requests'),
+
   get: (id: number) =>
     http.get<unknown, ApiResponse<RawPurchaseRequest>>(`/purchase/requests/${id}`),
 

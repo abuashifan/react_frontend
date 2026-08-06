@@ -11,6 +11,10 @@ export const goodsReceiptApi = {
   list: (params: GoodsReceiptListParams) =>
     http.get<unknown, PaginatedResponse<RawGoodsReceipt>>('/purchase/goods-receipts', { params }),
 
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<RawGoodsReceipt[]>>('/purchase/goods-receipts'),
+
   get: (id: number) =>
     http.get<unknown, ApiResponse<RawGoodsReceipt>>(`/purchase/goods-receipts/${id}`),
 

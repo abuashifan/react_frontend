@@ -24,6 +24,12 @@ export const salesOrderApi = {
     return { ...res, data: res.data.map(toSalesOrder) }
   },
 
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: async () => {
+    const res = await http.get<unknown, ApiResponse<SalesOrder[]>>('/sales/orders')
+    return { ...res, data: res.data.map(toSalesOrder) }
+  },
+
   get: async (id: number) => {
     const res = await http.get<unknown, ApiResponse<SalesOrder>>(`/sales/orders/${id}`)
     return { ...res, data: toSalesOrder(res.data) }

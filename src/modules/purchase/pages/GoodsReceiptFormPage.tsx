@@ -22,8 +22,11 @@ import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { goodsReceiptSchema, type GoodsReceiptFormValues } from '../schemas/goodsReceiptSchema'
+import { goodsReceiptApi } from '../services/goodsReceiptApi'
+import type { RawGoodsReceipt } from '../types/goodsReceipt.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
-import { useRecordTab } from '@/hooks/useRecordTab'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine {
@@ -55,7 +58,6 @@ export default function GoodsReceiptFormPage() {
 }
 
 function GoodsReceiptFormPageContent() {
-  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -109,18 +111,29 @@ function GoodsReceiptFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const handleSave = handleSubmit(async (values) => {
-    try {
+  const { saveAndClose, navProps } = useRecordFormNavigation<GoodsReceiptFormValues, RawGoodsReceipt>({
+    id,
+    basePath: '/purchase/goods-receipts',
+    createLabel: 'Penerimaan Barang Baru',
+    getRecordLabel: (record) => record.receipt_number,
+    sequenceQueryKey: ['purchase', 'goods-receipts', 'sequence'],
+    fetchAll: async () => (await goodsReceiptApi.listAll()).data,
+    handleSubmit,
+    save: async (values) => {
       await create.mutateAsync(toGoodsReceiptPayload(values, lines.map(toGoodsReceiptLine)))
+    },
+    onSaved: () => {
       formDraft.clearDraft()
-      toast.success('Penerimaan barang berhasil dibuat.')
-      closeRecordTab('/purchase/goods-receipts/create', '/purchase/goods-receipts')
-    } catch (saveError) {
+      setLineErrors({})
+    },
+    successMessage: () => 'Penerimaan barang berhasil dibuat.',
+    onError: (saveError) => {
       // Backend memakai nama kolom DB (`receipt_date`), form memakai `date`.
       setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { receipt_date: 'date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan penerimaan barang.'))
-    }
+    },
+    canSave: isEditable,
   })
 
   const handleReceive = async () => {
@@ -140,7 +153,7 @@ function GoodsReceiptFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('purchase.goods-receipts.create')) {
-    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (gr?.status === 'draft' && can('purchase.goods-receipts.receive')) {
@@ -202,7 +215,12 @@ function GoodsReceiptFormPageContent() {
         documentNumber={gr?.number}
         status={status}
         breadcrumb={[{ label: 'Pembelian' }, { label: 'Penerimaan Barang', path: '/purchase/goods-receipts' }, { label: isCreate ? 'Buat GR' : (gr?.number ?? '') }]}
-        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={gr?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={gr?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           <FormSection title="Header">

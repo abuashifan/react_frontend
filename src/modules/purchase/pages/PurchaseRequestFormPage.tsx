@@ -21,8 +21,11 @@ import { toPurchaseRequestPayload } from '../services/purchaseRequestAdapter'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { purchaseRequestSchema, type PurchaseRequestFormValues } from '../schemas/purchaseRequestSchema'
+import { purchaseRequestApi } from '../services/purchaseRequestApi'
+import type { RawPurchaseRequest } from '../types/purchaseRequest.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
-import { useRecordTab } from '@/hooks/useRecordTab'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine {
@@ -50,7 +53,6 @@ export default function PurchaseRequestFormPage() {
 }
 
 function PurchaseRequestFormPageContent() {
-  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -104,26 +106,31 @@ function PurchaseRequestFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const handleSave = handleSubmit(async (values) => {
-    try {
+  const { saveAndClose, navProps } = useRecordFormNavigation<PurchaseRequestFormValues, RawPurchaseRequest>({
+    id,
+    basePath: '/purchase/requests',
+    createLabel: 'Purchase Request Baru',
+    getRecordLabel: (record) => record.request_number,
+    sequenceQueryKey: ['purchase', 'requests', 'sequence'],
+    fetchAll: async () => (await purchaseRequestApi.listAll()).data,
+    handleSubmit,
+    save: async (values, creating) => {
       const payload = toPurchaseRequestPayload(values, lines.map(({ product, ...line }) => line))
-      if (isCreate) {
-        await create.mutateAsync(payload)
-        formDraft.clearDraft()
-        toast.success('Purchase Request berhasil dibuat.')
-        closeRecordTab('/purchase/requests/create', '/purchase/requests')
-      } else {
-        await update.mutateAsync({ id: Number(id), payload })
-        formDraft.clearDraft()
-        toast.success('Purchase Request berhasil diperbarui.')
-        closeRecordTab(`/purchase/requests/${id}`, '/purchase/requests')
-      }
-    } catch (saveError) {
+      if (creating) await create.mutateAsync(payload)
+      else await update.mutateAsync({ id: Number(id), payload })
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setLineErrors({})
+    },
+    successMessage: (creating) => (creating ? 'Purchase Request berhasil dibuat.' : 'Purchase Request berhasil diperbarui.'),
+    onError: (saveError) => {
       // Backend memakai nama kolom DB (`request_date`), form memakai `date`.
       setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { request_date: 'date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Purchase Request.'))
-    }
+    },
+    canSave: isEditable,
   })
 
   const handleSubmitPR = async () => {
@@ -145,7 +152,7 @@ function PurchaseRequestFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('purchase.requests.create')) {
-    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (pr?.status === 'draft' && can('purchase.requests.edit')) {
@@ -209,7 +216,12 @@ function PurchaseRequestFormPageContent() {
       documentNumber={pr?.number}
       status={status}
       breadcrumb={[{ label: 'Pembelian' }, { label: 'Purchase Request', path: '/purchase/requests' }, { label: isCreate ? 'Buat PR' : (pr?.number ?? '') }]}
-      headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={pr?.number} actions={actions} />}
+      headerActions={
+        <>
+          <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+          <DocumentActionBar placement="header" documentStatus={status} documentNumber={pr?.number} actions={actions} />
+        </>
+      }
     >
       <div className="space-y-3">
         <FormSection title="Header">

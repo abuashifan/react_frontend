@@ -21,9 +21,12 @@ import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { purchaseOrderSchema, type PurchaseOrderFormValues } from '../schemas/purchaseOrderSchema'
+import { purchaseOrderApi } from '../services/purchaseOrderApi'
+import type { RawPurchaseOrder } from '../types/purchaseOrder.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
-import { useRecordTab } from '@/hooks/useRecordTab'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine {
@@ -67,7 +70,6 @@ export default function PurchaseOrderFormPage() {
 function PurchaseOrderFormPageContent() {
   // `navigate` masih dipakai alur deep link yang tidak lahir dari tab.
   const navigate = useNavigate()
-  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const isCreate = !id
@@ -136,27 +138,32 @@ function PurchaseOrderFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const handleSave = handleSubmit(async (values) => {
-    try {
+  const { saveAndClose, navProps } = useRecordFormNavigation<PurchaseOrderFormValues, RawPurchaseOrder>({
+    id,
+    basePath: '/purchase/orders',
+    createLabel: 'Purchase Order Baru',
+    getRecordLabel: (record) => record.order_number,
+    sequenceQueryKey: ['purchase', 'orders', 'sequence'],
+    fetchAll: async () => (await purchaseOrderApi.listAll()).data,
+    handleSubmit,
+    save: async (values, creating) => {
       const payload = toPurchaseOrderPayload(values, lines.map(toPurchaseOrderLine))
-      if (isCreate) {
-        await create.mutateAsync(payload)
-        formDraft.clearDraft()
-        toast.success('Purchase Order berhasil dibuat.')
-        closeRecordTab('/purchase/orders/create', '/purchase/orders')
-      } else {
-        await update.mutateAsync({ id: Number(id), payload })
-        formDraft.clearDraft()
-        toast.success('Purchase Order berhasil diperbarui.')
-        closeRecordTab(`/purchase/orders/${id}`, '/purchase/orders')
-      }
-    } catch (saveError) {
+      if (creating) await create.mutateAsync(payload)
+      else await update.mutateAsync({ id: Number(id), payload })
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setLineErrors({})
+    },
+    successMessage: (creating) => (creating ? 'Purchase Order berhasil dibuat.' : 'Purchase Order berhasil diperbarui.'),
+    onError: (saveError) => {
       // Backend memakai nama kolom DB (`order_date`, `expected_date`), form memakai
       // `date` dan `expected_delivery_date` — lihat `toPurchaseOrderPayload`.
       setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { order_date: 'date', expected_date: 'expected_delivery_date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Purchase Order.'))
-    }
+    },
+    canSave: isEditable,
   })
 
   const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); toast.success('PO di-approve.') } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve PO.')) } }
@@ -165,7 +172,7 @@ function PurchaseOrderFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('purchase.orders.create')) {
-    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (po?.status === 'draft' && can('purchase.orders.approve')) {
@@ -239,7 +246,12 @@ function PurchaseOrderFormPageContent() {
       status={status}
       readOnly={!isEditable}
       breadcrumb={[{ label: 'Pembelian' }, { label: 'Purchase Order', path: '/purchase/orders' }, { label: isCreate ? 'Buat PO' : (po?.number ?? '') }]}
-      headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={po?.number} actions={actions} />}
+      headerActions={
+        <>
+          <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+          <DocumentActionBar placement="header" documentStatus={status} documentNumber={po?.number} actions={actions} />
+        </>
+      }
     >
       <div className="space-y-3">
         <FormSection title="Header">

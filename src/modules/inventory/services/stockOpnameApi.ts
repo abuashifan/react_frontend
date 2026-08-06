@@ -10,6 +10,10 @@ export const stockOpnameApi = {
   list: (params: StockOpnameListParams) =>
     http.get<unknown, PaginatedResponse<StockOpname>>('/inventory/stock-opnames', { params }),
 
+  /** Semua record tanpa paginasi — dipakai membangun urutan Prev/Next di form. */
+  listAll: () =>
+    http.get<unknown, ApiResponse<StockOpname[]>>('/inventory/stock-opnames'),
+
   get: (id: number) =>
     http.get<unknown, ApiResponse<StockOpname>>(`/inventory/stock-opnames/${id}`),
 

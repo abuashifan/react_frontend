@@ -17,11 +17,14 @@ import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type Li
 import { cn, fieldErrorClass } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
-import { useRecordTab } from '@/hooks/useRecordTab'
 import { useSalesReturn, useSalesReturnMutations } from '../hooks/useSalesReturnList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { salesReturnSchema, type SalesReturnFormValues } from '../schemas/salesReturnSchema'
+import { salesReturnApi } from '../services/salesReturnApi'
+import type { SalesReturn } from '../types/salesReturn.types'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
@@ -50,7 +53,6 @@ export default function SalesReturnFormPage() {
 }
 
 function SalesReturnFormPageContent() {
-  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -109,25 +111,30 @@ function SalesReturnFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const handleSaveDraft = handleSubmit(async (values) => {
-    try {
-      if (isCreate) {
-        await create.mutateAsync({ ...values, lines })
-        formDraft.clearDraft()
-        toast.success('Retur berhasil disimpan.')
-        closeRecordTab('/sales/returns/create', '/sales/returns')
-      } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
-        formDraft.clearDraft()
-        toast.success('Retur berhasil diperbarui.')
-        closeRecordTab(`/sales/returns/${id}`, '/sales/returns')
-      }
-    } catch (saveError) {
+  const { saveAndClose, navProps } = useRecordFormNavigation<SalesReturnFormValues, SalesReturn>({
+    id,
+    basePath: '/sales/returns',
+    createLabel: 'Retur Penjualan Baru',
+    getRecordLabel: (record) => record.number,
+    sequenceQueryKey: ['sales', 'returns', 'sequence'],
+    fetchAll: async () => (await salesReturnApi.listAll()).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      if (creating) await create.mutateAsync({ ...values, lines })
+      else await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setLineErrors({})
+    },
+    successMessage: (creating) => (creating ? 'Retur berhasil disimpan.' : 'Retur berhasil diperbarui.'),
+    onError: (saveError) => {
       // Backend memvalidasi tanggal sebagai `return_date`, form memakai `date`.
       setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { return_date: 'date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan retur.'))
-    }
+    },
+    canSave: isEditable,
   })
 
   const handleApprove = async () => {
@@ -155,7 +162,7 @@ function SalesReturnFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('sales.returns.create')) {
-    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
+    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (ret?.status === 'draft' && can('sales.returns.approve')) {
@@ -236,7 +243,12 @@ function SalesReturnFormPageContent() {
           { label: 'Retur', path: '/sales/returns' },
           { label: isCreate ? 'Buat Retur' : (ret?.number ?? '') },
         ]}
-        headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={ret?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={ret?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           <FormSection title="Header">

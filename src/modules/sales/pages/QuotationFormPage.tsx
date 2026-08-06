@@ -7,6 +7,7 @@ import { FormSection } from '@/components/shared/form/FormSection'
 import { FormSummary } from '@/components/shared/form/FormSummary'
 import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -20,7 +21,10 @@ import { useQuotation, useQuotationMutations } from '../hooks/useQuotationList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { salesOrderApi } from '../services/salesOrderApi'
+import { quotationApi } from '../services/quotationApi'
 import { quotationSchema, type QuotationFormValues } from '../schemas/quotationSchema'
+import type { SalesQuotation } from '../types/quotation.types'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
@@ -51,7 +55,7 @@ export default function QuotationFormPage() {
 }
 
 function QuotationFormPageContent() {
-  const { openRecordTab, closeRecordTab } = useRecordTab()
+  const { openRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -116,27 +120,35 @@ function QuotationFormPageContent() {
     onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const handleSaveDraft = handleSubmit(async (values) => {
-    try {
-      if (isCreate) {
-        await create.mutateAsync({ ...values, lines })
-        formDraft.clearDraft()
-        toast.success('Draft berhasil disimpan.')
-        closeRecordTab('/sales/quotations/create', '/sales/quotations')
-      } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
-        formDraft.clearDraft()
-        toast.success('Draft berhasil diperbarui.')
-        closeRecordTab(`/sales/quotations/${id}`, '/sales/quotations')
-      }
-    } catch (saveError) {
+  const { saveAndClose, navProps } = useRecordFormNavigation<QuotationFormValues, SalesQuotation>({
+    id,
+    basePath: '/sales/quotations',
+    createLabel: 'Quotation Baru',
+    getRecordLabel: (record) => record.number,
+    // Prefix harus sama dengan yang di-invalidate mutation (`['sales', 'quotations']`)
+    // supaya urutan ikut disegarkan begitu ada record baru tersimpan.
+    sequenceQueryKey: ['sales', 'quotations', 'sequence'],
+    fetchAll: async () => (await quotationApi.listAll()).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      if (creating) await create.mutateAsync({ ...values, lines })
+      else await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setLineErrors({})
+    },
+    successMessage: (creating) => (creating ? 'Draft berhasil disimpan.' : 'Draft berhasil diperbarui.'),
+    onError: (saveError) => {
       // Backend memvalidasi dengan nama field-nya sendiri (`quotation_date`,
       // `valid_until`), jadi dipetakan ke nama field form supaya pesannya muncul
       // tepat di input yang salah, bukan hilang.
       setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { quotation_date: 'date', valid_until: 'expiry_date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan draft.'))
-    }
+    },
+    // Dokumen non-draft read-only: Prev/Next cukup berpindah tanpa menyimpan.
+    canSave: isEditable,
   })
 
   const handleSend = async () => {
@@ -194,7 +206,7 @@ function QuotationFormPageContent() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('sales.quotations.create')) {
-    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
+    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (quotation?.status === 'draft' && can('sales.quotations.update')) {
@@ -320,7 +332,12 @@ function QuotationFormPageContent() {
         { label: 'Quotation', path: '/sales/quotations' },
         { label: isCreate ? 'Buat Quotation' : (quotation?.number ?? '') },
       ]}
-      headerActions={<DocumentActionBar placement="header" documentStatus={status} documentNumber={quotation?.number} actions={actions} />}
+      headerActions={
+        <>
+          <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+          <DocumentActionBar placement="header" documentStatus={status} documentNumber={quotation?.number} actions={actions} />
+        </>
+      }
     >
       <div className="space-y-3">
         <FormSection title="Header">
