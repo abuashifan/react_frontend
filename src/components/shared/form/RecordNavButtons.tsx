@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, FilePlus2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface RecordNavButtonsProps {
@@ -17,8 +17,9 @@ interface RecordNavButtonsProps {
  * Navigasi antar record dalam satu modul, ikon saja.
  *
  * Keduanya menyimpan isian dulu sebelum berpindah. Saat sudah di record terbaru,
- * tombol kanan berganti ikon (`FilePlus2`) karena aksinya bukan lagi berpindah
- * melainkan simpan lalu buka form kosong — beda aksi, beda ikon.
+ * tombol kanan menyimpan lalu membuka form kosong — tetap satu tombol Next yang
+ * sama, jadi ikonnya sengaja tidak diganti; hanya tooltip yang menyesuaikan.
+ * Ikon berbeda pernah dicoba dan terbaca sebagai tombol ketiga.
  */
 export function RecordNavButtons({
   onPrev,
@@ -55,7 +56,7 @@ export function RecordNavButtons({
         title={nextLabel}
         aria-label={nextLabel}
       >
-        {nextCreatesNew ? <FilePlus2 className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        <ChevronRight className="h-4 w-4" />
       </Button>
     </div>
   )
