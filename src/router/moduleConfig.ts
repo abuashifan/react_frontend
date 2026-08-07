@@ -96,7 +96,13 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
       { id: 'invoices', label: 'Invoice', icon: Receipt, path: '/sales/invoices', permission: 'sales.invoices.view' },
       { id: 'receipts', label: 'Penerimaan', icon: Banknote, path: '/sales/receipts', permission: 'sales.receipts.view' },
       { id: 'returns', label: 'Retur', icon: RotateCcw, path: '/sales/returns', permission: 'sales.returns.view' },
-      { id: 'ar', label: 'Piutang', icon: BookOpen, path: '/sales/ar', permission: 'sales.ar.view' },
+      // Tidak ada item "Piutang" di sini — laporan piutang tinggal di menu
+      // Laporan (kategori Piutang: AR Aging, Faktur Belum Lunas, Ringkasan
+      // Pelanggan, dan Rekonsiliasi). Item ribbon lama menunjuk `/sales/ar`
+      // yang cuma <Navigate> telanjang di luar ProtectedRoute, jadi selain
+      // duplikat ia juga membuat AppShell unmount lalu mount berulang.
+      // Route /sales/ar/* sendiri dibiarkan hidup: masih dipakai drill-down
+      // dan URL langsung.
     ],
   },
   {
@@ -110,7 +116,8 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
       { id: 'bills', label: 'Tagihan', icon: FileText, path: '/purchase/bills', permission: 'purchase.bills.view' },
       { id: 'payments', label: 'Pembayaran', icon: CreditCard, path: '/purchase/payments', permission: 'purchase.payments.view' },
       { id: 'returns', label: 'Retur', icon: RotateCcw, path: '/purchase/returns', permission: 'purchase.returns.view' },
-      { id: 'ap', label: 'Hutang', icon: BookOpen, path: '/purchase/ap', permission: 'purchase.ap.view' },
+      // Tidak ada item "Hutang" di sini — alasannya sama dengan Piutang di modul
+      // Penjualan; laporannya ada di menu Laporan kategori Hutang.
     ],
   },
   {

@@ -79,6 +79,9 @@ function getActiveModuleForTab(tab: PrimaryTab | null): ModuleKey | null {
   return tab.module
 }
 
+/** Tab primer yang menunya sudah dihapus — dibuang saat migrasi v5. */
+const RETIRED_TAB_IDS = new Set(['sales-ar', 'purchase-ap'])
+
 function createListTab(tab: PrimaryTab): SecondaryTab {
   return {
     id: 'list',
@@ -319,7 +322,7 @@ export const useTabStore = create<TabState & TabActions>()(
     }),
     {
       name: 'seaside-erp-tabs',
-      version: 4,
+      version: 5,
       storage: createJSONStorage(() => sessionStorage),
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') {
@@ -341,9 +344,16 @@ export const useTabStore = create<TabState & TabActions>()(
         const tabs = (state.primaryTabs ?? []).filter(
           (tab) => tab.module !== 'reports' || tab.id === 'reports',
         )
-        const primaryTabs = tabs.some((tab) => tab.id === DASHBOARD_TAB.id)
-          ? tabs
-          : [DASHBOARD_TAB, ...tabs]
+        // v5: item ribbon Piutang (`sales-ar`) dan Hutang (`purchase-ap`)
+        // dihapus — laporannya duplikat dari menu Laporan. Tab yang terlanjur
+        // tersimpan dibuang, sama seperti v4 membuang tab kategori Laporan
+        // lama: path-nya (`/sales/ar`, `/purchase/ap`) cuma <Navigate>
+        // telanjang di luar ProtectedRoute, sehingga AppShell unmount lalu
+        // mount lagi tiap kali effect-nya memaksa URL kembali ke path tab.
+        const live = tabs.filter((tab) => !RETIRED_TAB_IDS.has(tab.id))
+        const primaryTabs = live.some((tab) => tab.id === DASHBOARD_TAB.id)
+          ? live
+          : [DASHBOARD_TAB, ...live]
         const liveTabIds = new Set(primaryTabs.map((tab) => tab.id))
         const activePrimaryTabId = state.activePrimaryTabId ?? DASHBOARD_TAB.id
         const activeTab = primaryTabs.find((tab) => tab.id === activePrimaryTabId) ?? DASHBOARD_TAB
