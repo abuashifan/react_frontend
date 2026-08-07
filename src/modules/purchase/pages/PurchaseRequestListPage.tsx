@@ -61,6 +61,14 @@ export default function PurchaseRequestListPage() {
 
   const sidebar = (
     <FilterSidebar activeCount={filterStatus ? 1 : 0} onReset={() => setFilterStatus(undefined)}>
+      <div className="border-b border-[#f1f5f9] px-4 py-3">
+        <ListSearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Cari nomor PR..."
+          className="w-full max-w-none"
+        />
+      </div>
       <FilterSection title="Status">
         {STATUSES.map((s) => (
           <label key={s} className="flex cursor-pointer items-center gap-2">
@@ -85,7 +93,6 @@ export default function PurchaseRequestListPage() {
         </PermissionGuard>
       }
     >
-      <ListSearchBar value={search} onChange={setSearch} placeholder="Cari nomor PR..." className="mb-3" />
       <DataTable
         data={data?.data ?? []}
         columns={columns}

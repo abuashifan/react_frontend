@@ -80,6 +80,14 @@ export default function QuotationListPage() {
 
   const sidebar = (
     <FilterSidebar activeCount={activeFilters} onReset={() => { setFilterStatus(undefined); setFilterCustomer(null) }}>
+      <div className="border-b border-[#f1f5f9] px-4 py-3">
+        <ListSearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Cari nomor quotation, customer..."
+          className="w-full max-w-none"
+        />
+      </div>
       <FilterSection title="Status">
         {STATUSES.map((s) => (
           <label key={s} className="flex items-center gap-2 cursor-pointer">
@@ -112,7 +120,6 @@ export default function QuotationListPage() {
         </PermissionGuard>
       }
     >
-      <ListSearchBar value={search} onChange={setSearch} placeholder="Cari nomor quotation, customer..." className="mb-3" />
       <DataTable
         data={data?.data ?? []}
         columns={columns}

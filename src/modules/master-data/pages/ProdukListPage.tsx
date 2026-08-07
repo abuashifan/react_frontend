@@ -90,6 +90,14 @@ export default function ProdukListPage() {
       activeCount={activeFilterCount}
       onReset={() => { setFilterCategoryId(null); setFilterActive(true) }}
     >
+      <div className="border-b border-[#f1f5f9] px-4 py-3">
+        <ListSearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Cari kode atau nama produk..."
+          className="w-full max-w-none"
+        />
+      </div>
       <FilterSection title="Kategori">
         <SearchableSelect
           value={filterCategoryId}
@@ -124,13 +132,6 @@ export default function ProdukListPage() {
         </PermissionGuard>
       }
     >
-      <ListSearchBar
-        value={search}
-        onChange={setSearch}
-        placeholder="Cari kode atau nama produk..."
-        className="mb-3"
-      />
-
       <DataTable
         data={data?.data ?? []}
         columns={columns}

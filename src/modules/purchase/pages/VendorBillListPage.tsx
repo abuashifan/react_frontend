@@ -164,6 +164,14 @@ export default function VendorBillListPage() {
         resetSelection()
       }}
     >
+      <div className="border-b border-[#f1f5f9] px-4 py-3">
+        <ListSearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Cari nomor bill, vendor..."
+          className="w-full max-w-none"
+        />
+      </div>
       <MultiCheckboxFilter
         title="Status"
         options={STATUSES.map((status) => ({ value: status, label: status.replace('_', ' ') }))}
@@ -209,7 +217,6 @@ export default function VendorBillListPage() {
           </PermissionGuard>
         }
       >
-        <ListSearchBar value={search} onChange={setSearch} placeholder="Cari nomor bill, vendor..." className="mb-3" />
         {isError ? (
           <EmptyState
             icon={AlertTriangle}

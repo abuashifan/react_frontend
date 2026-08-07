@@ -153,6 +153,14 @@ export default function VendorPaymentListPage() {
       }}
       hint={FILTER_HINT}
     >
+      <div className="border-b border-[#f1f5f9] px-4 py-3">
+        <ListSearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Cari nomor pembayaran, vendor..."
+          className="w-full max-w-none"
+        />
+      </div>
       <MultiCheckboxFilter
         title="Status"
         options={STATUSES.map((status) => ({ value: status, label: status }))}
@@ -199,7 +207,6 @@ export default function VendorPaymentListPage() {
           </PermissionGuard>
         }
       >
-        <ListSearchBar value={search} onChange={setSearch} placeholder="Cari nomor pembayaran, vendor..." className="mb-3" />
         <DataTable
           data={visibleRows}
           columns={columns}

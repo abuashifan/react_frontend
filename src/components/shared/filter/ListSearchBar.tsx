@@ -13,8 +13,21 @@ interface ListSearchBarProps {
 }
 
 /**
- * Search bar universal untuk halaman list — selalu tampil di bagian atas
- * content area (bukan sidebar), sesuai spec-13 §Filter Universal.
+ * Search bar universal untuk halaman list — ditempatkan di bagian atas
+ * `FilterSidebar`, di atas `FilterSection` pertama.
+ *
+ * Sebelumnya spec-13 §Filter Universal menaruhnya di content area. Diubah
+ * atas permintaan pemilik produk: kotak pencarian di atas tabel memakan
+ * tinggi yang lebih berharga untuk baris data, sedangkan sidebar filter
+ * punya ruang menganggur di bagian atasnya. Jurnal Umum dipindah lebih dulu
+ * sebagai contoh, lalu 21 halaman daftar lain menyusul.
+ *
+ * Pakai `className="w-full max-w-none"` di sidebar — `max-w-sm` bawaan
+ * komponen ini dirancang untuk content area yang lebar.
+ *
+ * Catatan: tiga halaman Persediaan (Mutasi/Penyesuaian/Opname Stok) memakai
+ * `<Input>` biasa di dalam `<FilterSection title="Cari">`, bukan komponen ini.
+ * Hasil visualnya mirip tapi tanpa debounce dan tombol bersihkan.
  */
 export function ListSearchBar({
   value,

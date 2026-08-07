@@ -72,6 +72,14 @@ export default function PurchaseReturnListPage() {
 
   const sidebar = (
     <FilterSidebar activeCount={activeFilters} onReset={() => { setFilterStatus(undefined); setFilterVendor(null) }}>
+      <div className="border-b border-[#f1f5f9] px-4 py-3">
+        <ListSearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Cari nomor retur, vendor..."
+          className="w-full max-w-none"
+        />
+      </div>
       <FilterSection title="Status">
         {STATUSES.map((s) => (
           <label key={s} className="flex cursor-pointer items-center gap-2">
@@ -104,7 +112,6 @@ export default function PurchaseReturnListPage() {
         </PermissionGuard>
       }
     >
-      <ListSearchBar value={search} onChange={setSearch} placeholder="Cari nomor retur, vendor..." className="mb-3" />
       <DataTable
         data={data?.data ?? []}
         columns={columns}

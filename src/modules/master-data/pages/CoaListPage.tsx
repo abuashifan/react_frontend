@@ -227,6 +227,14 @@ export default function CoaListPage() {
       activeCount={activeFilterCount}
       onReset={() => { setFilterType(undefined); setFilterActive(true) }}
     >
+      <div className="border-b border-[#f1f5f9] px-4 py-3">
+        <ListSearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Cari kode atau nama akun..."
+          className="w-full max-w-none"
+        />
+      </div>
       <SingleCheckboxFilter
         title="Tipe Akun"
         options={(['asset', 'liability', 'equity', 'revenue', 'expense'] as CoaType[]).map((t) => ({ value: t, label: COA_TYPE_LABELS[t] }))}
@@ -258,12 +266,6 @@ export default function CoaListPage() {
         </PermissionGuard>
       }
     >
-      <ListSearchBar
-        value={search}
-        onChange={setSearch}
-        placeholder="Cari kode atau nama akun..."
-        className="mb-3"
-      />
 
       {/* Bulk action bar */}
       {selectedIds.length > 0 && (
