@@ -9,6 +9,9 @@ import { FormSection } from '@/components/shared/form/FormSection'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { PermissionGuard } from '@/components/shared/PermissionGuard'
+import { ActiveStatusBadge } from '@/components/shared/badge/ActiveStatusBadge'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -49,7 +52,7 @@ function CoaFormPageContent() {
   const { data, isLoading } = useCoa(id ? Number(id) : undefined)
   const coa = data?.data
 
-  const { create, update } = useCoaMutations()
+  const { create, update, activate, deactivate } = useCoaMutations()
 
   const {
     register,
@@ -111,6 +114,26 @@ function CoaFormPageContent() {
     },
   })
 
+  const handleToggleActive = async () => {
+    if (!coa) return
+    try {
+      if (coa.is_active) {
+        if (!confirm(`Nonaktifkan akun "${coa.account_code} — ${coa.account_name}"?`)) return
+        await deactivate.mutateAsync(coa.id)
+        formDraft.clearDraft()
+        toast.success('Akun berhasil dinonaktifkan.')
+      } else {
+        await activate.mutateAsync(coa.id)
+        formDraft.clearDraft()
+        toast.success('Akun berhasil diaktifkan.')
+      }
+    } catch (error) {
+      // mis. ACCOUNT_HAS_ACTIVE_CHILDREN saat menonaktifkan akun induk — pesannya
+      // datang dari backend, jangan diganti teks generik.
+      toast.error(getApiErrorMessage(error, 'Gagal mengubah status akun.'))
+    }
+  }
+
   if (!isCreate && isLoading) {
     return (
       <FormLayout title="Chart of Account" breadcrumb={[{ label: 'Master Data' }, { label: 'COA', path: '/master-data/coa' }, { label: 'Loading...' }]}>
@@ -129,18 +152,39 @@ function CoaFormPageContent() {
         { label: isCreate ? 'Tambah Akun' : (coa?.account_code ?? '') },
       ]}
       headerActions={
-        <FormSaveActions
-          onCancel={() => {
-            // Batal berarti membuang isian — draft tidak boleh ikut hidup lagi
-            // saat form create dibuka berikutnya.
-            formDraft.clearDraft()
-            closeRecordTab(currentPath, '/master-data/coa')
-          }}
-          onSave={saveAndClose}
-          isSaving={isSubmitting}
-        >
-          <RecordNavButtons {...navProps} isBusy={isSubmitting} />
-        </FormSaveActions>
+        <>
+          {!isCreate && coa && <ActiveStatusBadge isActive={coa.is_active} />}
+          <FormSaveActions
+            onCancel={() => {
+              // Batal berarti membuang isian — draft tidak boleh ikut hidup lagi
+              // saat form create dibuka berikutnya.
+              formDraft.clearDraft()
+              closeRecordTab(currentPath, '/master-data/coa')
+            }}
+            onSave={saveAndClose}
+            isSaving={isSubmitting}
+          >
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            {!isCreate && coa && (
+              <PermissionGuard permission={coa.is_active ? 'coa.deactivate' : 'coa.edit'}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={cn(
+                    'h-8 text-[13px]',
+                    coa.is_active
+                      ? 'text-amber-600 hover:text-amber-700'
+                      : 'text-emerald-600 hover:text-emerald-700',
+                  )}
+                  onClick={handleToggleActive}
+                  disabled={activate.isPending || deactivate.isPending}
+                >
+                  {coa.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                </Button>
+              </PermissionGuard>
+            )}
+          </FormSaveActions>
+        </>
       }
     >
       <div className="space-y-3">
