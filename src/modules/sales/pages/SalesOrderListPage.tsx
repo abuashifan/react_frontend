@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
 import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
@@ -23,10 +24,14 @@ export default function SalesOrderListPage() {
   const [page, setPage] = useState(0)
   const [filterStatus, setFilterStatus] = useState<SalesOrderStatus | undefined>()
   const [filterCustomer, setFilterCustomer] = useState<number | null>(null)
+  const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [search, setSearch] = useState('')
-  const [prevSearch, setPrevSearch] = useState('')
-  if (search !== prevSearch) {
-    setPrevSearch(search)
+  const [prevFilters, setPrevFilters] = useState('')
+  // Seluruh filter dikirim ke server, jadi perubahannya harus mengembalikan
+  // halaman ke 1 -- memfilter dari halaman jauh akan mendarat di daftar kosong.
+  const filterKey = `${search}|${String(filterStatus)}|${dateRange.from}|${dateRange.to}|${String(filterCustomer)}`
+  if (filterKey !== prevFilters) {
+    setPrevFilters(filterKey)
     setPage(0)
   }
 
@@ -36,9 +41,11 @@ export default function SalesOrderListPage() {
     search: search || undefined,
     status: filterStatus,
     customer_id: filterCustomer ?? undefined,
+    date_from: dateRange.from || undefined,
+    date_to: dateRange.to || undefined,
   })
 
-  const activeFilters = [filterStatus, filterCustomer].filter(Boolean).length
+  const activeFilters = [filterStatus, filterCustomer, dateRange.from, dateRange.to].filter(Boolean).length
 
   const columns: ColumnDef<SalesOrder>[] = [
     {
@@ -71,7 +78,7 @@ export default function SalesOrderListPage() {
   ]
 
   const sidebar = (
-    <FilterSidebar activeCount={activeFilters} onReset={() => { setFilterStatus(undefined); setFilterCustomer(null) }}>
+    <FilterSidebar activeCount={activeFilters} onReset={() => { setFilterStatus(undefined); setFilterCustomer(null); setDateRange({ from: '', to: '' }) }}>
       <div className="border-b border-[#f1f5f9] px-4 py-3">
         <ListSearchBar
           value={search}
@@ -96,6 +103,12 @@ export default function SalesOrderListPage() {
           placeholder="Semua customer"
         />
       </FilterSection>
+      <DateRangeFilterSection
+        title="Tanggal"
+        from={dateRange.from}
+        to={dateRange.to}
+        onChange={setDateRange}
+      />
     </FilterSidebar>
   )
 

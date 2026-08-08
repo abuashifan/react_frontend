@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
 import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
@@ -21,13 +22,17 @@ const STATUSES: PurchaseReturnStatus[] = ['draft', 'approved', 'posted', 'void']
 export default function PurchaseReturnListPage() {
   const { openRecordTab } = useRecordTab()
   const [page, setPage] = useState(0)
+  const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [search, setSearch] = useState('')
-  const [prevSearch, setPrevSearch] = useState('')
+  const [prevFilters, setPrevFilters] = useState('')
   const [filterStatus, setFilterStatus] = useState<PurchaseReturnStatus | undefined>()
   const [filterVendor, setFilterVendor] = useState<number | null>(null)
 
-  if (search !== prevSearch) {
-    setPrevSearch(search)
+  // Seluruh filter dikirim ke server, jadi perubahannya harus mengembalikan
+  // halaman ke 1 -- memfilter dari halaman jauh akan mendarat di daftar kosong.
+  const filterKey = `${search}|${String(filterStatus)}|${dateRange.from}|${dateRange.to}|${String(filterVendor)}`
+  if (filterKey !== prevFilters) {
+    setPrevFilters(filterKey)
     setPage(0)
   }
 
@@ -37,9 +42,11 @@ export default function PurchaseReturnListPage() {
     search: search || undefined,
     status: filterStatus,
     vendor_id: filterVendor ?? undefined,
+    date_from: dateRange.from || undefined,
+    date_to: dateRange.to || undefined,
   })
 
-  const activeFilters = [filterStatus, filterVendor].filter(Boolean).length
+  const activeFilters = [filterStatus, filterVendor, dateRange.from, dateRange.to].filter(Boolean).length
   const columns: ColumnDef<PurchaseReturn>[] = [
     {
       id: 'number',
@@ -71,7 +78,7 @@ export default function PurchaseReturnListPage() {
   ]
 
   const sidebar = (
-    <FilterSidebar activeCount={activeFilters} onReset={() => { setFilterStatus(undefined); setFilterVendor(null) }}>
+    <FilterSidebar activeCount={activeFilters} onReset={() => { setFilterStatus(undefined); setFilterVendor(null); setDateRange({ from: '', to: '' }) }}>
       <div className="border-b border-[#f1f5f9] px-4 py-3">
         <ListSearchBar
           value={search}
@@ -96,6 +103,12 @@ export default function PurchaseReturnListPage() {
           placeholder="Semua vendor"
         />
       </FilterSection>
+      <DateRangeFilterSection
+        title="Tanggal"
+        from={dateRange.from}
+        to={dateRange.to}
+        onChange={setDateRange}
+      />
     </FilterSidebar>
   )
 

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
 import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
@@ -19,12 +20,16 @@ const STATUSES: PurchaseRequestStatus[] = ['draft', 'submitted', 'approved', 're
 export default function PurchaseRequestListPage() {
   const { openRecordTab } = useRecordTab()
   const [page, setPage] = useState(0)
+  const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [search, setSearch] = useState('')
-  const [prevSearch, setPrevSearch] = useState('')
+  const [prevFilters, setPrevFilters] = useState('')
   const [filterStatus, setFilterStatus] = useState<PurchaseRequestStatus | undefined>()
 
-  if (search !== prevSearch) {
-    setPrevSearch(search)
+  // Seluruh filter dikirim ke server, jadi perubahannya harus mengembalikan
+  // halaman ke 1 -- memfilter dari halaman jauh akan mendarat di daftar kosong.
+  const filterKey = `${search}|${String(filterStatus)}|${dateRange.from}|${dateRange.to}`
+  if (filterKey !== prevFilters) {
+    setPrevFilters(filterKey)
     setPage(0)
   }
 
@@ -33,6 +38,8 @@ export default function PurchaseRequestListPage() {
     per_page: 25,
     search: search || undefined,
     status: filterStatus,
+    date_from: dateRange.from || undefined,
+    date_to: dateRange.to || undefined,
   })
 
   const columns: ColumnDef<PurchaseRequest>[] = [
@@ -60,7 +67,7 @@ export default function PurchaseRequestListPage() {
   ]
 
   const sidebar = (
-    <FilterSidebar activeCount={filterStatus ? 1 : 0} onReset={() => setFilterStatus(undefined)}>
+    <FilterSidebar activeCount={[filterStatus, dateRange.from, dateRange.to].filter(Boolean).length} onReset={() => { setFilterStatus(undefined); setDateRange({ from: '', to: '' }) }}>
       <div className="border-b border-[#f1f5f9] px-4 py-3">
         <ListSearchBar
           value={search}
@@ -77,6 +84,12 @@ export default function PurchaseRequestListPage() {
           </label>
         ))}
       </FilterSection>
+      <DateRangeFilterSection
+        title="Tanggal"
+        from={dateRange.from}
+        to={dateRange.to}
+        onChange={setDateRange}
+      />
     </FilterSidebar>
   )
 
