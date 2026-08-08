@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { useUnsavedFormTracker } from '@/hooks/useUnsavedFormTracker'
 import { cn, fieldErrorClass, formatCurrency, formatDate, toDateInputValue } from '@/lib/utils'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { coaApi } from '@/modules/master-data/services/coaApi'
@@ -144,6 +145,12 @@ function FixedAssetFormPageContent() {
     resolver: zodResolver(fixedAssetSchema) as unknown as Resolver<FixedAssetFormValues>,
     values: formValues,
   })
+
+  // Halaman ini tidak memakai `usePersistentFormDraft`, jadi pelacaknya dipasang
+  // langsung — tanpa ini, Tutup Database/Keluar tidak tahu ada isian di sini.
+  // Hanya form utama: dialog Kapitalisasi/Pelepasan bersifat modal, tidak bisa
+  // ditinggalkan terbuka sambil membuka menu pengguna.
+  useUnsavedFormTracker({ control, enabled: isEditable })
 
   const capitalizeForm = useForm<CapitalizeFixedAssetFormValues>({
     resolver: zodResolver(capitalizeFixedAssetSchema) as unknown as Resolver<CapitalizeFixedAssetFormValues>,

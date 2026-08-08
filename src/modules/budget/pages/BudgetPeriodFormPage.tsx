@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/useToast'
+import { useUnsavedFormTracker } from '@/hooks/useUnsavedFormTracker'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { cn, fieldErrorClass } from '@/lib/utils'
 import { budgetApi } from '../services/budgetApi'
@@ -29,6 +30,7 @@ export default function BudgetPeriodFormPage() {
   const { toast } = useToast()
 
   const {
+    control,
     register,
     handleSubmit,
     setError,
@@ -37,6 +39,10 @@ export default function BudgetPeriodFormPage() {
     resolver: zodResolver(schema),
     defaultValues: { fiscal_year: String(new Date().getFullYear()) },
   })
+
+  // Halaman ini tidak memakai `usePersistentFormDraft`, jadi pelacaknya dipasang
+  // langsung — tanpa ini, Tutup Database/Keluar tidak tahu ada isian di sini.
+  useUnsavedFormTracker({ control })
 
   const createMut = useMutation({
     mutationFn: (data: FormValues) => budgetApi.createPeriod({ ...data, fiscal_year: Number(data.fiscal_year) }),

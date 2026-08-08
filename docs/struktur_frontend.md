@@ -256,6 +256,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____EmptyState.tsx
 | | | | |____ErrorBoundary.tsx
 | | | | |____SessionWarningDialog.tsx
+| | | | |____UnsavedFormsDialog.tsx
 | | | |____form/
 | | | | |____FieldError.tsx
 | | | | |____FormSection.tsx
@@ -309,6 +310,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____tooltip.tsx
 | |____hooks/
 | | |____use-toast.ts
+| | |____useCompanySession.ts
 | | |____useCompanySettings.ts
 | | |____useDocumentActions.ts
 | | |____useOpenPrimaryTab.ts
@@ -320,10 +322,13 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____useSessionTimeout.ts
 | | |____useTabFormState.ts
 | | |____useToast.ts
+| | |____useUnsavedFormTracker.ts
 | | |____useViewMode.ts
 | |____index.css
 | |____lib/
 | | |____apiError.ts
+| | |____companyScope.ts
+| | |____companySession.ts
 | | |____constants.ts
 | | |____exportCsv.ts
 | | |____formDraftStorage.ts
@@ -787,6 +792,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____useAuthStore.ts
 | | |____useCompanyStore.ts
 | | |____useTabStore.ts
+| | |____useUnsavedFormsStore.ts
 | |____types/
 | | |____api.types.ts
 | | |____auth.types.ts

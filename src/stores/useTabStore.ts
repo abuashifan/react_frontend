@@ -1,6 +1,19 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { clearFormDraftForPath } from '@/lib/formDraftStorage'
+import { useUnsavedFormsStore } from '@/stores/useUnsavedFormsStore'
+
+/**
+ * Menutup tab form = isian yang belum tersimpan memang dibuang user. Draft dan
+ * status "belum tersimpan" harus hilang bersamaan: kalau statusnya tertinggal,
+ * tab create berikutnya dengan path yang sama akan langsung dianggap kotor dan
+ * memblokir Tutup Database / Keluar tanpa ada isian apa pun.
+ */
+function discardFormWork(tab: SecondaryTab): void {
+  if (tab.type !== 'form' || !tab.path) return
+  clearFormDraftForPath(tab.path)
+  useUnsavedFormsStore.getState().markSaved(tab.path)
+}
 
 export type ModuleKey =
   | 'dashboard'
@@ -42,6 +55,7 @@ interface TabState {
 }
 
 interface TabActions {
+  resetForCompanyChange: () => void
   setActiveModule: (module: ModuleKey | null) => void
   openRibbon: () => void
   closeRibbon: () => void
@@ -74,6 +88,17 @@ export const DASHBOARD_TAB: PrimaryTab = {
   path: '/',
 }
 
+/** Keadaan awal shell: hanya Dashboard, ribbon tertutup. */
+const INITIAL_TAB_STATE: TabState = {
+  activeModule: null,
+  isRibbonOpen: false,
+  isSidebarCollapsed: false,
+  primaryTabs: [DASHBOARD_TAB],
+  activePrimaryTabId: DASHBOARD_TAB.id,
+  secondaryTabs: {},
+  activeSecondaryTabId: {},
+}
+
 function getActiveModuleForTab(tab: PrimaryTab | null): ModuleKey | null {
   if (!tab || tab.id === DASHBOARD_TAB.id) return null
   return tab.module
@@ -95,13 +120,24 @@ function createListTab(tab: PrimaryTab): SecondaryTab {
 export const useTabStore = create<TabState & TabActions>()(
   persist(
     (set, get) => ({
-      activeModule: null,
-      isRibbonOpen: false,
-      isSidebarCollapsed: false,
-      primaryTabs: [DASHBOARD_TAB],
-      activePrimaryTabId: DASHBOARD_TAB.id,
-      secondaryTabs: {},
-      activeSecondaryTabId: {},
+      ...INITIAL_TAB_STATE,
+
+      /**
+       * Tutup semua tab dan kembali ke Dashboard saat perusahaan aktif berganti.
+       *
+       * Wajib, bukan kosmetik: `path` tab memuat id record (`/master-data/coa/5`),
+       * dan tiap tenant punya database sendiri dengan autoincrement dari 1 — jadi
+       * id 5 ADA di kedua perusahaan sebagai akun yang berbeda. Membiarkan tab
+       * terbuka berarti tab berlabel akun perusahaan A menampilkan (dan menyunting)
+       * akun perusahaan B.
+       *
+       * Draft form di localStorage TIDAK dibuang: kuncinya sudah memuat
+       * `company-<id>` (lihat `usePersistentFormDraft`), jadi isian yang belum
+       * tersimpan tetap ada saat user kembali ke perusahaan itu. Karena itu
+       * `clearFormDraftForPath()` sengaja tidak dipanggil di sini, berbeda dengan
+       * `closePrimaryTab()` yang memang berarti user membuang isiannya.
+       */
+      resetForCompanyChange: () => set({ ...INITIAL_TAB_STATE }),
 
       setActiveModule: (module) => set({ activeModule: module }),
 
@@ -159,9 +195,7 @@ export const useTabStore = create<TabState & TabActions>()(
 
           // Tab modul ditutup ikut menutup semua tab form di dalamnya — buang juga
           // draft-nya, sama seperti menutup tab form satu per satu.
-          ;(state.secondaryTabs[tabId] ?? []).forEach((tab) => {
-            if (tab.type === 'form' && tab.path) clearFormDraftForPath(tab.path)
-          })
+          ;(state.secondaryTabs[tabId] ?? []).forEach(discardFormWork)
 
           delete nextSecondaryTabs[tabId]
           delete nextActiveSecondary[tabId]
@@ -243,11 +277,7 @@ export const useTabStore = create<TabState & TabActions>()(
           const closingTab = tabs.find((tab) => tab.id === secondaryTabId)
           if (closingTab?.pinned) return state
 
-          // Menutup tab form = isian yang belum tersimpan memang dibuang. Tanpa ini
-          // draft-nya tetap hidup dan mengisi form create berikutnya.
-          if (closingTab?.type === 'form' && closingTab.path) {
-            clearFormDraftForPath(closingTab.path)
-          }
+          if (closingTab) discardFormWork(closingTab)
 
           const closingIndex = tabs.findIndex((tab) => tab.id === secondaryTabId)
           const nextTabs = tabs.filter((tab) => tab.id !== secondaryTabId)
@@ -326,15 +356,7 @@ export const useTabStore = create<TabState & TabActions>()(
       storage: createJSONStorage(() => sessionStorage),
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') {
-          return {
-            activeModule: null,
-            isRibbonOpen: false,
-            isSidebarCollapsed: false,
-            primaryTabs: [DASHBOARD_TAB],
-            activePrimaryTabId: DASHBOARD_TAB.id,
-            secondaryTabs: {},
-            activeSecondaryTabId: {},
-          }
+          return { ...INITIAL_TAB_STATE }
         }
 
         const state = persistedState as Partial<TabState>

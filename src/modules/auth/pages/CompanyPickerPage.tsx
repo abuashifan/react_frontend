@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useCompanyStore } from '@/stores/useCompanyStore'
 import { useToast } from '@/hooks/useToast'
+import { closeDatabase, getUnsavedForms, logoutFromApp } from '@/lib/companySession'
 import { authApi } from '../services/authApi'
 import { companyApi } from '../services/companyApi'
 import { cn } from '@/lib/utils'
@@ -69,14 +70,34 @@ function CompanyCard({ company, onClick, isLoading }: CompanyCardProps) {
 
 export function CompanyPickerPage() {
   const navigate = useNavigate()
-  const { user, companies, setActiveCompany, setPermissions, logout } = useAuthStore()
+  const { user, companies, activeCompanyId, setActiveCompany, setPermissions } = useAuthStore()
   const { setActiveCompany: setCompanyStore } = useCompanyStore()
   const { toast } = useToast()
   const [loadingId, setLoadingId] = useState<number | null>(null)
 
   const sorted = sortByLastAccessed(companies)
 
+  /**
+   * Buka database sebuah perusahaan.
+   *
+   * Normalnya halaman ini hanya dicapai saat tidak ada database terbuka — menu
+   * "Tutup Database" menutupnya lebih dulu. Tapi rutenya tetap bisa dibuka lewat
+   * URL langsung sementara sebuah perusahaan masih terbuka, jadi perusahaan lama
+   * ditutup di sini juga: penjaga form belum tersimpan berlaku sama, dan
+   * `closeDatabase()` yang membersihkan cache serta tab.
+   */
   async function handleSelectCompany(company: Company) {
+    if (activeCompanyId !== null && activeCompanyId !== company.id) {
+      const unsaved = getUnsavedForms()
+      if (unsaved.length > 0) {
+        toast.error(
+          `Simpan atau tutup dulu ${unsaved.length} form yang belum tersimpan sebelum berpindah perusahaan.`,
+        )
+        return
+      }
+      closeDatabase()
+    }
+
     setLoadingId(company.id)
     try {
       const selectResponse = await companyApi.select(company.id)
@@ -96,12 +117,7 @@ export function CompanyPickerPage() {
   }
 
   async function handleLogout() {
-    try {
-      await authApi.logout()
-    } catch {
-      // Ignore network errors on logout
-    }
-    logout()
+    await logoutFromApp()
     navigate('/login', { replace: true })
   }
 

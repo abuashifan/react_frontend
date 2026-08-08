@@ -132,7 +132,33 @@ http.interceptors.request.use((config) => {
 })
 
 http.interceptors.response.use(
-  (response) => normalizeApiResponse(response.data),
+  (response) => {
+    // Balasan yang tiba SETELAH perusahaan aktif berganti tidak boleh dipakai:
+    // request-nya dikirim dengan `X-Company-ID` lama, jadi isinya milik tenant
+    // lain. `installCompanyScopeReset()` sudah mengosongkan cache saat perusahaan
+    // berganti, tapi request yang sedang terbang bisa mendarat sesudahnya.
+    //
+    // Hanya GET. Mutasi sudah dieksekusi server, jadi menolaknya di klien akan
+    // melaporkan gagal padahal datanya berubah.
+    const requestCompanyId = response.config.headers?.['X-Company-ID']
+    const { activeCompanyId } = useAuthStore.getState()
+    const isGet = (response.config.method ?? 'get').toLowerCase() === 'get'
+
+    if (
+      isGet &&
+      requestCompanyId != null &&
+      activeCompanyId !== null &&
+      String(requestCompanyId) !== String(activeCompanyId)
+    ) {
+      return Promise.reject({
+        success: false,
+        code: 'COMPANY_SWITCHED',
+        message: 'Perusahaan aktif berganti saat data dimuat.',
+      } as ApiError)
+    }
+
+    return normalizeApiResponse(response.data)
+  },
   (error) => {
     const status = error.response?.status
     const headers = error.response?.headers

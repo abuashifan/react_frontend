@@ -9,6 +9,7 @@ import {
 import { useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { forgetFormDraftPath, rememberFormDraftPath } from '@/lib/formDraftStorage'
+import { useUnsavedFormTracker } from '@/hooks/useUnsavedFormTracker'
 
 interface StoredFormDraft<TFormValues extends FieldValues, TExtra> {
   version: number
@@ -81,6 +82,12 @@ export function usePersistentFormDraft<TFormValues extends FieldValues, TExtra =
   const watchedValues = useWatch({ control }) as TFormValues
   const isRestoringRef = useRef(false)
   const restoredKeyRef = useRef<string | null>(null)
+
+  // Dipasang di sini karena 26 dari 28 halaman form sudah memakai hook ini —
+  // satu titik untuk melaporkan "ada isian belum tersimpan" ke aksi Tutup
+  // Database / Keluar. Dua halaman sisanya memanggil `useUnsavedFormTracker`
+  // langsung.
+  useUnsavedFormTracker({ control, enabled })
 
   const storageKey = useMemo(
     () =>
