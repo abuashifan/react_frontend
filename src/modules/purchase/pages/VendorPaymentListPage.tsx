@@ -11,7 +11,6 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
-import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
@@ -22,14 +21,12 @@ import type { VendorPayment, VendorPaymentStatus } from '../types/vendorPayment.
 import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: VendorPaymentStatus[] = ['draft', 'posted', 'void']
-const FILTER_HINT = 'Filter multi-select dan tanggal berlaku pada data halaman yang sedang dimuat.'
-
 export default function VendorPaymentListPage() {
   const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
-  const [prevSearch, setPrevSearch] = useState('')
+  const [prevFilters, setPrevFilters] = useState('')
   const [filterStatuses, setFilterStatuses] = useState<VendorPaymentStatus[]>([])
   const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [filterVendor, setFilterVendor] = useState<number | null>(null)
@@ -38,8 +35,12 @@ export default function VendorPaymentListPage() {
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
   const { void: voidPayment } = useVendorPaymentMutations()
 
-  if (search !== prevSearch) {
-    setPrevSearch(search)
+  // Semua filter kini dikirim ke server, jadi perubahannya harus
+  // mengembalikan halaman ke 1 -- kalau tidak, memfilter dari halaman jauh
+  // akan mendarat di daftar kosong.
+  const filterKey = `${search}|${filterStatuses.join(',')}|${dateRange.from}|${dateRange.to}|${String(filterVendor)}`
+  if (filterKey !== prevFilters) {
+    setPrevFilters(filterKey)
     setPage(0)
   }
 
@@ -48,18 +49,12 @@ export default function VendorPaymentListPage() {
     per_page: 25,
     search: search || undefined,
     vendor_id: filterVendor ?? undefined,
+    status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
+    date_from: dateRange.from || undefined,
+    date_to: dateRange.to || undefined,
   })
 
   const rows = useMemo(() => data?.data ?? [], [data])
-  const visibleRows = useMemo(
-    () =>
-      rows.filter((payment) => {
-        const matchesStatus = filterStatuses.length === 0 || filterStatuses.includes(payment.status)
-        const matchesDate = isDateInRange(payment.date, dateRange.from, dateRange.to)
-        return matchesStatus && matchesDate
-      }),
-    [rows, filterStatuses, dateRange.from, dateRange.to],
-  )
 
   const activeFilters = [filterStatuses.length > 0, dateRange.from, dateRange.to, filterVendor].filter(Boolean).length
 
@@ -76,7 +71,7 @@ export default function VendorPaymentListPage() {
       variant: 'destructive',
       permission: 'purchase.payments.void',
       onClick: (ids) => {
-        const eligible = visibleRows.filter((payment) => ids.includes(String(payment.id)) && payment.status !== 'void')
+        const eligible = rows.filter((payment) => ids.includes(String(payment.id)) && payment.status !== 'void')
         if (eligible.length === 0) {
           toast.warning('Dokumen yang dipilih tidak bisa di-void.')
           return
@@ -88,7 +83,7 @@ export default function VendorPaymentListPage() {
   ]
 
   const handleBulkVoid = async (reason: string) => {
-    const selectedPayments = visibleRows.filter((payment) => bulkVoidIds.includes(String(payment.id)))
+    const selectedPayments = rows.filter((payment) => bulkVoidIds.includes(String(payment.id)))
     if (selectedPayments.length === 0) {
       toast.warning('Tidak ada pembayaran vendor valid untuk di-void.')
       setBulkVoidOpen(false)
@@ -151,7 +146,6 @@ export default function VendorPaymentListPage() {
         setFilterVendor(null)
         resetSelection()
       }}
-      hint={FILTER_HINT}
     >
       <div className="border-b border-[#f1f5f9] px-4 py-3">
         <ListSearchBar
@@ -208,7 +202,7 @@ export default function VendorPaymentListPage() {
         }
       >
         <DataTable
-          data={visibleRows}
+          data={rows}
           columns={columns}
           totalRows={data?.meta.total ?? 0}
           isLoading={isLoading}
@@ -236,7 +230,7 @@ export default function VendorPaymentListPage() {
         onConfirm={(reason) => void handleBulkVoid(reason)}
         documentNumber={
           bulkVoidIds.length === 1
-            ? (visibleRows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
+            ? (rows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
             : `${bulkVoidIds.length} dokumen terpilih`
         }
         isLoading={voidPayment.isPending}

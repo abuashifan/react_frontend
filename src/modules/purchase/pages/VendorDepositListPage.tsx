@@ -11,7 +11,6 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
-import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
@@ -22,14 +21,12 @@ import type { VendorDeposit, VendorDepositStatus } from '../types/vendorDeposit.
 import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: VendorDepositStatus[] = ['draft', 'posted', 'partially_allocated', 'fully_allocated', 'refunded', 'void']
-const FILTER_HINT = 'Filter multi-select dan tanggal berlaku pada data halaman yang sedang dimuat.'
-
 export default function VendorDepositListPage() {
   const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
-  const [prevSearch, setPrevSearch] = useState('')
+  const [prevFilters, setPrevFilters] = useState('')
   const [filterStatuses, setFilterStatuses] = useState<VendorDepositStatus[]>([])
   const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [filterVendor, setFilterVendor] = useState<number | null>(null)
@@ -38,8 +35,12 @@ export default function VendorDepositListPage() {
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
   const { void: voidDeposit } = useVendorDepositMutations()
 
-  if (search !== prevSearch) {
-    setPrevSearch(search)
+  // Semua filter kini dikirim ke server, jadi perubahannya harus
+  // mengembalikan halaman ke 1 -- kalau tidak, memfilter dari halaman jauh
+  // akan mendarat di daftar kosong.
+  const filterKey = `${search}|${filterStatuses.join(',')}|${dateRange.from}|${dateRange.to}|${String(filterVendor)}`
+  if (filterKey !== prevFilters) {
+    setPrevFilters(filterKey)
     setPage(0)
   }
 
@@ -48,18 +49,12 @@ export default function VendorDepositListPage() {
     per_page: 25,
     search: search || undefined,
     vendor_id: filterVendor ?? undefined,
+    status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
+    date_from: dateRange.from || undefined,
+    date_to: dateRange.to || undefined,
   })
 
   const rows = useMemo(() => data?.data ?? [], [data])
-  const visibleRows = useMemo(
-    () =>
-      rows.filter((deposit) => {
-        const matchesStatus = filterStatuses.length === 0 || filterStatuses.includes(deposit.status)
-        const matchesDate = isDateInRange(deposit.date, dateRange.from, dateRange.to)
-        return matchesStatus && matchesDate
-      }),
-    [rows, filterStatuses, dateRange.from, dateRange.to],
-  )
 
   const activeFilters = [filterStatuses.length > 0, dateRange.from, dateRange.to, filterVendor].filter(Boolean).length
 
@@ -76,7 +71,7 @@ export default function VendorDepositListPage() {
       variant: 'destructive',
       permission: 'purchase.deposits.void',
       onClick: (ids) => {
-        const eligible = visibleRows.filter((deposit) => ids.includes(String(deposit.id)) && deposit.status !== 'void')
+        const eligible = rows.filter((deposit) => ids.includes(String(deposit.id)) && deposit.status !== 'void')
         if (eligible.length === 0) {
           toast.warning('Dokumen yang dipilih tidak bisa di-void.')
           return
@@ -88,7 +83,7 @@ export default function VendorDepositListPage() {
   ]
 
   const handleBulkVoid = async (reason: string) => {
-    const selectedDeposits = visibleRows.filter((deposit) => bulkVoidIds.includes(String(deposit.id)))
+    const selectedDeposits = rows.filter((deposit) => bulkVoidIds.includes(String(deposit.id)))
     if (selectedDeposits.length === 0) {
       toast.warning('Tidak ada deposit vendor valid untuk di-void.')
       setBulkVoidOpen(false)
@@ -158,7 +153,6 @@ export default function VendorDepositListPage() {
         setFilterVendor(null)
         resetSelection()
       }}
-      hint={FILTER_HINT}
     >
       <div className="border-b border-[#f1f5f9] px-4 py-3">
         <ListSearchBar
@@ -215,7 +209,7 @@ export default function VendorDepositListPage() {
         }
       >
         <DataTable
-          data={visibleRows}
+          data={rows}
           columns={columns}
           totalRows={data?.meta.total ?? 0}
           isLoading={isLoading}
@@ -243,7 +237,7 @@ export default function VendorDepositListPage() {
         onConfirm={(reason) => void handleBulkVoid(reason)}
         documentNumber={
           bulkVoidIds.length === 1
-            ? (visibleRows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
+            ? (rows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
             : `${bulkVoidIds.length} dokumen terpilih`
         }
         isLoading={voidDeposit.isPending}

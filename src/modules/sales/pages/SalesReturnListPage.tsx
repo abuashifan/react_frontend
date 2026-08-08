@@ -11,7 +11,6 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
-import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { useToast } from '@/hooks/useToast'
@@ -22,8 +21,6 @@ import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { SalesReturn, SalesReturnStatus } from '../types/salesReturn.types'
 
 const STATUSES: SalesReturnStatus[] = ['draft', 'approved', 'posted', 'void']
-const FILTER_HINT = 'Filter multi-select dan tanggal berlaku pada data halaman yang sedang dimuat.'
-
 export default function SalesReturnListPage() {
   const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
@@ -35,9 +32,13 @@ export default function SalesReturnListPage() {
   const [bulkVoidIds, setBulkVoidIds] = useState<string[]>([])
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const [prevSearch, setPrevSearch] = useState('')
-  if (search !== prevSearch) {
-    setPrevSearch(search)
+  const [prevFilters, setPrevFilters] = useState('')
+  // Semua filter kini dikirim ke server, jadi perubahannya harus
+  // mengembalikan halaman ke 1 -- kalau tidak, memfilter dari halaman jauh
+  // akan mendarat di daftar kosong.
+  const filterKey = `${search}|${filterStatuses.join(',')}|${dateRange.from}|${dateRange.to}|${String(filterCustomer)}`
+  if (filterKey !== prevFilters) {
+    setPrevFilters(filterKey)
     setPage(0)
   }
   const { void: voidReturn } = useSalesReturnMutations()
@@ -47,18 +48,12 @@ export default function SalesReturnListPage() {
     per_page: 25,
     search: search || undefined,
     customer_id: filterCustomer ?? undefined,
+    status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
+    date_from: dateRange.from || undefined,
+    date_to: dateRange.to || undefined,
   })
 
   const rows = useMemo(() => data?.data ?? [], [data])
-  const visibleRows = useMemo(
-    () =>
-      rows.filter((salesReturn) => {
-        const matchesStatus = filterStatuses.length === 0 || filterStatuses.includes(salesReturn.status)
-        const matchesDate = isDateInRange(salesReturn.date, dateRange.from, dateRange.to)
-        return matchesStatus && matchesDate
-      }),
-    [rows, filterStatuses, dateRange.from, dateRange.to],
-  )
 
   const activeFilters = [filterStatuses.length > 0, dateRange.from, dateRange.to, filterCustomer].filter(Boolean).length
 
@@ -75,7 +70,7 @@ export default function SalesReturnListPage() {
       variant: 'destructive',
       permission: 'sales.returns.void',
       onClick: (ids) => {
-        const eligible = visibleRows.filter((salesReturn) => ids.includes(String(salesReturn.id)) && salesReturn.status !== 'void')
+        const eligible = rows.filter((salesReturn) => ids.includes(String(salesReturn.id)) && salesReturn.status !== 'void')
         if (eligible.length === 0) {
           toast.warning('Dokumen yang dipilih tidak bisa di-void.')
           return
@@ -87,7 +82,7 @@ export default function SalesReturnListPage() {
   ]
 
   const handleBulkVoid = async (reason: string) => {
-    const selectedReturns = visibleRows.filter((salesReturn) => bulkVoidIds.includes(String(salesReturn.id)))
+    const selectedReturns = rows.filter((salesReturn) => bulkVoidIds.includes(String(salesReturn.id)))
     if (selectedReturns.length === 0) {
       toast.warning('Tidak ada retur penjualan valid untuk di-void.')
       setBulkVoidOpen(false)
@@ -161,7 +156,6 @@ export default function SalesReturnListPage() {
         setFilterCustomer(null)
         resetSelection()
       }}
-      hint={FILTER_HINT}
     >
       <div className="border-b border-[#f1f5f9] px-4 py-3">
         <ListSearchBar
@@ -218,7 +212,7 @@ export default function SalesReturnListPage() {
         }
       >
         <DataTable
-          data={visibleRows}
+          data={rows}
           columns={columns}
           totalRows={data?.meta.total ?? 0}
           isLoading={isLoading}
@@ -246,7 +240,7 @@ export default function SalesReturnListPage() {
         onConfirm={(reason) => void handleBulkVoid(reason)}
         documentNumber={
           bulkVoidIds.length === 1
-            ? (visibleRows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
+            ? (rows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
             : `${bulkVoidIds.length} dokumen terpilih`
         }
         isLoading={voidReturn.isPending}

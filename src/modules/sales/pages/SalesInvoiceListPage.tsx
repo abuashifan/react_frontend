@@ -11,7 +11,6 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
-import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
@@ -22,8 +21,6 @@ import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { SalesInvoice, SalesInvoiceStatus } from '../types/salesInvoice.types'
 
 const STATUSES: SalesInvoiceStatus[] = ['draft', 'approved', 'posted', 'partially_paid', 'paid', 'void']
-const FILTER_HINT = 'Filter multi-select dan tanggal berlaku pada data halaman yang sedang dimuat.'
-
 function isOverdue(invoice: SalesInvoice): boolean {
   if (!invoice.due_date) return false
   if (invoice.balance_due <= 0) return false
@@ -41,9 +38,13 @@ export default function SalesInvoiceListPage() {
   const [bulkVoidIds, setBulkVoidIds] = useState<string[]>([])
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const [prevSearch, setPrevSearch] = useState('')
-  if (search !== prevSearch) {
-    setPrevSearch(search)
+  // Semua filter dikirim ke server, jadi perubahannya harus mengembalikan
+  // halaman ke 1 -- kalau tidak, pengguna di halaman 5 yang memfilter sampai
+  // tersisa 2 halaman akan melihat daftar kosong dan mengira filternya rusak.
+  const [prevFilters, setPrevFilters] = useState('')
+  const filterKey = `${search}|${filterStatuses.join(',')}|${dateRange.from}|${dateRange.to}|${String(filterCustomer)}`
+  if (filterKey !== prevFilters) {
+    setPrevFilters(filterKey)
     setPage(0)
   }
   const { void: voidInvoice } = useSalesInvoiceMutations()
@@ -53,18 +54,12 @@ export default function SalesInvoiceListPage() {
     per_page: 25,
     search: search || undefined,
     customer_id: filterCustomer ?? undefined,
+    status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
+    date_from: dateRange.from || undefined,
+    date_to: dateRange.to || undefined,
   })
 
   const rows = useMemo(() => data?.data ?? [], [data])
-  const visibleRows = useMemo(
-    () =>
-      rows.filter((invoice) => {
-        const matchesStatus = filterStatuses.length === 0 || filterStatuses.includes(invoice.status)
-        const matchesDate = isDateInRange(invoice.date, dateRange.from, dateRange.to)
-        return matchesStatus && matchesDate
-      }),
-    [rows, filterStatuses, dateRange.from, dateRange.to],
-  )
 
   const activeFilters = [filterStatuses.length > 0, dateRange.from, dateRange.to, filterCustomer].filter(Boolean).length
 
@@ -81,7 +76,7 @@ export default function SalesInvoiceListPage() {
       variant: 'destructive',
       permission: 'sales.invoices.void',
       onClick: (ids) => {
-        const eligible = visibleRows.filter((invoice) => ids.includes(String(invoice.id)) && invoice.status !== 'void')
+        const eligible = rows.filter((invoice) => ids.includes(String(invoice.id)) && invoice.status !== 'void')
         if (eligible.length === 0) {
           toast.warning('Dokumen yang dipilih tidak bisa di-void.')
           return
@@ -93,7 +88,7 @@ export default function SalesInvoiceListPage() {
   ]
 
   const handleBulkVoid = async (reason: string) => {
-    const selectedInvoices = visibleRows.filter((invoice) => bulkVoidIds.includes(String(invoice.id)))
+    const selectedInvoices = rows.filter((invoice) => bulkVoidIds.includes(String(invoice.id)))
     if (selectedInvoices.length === 0) {
       toast.warning('Tidak ada invoice valid untuk di-void.')
       setBulkVoidOpen(false)
@@ -195,7 +190,6 @@ export default function SalesInvoiceListPage() {
         setFilterCustomer(null)
         resetSelection()
       }}
-      hint={FILTER_HINT}
     >
       <div className="border-b border-[#f1f5f9] px-4 py-3">
         <ListSearchBar
@@ -255,7 +249,7 @@ export default function SalesInvoiceListPage() {
         }
       >
         <DataTable
-          data={visibleRows}
+          data={rows}
           columns={columns}
           totalRows={data?.meta.total ?? 0}
           isLoading={isLoading}
@@ -283,7 +277,7 @@ export default function SalesInvoiceListPage() {
         onConfirm={(reason) => void handleBulkVoid(reason)}
         documentNumber={
           bulkVoidIds.length === 1
-            ? (visibleRows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
+            ? (rows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
             : `${bulkVoidIds.length} dokumen terpilih`
         }
         isLoading={voidInvoice.isPending}

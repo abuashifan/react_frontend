@@ -10,7 +10,6 @@ import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialo
 import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
-import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
@@ -20,14 +19,12 @@ import type { CashReceipt, CashBankStatus } from '../types/cashBank.types'
 import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: CashBankStatus[] = ['draft', 'posted', 'void']
-const FILTER_HINT = 'Filter multi-select dan tanggal berlaku pada data halaman yang sedang dimuat.'
-
 export default function CashReceiptListPage() {
   const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
-  const [prevSearch, setPrevSearch] = useState('')
+  const [prevFilters, setPrevFilters] = useState('')
   const [filterStatuses, setFilterStatuses] = useState<CashBankStatus[]>([])
   const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [selectedRows, setSelectedRows] = useState<string[]>([])
@@ -40,23 +37,25 @@ export default function CashReceiptListPage() {
     setSelectedRows([])
   }
 
-  if (search !== prevSearch) {
-    setPrevSearch(search)
+  // Semua filter kini dikirim ke server, jadi perubahannya harus
+  // mengembalikan halaman ke 1 -- kalau tidak, memfilter dari halaman jauh
+  // akan mendarat di daftar kosong.
+  const filterKey = `${search}|${filterStatuses.join(',')}|${dateRange.from}|${dateRange.to}`
+  if (filterKey !== prevFilters) {
+    setPrevFilters(filterKey)
     setPage(0)
     setSelectedRows([])
   }
 
-  const { data, isLoading, isFetching } = useCashReceiptList({ page: page + 1, per_page: 25, search: search || undefined })
+  const { data, isLoading, isFetching } = useCashReceiptList({
+    page: page + 1,
+    per_page: 25,
+    search: search || undefined,
+    status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
+    date_from: dateRange.from || undefined,
+    date_to: dateRange.to || undefined,
+  })
   const rows = useMemo(() => data?.data ?? [], [data])
-  const visibleRows = useMemo(
-    () =>
-      rows.filter((receipt) => {
-        const matchesStatus = filterStatuses.length === 0 || filterStatuses.includes(receipt.status)
-        const matchesDate = isDateInRange(receipt.receipt_date, dateRange.from, dateRange.to)
-        return matchesStatus && matchesDate
-      }),
-    [rows, filterStatuses, dateRange.from, dateRange.to],
-  )
 
   const activeFilters = [filterStatuses.length > 0, dateRange.from, dateRange.to].filter(Boolean).length
 
@@ -68,7 +67,7 @@ export default function CashReceiptListPage() {
       variant: 'destructive',
       permission: 'cash_bank.void',
       onClick: (ids) => {
-        const eligible = visibleRows.filter((receipt) => ids.includes(String(receipt.id)) && receipt.status !== 'void')
+        const eligible = rows.filter((receipt) => ids.includes(String(receipt.id)) && receipt.status !== 'void')
         if (eligible.length === 0) {
           toast.warning('Dokumen yang dipilih tidak bisa di-void.')
           return
@@ -80,7 +79,7 @@ export default function CashReceiptListPage() {
   ]
 
   const handleBulkVoid = async (reason: string) => {
-    const selectedReceipts = visibleRows.filter((receipt) => bulkVoidIds.includes(String(receipt.id)))
+    const selectedReceipts = rows.filter((receipt) => bulkVoidIds.includes(String(receipt.id)))
     if (selectedReceipts.length === 0) {
       toast.warning('Tidak ada penerimaan kas valid untuk di-void.')
       setBulkVoidOpen(false)
@@ -139,7 +138,6 @@ export default function CashReceiptListPage() {
         setDateRange({ from: '', to: '' })
         resetSelection()
       }}
-      hint={FILTER_HINT}
     >
       <div className="border-b border-[#f1f5f9] px-4 py-3">
         <ListSearchBar
@@ -185,7 +183,7 @@ export default function CashReceiptListPage() {
         }
       >
         <DataTable
-          data={visibleRows}
+          data={rows}
           columns={columns}
           totalRows={data?.meta.total ?? 0}
           isLoading={isLoading}
@@ -213,7 +211,7 @@ export default function CashReceiptListPage() {
         onConfirm={(reason) => void handleBulkVoid(reason)}
         documentNumber={
           bulkVoidIds.length === 1
-            ? (visibleRows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
+            ? (rows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
             : `${bulkVoidIds.length} dokumen terpilih`
         }
         isLoading={voidReceipt.isPending}
