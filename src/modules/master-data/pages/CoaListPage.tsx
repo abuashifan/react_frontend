@@ -150,9 +150,16 @@ export default function CoaListPage() {
   const [togglingId, setTogglingId] = useState<number | null>(null)
   const [search, setSearch] = useState('')
 
+  // Sengaja TANPA page/per_page: halaman ini merender pohon parent/child
+  // (`buildTree`), jadi ia butuh SELURUH akun sekaligus — anak di halaman 2
+  // yang induknya di halaman 1 akan jadi yatim dan hilang dari tampilan.
+  //
+  // Sebelumnya di sini terkunci `page: 1, per_page: 100` tanpa UI paginasi,
+  // sehingga perusahaan dengan lebih dari 100 akun kehilangan sisanya diam-diam.
+  // Menaikkan angkanya cuma memindahkan batasnya; yang benar adalah tidak
+  // mengirim parameter paginasi sama sekali. Backend mengembalikan semua baris
+  // dalam kasus itu — kontrak `AppliesListQuery::applyListQuery()`.
   const { data, isLoading } = useCoaList({
-    page: 1,
-    per_page: 100,
     account_type: filterType,
     is_active: filterActive,
     search: search || undefined,

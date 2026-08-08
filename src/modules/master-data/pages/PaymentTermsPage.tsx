@@ -33,15 +33,27 @@ export default function PaymentTermsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<PaymentTerms | null>(null)
 
+  const [page, setPage] = useState(1)
   // Default: hanya tampilkan syarat bayar aktif. Pilih "Semua" di filter Status untuk menampilkan semuanya.
   const [filterActive, setFilterActive] = useState<boolean | undefined>(true)
   const [selectedRows, setSelectedRows] = useState<string[]>([])
   const [search, setSearch] = useState('')
 
   const { data, isLoading, isFetching } = usePaymentTermsList({
+    page,
+    per_page: 25,
     is_active: filterActive,
     search: search || undefined,
   })
+
+  // Kembali ke halaman 1 saat filter berubah, supaya tidak mendarat di
+  // halaman kosong setelah hasilnya menyusut.
+  const filterKey = `${search}|${String(filterActive)}`
+  const [prevFilters, setPrevFilters] = useState('')
+  if (filterKey !== prevFilters) {
+    setPrevFilters(filterKey)
+    setPage(1)
+  }
   const { create, update, activate, deactivate } = usePaymentTermsMutations()
 
   const {
@@ -215,8 +227,8 @@ export default function PaymentTermsPage() {
         totalRows={data?.meta.total ?? 0}
         isLoading={isLoading}
         isFetching={isFetching}
-        pagination={{ pageIndex: 0, pageSize: 25 }}
-        onPaginationChange={() => {}}
+        pagination={{ pageIndex: page - 1, pageSize: 25 }}
+        onPaginationChange={(s) => setPage(s.pageIndex + 1)}
         selectedRows={selectedRows}
         onRowSelect={setSelectedRows}
         bulkActions={bulkActions}

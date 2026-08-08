@@ -18,8 +18,14 @@ export interface Coa {
 }
 
 export interface CoaListParams {
-  page: number
-  per_page: 25 | 50 | 100
+  /**
+   * Opsional, dan daftar COA sengaja TIDAK mengirimnya — lihat catatan di
+   * `CoaListPage`. Backend mengembalikan seluruh baris tanpa paginasi bila
+   * `page`/`per_page` tidak dikirim sama sekali (kontrak
+   * `AppliesListQuery::applyListQuery()`).
+   */
+  page?: number
+  per_page?: 25 | 50 | 100
   search?: string
   account_type?: CoaType
   is_active?: boolean

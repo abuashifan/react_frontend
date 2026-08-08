@@ -49,6 +49,7 @@ export default function ProyekPage() {
   const [editingItem, setEditingItem] = useState<Proyek | null>(null)
   const [filterStatus, setFilterStatus] = useState<ProyekStatus | undefined>()
   const [formStatus, setFormStatus] = useState<ProyekStatus>('active')
+  const [page, setPage] = useState(1)
   // Dua sumbu berbeda: `status` adalah siklus proyek (aktif/selesai/batal),
   // `is_active` adalah dipakai/tidak. Proyek satu-satunya master data yang
   // punya keduanya -- lihat 00-conventions.md 6b rencana list-filters-frontend.
@@ -57,10 +58,21 @@ export default function ProyekPage() {
   const [search, setSearch] = useState('')
 
   const { data, isLoading, isFetching } = useProyekList({
+    page,
+    per_page: 25,
     status: filterStatus,
     is_active: filterActive,
     search: search || undefined,
   })
+
+  // Kembali ke halaman 1 saat filter berubah, supaya tidak mendarat di
+  // halaman kosong setelah hasilnya menyusut.
+  const filterKey = `${search}|${String(filterActive)}|${String(filterStatus)}`
+  const [prevFilters, setPrevFilters] = useState('')
+  if (filterKey !== prevFilters) {
+    setPrevFilters(filterKey)
+    setPage(1)
+  }
   const { create, update, activate, deactivate } = useProyekMutations()
 
   const {
@@ -275,8 +287,8 @@ export default function ProyekPage() {
         totalRows={data?.meta.total ?? 0}
         isLoading={isLoading}
         isFetching={isFetching}
-        pagination={{ pageIndex: 0, pageSize: 25 }}
-        onPaginationChange={() => {}}
+        pagination={{ pageIndex: page - 1, pageSize: 25 }}
+        onPaginationChange={(s) => setPage(s.pageIndex + 1)}
         selectedRows={selectedRows}
         onRowSelect={setSelectedRows}
         bulkActions={bulkActions}

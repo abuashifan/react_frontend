@@ -2,11 +2,11 @@ import { useState } from 'react'
 import { Plus, Trash2, RefreshCw } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
@@ -188,14 +188,14 @@ export default function StockMovementListPage() {
         resetSelection()
       }}
     >
-      <FilterSection title="Cari">
-        <Input
+      <div className="border-b border-[#f1f5f9] px-4 py-3">
+        <ListSearchBar
           value={search}
-          onChange={(e) => { setSearch(e.target.value); resetSelection() }}
+          onChange={(v) => { setSearch(v); resetSelection() }}
           placeholder="Nomor, sumber..."
-          className="h-8 text-[12px]"
+          className="w-full max-w-none"
         />
-      </FilterSection>
+      </div>
       <FilterSection title="Gudang">
         <SearchableSelect
           value={filterWarehouse}

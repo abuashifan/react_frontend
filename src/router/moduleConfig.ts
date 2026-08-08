@@ -8,7 +8,7 @@ import {
   CheckSquare,
   Landmark, Users, Ruler, Warehouse, CalendarClock, Building2,
   FolderKanban, Map, Building, RefreshCcw, UserCog, ShieldCheck, Star,
-  Mail, Shield, Archive,
+  Mail, Shield, Archive, Tags,
 } from 'lucide-react'
 
 export interface RibbonItem {
@@ -53,6 +53,10 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
       { id: 'chart-of-accounts', label: 'Akun (COA)', icon: Landmark, path: '/master-data/coa', permission: 'master-data.view' },
       { id: 'contacts', label: 'Kontak', icon: Users, path: '/master-data/contacts', permission: 'master-data.view' },
       { id: 'products', label: 'Produk', icon: Package, path: '/master-data/products', permission: 'master-data.view' },
+      // Halaman & route-nya sudah lama ada, tapi entri menunya tidak pernah
+      // dibuat — jadi hanya terjangkau lewat URL langsung. Delapan master data
+      // lain punya entri; ini kelupaan, bukan kesengajaan.
+      { id: 'product-categories', label: 'Kategori Produk', icon: Tags, path: '/master-data/product-categories', permission: 'master-data.view' },
       { id: 'units', label: 'Satuan', icon: Ruler, path: '/master-data/units', permission: 'master-data.view' },
       { id: 'warehouses', label: 'Gudang', icon: Warehouse, path: '/master-data/warehouses', permission: 'master-data.view' },
       { id: 'payment-terms', label: 'Syarat Bayar', icon: CalendarClock, path: '/master-data/payment-terms', permission: 'master-data.view' },
