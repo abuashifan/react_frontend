@@ -73,7 +73,6 @@ export default function ProdukListPage() {
   const [filterActive, setFilterActive] = useState<boolean | undefined>(true)
   const [selectedRows, setSelectedRows] = useState<string[]>([])
   const [search, setSearch] = useState('')
-  const [prevSearch, setPrevSearch] = useState('')
   const { data, isLoading, isFetching } = useProdukList({
     page,
     per_page: perPage,
@@ -82,9 +81,15 @@ export default function ProdukListPage() {
     search: search || undefined,
   })
 
-  if (search !== prevSearch) {
-    setPrevSearch(search)
+  // Setiap perubahan filter mengembalikan ke halaman 1 dan mengosongkan
+  // seleksi — kalau tidak, memilih kategori saat berada di halaman 3 mendarat
+  // di halaman kosong, dan aksi massal bisa mengenai baris yang tidak terlihat.
+  const [prevFilters, setPrevFilters] = useState('')
+  const filterKey = `${search}|${String(filterCategoryId)}|${String(filterActive)}`
+  if (filterKey !== prevFilters) {
+    setPrevFilters(filterKey)
     setPage(1)
+    setSelectedRows([])
   }
 
   const { activate, deactivate } = useProdukMutations()
