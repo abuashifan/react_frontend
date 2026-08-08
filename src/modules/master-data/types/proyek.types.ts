@@ -4,7 +4,14 @@ export interface Proyek {
   id: number
   code: string
   name: string
+  /** Siklus proyek. Berbeda dari `is_active` — lihat catatan di bawah. */
   status: ProyekStatus
+  /**
+   * Dipakai/tidak, sumbu terpisah dari `status`. Kolomnya sudah lama ada di
+   * backend (`projects.is_active`) tapi tidak pernah dideklarasikan di sini,
+   * sehingga daftar proyek tidak bisa menampilkan atau menyaringnya.
+   */
+  is_active: boolean
   start_date: string | null
   end_date: string | null
   created_at: string

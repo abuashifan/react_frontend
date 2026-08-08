@@ -1,8 +1,11 @@
 import { useState } from 'react'
-import { Plus, Pencil, PowerOff } from 'lucide-react'
+import { Plus, Pencil, Power, PowerOff } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
+import { FilterSidebar } from '@/components/shared/layout/FilterSidebar'
+import { SingleCheckboxFilter } from '@/components/shared/filter/SingleCheckboxFilter'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { ActiveStatusBadge } from '@/components/shared/badge/ActiveStatusBadge'
@@ -15,9 +18,15 @@ import { useToast } from '@/hooks/useToast'
 import { useKategoriProdukList, useKategoriProdukMutations } from '../hooks/useSimpleLists'
 import { kategoriProdukSchema, type KategoriProdukFormValues } from '../schemas/kategoriProdukSchema'
 import type { KategoriProduk } from '../types/kategoriProduk.types'
-import type { ColumnDef } from '@/components/shared/table/DataTable'
-import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
+import { applyApiValidationErrors, getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { cn, fieldErrorClass } from '@/lib/utils'
+
+const STATUS_OPTIONS: { value: boolean | undefined; label: string }[] = [
+  { value: true, label: 'Aktif' },
+  { value: false, label: 'Nonaktif' },
+  { value: undefined, label: 'Semua' },
+]
 
 export default function KategoriProdukPage() {
   const { toast } = useToast()
@@ -25,8 +34,26 @@ export default function KategoriProdukPage() {
   const [editingItem, setEditingItem] = useState<KategoriProduk | null>(null)
   const [page, setPage] = useState(1)
 
-  const { data, isLoading, isFetching } = useKategoriProdukList()
-  const { create, update, deactivate } = useKategoriProdukMutations()
+  // Default: hanya tampilkan kategori produk aktif. Pilih "Semua" di filter Status untuk menampilkan semuanya.
+  const [filterActive, setFilterActive] = useState<boolean | undefined>(true)
+  const [selectedRows, setSelectedRows] = useState<string[]>([])
+  const [search, setSearch] = useState('')
+  const [prevFilters, setPrevFilters] = useState('')
+
+  const { data, isLoading, isFetching } = useKategoriProdukList({
+    page,
+    is_active: filterActive,
+    search: search || undefined,
+  })
+
+  // Kembali ke halaman 1 saat filter berubah, supaya tidak mendarat di halaman kosong.
+  const filterKey = `${search}|${String(filterActive)}`
+  if (filterKey !== prevFilters) {
+    setPrevFilters(filterKey)
+    setPage(1)
+  }
+
+  const { create, update, activate, deactivate } = useKategoriProdukMutations()
 
   const {
     register,
@@ -67,15 +94,74 @@ export default function KategoriProdukPage() {
     }
   }
 
-  const handleDeactivate = async (item: KategoriProduk) => {
-    if (!confirm(`Nonaktifkan kategori "${item.name}"? Data historis tidak akan dihapus.`)) return
-    try {
-      await deactivate.mutateAsync(item.id)
-      toast.success('Kategori berhasil dinonaktifkan.')
-    } catch (error) {
-      toast.error(getApiErrorMessage(error, 'Gagal menonaktifkan kategori.'))
+  const runBulkStatusChange = async (
+    ids: string[],
+    targetActive: boolean,
+    mutateAsync: (id: number) => Promise<unknown>,
+  ) => {
+    const rows = data?.data ?? []
+    const eligible = rows.filter((r) => ids.includes(String(r.id)) && r.is_active !== targetActive)
+    const verb = targetActive ? 'diaktifkan' : 'dinonaktifkan'
+    if (eligible.length === 0) {
+      toast.warning(`Kategori yang dipilih sudah ${verb}.`)
+      return
     }
+    if (!targetActive && !confirm(`Nonaktifkan ${eligible.length} kategori produk terpilih? Data historis tidak akan dihapus.`)) return
+
+    const results = await Promise.allSettled(eligible.map((r) => mutateAsync(r.id)))
+    const successCount = results.filter((r) => r.status === 'fulfilled').length
+    const failureCount = results.length - successCount
+    const failureDetail = getBulkFailureDetail(results)
+
+    if (failureCount === 0) {
+      toast.success(`${successCount} kategori produk berhasil ${verb}.`)
+    } else if (successCount === 0) {
+      toast.error(`Gagal ${targetActive ? 'mengaktifkan' : 'menonaktifkan'} ${failureCount} kategori produk.${failureDetail ? ` ${failureDetail}` : ''}`)
+    } else {
+      toast.warning(`${successCount} kategori produk ${verb}, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
+    }
+    setSelectedRows([])
   }
+
+  const bulkActions: BulkAction[] = [
+    {
+      id: 'bulk-activate',
+      label: 'Aktifkan Terpilih',
+      icon: <Power className="h-3.5 w-3.5" />,
+      permission: 'products.edit',
+      onClick: (ids) => runBulkStatusChange(ids, true, (id) => activate.mutateAsync(id)),
+    },
+    {
+      id: 'bulk-deactivate',
+      label: 'Nonaktifkan Terpilih',
+      icon: <PowerOff className="h-3.5 w-3.5" />,
+      variant: 'destructive',
+      permission: 'products.deactivate',
+      onClick: (ids) => runBulkStatusChange(ids, false, (id) => deactivate.mutateAsync(id)),
+    },
+  ]
+
+  const sidebar = (
+    <FilterSidebar
+      activeCount={filterActive !== undefined ? 1 : 0}
+      onReset={() => setFilterActive(true)}
+    >
+      <div className="border-b border-[#f1f5f9] px-4 py-3">
+        <ListSearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Cari nama kategori..."
+          className="w-full max-w-none"
+        />
+      </div>
+      <SingleCheckboxFilter
+        title="Status"
+        options={STATUS_OPTIONS}
+        value={filterActive}
+        onChange={setFilterActive}
+      />
+    </FilterSidebar>
+  )
 
   const columns: ColumnDef<KategoriProduk>[] = [
     {
@@ -92,22 +178,16 @@ export default function KategoriProdukPage() {
       cell: ({ original }) => <ActiveStatusBadge isActive={original.is_active} />,
     },
     {
+      // Aktif/nonaktif pindah ke bulkActions (format KontakListPage).
       id: 'actions',
       header: '',
-      size: 120,
+      size: 60,
       cell: ({ original }) => (
-        <div className="flex items-center gap-1">
-          <PermissionGuard permission="products.edit">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-[#326273]" onClick={() => openEdit(original)}>
-              <Pencil className="w-3.5 h-3.5" />
-            </Button>
-          </PermissionGuard>
-          <PermissionGuard permission="products.deactivate">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-amber-600" onClick={() => handleDeactivate(original)}>
-              <PowerOff className="w-3.5 h-3.5" />
-            </Button>
-          </PermissionGuard>
-        </div>
+        <PermissionGuard permission="products.edit">
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-[#326273]" onClick={() => openEdit(original)}>
+            <Pencil className="w-3.5 h-3.5" />
+          </Button>
+        </PermissionGuard>
       ),
     },
   ]
@@ -116,6 +196,7 @@ export default function KategoriProdukPage() {
     <WorkspaceLayout
       title="Kategori Produk"
       breadcrumb={[{ label: 'Master Data' }, { label: 'Kategori Produk' }]}
+      sidebar={sidebar}
       action={
         <PermissionGuard permission="products.create">
           <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={openCreate}>
@@ -132,6 +213,9 @@ export default function KategoriProdukPage() {
         isFetching={isFetching}
         pagination={{ pageIndex: page - 1, pageSize: 25 }}
         onPaginationChange={(s) => setPage(s.pageIndex + 1)}
+        selectedRows={selectedRows}
+        onRowSelect={setSelectedRows}
+        bulkActions={bulkActions}
         emptyTitle="Belum ada kategori produk"
         emptyDescription="Tambahkan kategori untuk mengelompokkan produk."
       />

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Power, PowerOff } from 'lucide-react'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
@@ -10,10 +10,12 @@ import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { ActiveStatusBadge } from '@/components/shared/badge/ActiveStatusBadge'
 import { Button } from '@/components/ui/button'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
-import { useProdukList } from '../hooks/useProdukList'
+import { useToast } from '@/hooks/useToast'
+import { getBulkFailureDetail } from '@/lib/apiError'
+import { useProdukList, useProdukMutations } from '../hooks/useProdukList'
 import { kategoriProdukApi } from '../services/kategoriProdukApi'
 import type { Produk } from '../types/produk.types'
-import type { ColumnDef } from '@/components/shared/table/DataTable'
+import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 
 const STATUS_OPTIONS: { value: boolean | undefined; label: string }[] = [
   { value: true, label: 'Aktif' },
@@ -63,11 +65,13 @@ const columns: ColumnDef<Produk>[] = [
 
 export default function ProdukListPage() {
   const { openRecordTab } = useRecordTab()
+  const { toast } = useToast()
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
   const [filterCategoryId, setFilterCategoryId] = useState<number | null>(null)
   // Default: hanya tampilkan produk aktif. Pilih "Semua" di filter Status untuk menampilkan semuanya.
   const [filterActive, setFilterActive] = useState<boolean | undefined>(true)
+  const [selectedRows, setSelectedRows] = useState<string[]>([])
   const [search, setSearch] = useState('')
   const [prevSearch, setPrevSearch] = useState('')
   const { data, isLoading, isFetching } = useProdukList({
@@ -83,7 +87,59 @@ export default function ProdukListPage() {
     setPage(1)
   }
 
+  const { activate, deactivate } = useProdukMutations()
+
   const activeFilterCount = [filterCategoryId, filterActive].filter((v) => v !== undefined && v !== null).length
+
+  // Pola identik dengan KontakListPage (halaman acuan): baris yang sudah dalam
+  // status tujuan tidak ikut dikirim, dan menonaktifkan minta konfirmasi
+  // sedangkan mengaktifkan tidak.
+  const runBulkStatusChange = async (
+    ids: string[],
+    targetActive: boolean,
+    mutateAsync: (id: number) => Promise<unknown>,
+  ) => {
+    const rows = data?.data ?? []
+    const eligible = rows.filter((p) => ids.includes(String(p.id)) && p.is_active !== targetActive)
+    const verb = targetActive ? 'diaktifkan' : 'dinonaktifkan'
+    if (eligible.length === 0) {
+      toast.warning(`Produk yang dipilih sudah ${verb}.`)
+      return
+    }
+    if (!targetActive && !confirm(`Nonaktifkan ${eligible.length} produk terpilih?`)) return
+
+    const results = await Promise.allSettled(eligible.map((p) => mutateAsync(p.id)))
+    const successCount = results.filter((r) => r.status === 'fulfilled').length
+    const failureCount = results.length - successCount
+    const failureDetail = getBulkFailureDetail(results)
+
+    if (failureCount === 0) {
+      toast.success(`${successCount} produk berhasil ${verb}.`)
+    } else if (successCount === 0) {
+      toast.error(`Gagal ${targetActive ? 'mengaktifkan' : 'menonaktifkan'} ${failureCount} produk.${failureDetail ? ` ${failureDetail}` : ''}`)
+    } else {
+      toast.warning(`${successCount} produk ${verb}, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
+    }
+    setSelectedRows([])
+  }
+
+  const bulkActions: BulkAction[] = [
+    {
+      id: 'bulk-activate',
+      label: 'Aktifkan Terpilih',
+      icon: <Power className="h-3.5 w-3.5" />,
+      permission: 'products.edit',
+      onClick: (ids) => runBulkStatusChange(ids, true, (id) => activate.mutateAsync(id)),
+    },
+    {
+      id: 'bulk-deactivate',
+      label: 'Nonaktifkan Terpilih',
+      icon: <PowerOff className="h-3.5 w-3.5" />,
+      variant: 'destructive',
+      permission: 'products.deactivate',
+      onClick: (ids) => runBulkStatusChange(ids, false, (id) => deactivate.mutateAsync(id)),
+    },
+  ]
 
   const sidebar = (
     <FilterSidebar
@@ -140,6 +196,9 @@ export default function ProdukListPage() {
         isFetching={isFetching}
         pagination={{ pageIndex: page - 1, pageSize: perPage }}
         onPaginationChange={(s) => { setPage(s.pageIndex + 1); setPerPage(s.pageSize) }}
+        selectedRows={selectedRows}
+        onRowSelect={setSelectedRows}
+        bulkActions={bulkActions}
         onRowClick={(row) => openRecordTab({ label: row.product_name, path: `/master-data/products/${row.id}` })}
         emptyTitle="Belum ada produk"
         emptyDescription="Tambahkan produk pertama untuk memulai."
