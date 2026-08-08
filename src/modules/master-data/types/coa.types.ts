@@ -11,19 +11,20 @@ export interface Coa {
   normal_balance?: 'debit' | 'credit' | null
   is_cash_bank?: boolean
   is_active: boolean
-  level: number
-  children?: Coa[]
+  /**
+   * Kedalaman baris dalam pohon akun, 0 untuk akun tanpa induk.
+   *
+   * Dihitung server lewat recursive CTE dan HANYA dikirim pada daftar mode
+   * hierarkis — saat pencarian atau sort kolom aktif, daftarnya rata dan field
+   * ini tidak ada. Dipakai untuk indentasi, dan sengaja per baris supaya
+   * indentasinya tetap benar walau induknya berada di halaman lain.
+   */
+  depth?: number
   created_at: string
   updated_at: string
 }
 
 export interface CoaListParams {
-  /**
-   * Opsional, dan daftar COA sengaja TIDAK mengirimnya — lihat catatan di
-   * `CoaListPage`. Backend mengembalikan seluruh baris tanpa paginasi bila
-   * `page`/`per_page` tidak dikirim sama sekali (kontrak
-   * `AppliesListQuery::applyListQuery()`).
-   */
   page?: number
   per_page?: 25 | 50 | 100
   search?: string
