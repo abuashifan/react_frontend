@@ -47,12 +47,11 @@ export interface SalesInvoiceListParams {
   page: number
   per_page: number
   search?: string
-  status?: SalesInvoiceStatus
+  /** Satu status, atau beberapa dipisah koma (mis. "draft,posted"). */
+  status?: string
   customer_id?: number
   date_from?: string
   date_to?: string
-  due_from?: string
-  due_to?: string
 }
 
 export interface SalesInvoiceLinePayload {

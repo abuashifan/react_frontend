@@ -34,7 +34,8 @@ export interface ProformaListParams {
   page: number
   per_page: number
   search?: string
-  status?: ProformaStatus
+  /** Satu status, atau beberapa dipisah koma (mis. "draft,posted"). */
+  status?: string
   customer_id?: number
   date_from?: string
   date_to?: string

@@ -73,8 +73,8 @@ export default function StockMovementListPage() {
     per_page: perPage,
     search: search || undefined,
     warehouse_id: filterWarehouse ?? undefined,
-    status: filterStatuses.length > 0 ? filterStatuses.join(',') as StockMovementStatus : undefined,
-    movement_type: filterTypes.length > 0 ? filterTypes.join(',') as StockMovementType : undefined,
+    status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
+    movement_type: filterTypes.length > 0 ? filterTypes.join(',') : undefined,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
   })

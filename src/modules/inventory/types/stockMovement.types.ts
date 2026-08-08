@@ -51,10 +51,12 @@ export interface StockMovementListParams {
   page: number
   per_page: number
   search?: string
-  movement_type?: StockMovementType
+  /** Satu tipe, atau beberapa dipisah koma. */
+  movement_type?: string
   warehouse_id?: number
   product_id?: number
-  status?: StockMovementStatus
+  /** Satu status, atau beberapa dipisah koma (mis. "draft,posted"). */
+  status?: string
   date_from?: string
   date_to?: string
 }

@@ -42,7 +42,8 @@ export interface JournalEntryListParams {
   page: number
   per_page: number
   search?: string
-  status?: JournalEntryStatus
+  /** Satu status, atau beberapa dipisah koma (mis. "draft,posted"). */
+  status?: string
   date_from?: string
   date_to?: string
   is_system_generated?: boolean

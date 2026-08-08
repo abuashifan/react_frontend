@@ -36,7 +36,8 @@ export interface StockAdjustmentListParams {
   per_page: number
   search?: string
   warehouse_id?: number
-  status?: StockAdjustmentStatus
+  /** Satu status, atau beberapa dipisah koma (mis. "draft,posted"). */
+  status?: string
   date_from?: string
   date_to?: string
 }

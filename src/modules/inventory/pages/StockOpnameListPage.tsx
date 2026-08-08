@@ -43,7 +43,7 @@ export default function StockOpnameListPage() {
     per_page: perPage,
     search: search || undefined,
     warehouse_id: filterWarehouse ?? undefined,
-    status: filterStatuses.length > 0 ? filterStatuses.join(',') as StockOpnameStatus : undefined,
+    status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
   })

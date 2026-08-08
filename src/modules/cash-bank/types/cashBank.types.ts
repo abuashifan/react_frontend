@@ -84,7 +84,8 @@ export interface CashBankListParams {
   page: number
   per_page: number
   search?: string
-  status?: CashBankStatus
+  /** Satu status, atau beberapa dipisah koma (mis. "draft,posted"). */
+  status?: string
   date_from?: string
   date_to?: string
   cash_bank_account_id?: number
