@@ -215,7 +215,6 @@ export default function SalesInvoiceListPage() {
           setDateRange(next)
           resetSelection()
         }}
-        note="Berlaku pada data halaman yang sedang dimuat."
       />
       <FilterSection title="Customer">
         <SearchableSelect

@@ -163,7 +163,6 @@ export default function BankTransferListPage() {
           setDateRange(next)
           resetSelection()
         }}
-        note="Berlaku pada data halaman yang sedang dimuat."
       />
     </FilterSidebar>
   )
