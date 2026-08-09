@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, Power, PowerOff } from 'lucide-react'
+import { Plus, Power, PowerOff } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { FieldError } from '@/components/shared/form/FieldError'
+import { usePermission } from '@/hooks/usePermission'
 import { useToast } from '@/hooks/useToast'
 import { useDepartemenList, useDepartemenMutations } from '../hooks/useSimpleLists'
 import { departemenSchema, type DepartemenFormValues } from '../schemas/departemenSchema'
@@ -30,6 +31,7 @@ const STATUS_OPTIONS: { value: boolean | undefined; label: string }[] = [
 
 export default function DepartemenPage() {
   const { toast } = useToast()
+  const { can } = usePermission()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<Departemen | null>(null)
 
@@ -185,20 +187,6 @@ export default function DepartemenPage() {
       size: 90,
       cell: ({ original }) => <ActiveStatusBadge isActive={original.is_active} />,
     },
-    {
-      // Aktif/nonaktif pindah ke bulkActions (format KontakListPage); tombol
-      // per baris tinggal edit saja.
-      id: 'actions',
-      header: '',
-      size: 60,
-      cell: ({ original }) => (
-        <PermissionGuard permission="departments.edit">
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-[#326273]" onClick={() => openEdit(original)}>
-            <Pencil className="w-3.5 h-3.5" />
-          </Button>
-        </PermissionGuard>
-      ),
-    },
   ]
 
   return (
@@ -225,6 +213,11 @@ export default function DepartemenPage() {
         selectedRows={selectedRows}
         onRowSelect={setSelectedRows}
         bulkActions={bulkActions}
+        // Baris dibuka dengan mengklik barisnya, sama seperti daftar Produk —
+        // tidak ada tombol edit per baris. Tanpa izin ubah, baris tidak bisa
+        // diklik sama sekali supaya user tidak dibawa ke dialog yang pasti
+        // ditolak backend saat disimpan.
+        onRowClick={can('departments.edit') ? openEdit : undefined}
         emptyTitle="Belum ada departemen"
         emptyDescription="Tambahkan departemen untuk pengelompokan transaksi."
       />

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, Power, PowerOff } from 'lucide-react'
+import { Plus, Power, PowerOff } from 'lucide-react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { FieldError } from '@/components/shared/form/FieldError'
+import { usePermission } from '@/hooks/usePermission'
 import { useToast } from '@/hooks/useToast'
 import { useGudangList, useGudangMutations } from '../hooks/useSimpleLists'
 import { gudangSchema, type GudangFormValues } from '../schemas/gudangSchema'
@@ -32,6 +33,7 @@ const STATUS_OPTIONS: { value: boolean | undefined; label: string }[] = [
 
 export default function GudangPage() {
   const { toast } = useToast()
+  const { can } = usePermission()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<Gudang | null>(null)
 
@@ -197,20 +199,6 @@ export default function GudangPage() {
       size: 90,
       cell: ({ original }) => <ActiveStatusBadge isActive={original.is_active} />,
     },
-    {
-      // Aktif/nonaktif pindah ke bulkActions (format KontakListPage); tombol
-      // per baris tinggal edit saja.
-      id: 'actions',
-      header: '',
-      size: 60,
-      cell: ({ original }) => (
-        <PermissionGuard permission="warehouses.edit">
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-[#326273]" onClick={() => openEdit(original)}>
-            <Pencil className="w-3.5 h-3.5" />
-          </Button>
-        </PermissionGuard>
-      ),
-    },
   ]
 
   return (
@@ -237,6 +225,11 @@ export default function GudangPage() {
         selectedRows={selectedRows}
         onRowSelect={setSelectedRows}
         bulkActions={bulkActions}
+        // Baris dibuka dengan mengklik barisnya, sama seperti daftar Produk —
+        // tidak ada tombol edit per baris. Tanpa izin ubah, baris tidak bisa
+        // diklik sama sekali supaya user tidak dibawa ke dialog yang pasti
+        // ditolak backend saat disimpan.
+        onRowClick={can('warehouses.edit') ? openEdit : undefined}
         emptyTitle="Belum ada gudang"
         emptyDescription="Tambahkan gudang untuk menyimpan stok produk."
       />

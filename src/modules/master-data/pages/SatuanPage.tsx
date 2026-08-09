@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, Power, PowerOff } from 'lucide-react'
+import { Plus, Power, PowerOff } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { FieldError } from '@/components/shared/form/FieldError'
+import { usePermission } from '@/hooks/usePermission'
 import { useToast } from '@/hooks/useToast'
 import { useSatuanList, useSatuanMutations } from '../hooks/useSimpleLists'
 import { satuanSchema, type SatuanFormValues } from '../schemas/satuanSchema'
@@ -30,6 +31,7 @@ const STATUS_OPTIONS: { value: boolean | undefined; label: string }[] = [
 
 export default function SatuanPage() {
   const { toast } = useToast()
+  const { can } = usePermission()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<Satuan | null>(null)
   const [page, setPage] = useState(1)
@@ -172,8 +174,8 @@ export default function SatuanPage() {
       id: 'name',
       header: 'Nama',
       size: 180,
-      meta: { sticky: true, stickyLeft: 0 },
-      cell: ({ original }) => <span className="font-medium text-[#24323a]">{original.name}</span>,
+      meta: { sticky: true, stickyLeft: 0, className: 'font-medium text-[#5c9ead]' },
+      cell: ({ original }) => original.name,
     },
     {
       id: 'code',
@@ -193,20 +195,6 @@ export default function SatuanPage() {
       header: 'Status',
       size: 90,
       cell: ({ original }) => <ActiveStatusBadge isActive={original.is_active} />,
-    },
-    {
-      // Aktif/nonaktif pindah ke bulkActions (format KontakListPage); tombol
-      // per baris tinggal edit saja.
-      id: 'actions',
-      header: '',
-      size: 60,
-      cell: ({ original }) => (
-        <PermissionGuard permission="units.edit">
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-[#326273]" onClick={() => openEdit(original)}>
-            <Pencil className="w-3.5 h-3.5" />
-          </Button>
-        </PermissionGuard>
-      ),
     },
   ]
 
@@ -234,6 +222,11 @@ export default function SatuanPage() {
         selectedRows={selectedRows}
         onRowSelect={setSelectedRows}
         bulkActions={bulkActions}
+        // Baris dibuka dengan mengklik barisnya, sama seperti daftar Produk —
+        // tidak ada tombol edit per baris. Tanpa izin ubah, baris tidak bisa
+        // diklik sama sekali supaya user tidak dibawa ke dialog yang pasti
+        // ditolak backend saat disimpan.
+        onRowClick={can('units.edit') ? openEdit : undefined}
         emptyTitle="Belum ada satuan"
         emptyDescription="Tambahkan satuan seperti pcs, kg, liter, dll."
       />

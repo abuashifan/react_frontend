@@ -104,8 +104,15 @@ function getActiveModuleForTab(tab: PrimaryTab | null): ModuleKey | null {
   return tab.module
 }
 
-/** Tab primer yang menunya sudah dihapus — dibuang saat migrasi v5. */
-const RETIRED_TAB_IDS = new Set(['sales-ar', 'purchase-ap'])
+/**
+ * Tab primer yang menunya sudah dihapus — dibuang saat migrasi.
+ *
+ * `sales-ar`, `purchase-ap` dibuang di v5. `master-data-account-mappings`
+ * dibuang di v6: Pemetaan Akun sekarang hanya ada di Pengaturan, dan rute
+ * `/master-data/account-mappings` ikut dihapus — tanpa dipensiunkan di sini,
+ * user yang tabnya tersimpan di sessionStorage mendarat di rute yang tidak ada.
+ */
+const RETIRED_TAB_IDS = new Set(['sales-ar', 'purchase-ap', 'master-data-account-mappings'])
 
 function createListTab(tab: PrimaryTab): SecondaryTab {
   return {
@@ -352,7 +359,7 @@ export const useTabStore = create<TabState & TabActions>()(
     }),
     {
       name: 'seaside-erp-tabs',
-      version: 5,
+      version: 6,
       storage: createJSONStorage(() => sessionStorage),
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') {

@@ -29,8 +29,6 @@ const PERMISSION_ALIASES: Record<string, string[]> = {
   'master-data.projects.view': ['projects.view', 'master_data.view'],
   'master-data.projects.create': ['projects.create'],
   'master-data.projects.edit': ['projects.edit'],
-  'master-data.account-mappings.view': ['settings.company.view', 'master_data.view'],
-  'master-data.account-mappings.edit': ['settings.company.edit'],
   'sales.delivery-orders.view': ['sales.delivery_orders.view'],
   'sales.delivery-orders.create': ['sales.delivery_orders.create'],
   'sales.delivery-orders.update': ['sales.delivery_orders.edit'],

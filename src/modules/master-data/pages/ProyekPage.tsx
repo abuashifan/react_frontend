@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, Power, PowerOff } from 'lucide-react'
+import { Plus, Power, PowerOff } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { FieldError } from '@/components/shared/form/FieldError'
+import { usePermission } from '@/hooks/usePermission'
 import { useToast } from '@/hooks/useToast'
 import { useProyekList, useProyekMutations } from '../hooks/useSimpleLists'
 import { proyekSchema, type ProyekFormValues } from '../schemas/proyekSchema'
@@ -45,6 +46,7 @@ const STATUS_COLORS: Record<ProyekStatus, string> = {
 
 export default function ProyekPage() {
   const { toast } = useToast()
+  const { can } = usePermission()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<Proyek | null>(null)
   const [filterStatus, setFilterStatus] = useState<ProyekStatus | undefined>()
@@ -219,19 +221,6 @@ export default function ProyekPage() {
       size: 90,
       cell: ({ original }) => <ActiveStatusBadge isActive={original.is_active} />,
     },
-    {
-      // Aktif/nonaktif pindah ke bulkActions (format KontakListPage).
-      id: 'actions',
-      header: '',
-      size: 60,
-      cell: ({ original }) => (
-        <PermissionGuard permission="projects.edit">
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-[#326273]" onClick={() => openEdit(original)}>
-            <Pencil className="w-3.5 h-3.5" />
-          </Button>
-        </PermissionGuard>
-      ),
-    },
   ]
 
   const sidebar = (
@@ -292,6 +281,11 @@ export default function ProyekPage() {
         selectedRows={selectedRows}
         onRowSelect={setSelectedRows}
         bulkActions={bulkActions}
+        // Baris dibuka dengan mengklik barisnya, sama seperti daftar Produk —
+        // tidak ada tombol edit per baris. Tanpa izin ubah, baris tidak bisa
+        // diklik sama sekali supaya user tidak dibawa ke dialog yang pasti
+        // ditolak backend saat disimpan.
+        onRowClick={can('projects.edit') ? openEdit : undefined}
         emptyTitle="Belum ada proyek"
         emptyDescription="Tambahkan proyek untuk pelacakan biaya per proyek."
       />

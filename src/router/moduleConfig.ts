@@ -62,7 +62,6 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
       { id: 'payment-terms', label: 'Syarat Bayar', icon: CalendarClock, path: '/master-data/payment-terms', permission: 'master-data.view' },
       { id: 'departments', label: 'Departemen', icon: Building2, path: '/master-data/departments', permission: 'master-data.view' },
       { id: 'projects', label: 'Proyek', icon: FolderKanban, path: '/master-data/projects', permission: 'master-data.view' },
-      { id: 'account-mappings', label: 'Pemetaan Akun', icon: Map, path: '/master-data/account-mappings', permission: 'master-data.view' },
     ],
   },
   {
