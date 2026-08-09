@@ -123,62 +123,77 @@ export default function JournalListPage() {
   ]
 
   // Urutan kolom ditetapkan pemilik produk:
-  // checkbox | Tanggal | Nomor Jurnal | Deskripsi | Debit | Kredit.
+  // checkbox | Tanggal | Nomor Jurnal | Deskripsi | Debit | Kredit | Dibuat Oleh.
   // Checkbox disuntikkan DataTable saat seleksi aktif, jadi tidak didaftarkan di sini.
   // Status tidak jadi kolom — penyaringannya lewat filter Status di sidebar.
+  //
+  // Anggaran lebar di tablet 1024px (sidebar filter terbuka) hanya ~754px untuk
+  // tujuh kolom, jadi: padding sel dirapatkan ke `px-2`, dan teks bebas
+  // (deskripsi, nama pembuat) dipotong di sel dengan tooltip berisi teks penuh.
+  // Tabel memakai `min-w-max` sehingga tanpa pemotongan itu satu deskripsi
+  // panjang saja sudah mendorong kolom nominal keluar layar.
   const columns: ColumnDef<JournalEntry>[] = [
     {
       id: 'date',
       header: 'Tanggal',
-      size: 110,
+      size: 100,
       sortable: true,
       sortKey: 'journal_date',
-      meta: { sticky: true, stickyLeft: 32 },
+      meta: { sticky: true, stickyLeft: 32, className: 'px-2', headerClassName: 'px-2' },
       cell: ({ original }) => formatDate(original.journal_date),
     },
     {
       id: 'number',
       header: 'Nomor Jurnal',
-      size: 150,
+      size: 140,
       sortable: true,
       sortKey: 'journal_number',
+      meta: { className: 'px-2', headerClassName: 'px-2' },
       cell: ({ original }) => (
         <button type="button" onClick={() => openRecordTab({ label: original.journal_number, path: `/accounting/journals/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.journal_number}
         </button>
       ),
     },
-    // Tabel memakai `min-w-max`, jadi deskripsi panjang akan melebarkan kolom
-    // tanpa batas dan mendorong Debit/Kredit keluar layar. Teksnya dipotong di
-    // sel (judul lengkap tetap tersedia lewat tooltip) supaya keenam kolom muat
-    // di tablet 1024px tanpa scroll horizontal.
     {
       id: 'description',
       header: 'Deskripsi',
-      size: 140,
+      size: 115,
+      meta: { className: 'px-2', headerClassName: 'px-2' },
       cell: ({ original }) => (
-        <span className="block max-w-[140px] truncate" title={original.description ?? undefined}>
+        <span className="block max-w-[115px] truncate" title={original.description ?? undefined}>
           {original.description ?? '-'}
         </span>
       ),
     },
     {
       id: 'debit',
-      header: 'Total Debit',
-      size: 130,
+      header: 'Debit',
+      size: 110,
       sortable: true,
       sortKey: 'total_debit',
-      meta: { className: 'tabular-nums text-right', headerClassName: 'text-right' },
+      meta: { className: 'px-2 tabular-nums text-right', headerClassName: 'px-2 text-right' },
       cell: ({ original }) => formatCurrency(journalTotal(original, 'debit')),
     },
     {
       id: 'credit',
-      header: 'Total Kredit',
-      size: 130,
+      header: 'Kredit',
+      size: 110,
       sortable: true,
       sortKey: 'total_credit',
-      meta: { className: 'tabular-nums text-right', headerClassName: 'text-right' },
+      meta: { className: 'px-2 tabular-nums text-right', headerClassName: 'px-2 text-right' },
       cell: ({ original }) => formatCurrency(journalTotal(original, 'credit')),
+    },
+    {
+      id: 'created_by',
+      header: 'Dibuat Oleh',
+      size: 90,
+      meta: { className: 'px-2', headerClassName: 'px-2' },
+      cell: ({ original }) => (
+        <span className="block max-w-[90px] truncate text-[#64748b]" title={original.created_by_name ?? undefined}>
+          {original.created_by_name ?? '-'}
+        </span>
+      ),
     },
   ]
 

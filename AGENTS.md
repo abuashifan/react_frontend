@@ -228,6 +228,11 @@ Jurnal Umum     : - DataTable: kolom `sortable`/`sortKey` + hook `useListSort` (
                     Keterangan dipindah setelah Kredit, `AmountInput` (pemisah ribuan),
                     ringkasan Debit/Kredit/Selisih di samping Deskripsi
                   - Fix: nominal decimal string dari API tidak lagi membuat total tampil "-"
+                  - Kolom daftar final: checkbox | Tanggal | Nomor Jurnal | Deskripsi |
+                    Debit | Kredit | Dibuat Oleh — lebar dijaga agar muat di 1024px
+                    tanpa scroll horizontal (padding sel px-2 + teks bebas di-truncate)
+                  - `created_by_name` dilampirkan backend lewat query terpisah ke DB pusat
+                    (users di central DB, journal_entries di tenant — tidak bisa eager-load)
 Playwright      : ✅ Chromium headless 1024×656, dev server lokal (vite + php artisan serve):
                   daftar (sort, checkbox, bulk-void dialog) dan form (create + detail posted)
 Fase 7          : - JournalListReportPage (Laporan Jurnal /reports/journals) + filter sumber (?source=)

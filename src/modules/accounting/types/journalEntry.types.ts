@@ -28,6 +28,11 @@ export interface JournalEntry {
   lines: JournalEntryLine[]
   total_debit?: number
   total_credit?: number
+  /**
+   * Nama pembuat jurnal, dilampirkan backend dari database pusat (`users`).
+   * `null` bila jurnal dibuat proses sistem atau user-nya sudah dihapus.
+   */
+  created_by_name?: string | null
   created_at: string
   updated_at: string
 }
