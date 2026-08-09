@@ -22,6 +22,7 @@ const API_ERROR_MESSAGES_ID: Record<string, string> = {
   DUPLICATE_WAREHOUSE_CODE: 'Kode gudang sudah digunakan. Gunakan kode lain.',
   DOCUMENT_NUMBER_DUPLICATE: 'Nomor dokumen sudah digunakan.',
   ACCOUNT_HAS_ACTIVE_CHILDREN: 'Akun tidak bisa dinonaktifkan karena masih punya sub-akun aktif.',
+  PRODUCT_HAS_STOCK: 'Produk tidak bisa dinonaktifkan karena stoknya belum nol. Habiskan atau sesuaikan stok lebih dulu.',
   ACCOUNT_INACTIVE: 'Akun yang dipilih tidak aktif.',
   ACCOUNT_MAPPING_MISSING: 'Pemetaan akun belum diatur. Lengkapi di Pengaturan > Pemetaan Akun.',
   ACCOUNT_NOT_FOUND: 'Akun tidak ditemukan.',
