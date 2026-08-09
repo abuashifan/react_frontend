@@ -1,6 +1,6 @@
 import { DatabaseBackup, LogOut, User } from 'lucide-react'
 import {
-  Database, BookMarked, Banknote,
+  Database, BookMarked, Wallet, Banknote,
   ShoppingCart, ShoppingBag, Boxes, Building, FileBarChart2, Settings,
 } from 'lucide-react'
 import type { FC, SVGProps } from 'react'
@@ -29,9 +29,14 @@ import { UnsavedFormsDialog } from '@/components/shared/feedback/UnsavedFormsDia
 import { cn } from '@/lib/utils'
 import { APP_NAME } from '@/lib/constants'
 
+// Ikon modul topbar TIDAK diambil dari `ModuleConfig` — petanya di sini,
+// dikunci id modul. Menambah modul di moduleConfig.ts tanpa menambah entri di
+// sini membuat tombolnya muncul tanpa ikon, tanpa error apa pun: pemakaiannya
+// `{Icon && <Icon />}`.
 const MODULE_ICONS: Record<string, LucideIcon> = {
   'master-data': Database,
   accounting:   BookMarked,
+  budget:       Wallet,
   'cash-bank':  Banknote,
   sales:        ShoppingCart,
   purchase:     ShoppingBag,
