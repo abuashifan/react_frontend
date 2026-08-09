@@ -62,7 +62,8 @@ export function BudgetApprovalActions({ submission, onActionSuccess }: Props) {
             </Button>
           </>
         )}
-        {submission.status === 'rejected' && can('budgets.submit') && (
+        {/* Ditolak = draf yang punya catatan penolakan; lihat BudgetSubmissionPage. */}
+        {submission.status === 'draft' && submission.rejection_note && can('budgets.submit') && (
           <p className="text-[12px] text-[#64748b]">
             Anggaran ditolak — revisi baris anggaran dan ajukan kembali.
           </p>

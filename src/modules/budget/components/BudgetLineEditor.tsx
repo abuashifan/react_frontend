@@ -6,9 +6,19 @@ import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { proyekApi } from '@/modules/master-data/services/proyekApi'
-import { formatCurrency } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 import { budgetApi } from '../services/budgetApi'
 import type { BudgetLine, BudgetLineInput } from '../types/budget.types'
+
+/**
+ * Baris kosong = anggaran setahun; diisi = anggaran bulan itu saja.
+ * Backend menerima string apa adanya dan `BudgetWarningService` mencocokkannya
+ * dengan `strftime('%Y-%m', journal_date)` — salah ketik berarti peringatan
+ * over-budget diam-diam tidak pernah menyala, tanpa error apa pun.
+ */
+const PERIOD_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/
+
+const isPeriodInvalid = (period: string) => period !== '' && !PERIOD_PATTERN.test(period)
 
 interface LineState {
   _key: number
@@ -76,7 +86,13 @@ export function BudgetLineEditor({ submissionId, lines, readonly = false, onSave
     setRows((prev) => prev.map((r) => (r._key === key ? { ...r, ...patch } : r)))
 
   const total = rows.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0)
+  const hasInvalidPeriod = rows.some((r) => isPeriodInvalid(r.period))
 
+  // Tabelnya dibiarkan manual, bukan dipindah ke `LineItemsTable` bersama:
+  // komponen itu dirancang untuk baris transaksi berkuantitas × harga dengan
+  // subtotal per baris, sedangkan baris anggaran hanya punya satu nominal plus
+  // kolom periode (YYYY-MM) yang tidak ada padanannya di sana. Memaksakannya
+  // berarti menambah opsi ke komponen bersama demi satu pemakai.
   return (
     <div className="space-y-3">
       <div className="overflow-auto rounded-lg border border-[#e2e8f0]">
@@ -132,12 +148,21 @@ export function BudgetLineEditor({ submissionId, lines, readonly = false, onSave
                   {readonly ? (
                     <span>{row.period || '—'}</span>
                   ) : (
-                    <Input
-                      value={row.period}
-                      onChange={(e) => update(row._key, { period: e.target.value })}
-                      placeholder="2026-01"
-                      className="h-7 text-[12px]"
-                    />
+                    <>
+                      <Input
+                        value={row.period}
+                        onChange={(e) => update(row._key, { period: e.target.value })}
+                        placeholder="2026-01"
+                        aria-invalid={isPeriodInvalid(row.period)}
+                        className={cn(
+                          'h-7 text-[12px] tabular-nums',
+                          isPeriodInvalid(row.period) && 'border-red-500 focus-visible:ring-red-500',
+                        )}
+                      />
+                      {isPeriodInvalid(row.period) && (
+                        <p className="mt-0.5 text-[11px] text-red-600">Format harus YYYY-MM, mis. 2026-01.</p>
+                      )}
+                    </>
                   )}
                 </td>
                 <td className="px-2 py-1.5 text-right tabular-nums">
@@ -146,6 +171,7 @@ export function BudgetLineEditor({ submissionId, lines, readonly = false, onSave
                   ) : (
                     <Input
                       type="number"
+                      min={0}
                       value={row.amount}
                       onChange={(e) => update(row._key, { amount: e.target.value })}
                       className="h-7 text-right text-[12px] tabular-nums"
@@ -182,7 +208,7 @@ export function BudgetLineEditor({ submissionId, lines, readonly = false, onSave
           <Button variant="outline" size="sm" className="text-[12px]" onClick={addRow}>
             <Plus size={14} className="mr-1" /> Tambah Baris
           </Button>
-          <Button size="sm" className="text-[12px]" onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
+          <Button size="sm" className="text-[12px]" onClick={() => saveMut.mutate()} disabled={saveMut.isPending || hasInvalidPeriod}>
             {saveMut.isPending ? 'Menyimpan...' : 'Simpan Baris'}
           </Button>
           {saveMut.isSuccess && (

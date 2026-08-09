@@ -9,79 +9,86 @@ import type {
   BudgetLineInput,
 } from '../types/budget.types'
 
+// Tipe hasil ditaruh di generic kedua http.*, bukan sebagai anotasi return.
+// Tanpa generic, axios memberi `any` dan anotasi return apa pun akan lolos
+// type checker — itu yang dulu menyembunyikan unwrap ganda di seluruh file ini.
+// Interceptor http.ts sudah mengembalikan response.data, jadi hasil http.*
+// dipakai langsung — jangan meng-unwrap sekali lagi di service.
 export const budgetApi = {
   // --- Budget Periods ---
-  listPeriods: (): Promise<ApiResponse<BudgetPeriod[]>> =>
-    http.get('/budget-periods').then((r) => r.data),
+  listPeriods: () =>
+    http.get<unknown, ApiResponse<BudgetPeriod[]>>('/budget-periods'),
 
   createPeriod: (data: {
     name: string
     fiscal_year: number
     period_from: string
     period_to: string
-  }): Promise<ApiResponse<BudgetPeriod>> =>
-    http.post('/budget-periods', data).then((r) => r.data),
+  }) => http.post<unknown, ApiResponse<BudgetPeriod>>('/budget-periods', data),
 
-  getPeriod: (id: number): Promise<ApiResponse<BudgetPeriod>> =>
-    http.get(`/budget-periods/${id}`).then((r) => r.data),
+  getPeriod: (id: number) =>
+    http.get<unknown, ApiResponse<BudgetPeriod>>(`/budget-periods/${id}`),
 
   updatePeriod: (
     id: number,
     data: Partial<{ name: string; fiscal_year: number; period_from: string; period_to: string }>,
-  ): Promise<ApiResponse<BudgetPeriod>> =>
-    http.put(`/budget-periods/${id}`, data).then((r) => r.data),
+  ) => http.put<unknown, ApiResponse<BudgetPeriod>>(`/budget-periods/${id}`, data),
 
-  closePeriod: (id: number): Promise<ApiResponse<BudgetPeriod>> =>
-    http.post(`/budget-periods/${id}/close`).then((r) => r.data),
+  closePeriod: (id: number) =>
+    http.post<unknown, ApiResponse<BudgetPeriod>>(`/budget-periods/${id}/close`),
 
   // --- Budget Submissions ---
-  listSubmissions: (
-    periodId: number,
-    params?: { department_id?: number },
-  ): Promise<ApiResponse<BudgetSubmission[]>> =>
-    http.get(`/budget-periods/${periodId}/submissions`, { params }).then((r) => r.data),
+  listSubmissions: (periodId: number, params?: { department_id?: number }) =>
+    http.get<unknown, ApiResponse<BudgetSubmission[]>>(
+      `/budget-periods/${periodId}/submissions`,
+      { params },
+    ),
 
-  createSubmission: (
-    periodId: number,
-    data: { department_id: number; notes?: string },
-  ): Promise<ApiResponse<BudgetSubmission>> =>
-    http.post(`/budget-periods/${periodId}/submissions`, data).then((r) => r.data),
+  createSubmission: (periodId: number, data: { department_id: number; notes?: string }) =>
+    http.post<unknown, ApiResponse<BudgetSubmission>>(
+      `/budget-periods/${periodId}/submissions`,
+      data,
+    ),
 
-  getSubmission: (id: number): Promise<ApiResponse<BudgetSubmission>> =>
-    http.get(`/budget-submissions/${id}`).then((r) => r.data),
+  getSubmission: (id: number) =>
+    http.get<unknown, ApiResponse<BudgetSubmission>>(`/budget-submissions/${id}`),
 
-  updateSubmission: (
-    id: number,
-    data: { notes?: string },
-  ): Promise<ApiResponse<BudgetSubmission>> =>
-    http.put(`/budget-submissions/${id}`, data).then((r) => r.data),
+  updateSubmission: (id: number, data: { notes?: string }) =>
+    http.put<unknown, ApiResponse<BudgetSubmission>>(`/budget-submissions/${id}`, data),
 
-  updateLines: (
-    id: number,
-    lines: BudgetLineInput[],
-  ): Promise<ApiResponse<BudgetSubmission>> =>
-    http.put(`/budget-submissions/${id}/lines`, { lines }).then((r) => r.data),
+  updateLines: (id: number, lines: BudgetLineInput[]) =>
+    http.put<unknown, ApiResponse<BudgetSubmission>>(`/budget-submissions/${id}/lines`, { lines }),
 
-  submit: (id: number): Promise<ApiResponse<BudgetSubmission>> =>
-    http.post(`/budget-submissions/${id}/submit`).then((r) => r.data),
+  submit: (id: number) =>
+    http.post<unknown, ApiResponse<BudgetSubmission>>(`/budget-submissions/${id}/submit`),
 
-  approveHead: (id: number): Promise<ApiResponse<BudgetSubmission>> =>
-    http.post(`/budget-submissions/${id}/approve-head`).then((r) => r.data),
+  approveHead: (id: number) =>
+    http.post<unknown, ApiResponse<BudgetSubmission>>(`/budget-submissions/${id}/approve-head`),
 
-  approveFinance: (id: number): Promise<ApiResponse<BudgetSubmission>> =>
-    http.post(`/budget-submissions/${id}/approve-finance`).then((r) => r.data),
+  approveFinance: (id: number) =>
+    http.post<unknown, ApiResponse<BudgetSubmission>>(`/budget-submissions/${id}/approve-finance`),
 
-  reject: (id: number, rejection_note: string): Promise<ApiResponse<BudgetSubmission>> =>
-    http.post(`/budget-submissions/${id}/reject`, { rejection_note }).then((r) => r.data),
+  reject: (id: number, rejection_note: string) =>
+    http.post<unknown, ApiResponse<BudgetSubmission>>(`/budget-submissions/${id}/reject`, {
+      rejection_note,
+    }),
 
   // --- Consolidation ---
   getConsolidation: (
     periodId: number,
-    params?: { by?: 'department' | 'project' | 'project_department'; department_id?: number; project_id?: number; account_id?: number },
-  ): Promise<ApiResponse<BudgetConsolidation>> =>
-    http.get(`/budget-periods/${periodId}/consolidation`, { params }).then((r) => r.data),
+    params?: {
+      by?: 'department' | 'project' | 'project_department'
+      department_id?: number
+      project_id?: number
+      account_id?: number
+    },
+  ) =>
+    http.get<unknown, ApiResponse<BudgetConsolidation>>(
+      `/budget-periods/${periodId}/consolidation`,
+      { params },
+    ),
 
   // --- Reports ---
-  getComparison: (params: BudgetParams): Promise<ApiResponse<BudgetComparison>> =>
-    http.get('/reports/budget/comparison', { params }).then((r) => r.data),
+  getComparison: (params: BudgetParams) =>
+    http.get<unknown, ApiResponse<BudgetComparison>>('/reports/budget/comparison', { params }),
 }

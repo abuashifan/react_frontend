@@ -47,54 +47,60 @@ export default function BudgetComparisonPage() {
     })
   }
 
+  // Filter ditaruh di `toolbar` + `hideHeader`, sama seperti halaman Laporan
+  // lain: chrome-nya menempel di bawah baris tab dan tidak ikut scroll bersama
+  // tabelnya. Halaman ini belum memakai ReportCompactBar/ReportParameterModal
+  // karena parameternya tidak lewat `useReportParams`.
+  const toolbar = (
+    <div className="flex flex-wrap items-end gap-3 px-4 py-2.5 lg:px-6">
+      <div>
+        <Label htmlFor="period-select" className="text-[11px] text-[#64748b]">Periode Anggaran <span className="text-red-500">*</span></Label>
+        <Select value={periodIdStr} onValueChange={setPeriodIdStr}>
+          <SelectTrigger id="period-select" className="h-8 w-52 text-[12px]">
+            <SelectValue placeholder="Pilih periode..." />
+          </SelectTrigger>
+          <SelectContent>
+            {periods.map((p) => (
+              <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="w-44">
+        <Label className="text-[11px] text-[#64748b]">Departemen</Label>
+        <SearchableSelect value={deptId} onSearch={searchDept} onChange={setDeptId} placeholder="Semua dept" size="sm" />
+      </div>
+
+      <div className="w-44">
+        <Label className="text-[11px] text-[#64748b]">Proyek</Label>
+        <SearchableSelect value={projectId} onSearch={searchProject} onChange={setProjectId} placeholder="Semua proyek" size="sm" />
+      </div>
+
+      <div>
+        <Label className="text-[11px] text-[#64748b]">Dari</Label>
+        <Input type="date" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} className="h-8 w-36 text-[12px]" />
+      </div>
+
+      <div>
+        <Label className="text-[11px] text-[#64748b]">Sampai</Label>
+        <Input type="date" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} className="h-8 w-36 text-[12px]" />
+      </div>
+
+      <Button size="sm" onClick={handleSubmit} disabled={!periodIdStr || isLoading}>
+        {isLoading ? 'Memuat...' : 'Tampilkan'}
+      </Button>
+    </div>
+  )
+
   return (
-    <WorkspaceLayout
-      title="Realisasi vs Anggaran"
-      breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Realisasi vs Anggaran' }]}
-    >
+    <WorkspaceLayout hideHeader toolbar={toolbar}>
       <div className="space-y-4">
-        {/* Filter panel */}
-        <div className="rounded-lg border border-[#e2e8f0] bg-white p-4 space-y-3">
-          <div className="flex flex-wrap gap-3 items-end">
-            <div>
-              <Label htmlFor="period-select" className="text-[11px] text-[#64748b]">Periode Anggaran <span className="text-red-500">*</span></Label>
-              <Select value={periodIdStr} onValueChange={setPeriodIdStr}>
-                <SelectTrigger id="period-select" className="h-8 w-52 text-[12px]">
-                  <SelectValue placeholder="Pilih periode..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {periods.map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="w-44">
-              <Label className="text-[11px] text-[#64748b]">Departemen</Label>
-              <SearchableSelect value={deptId} onSearch={searchDept} onChange={setDeptId} placeholder="Semua dept" size="sm" />
-            </div>
-
-            <div className="w-44">
-              <Label className="text-[11px] text-[#64748b]">Proyek</Label>
-              <SearchableSelect value={projectId} onSearch={searchProject} onChange={setProjectId} placeholder="Semua proyek" size="sm" />
-            </div>
-
-            <div>
-              <Label className="text-[11px] text-[#64748b]">Dari</Label>
-              <Input type="date" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} className="h-8 w-36 text-[12px]" />
-            </div>
-
-            <div>
-              <Label className="text-[11px] text-[#64748b]">Sampai</Label>
-              <Input type="date" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} className="h-8 w-36 text-[12px]" />
-            </div>
-
-            <Button size="sm" onClick={handleSubmit} disabled={!periodIdStr || isLoading}>
-              {isLoading ? 'Memuat...' : 'Tampilkan'}
-            </Button>
-          </div>
-        </div>
+        {!activeParams && !isError && (
+          <p className="rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-6 text-center text-[13px] text-[#64748b]">
+            Pilih periode anggaran lalu klik Tampilkan.
+          </p>
+        )}
 
         {isError && (
           <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-[12px] text-red-700">

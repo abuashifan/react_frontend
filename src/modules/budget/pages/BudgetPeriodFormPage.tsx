@@ -1,13 +1,13 @@
-import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
+import { FormLayout } from '@/components/shared/layout/FormLayout'
+import { FormSaveActions } from '@/components/shared/layout/FormSaveActions'
 import { FieldError } from '@/components/shared/form/FieldError'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useToast } from '@/hooks/useToast'
 import { useUnsavedFormTracker } from '@/hooks/useUnsavedFormTracker'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
@@ -23,8 +23,10 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
+const FORM_PATH = '/budget/periods/new'
+
 export default function BudgetPeriodFormPage() {
-  const navigate = useNavigate()
+  const { replaceRecordTab, closeRecordTab } = useRecordTab()
   const qc = useQueryClient()
 
   const { toast } = useToast()
@@ -48,7 +50,9 @@ export default function BudgetPeriodFormPage() {
     mutationFn: (data: FormValues) => budgetApi.createPeriod({ ...data, fiscal_year: Number(data.fiscal_year) }),
     onSuccess: (res) => {
       void qc.invalidateQueries({ queryKey: ['budget', 'periods'] })
-      navigate(`/budget/periods/${res.data.id}`)
+      // Tab "Periode Baru" berubah jadi tab periode itu sendiri, bukan menambah
+      // tab kedua yang menunjuk record yang sama.
+      replaceRecordTab(FORM_PATH, { label: res.data.name, path: `/budget/periods/${res.data.id}` })
     },
     onError: (error) => {
       // Tandai field penyebabnya, jangan hanya "Gagal menyimpan".
@@ -57,15 +61,21 @@ export default function BudgetPeriodFormPage() {
     },
   })
 
+  const submit = handleSubmit((data) => createMut.mutate(data))
+
   return (
-    <WorkspaceLayout
+    <FormLayout
       title="Buat Periode Anggaran"
       breadcrumb={[{ label: 'Anggaran', path: '/budget' }, { label: 'Buat Periode' }]}
+      headerActions={
+        <FormSaveActions
+          onCancel={() => closeRecordTab(FORM_PATH, '/budget')}
+          onSave={() => void submit()}
+          isSaving={isSubmitting || createMut.isPending}
+        />
+      }
     >
-      <form
-        onSubmit={handleSubmit((data) => createMut.mutate(data))}
-        className="mx-auto max-w-lg space-y-4"
-      >
+      <form onSubmit={submit} className="max-w-lg space-y-4">
         <div className="rounded-lg border border-[#e2e8f0] bg-white p-5 space-y-4">
           <div className="space-y-1">
             <Label htmlFor="name" className="text-[12px]">Nama Periode</Label>
@@ -75,7 +85,7 @@ export default function BudgetPeriodFormPage() {
 
           <div className="space-y-1">
             <Label htmlFor="fiscal_year" className="text-[12px]">Tahun Fiskal</Label>
-            <Input id="fiscal_year" type="number" {...register('fiscal_year')} className={cn(fieldErrorClass(errors.fiscal_year))} />
+            <Input id="fiscal_year" type="number" {...register('fiscal_year')} className={cn('tabular-nums', fieldErrorClass(errors.fiscal_year))} />
             <FieldError message={errors.fiscal_year?.message} />
           </div>
 
@@ -92,20 +102,12 @@ export default function BudgetPeriodFormPage() {
             </div>
           </div>
         </div>
-
-        <div className="flex gap-2 justify-end">
-          <Button type="button" variant="outline" onClick={() => navigate('/budget')}>Batal</Button>
-          {/*
-            Halaman ini di luar sistem tab (rute `/budget/periods/new`, dan
-            `/budget/periods/:id` adalah halaman detail, bukan form), jadi tidak ada
-            record sebelum/sesudah yang bisa dituju — Prev/Next tidak dipasang.
-            Simpan tetap meninggalkan form ini menuju detail periode.
-          */}
-          <Button type="submit" disabled={isSubmitting || createMut.isPending}>
-            {createMut.isPending ? 'Menyimpan...' : 'Simpan & Tutup'}
-          </Button>
-        </div>
+        {/*
+          Rute `/budget/periods/:id` adalah halaman detail, bukan form, jadi
+          tidak ada record sebelum/sesudah yang bisa dituju — Prev/Next tidak
+          dipasang. Simpan menukar tab ini dengan tab detail periode.
+        */}
       </form>
-    </WorkspaceLayout>
+    </FormLayout>
   )
 }

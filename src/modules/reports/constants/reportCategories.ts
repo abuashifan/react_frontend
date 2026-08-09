@@ -29,6 +29,7 @@ export const REPORT_DOMAINS: ReportDomain[] = [
       { id: 'balance-sheet-multi', title: 'Neraca Multi-Periode', description: 'Neraca perbandingan beberapa periode side-by-side', path: '/reports/balance-sheet-multi' },
       { id: 'profit-loss-multi', title: 'Laba Rugi Multi-Periode', description: 'Laba rugi perbandingan beberapa periode side-by-side', path: '/reports/profit-loss-multi' },
       { id: 'financial-summary', title: 'Ringkasan Keuangan', description: 'Indikator keuangan utama sekilas', path: '/reports/financial-summary' },
+      { id: 'budget-comparison', title: 'Realisasi vs Anggaran', description: 'Perbandingan anggaran disetujui dengan realisasi jurnal', path: '/reports/budget/comparison', permission: 'budgets.view' },
     ],
   },
   {

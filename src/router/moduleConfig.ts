@@ -8,7 +8,7 @@ import {
   CheckSquare,
   Landmark, Users, Ruler, Warehouse, CalendarClock, Building2,
   FolderKanban, Map, Building, RefreshCcw, UserCog, ShieldCheck, Star,
-  Mail, Shield, Archive, Tags,
+  Mail, Shield, Archive, Tags, CalendarRange, GitCompare,
 } from 'lucide-react'
 
 export interface RibbonItem {
@@ -75,6 +75,18 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
       { id: 'period-locks', label: 'Periode Akuntansi', icon: Calendar, path: '/accounting/period-locks', permission: 'accounting.period-locks.manage' },
       { id: 'period-end', label: 'Akhir Periode', icon: CheckSquare, path: '/accounting/period-end', permission: 'period_end.view' },
       { id: 'fiscal-years', label: 'Tahun Fiskal', icon: CalendarDays, path: '/accounting/fiscal-years', permission: 'accounting.fiscal-years.manage' },
+    ],
+  },
+  {
+    // Id `budget` bukan pilihan bebas: detectModuleFromPath() mencocokkan
+    // pathname.startsWith('/' + module.id), jadi id ini langsung cocok dengan
+    // rute /budget/... yang sudah ada tanpa memindahkan satu rute pun.
+    id: 'budget',
+    label: 'Anggaran',
+    path: '/budget',
+    ribbonItems: [
+      { id: 'budget-periods', label: 'Periode Anggaran', icon: CalendarRange, path: '/budget', permission: 'budgets.view' },
+      { id: 'budget-comparison', label: 'Realisasi vs Anggaran', icon: GitCompare, path: '/reports/budget/comparison', permission: 'budgets.view' },
     ],
   },
   {

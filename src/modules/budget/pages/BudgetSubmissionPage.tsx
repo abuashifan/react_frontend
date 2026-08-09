@@ -63,10 +63,14 @@ export default function BudgetSubmissionPage() {
               )}
             </div>
 
-            {/* Rejection note */}
-            {submission.status === 'rejected' && submission.rejection_note && (
+            {/* Rejection note — backend mengembalikan pengajuan yang ditolak ke
+                status `draft` (dikunci test_reject_returns_to_draft_and_...),
+                jadi penanda "pernah ditolak" adalah adanya rejection_note,
+                bukan status 'rejected' yang tidak pernah ditulis service. */}
+            {submission.status === 'draft' && submission.rejection_note && (
               <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-[12px] text-red-700">
                 <strong>Alasan penolakan:</strong> {submission.rejection_note}
+                <span className="ml-2 text-red-600">(revisi ke-{submission.revision_number})</span>
               </div>
             )}
 
