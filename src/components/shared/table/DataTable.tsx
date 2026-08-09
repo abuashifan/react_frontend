@@ -93,7 +93,10 @@ export function DataTable<T extends { id: number | string }>({
   onSortChange,
 }: DataTableProps<T>) {
   const rows = Array.isArray(data) ? data : []
-  const isSelectable = !!onRowSelect && !!bulkActions?.length
+  // Kolom checkbox cukup bergantung pada `onRowSelect`. Sebelumnya `bulkActions`
+  // ikut jadi syarat, sehingga tabel yang butuh seleksi tanpa bilah aksi massal
+  // (mis. dialog pemilih record) tidak bisa memakai DataTable sama sekali.
+  const isSelectable = !!onRowSelect
   const allIds = rows.map((row) => String(row.id))
   const isAllSelected = allIds.length > 0 && allIds.every((id) => selectedRows.includes(id))
   const isIndeterminate = selectedRows.length > 0 && !isAllSelected
@@ -113,7 +116,7 @@ export function DataTable<T extends { id: number | string }>({
   }
 
   const isEmpty = !isLoading && rows.length === 0
-  const showBulkBar = isSelectable && selectedRows.length > 0
+  const showBulkBar = isSelectable && selectedRows.length > 0 && !!bulkActions?.length
 
   // Checkbox column injected when row selection is enabled
   const checkboxCol: ColumnDef<T> = {

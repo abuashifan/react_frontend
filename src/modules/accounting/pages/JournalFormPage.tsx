@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Search } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -10,12 +11,11 @@ import { DocumentActionBar, type DocumentActionButton } from '@/components/share
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { cn, fieldErrorClass, formatCurrency, toDateInputValue } from '@/lib/utils'
-import { coaApi } from '@/modules/master-data/services/coaApi'
+import { AccountPickerDialog } from '@/modules/master-data/components/AccountPickerDialog'
 import { useJournalEntry, useJournalEntryMutations } from '../hooks/useJournalEntryList'
 import { journalEntrySchema, type JournalEntryFormValues } from '../schemas/journalEntrySchema'
 import { journalEntryApi } from '../services/journalEntryApi'
@@ -111,6 +111,45 @@ function JournalFormPageContent() {
   // ditolak ikut ditandai, bukan cuma toast.
   const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
+  /** Indeks baris yang sedang membuka dialog pemilih akun; `null` = dialog tertutup. */
+  const [pickerRow, setPickerRow] = useState<number | null>(null)
+
+  /**
+   * Terapkan akun-akun terpilih mulai dari baris pemicu: akun pertama mengisi
+   * baris itu, sisanya menjadi baris baru tepat di bawahnya. Memilih 3 akun
+   * berarti 3 baris terisi sekali klik, tanpa perlu menekan "Tambah Baris".
+   */
+  const applyPickedAccounts = (startIndex: number, accounts: { id: number; account_code: string; account_name: string }[]) => {
+    if (accounts.length === 0) return
+
+    setLines((prev) => {
+      const next = [...prev]
+      accounts.forEach((account, offset) => {
+        const target = startIndex + offset
+        const filled: EditableLine = {
+          ...(next[target] ?? DEFAULT_LINE),
+          account_id: account.id,
+          account_code: account.account_code,
+          account_name: account.account_name,
+        }
+
+        if (target < next.length) {
+          // Baris yang sudah terisi akun lain tidak ditimpa — akun berikutnya
+          // disisipkan sebagai baris baru supaya nominal yang sudah diketik
+          // pada baris tersebut tidak ikut berpindah pasangan akunnya.
+          if (offset > 0 && next[target].account_id !== null) {
+            next.splice(target, 0, { ...DEFAULT_LINE, account_id: account.id, account_code: account.account_code, account_name: account.account_name })
+            return
+          }
+          next[target] = filled
+          return
+        }
+
+        next.push({ ...DEFAULT_LINE, account_id: account.id, account_code: account.account_code, account_name: account.account_name })
+      })
+      return next
+    })
+  }
 
   const status = (journal?.status ?? 'draft') as DocumentStatus
   const isEditable = isCreate || journal?.status === 'draft'
@@ -211,28 +250,23 @@ function JournalFormPageContent() {
   const columns: LineItemColumn<EditableLine>[] = [
     {
       id: 'account', header: 'No. Akun', width: 140,
-      render: ({ item, isReadOnly, onUpdate }) => (
-        <SearchableSelect
-          value={item.account_id}
-          onChange={(value, option) =>
-            onUpdate('account', {
-              id: value,
-              code: option?.label ?? (value === item.account_id ? item.account_code : ''),
-              name: option?.sublabel ?? (value === item.account_id ? item.account_name : ''),
-            } satisfies AccountSelection)
-          }
-          // Label opsi = kode akun, sublabel = nama akun (lihat coaApi.searchByCode),
-          // supaya trigger kolom ini menampilkan nomor akun dan kolom sebelahnya namanya.
-          onSearch={coaApi.searchByCode}
-          placeholder="Pilih akun..."
+      render: ({ item, index, isReadOnly }) => (
+        <button
+          type="button"
           disabled={isReadOnly}
-          size="sm"
-          selectedOptions={
-            item.account_id
-              ? [{ value: item.account_id, label: item.account_code || `#${item.account_id}`, sublabel: item.account_name }]
-              : []
-          }
-        />
+          onClick={() => setPickerRow(index)}
+          className={cn(
+            'flex h-8 w-full items-center justify-between gap-1 rounded-md border border-[#d9e2e5] bg-white px-2 text-left text-[12px]',
+            'hover:border-[#5c9ead] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5c9ead]/30',
+            isReadOnly && 'cursor-not-allowed bg-[#f8fbfc] text-[#94a3b8]',
+            !item.account_code && !isReadOnly && 'text-[#94a3b8]',
+          )}
+        >
+          <span className="truncate tabular-nums">
+            {item.account_code || (item.account_id ? `#${item.account_id}` : 'Pilih akun...')}
+          </span>
+          <Search className="h-3.5 w-3.5 shrink-0 text-[#94a3b8]" />
+        </button>
       ),
     },
     {
@@ -391,6 +425,15 @@ function JournalFormPageContent() {
         </div>
       </FormLayout>
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={journal?.journal_number ?? ''} isLoading={voidJournal.isPending} />
+
+      <AccountPickerDialog
+        open={pickerRow !== null}
+        onClose={() => setPickerRow(null)}
+        onConfirm={(accounts) => {
+          if (pickerRow !== null) applyPickedAccounts(pickerRow, accounts)
+          setPickerRow(null)
+        }}
+      />
     </>
   )
 }

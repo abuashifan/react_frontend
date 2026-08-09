@@ -28,6 +28,12 @@ export interface CoaListParams {
   page?: number
   per_page?: 25 | 50 | 100
   search?: string
+  /**
+   * Filter kolom terpisah untuk dialog pemilih akun. Berbeda dengan `search`
+   * yang mencocokkan kode ATAU nama, keduanya di-AND-kan di server.
+   */
+  account_code?: string
+  account_name?: string
   account_type?: CoaType
   is_active?: boolean
   is_cash_bank?: boolean

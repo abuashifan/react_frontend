@@ -481,6 +481,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____stockMovement.types.ts
 | | | | |____stockOpname.types.ts
 | | |____master-data/
+| | | |____components/
+| | | | |____AccountPickerDialog.tsx
 | | | |____hooks/
 | | | | |____useAccountMappings.ts
 | | | | |____useCoaList.ts
@@ -825,6 +827,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | `hooks/useBulkVoid.ts` | Alur void massal: saring dokumen eligible, konfirmasi, `allSettled`, rangkuman toast | `BulkActionBar`, `VoidConfirmDialog` |
 | `components/shared/form/AmountInput.tsx` | Input uang dengan pemisah ribuan id-ID; pengganti `<Input type="number">` untuk nominal | `LineItemsTable`, form transaksi |
 | `components/shared/form/FormField.tsx` | Label + kontrol + slot error dengan kepadatan seragam | Semua form |
+| `modules/master-data/components/AccountPickerDialog.tsx` | Dialog pemilih akun (filter No Akun/Nama Akun, checkbox, multi-pilih) | Form jurnal — memilih N akun mengisi N baris |
 
 Kolom `DataTable` kini punya `sortable` + `sortKey`; `sortKey` wajib memakai nama field
 backend (allowlist `$listSortable` di service Laravel), bukan `id` kolom UI.
