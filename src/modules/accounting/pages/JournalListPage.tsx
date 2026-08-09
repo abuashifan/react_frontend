@@ -7,7 +7,6 @@ import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFil
 import { SingleCheckboxFilter } from '@/components/shared/filter/SingleCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
 import { DataTable } from '@/components/shared/table/DataTable'
-import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
@@ -123,32 +122,50 @@ export default function JournalListPage() {
     },
   ]
 
+  // Urutan kolom ditetapkan pemilik produk:
+  // checkbox | Tanggal | Nomor Jurnal | Deskripsi | Debit | Kredit.
+  // Checkbox disuntikkan DataTable saat seleksi aktif, jadi tidak didaftarkan di sini.
+  // Status tidak jadi kolom — penyaringannya lewat filter Status di sidebar.
   const columns: ColumnDef<JournalEntry>[] = [
-    {
-      id: 'number',
-      header: 'Nomor Jurnal',
-      size: 160,
-      sortable: true,
-      sortKey: 'journal_number',
-      meta: { sticky: true, stickyLeft: 32 },
-      cell: ({ original }) => (
-        <button type="button" onClick={() => openRecordTab({ label: original.journal_number, path: `/accounting/journals/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
-          {original.journal_number}
-        </button>
-      ),
-    },
     {
       id: 'date',
       header: 'Tanggal',
       size: 110,
       sortable: true,
       sortKey: 'journal_date',
+      meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => formatDate(original.journal_date),
+    },
+    {
+      id: 'number',
+      header: 'Nomor Jurnal',
+      size: 150,
+      sortable: true,
+      sortKey: 'journal_number',
+      cell: ({ original }) => (
+        <button type="button" onClick={() => openRecordTab({ label: original.journal_number, path: `/accounting/journals/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
+          {original.journal_number}
+        </button>
+      ),
+    },
+    // Tabel memakai `min-w-max`, jadi deskripsi panjang akan melebarkan kolom
+    // tanpa batas dan mendorong Debit/Kredit keluar layar. Teksnya dipotong di
+    // sel (judul lengkap tetap tersedia lewat tooltip) supaya keenam kolom muat
+    // di tablet 1024px tanpa scroll horizontal.
+    {
+      id: 'description',
+      header: 'Deskripsi',
+      size: 140,
+      cell: ({ original }) => (
+        <span className="block max-w-[140px] truncate" title={original.description ?? undefined}>
+          {original.description ?? '-'}
+        </span>
+      ),
     },
     {
       id: 'debit',
       header: 'Total Debit',
-      size: 140,
+      size: 130,
       sortable: true,
       sortKey: 'total_debit',
       meta: { className: 'tabular-nums text-right', headerClassName: 'text-right' },
@@ -157,17 +174,12 @@ export default function JournalListPage() {
     {
       id: 'credit',
       header: 'Total Kredit',
-      size: 140,
+      size: 130,
       sortable: true,
       sortKey: 'total_credit',
       meta: { className: 'tabular-nums text-right', headerClassName: 'text-right' },
       cell: ({ original }) => formatCurrency(journalTotal(original, 'credit')),
     },
-    { id: 'status', header: 'Status', size: 110, cell: ({ original }) => <DocumentStatusBadge status={original.status} /> },
-    // Keterangan sengaja ditaruh paling belakang: kolomnya paling lebar dan
-    // paling jarang dipakai untuk memindai daftar, sementara nomor/tanggal/
-    // nominal harus terbaca lebih dulu tanpa scroll horizontal.
-    { id: 'description', header: 'Keterangan', size: 260, cell: ({ original }) => original.description ?? '-' },
   ]
 
   const activeFilterCount = [filterStatuses.length > 0, sourceFilter !== 'all', dateRange.from, dateRange.to].filter(Boolean).length
@@ -188,7 +200,7 @@ export default function JournalListPage() {
           value={search}
           onChange={setSearch}
           placeholder="Cari jurnal..."
-          hint="Mencari di nomor jurnal dan keterangan."
+          hint="Mencari di nomor jurnal dan deskripsi."
           className="w-full max-w-none"
         />
       </div>
