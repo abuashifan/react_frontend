@@ -308,7 +308,6 @@ function JournalFormPageContent() {
         documentNumber={journal?.journal_number}
         status={status}
         readOnly={!isEditable}
-        isSystemGenerated={journal?.is_system_generated}
         breadcrumb={[{ label: 'Akuntansi' }, { label: 'Jurnal', path: '/accounting/journals' }, { label: isCreate ? 'Buat Jurnal' : (journal?.journal_number ?? '') }]}
         headerActions={
           <>
@@ -339,11 +338,6 @@ function JournalFormPageContent() {
                 />
               </FormField>
 
-              <FormField label="Sumber" className="w-[190px]">
-                <div className="flex h-8 items-center truncate rounded-md border border-[#e2e8f0] bg-[#f8fbfc] px-2 text-[12px] text-[#64748b]">
-                  {journal?.is_system_generated ? (journal.source_number ?? journal.source_type ?? 'Sistem') : 'Jurnal manual'}
-                </div>
-              </FormField>
             </div>
           </section>
 
