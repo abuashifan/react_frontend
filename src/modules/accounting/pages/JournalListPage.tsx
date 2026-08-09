@@ -4,7 +4,6 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar } from '@/components/shared/layout/FilterSidebar'
 import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
-import { SingleCheckboxFilter } from '@/components/shared/filter/SingleCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
@@ -19,26 +18,6 @@ import type { JournalEntry, JournalEntryStatus } from '../types/journalEntry.typ
 import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: JournalEntryStatus[] = ['draft', 'approved', 'posted', 'void']
-
-/**
- * Filter sumber jurnal. Default `'all'` — tanpa filter, daftar wajib
- * menampilkan seluruh jurnal, termasuk yang dibuat otomatis oleh modul lain
- * (penjualan, pembelian, persediaan, saldo awal). Menyaring jurnal sistem
- * secara diam-diam membuat sebagian besar buku besar tidak terlihat dari
- * halaman ini, jadi penyempitan itu harus jadi pilihan user yang terlihat.
- */
-type JournalSourceFilter = 'all' | 'manual' | 'system'
-
-const SOURCE_OPTIONS: { value: JournalSourceFilter; label: string }[] = [
-  { value: 'manual', label: 'Jurnal manual' },
-  { value: 'system', label: 'Jurnal otomatis (sistem)' },
-]
-
-function sourceToParam(source: JournalSourceFilter): boolean | undefined {
-  if (source === 'manual') return false
-  if (source === 'system') return true
-  return undefined
-}
 
 /**
  * Total debit/kredit jurnal untuk tampilan list.
@@ -62,7 +41,6 @@ export default function JournalListPage() {
   const [search, setSearch] = useState('')
   const [prevFilters, setPrevFilters] = useState('')
   const [filterStatuses, setFilterStatuses] = useState<JournalEntryStatus[]>([])
-  const [sourceFilter, setSourceFilter] = useState<JournalSourceFilter>('all')
   const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [selectedRows, setSelectedRows] = useState<string[]>([])
 
@@ -79,7 +57,7 @@ export default function JournalListPage() {
 
   // Semua filter dikirim ke server, jadi perubahannya harus mengembalikan
   // halaman ke 1 -- memfilter dari halaman jauh akan mendarat di daftar kosong.
-  const filterKey = `${search}|${filterStatuses.join(',')}|${sourceFilter}|${dateRange.from}|${dateRange.to}|${sort?.key ?? ''}|${sort?.direction ?? ''}`
+  const filterKey = `${search}|${filterStatuses.join(',')}|${dateRange.from}|${dateRange.to}|${sort?.key ?? ''}|${sort?.direction ?? ''}`
   if (filterKey !== prevFilters) {
     setPrevFilters(filterKey)
     setPage(0)
@@ -93,7 +71,6 @@ export default function JournalListPage() {
     status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
-    is_system_generated: sourceToParam(sourceFilter),
     ...sortParams,
   })
 
@@ -197,14 +174,13 @@ export default function JournalListPage() {
     },
   ]
 
-  const activeFilterCount = [filterStatuses.length > 0, sourceFilter !== 'all', dateRange.from, dateRange.to].filter(Boolean).length
+  const activeFilterCount = [filterStatuses.length > 0, dateRange.from, dateRange.to].filter(Boolean).length
 
   const sidebar = (
     <FilterSidebar
       activeCount={activeFilterCount}
       onReset={() => {
         setFilterStatuses([])
-        setSourceFilter('all')
         setDateRange({ from: '', to: '' })
         setSort({ key: 'journal_date', direction: 'desc' })
         resetSelection()
@@ -225,17 +201,6 @@ export default function JournalListPage() {
         value={filterStatuses}
         onChange={(next) => {
           setFilterStatuses(next)
-          resetSelection()
-        }}
-      />
-      <SingleCheckboxFilter<JournalSourceFilter>
-        title="Sumber"
-        options={SOURCE_OPTIONS}
-        value={sourceFilter}
-        clearValue="all"
-        note="Tanpa pilihan: semua jurnal ditampilkan, termasuk jurnal otomatis dari modul lain."
-        onChange={(next) => {
-          setSourceFilter(next)
           resetSelection()
         }}
       />
