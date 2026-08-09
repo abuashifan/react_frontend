@@ -10,6 +10,13 @@ interface ListSearchBarProps {
   placeholder?: string
   className?: string
   debounceMs?: number
+  /**
+   * Keterangan kecil di bawah kotak pencarian yang menyebutkan kolom apa saja
+   * yang benar-benar dicari server. Placeholder saja tidak cukup: teksnya
+   * terpotong pada input sempit dan hilang begitu user mulai mengetik,
+   * sehingga cakupan pencarian mudah disalahpahami.
+   */
+  hint?: string
 }
 
 /**
@@ -35,6 +42,7 @@ export function ListSearchBar({
   placeholder = 'Cari di semua kolom...',
   className,
   debounceMs = 400,
+  hint,
 }: ListSearchBarProps) {
   const [inputValue, setInputValue] = useState(value)
   const [prevValue, setPrevValue] = useState(value)
@@ -54,25 +62,33 @@ export function ListSearchBar({
   }, [inputValue, debounceMs, onChange])
 
   return (
-    <div className={cn('relative w-full max-w-sm', className)}>
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748b]" />
-      <input
-        type="text"
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        placeholder={placeholder}
-        aria-label={placeholder}
-        className="h-9 w-full rounded-md border border-[#d9e2e5] bg-white pl-9 pr-8 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#5c9ead] lg:text-sm"
-      />
-      {inputValue && (
-        <button
-          type="button"
-          onClick={() => setInputValue('')}
-          aria-label="Bersihkan pencarian"
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#94a3b8] hover:text-[#64748b]"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
+    <div className={cn('w-full max-w-sm', className)}>
+      <div className="relative w-full">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64748b]" />
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          placeholder={placeholder}
+          aria-label={placeholder}
+          aria-describedby={hint ? 'list-search-hint' : undefined}
+          className="h-9 w-full rounded-md border border-[#d9e2e5] bg-white pl-9 pr-8 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#5c9ead] lg:text-sm"
+        />
+        {inputValue && (
+          <button
+            type="button"
+            onClick={() => setInputValue('')}
+            aria-label="Bersihkan pencarian"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#94a3b8] hover:text-[#64748b]"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+      {hint && (
+        <p id="list-search-hint" className="mt-1 text-[11px] leading-4 text-[#94a3b8]">
+          {hint}
+        </p>
       )}
     </div>
   )

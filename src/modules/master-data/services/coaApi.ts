@@ -40,4 +40,29 @@ export const coaApi = {
       sublabel: a.account_code,
     }))
   },
+
+  /**
+   * Varian pencarian akun dengan **kode akun sebagai label utama** dan nama
+   * akun sebagai sublabel.
+   *
+   * Dipakai baris jurnal yang memisahkan kolom "No. Akun" dan "Nama Akun":
+   * di sana trigger select harus menampilkan kode, sedangkan namanya tampil di
+   * kolom sebelahnya. `SearchableSelect` menyimpan opsi terpilih apa adanya,
+   * jadi urutan label/sublabel harus sudah benar sejak dari service —
+   * kalau tidak, label trigger berubah setelah user memilih.
+   */
+  searchByCode: async (
+    query: string,
+    filters: Partial<Pick<CoaListParams, 'account_type' | 'is_active' | 'is_cash_bank'>> = {},
+  ): Promise<SelectOption<number>[]> => {
+    const res = await http.get<unknown, PaginatedResponse<Coa>>(
+      '/master-data/chart-of-accounts',
+      { params: { search: query, per_page: 10, is_active: true, ...filters } },
+    )
+    return res.data.map((a) => ({
+      value: a.id,
+      label: a.account_code,
+      sublabel: a.account_name,
+    }))
+  },
 }

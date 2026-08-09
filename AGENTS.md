@@ -215,9 +215,21 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 ### 6C. Build Status
 
 ```
-Terakhir dicek  : 2026-07-11 (reports-expansion Fase 7 — GL detail & journal reports)
+Terakhir dicek  : 2026-08-09 (Jurnal Umum — UX daftar & form)
 npm run build   : ✅ 0 error
 npm run lint    : ✅ 0 error, 0 warning
+Backend test    : ✅ php artisan test --filter=Journal (109 passed) + pint --test clean
+Jurnal Umum     : - DataTable: kolom `sortable`/`sortKey` + hook `useListSort` (server-side sort)
+                  - Backend list jurnal: agregat total_debit/total_credit (withSum), keduanya
+                    masuk allowlist sort; filter `is_system_generated` akhirnya diterapkan
+                  - Bulk void daftar jurnal lewat hook baru `useBulkVoid`
+                  - ListSearchBar: prop `hint` (cakupan pencarian: nomor jurnal + keterangan)
+                  - Form jurnal: header ringkas 1 baris, kolom No. Akun + Nama Akun terpisah,
+                    Keterangan dipindah setelah Kredit, `AmountInput` (pemisah ribuan),
+                    ringkasan Debit/Kredit/Selisih di samping Deskripsi
+                  - Fix: nominal decimal string dari API tidak lagi membuat total tampil "-"
+Playwright      : ✅ Chromium headless 1024×656, dev server lokal (vite + php artisan serve):
+                  daftar (sort, checkbox, bulk-void dialog) dan form (create + detail posted)
 Fase 7          : - JournalListReportPage (Laporan Jurnal /reports/journals) + filter sumber (?source=)
                   - GeneralLedgerPage: toggle Ringkasan/Rincian (mode=detail), 2 query terpisah
                   - reportsApi: adapter journalList + generalLedgerDetail; katalog `gl` diperluas
@@ -227,7 +239,7 @@ Fase 7          : - JournalListReportPage (Laporan Jurnal /reports/journals) + f
                   - no-unused-vars: ignoreRestSiblings + pola `^_` (pola omit field)
                   - set-state-in-effect PeriodEndPage → pola render-phase adjust-state
                   - react-hooks/incompatible-library dimatikan (inheren RHF watch, bukan bug)
-Playwright      : ✅ Chromium headless; Period-End live + route-mock pada 1440×900,
+Playwright (F7) : ✅ Chromium headless; Period-End live + route-mock pada 1440×900,
                   1180×708, 1024×656, dan 390×844; POST run/reopen diintersep
 ```
 

@@ -1,17 +1,20 @@
-import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Plus, Trash2 } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { FilterSidebar } from '@/components/shared/layout/FilterSidebar'
 import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
+import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
+import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
+import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { useJournalEntryList } from '../hooks/useJournalEntryList'
-import type { ColumnDef } from '@/components/shared/table/DataTable'
+import { useListSort } from '@/hooks/useListSort'
+import { useBulkVoid } from '@/hooks/useBulkVoid'
+import { useJournalEntryList, useJournalEntryMutations } from '../hooks/useJournalEntryList'
+import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { JournalEntry, JournalEntryStatus } from '../types/journalEntry.types'
 import { useRecordTab } from '@/hooks/useRecordTab'
 
@@ -20,8 +23,9 @@ const STATUSES: JournalEntryStatus[] = ['draft', 'approved', 'posted', 'void']
 /**
  * Total debit/kredit jurnal untuk tampilan list.
  * Prioritas: aggregate dari backend → hitung dari lines bila ada → undefined.
- * Backend list saat ini tidak mengirim aggregate maupun lines, sehingga
- * formatter akan menampilkan `-` (bukan `Rp 0` palsu) sesuai spec-33.
+ * Sejak backend mengirim `total_debit`/`total_credit` (withSum di
+ * `JournalEntryService::list()`), jalur aggregate yang dipakai; fallback lines
+ * dipertahankan untuk pemanggil lain yang mengirim lines lengkap.
  */
 function journalTotal(entry: JournalEntry, side: 'debit' | 'credit'): number | undefined {
   const aggregate = side === 'debit' ? entry.total_debit : entry.total_credit
@@ -36,114 +40,192 @@ export default function JournalListPage() {
   const { openRecordTab } = useRecordTab()
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
-  const [prevSearch, setPrevSearch] = useState('')
-  const [filterStatus, setFilterStatus] = useState<JournalEntryStatus | undefined>()
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
+  const [prevFilters, setPrevFilters] = useState('')
+  const [filterStatuses, setFilterStatuses] = useState<JournalEntryStatus[]>([])
+  const [dateRange, setDateRange] = useState({ from: '', to: '' })
+  const [selectedRows, setSelectedRows] = useState<string[]>([])
 
-  if (search !== prevSearch) {
-    setPrevSearch(search)
+  // Sorting dilakukan server-side; nilai `key` harus cocok dengan allowlist
+  // `$listSortable` di JournalEntryService.
+  const { sort, toggleSort, setSort, sortParams } = useListSort({ key: 'journal_date', direction: 'desc' })
+
+  const { void: voidJournal } = useJournalEntryMutations()
+
+  const resetSelection = () => {
     setPage(0)
+    setSelectedRows([])
+  }
+
+  // Semua filter dikirim ke server, jadi perubahannya harus mengembalikan
+  // halaman ke 1 -- memfilter dari halaman jauh akan mendarat di daftar kosong.
+  const filterKey = `${search}|${filterStatuses.join(',')}|${dateRange.from}|${dateRange.to}|${sort?.key ?? ''}|${sort?.direction ?? ''}`
+  if (filterKey !== prevFilters) {
+    setPrevFilters(filterKey)
+    setPage(0)
+    setSelectedRows([])
   }
 
   const { data, isLoading, isFetching } = useJournalEntryList({
     page: page + 1,
     per_page: 25,
     search: search || undefined,
-    status: filterStatus,
-    date_from: dateFrom || undefined,
-    date_to: dateTo || undefined,
+    status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
+    date_from: dateRange.from || undefined,
+    date_to: dateRange.to || undefined,
     is_system_generated: false,
+    ...sortParams,
   })
+
+  const rows = useMemo(() => data?.data ?? [], [data])
+
+  const { requestBulkVoid, dialogProps } = useBulkVoid<JournalEntry>({
+    rows,
+    voidRecord: (row, reason) => voidJournal.mutateAsync({ id: Number(row.id), reason }),
+    // Jurnal void tidak bisa di-void ulang; jurnal sistem tidak boleh di-void
+    // dari sini (harus lewat dokumen sumbernya).
+    isEligible: (row) => row.status !== 'void' && !row.is_system_generated,
+    getDocumentNumber: (row) => row.journal_number,
+    entityLabel: 'jurnal',
+    isPending: voidJournal.isPending,
+    onFinished: () => setSelectedRows([]),
+  })
+
+  const bulkActions: BulkAction[] = [
+    {
+      id: 'bulk-void',
+      label: 'Void Terpilih',
+      icon: <Trash2 className="h-3.5 w-3.5" />,
+      variant: 'destructive',
+      permission: 'journal.void',
+      onClick: requestBulkVoid,
+    },
+  ]
 
   const columns: ColumnDef<JournalEntry>[] = [
     {
       id: 'number',
       header: 'Nomor Jurnal',
       size: 160,
-      meta: { sticky: true, stickyLeft: 0 },
+      sortable: true,
+      sortKey: 'journal_number',
+      meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => (
         <button type="button" onClick={() => openRecordTab({ label: original.journal_number, path: `/accounting/journals/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.journal_number}
         </button>
       ),
     },
-    { id: 'date', header: 'Tanggal', size: 110, cell: ({ original }) => formatDate(original.journal_date) },
-    { id: 'description', header: 'Deskripsi', size: 220, cell: ({ original }) => original.description ?? '-' },
+    {
+      id: 'date',
+      header: 'Tanggal',
+      size: 110,
+      sortable: true,
+      sortKey: 'journal_date',
+      cell: ({ original }) => formatDate(original.journal_date),
+    },
     {
       id: 'debit',
       header: 'Total Debit',
       size: 140,
-      meta: { className: 'tabular-nums text-right' },
+      sortable: true,
+      sortKey: 'total_debit',
+      meta: { className: 'tabular-nums text-right', headerClassName: 'text-right' },
       cell: ({ original }) => formatCurrency(journalTotal(original, 'debit')),
     },
     {
       id: 'credit',
       header: 'Total Kredit',
       size: 140,
-      meta: { className: 'tabular-nums text-right' },
+      sortable: true,
+      sortKey: 'total_credit',
+      meta: { className: 'tabular-nums text-right', headerClassName: 'text-right' },
       cell: ({ original }) => formatCurrency(journalTotal(original, 'credit')),
     },
     { id: 'status', header: 'Status', size: 110, cell: ({ original }) => <DocumentStatusBadge status={original.status} /> },
+    // Keterangan sengaja ditaruh paling belakang: kolomnya paling lebar dan
+    // paling jarang dipakai untuk memindai daftar, sementara nomor/tanggal/
+    // nominal harus terbaca lebih dulu tanpa scroll horizontal.
+    { id: 'description', header: 'Keterangan', size: 260, cell: ({ original }) => original.description ?? '-' },
   ]
 
-  const activeFilterCount = [filterStatus, dateFrom, dateTo].filter(Boolean).length
+  const activeFilterCount = [filterStatuses.length > 0, dateRange.from, dateRange.to].filter(Boolean).length
 
   const sidebar = (
-    <FilterSidebar activeCount={activeFilterCount} onReset={() => { setFilterStatus(undefined); setDateFrom(''); setDateTo('') }}>
+    <FilterSidebar
+      activeCount={activeFilterCount}
+      onReset={() => {
+        setFilterStatuses([])
+        setDateRange({ from: '', to: '' })
+        setSort({ key: 'journal_date', direction: 'desc' })
+        resetSelection()
+      }}
+    >
       <div className="border-b border-[#f1f5f9] px-4 py-3">
         <ListSearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Cari nomor jurnal atau deskripsi..."
+          placeholder="Cari jurnal..."
+          hint="Mencari di nomor jurnal dan keterangan."
           className="w-full max-w-none"
         />
       </div>
-      <FilterSection title="Tanggal">
-        <div className="flex flex-col gap-1">
-          <span className="text-[11px] text-[#64748b]">Dari</span>
-          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 text-[12px]" />
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-[11px] text-[#64748b]">Sampai</span>
-          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 text-[12px]" />
-        </div>
-      </FilterSection>
-      <FilterSection title="Status">
-        {STATUSES.map((s) => (
-          <label key={s} className="flex cursor-pointer items-center gap-2">
-            <Checkbox checked={filterStatus === s} onCheckedChange={(c) => setFilterStatus(c ? s : undefined)} />
-            <span className="text-[12px] capitalize text-[#334155]">{s}</span>
-          </label>
-        ))}
-      </FilterSection>
+      <MultiCheckboxFilter
+        title="Status"
+        options={STATUSES.map((status) => ({ value: status, label: status }))}
+        value={filterStatuses}
+        onChange={(next) => {
+          setFilterStatuses(next)
+          resetSelection()
+        }}
+      />
+      <DateRangeFilterSection
+        title="Tanggal"
+        from={dateRange.from}
+        to={dateRange.to}
+        onChange={(next) => {
+          setDateRange(next)
+          resetSelection()
+        }}
+      />
     </FilterSidebar>
   )
 
   return (
-    <WorkspaceLayout
-      title="Jurnal Umum"
-      breadcrumb={[{ label: 'Akuntansi' }, { label: 'Jurnal Umum' }]}
-      sidebar={sidebar}
-      action={
-        <PermissionGuard permission="journal.create">
-          <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Jurnal Baru', path: '/accounting/journals/create' })}>
-            <Plus className="mr-1 h-3.5 w-3.5" /> Buat Jurnal
-          </Button>
-        </PermissionGuard>
-      }
-    >
-      <DataTable
-        data={data?.data ?? []}
-        columns={columns}
-        totalRows={data?.meta.total ?? 0}
-        isLoading={isLoading}
-        isFetching={isFetching}
-        pagination={{ pageIndex: page, pageSize: 25 }}
-        onPaginationChange={(p) => setPage(p.pageIndex)}
-        emptyTitle="Belum ada jurnal"
-        emptyDescription="Buat jurnal manual untuk mencatat transaksi akuntansi."
-      />
-    </WorkspaceLayout>
+    <>
+      <WorkspaceLayout
+        title="Jurnal Umum"
+        breadcrumb={[{ label: 'Akuntansi' }, { label: 'Jurnal Umum' }]}
+        sidebar={sidebar}
+        action={
+          <PermissionGuard permission="journal.create">
+            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Jurnal Baru', path: '/accounting/journals/create' })}>
+              <Plus className="mr-1 h-3.5 w-3.5" /> Buat Jurnal
+            </Button>
+          </PermissionGuard>
+        }
+      >
+        <DataTable
+          data={rows}
+          columns={columns}
+          totalRows={data?.meta.total ?? 0}
+          isLoading={isLoading}
+          isFetching={isFetching}
+          pagination={{ pageIndex: page, pageSize: 25 }}
+          onPaginationChange={(p) => {
+            setPage(p.pageIndex)
+            setSelectedRows([])
+          }}
+          sort={sort}
+          onSortChange={toggleSort}
+          selectedRows={selectedRows}
+          onRowSelect={setSelectedRows}
+          bulkActions={bulkActions}
+          emptyTitle="Belum ada jurnal"
+          emptyDescription="Buat jurnal manual untuk mencatat transaksi akuntansi."
+        />
+      </WorkspaceLayout>
+
+      <VoidConfirmDialog {...dialogProps} />
+    </>
   )
 }

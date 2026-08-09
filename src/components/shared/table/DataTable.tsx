@@ -1,3 +1,4 @@
+import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
@@ -6,9 +7,10 @@ import { BulkActionBar } from './BulkActionBar'
 import type { BulkAction } from './BulkActionBar'
 import { TablePagination } from './TablePagination'
 import type { PaginationState } from './TablePagination'
+import type { SortState } from './tableSort'
 
 // Re-export so consumers import from one place
-export type { PaginationState, BulkAction }
+export type { PaginationState, BulkAction, SortState }
 
 export interface ColumnMeta {
   sticky?: boolean
@@ -23,6 +25,14 @@ export interface ColumnDef<T> {
   cell: (ctx: { original: T; id: string; isSelected: boolean }) => React.ReactNode
   size?: number
   meta?: ColumnMeta
+  /**
+   * Aktifkan tombol sort di header kolom ini. Nama field yang dikirim ke API
+   * diambil dari `sortKey`, atau `id` bila `sortKey` tidak diisi — pastikan
+   * nilainya ada di allowlist `$listSortable` service backend, kalau tidak
+   * backend akan mengabaikannya dan memakai urutan default.
+   */
+  sortable?: boolean
+  sortKey?: string
 }
 
 export interface DataTableProps<T extends { id: number | string }> {
@@ -39,9 +49,21 @@ export interface DataTableProps<T extends { id: number | string }> {
   onRowClick?: (row: T) => void
   emptyTitle?: string
   emptyDescription?: string
+  /** Sort aktif; `null` = urutan default backend. Lihat `useListSort`. */
+  sort?: SortState | null
+  /** Dipanggil dengan `sortKey`/`id` kolom saat header sortable diklik. */
+  onSortChange?: (key: string) => void
 }
 
 const SKELETON_ROWS = 5
+
+function SortIcon({ state }: { state: 'asc' | 'desc' | null }) {
+  if (state === 'asc') return <ArrowUp className="h-3 w-3 text-[#326273]" />
+  if (state === 'desc') return <ArrowDown className="h-3 w-3 text-[#326273]" />
+  // Ikon netral tetap dirender (opacity rendah) supaya lebar header tidak
+  // bergeser saat kolom berpindah status sort.
+  return <ChevronsUpDown className="h-3 w-3 text-[#94a3b8] opacity-50 group-hover:opacity-100" />
+}
 
 function stickyStyle(meta?: ColumnMeta): React.CSSProperties | undefined {
   if (!meta?.sticky) return undefined
@@ -67,6 +89,8 @@ export function DataTable<T extends { id: number | string }>({
   onRowClick,
   emptyTitle = 'Tidak ada data',
   emptyDescription,
+  sort = null,
+  onSortChange,
 }: DataTableProps<T>) {
   const rows = Array.isArray(data) ? data : []
   const isSelectable = !!onRowSelect && !!bulkActions?.length
@@ -135,21 +159,46 @@ export function DataTable<T extends { id: number | string }>({
           {/* Header */}
           <thead>
             <tr className="border-b border-[#d9e2e5] bg-[#eeeeee]">
-              {renderedColumns.map((col) => (
-                <th
-                  key={col.id}
-                  className={cn(
-                    'sticky top-0 h-9 bg-[#eeeeee] px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b] whitespace-nowrap',
-                    col.meta?.headerClassName,
-                  )}
-                  style={{
-                    ...(col.size ? { minWidth: col.size } : {}),
-                    ...headerStickyStyle(col.meta),
-                  }}
-                >
-                  {col.header}
-                </th>
-              ))}
+              {renderedColumns.map((col) => {
+                const sortKey = col.sortKey ?? col.id
+                const isSortable = !!col.sortable && !!onSortChange
+                const sortState = sort?.key === sortKey ? sort.direction : null
+                const isRightAligned = col.meta?.className?.includes('text-right')
+
+                return (
+                  <th
+                    key={col.id}
+                    aria-sort={sortState ? (sortState === 'asc' ? 'ascending' : 'descending') : undefined}
+                    className={cn(
+                      'sticky top-0 h-9 bg-[#eeeeee] px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b] whitespace-nowrap',
+                      col.meta?.headerClassName,
+                    )}
+                    style={{
+                      ...(col.size ? { minWidth: col.size } : {}),
+                      ...headerStickyStyle(col.meta),
+                    }}
+                  >
+                    {isSortable ? (
+                      <button
+                        type="button"
+                        onClick={() => onSortChange(sortKey)}
+                        aria-label={typeof col.header === 'string' ? `Urutkan berdasarkan ${col.header}` : 'Urutkan kolom ini'}
+                        className={cn(
+                          'group -mx-1 flex w-[calc(100%+8px)] items-center gap-1 rounded px-1 py-0.5 text-[11px] font-bold uppercase',
+                          'transition-colors hover:text-[#326273] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5c9ead]',
+                          sortState && 'text-[#326273]',
+                          isRightAligned && 'justify-end',
+                        )}
+                      >
+                        <span className="truncate">{col.header}</span>
+                        <SortIcon state={sortState} />
+                      </button>
+                    ) : (
+                      col.header
+                    )}
+                  </th>
+                )
+              })}
             </tr>
           </thead>
 

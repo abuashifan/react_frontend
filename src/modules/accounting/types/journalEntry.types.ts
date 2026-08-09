@@ -1,3 +1,5 @@
+import type { SortDirection } from '@/types/common.types'
+
 export type JournalEntryStatus = 'draft' | 'approved' | 'posted' | 'void'
 
 export interface JournalEntryLine {
@@ -47,6 +49,13 @@ export interface JournalEntryListParams {
   date_from?: string
   date_to?: string
   is_system_generated?: boolean
+  /**
+   * Kolom pengurutan server-side. Nilai yang didukung backend:
+   * `journal_number`, `journal_date`, `status`, `created_at`, `total_debit`,
+   * `total_credit`. Nilai di luar daftar itu diabaikan backend.
+   */
+  sort_by?: string
+  sort_direction?: SortDirection
 }
 
 export interface JournalEntryLinePayload {

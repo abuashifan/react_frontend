@@ -258,7 +258,9 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____SessionWarningDialog.tsx
 | | | | |____UnsavedFormsDialog.tsx
 | | | |____form/
+| | | | |____AmountInput.tsx
 | | | | |____FieldError.tsx
+| | | | |____FormField.tsx
 | | | | |____FormSection.tsx
 | | | | |____FormSummary.tsx
 | | | | |____LineItemsTable.tsx
@@ -284,6 +286,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____BulkActionBar.tsx
 | | | | |____DataTable.tsx
 | | | | |____TablePagination.tsx
+| | | | |____tableSort.ts
 | | |____ui/
 | | | |____alert-dialog.tsx
 | | | |____alert.tsx
@@ -310,9 +313,11 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____tooltip.tsx
 | |____hooks/
 | | |____use-toast.ts
+| | |____useBulkVoid.ts
 | | |____useCompanySession.ts
 | | |____useCompanySettings.ts
 | | |____useDocumentActions.ts
+| | |____useListSort.ts
 | | |____useOpenPrimaryTab.ts
 | | |____usePermission.ts
 | | |____usePersistentFormDraft.ts
@@ -810,3 +815,17 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 - Tree ini mengikuti isi folder frontend saat ini.
 - `dist/` dan `node_modules/` memang ada, tetapi tidak perlu dibuka saat mencari source.
 - Jika ada file baru, update peta ini dulu supaya agent lain bisa baca satu file ini saja.
+
+### Shared baru (sorting daftar, nominal, void massal)
+
+| File | Fungsi | Dipakai bersama |
+|---|---|---|
+| `components/shared/table/tableSort.ts` | Tipe `SortState` + siklus asc→desc→default dan mapping ke `sort_by`/`sort_direction` | `DataTable`, `useListSort` |
+| `hooks/useListSort.ts` | State sorting halaman daftar; hasilnya disebar ke params query | `DataTable.sort` / `onSortChange` |
+| `hooks/useBulkVoid.ts` | Alur void massal: saring dokumen eligible, konfirmasi, `allSettled`, rangkuman toast | `BulkActionBar`, `VoidConfirmDialog` |
+| `components/shared/form/AmountInput.tsx` | Input uang dengan pemisah ribuan id-ID; pengganti `<Input type="number">` untuk nominal | `LineItemsTable`, form transaksi |
+| `components/shared/form/FormField.tsx` | Label + kontrol + slot error dengan kepadatan seragam | Semua form |
+
+Kolom `DataTable` kini punya `sortable` + `sortKey`; `sortKey` wajib memakai nama field
+backend (allowlist `$listSortable` di service Laravel), bukan `id` kolom UI.
+`ListSearchBar` punya prop `hint` untuk menyebutkan kolom apa saja yang dicari server.

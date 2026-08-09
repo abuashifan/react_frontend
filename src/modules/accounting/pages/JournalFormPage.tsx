@@ -3,15 +3,14 @@ import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
-import { FormSection } from '@/components/shared/form/FormSection'
+import { FormField } from '@/components/shared/form/FormField'
 import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
+import { AmountInput } from '@/components/shared/form/AmountInput'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
-import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
@@ -22,20 +21,64 @@ import { journalEntrySchema, type JournalEntryFormValues } from '../schemas/jour
 import { journalEntryApi } from '../services/journalEntryApi'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
-import type { DocumentStatus, SelectOption } from '@/types/common.types'
+import type { DocumentStatus } from '@/types/common.types'
 import type { BudgetWarning } from '../types/journalEntry.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine {
   account_id: number | null
-  /** Preloaded option agar SearchableSelect bisa menampilkan label akun existing. */
-  account_option: SelectOption<number> | null
+  /**
+   * Kode dan nama akun disimpan di state baris, bukan hanya `account_id`.
+   * Tabel memisahkan kolom "No. Akun" dan "Nama Akun" (mengikuti tata letak
+   * bukti jurnal), dan keduanya harus tetap terbaca setelah reload tanpa
+   * memanggil ulang detail akun per baris.
+   */
+  account_code: string
+  account_name: string
   description: string
   debit: number
   credit: number
 }
 
-const DEFAULT_LINE: EditableLine = { account_id: null, account_option: null, description: '', debit: 0, credit: 0 }
+const DEFAULT_LINE: EditableLine = { account_id: null, account_code: '', account_name: '', description: '', debit: 0, credit: 0 }
+
+/** Nominal dari API/draft bisa berupa string desimal — pastikan selalu number. */
+function toAmount(value: number | string | null | undefined): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+/** Nilai `account` dari kolom No. Akun — satu update untuk id + kode + nama. */
+interface AccountSelection {
+  id: number | null
+  code: string
+  name: string
+}
+
+/**
+ * Terapkan satu perubahan sel ke baris. Kolom "No. Akun" mengirim objek
+ * `AccountSelection` supaya id, kode, dan nama akun berubah bersamaan; sisanya
+ * update field biasa.
+ */
+function applyLineUpdate(line: EditableLine, field: string, value: unknown): EditableLine {
+  if (field === 'account') {
+    const selection = value as AccountSelection
+    return { ...line, account_id: selection.id, account_code: selection.code, account_name: selection.name }
+  }
+  return { ...line, [field]: value }
+}
+
+/** Normalisasi baris dari draft localStorage (bisa berasal dari versi state lama). */
+function normalizeDraftLine(line: Partial<EditableLine>): EditableLine {
+  return {
+    account_id: line.account_id ?? null,
+    account_code: line.account_code ?? '',
+    account_name: line.account_name ?? '',
+    description: line.description ?? '',
+    debit: toAmount(line.debit),
+    credit: toAmount(line.credit),
+  }
+}
 
 export default function JournalFormPage() {
   const { id } = useParams()
@@ -64,10 +107,8 @@ function JournalFormPageContent() {
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE, DEFAULT_LINE])
 
-  // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
-
+  // Error per baris dari backend (mis. lines.0.account_id) supaya baris yang
   // ditolak ikut ditandai, bukan cuma toast.
-
   const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
 
@@ -76,7 +117,8 @@ function JournalFormPageContent() {
 
   const totalDebit = lines.reduce((s, l) => s + (l.debit || 0), 0)
   const totalCredit = lines.reduce((s, l) => s + (l.credit || 0), 0)
-  const isBalanced = Math.abs(totalDebit - totalCredit) < 0.001
+  const difference = totalDebit - totalCredit
+  const isBalanced = Math.abs(difference) < 0.001
 
   useEffect(() => {
     if (journal) {
@@ -85,12 +127,14 @@ function JournalFormPageContent() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setLines(journal.lines.map((l) => ({
         account_id: l.account_id,
-        account_option: l.account
-          ? { value: l.account.id, label: `${l.account.account_code} - ${l.account.account_name}`, sublabel: l.account.account_code }
-          : { value: l.account_id, label: `Akun #${l.account_id}` },
+        account_code: l.account?.account_code ?? '',
+        account_name: l.account?.account_name ?? '',
         description: l.description ?? '',
-        debit: l.debit ?? 0,
-        credit: l.credit ?? 0,
+        // Kolom decimal dikirim backend sebagai string ("1000.00"). Tanpa
+        // koersi ini, `reduce` di bawah menyambung string alih-alih menjumlah
+        // dan ringkasan total tampil sebagai "-".
+        debit: toAmount(l.debit),
+        credit: toAmount(l.credit),
       })))
     }
   }, [journal, reset])
@@ -100,13 +144,17 @@ function JournalFormPageContent() {
   // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
   // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
   // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  // `version: 2` — bentuk baris berubah (kode & nama akun kini disimpan),
+  // draft versi lama sengaja tidak dipulihkan agar labelnya tidak kosong.
   const formDraft = usePersistentFormDraft<JournalEntryFormValues, EditableLine[]>({
     draftKey: `accounting.journal.${id ?? 'new'}`,
+    version: 2,
     control,
     getValues,
     reset,
     extra: lines,
-    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
+    onRestoreExtra: (draftLines) =>
+      setLines(draftLines.length > 0 ? draftLines.map(normalizeDraftLine) : [DEFAULT_LINE]),
   })
 
   const { saveAndClose, navProps } = useRecordFormNavigation<JournalEntryFormValues>({
@@ -162,22 +210,69 @@ function JournalFormPageContent() {
 
   const columns: LineItemColumn<EditableLine>[] = [
     {
-      id: 'account', header: 'Akun', width: 220,
+      id: 'account', header: 'No. Akun', width: 140,
       render: ({ item, isReadOnly, onUpdate }) => (
-        <SearchableSelect value={item.account_id} onChange={(v) => onUpdate('account_id', v)} onSearch={coaApi.search} placeholder="Pilih akun..." disabled={isReadOnly} size="sm" selectedOptions={item.account_option ? [item.account_option] : []} />
+        <SearchableSelect
+          value={item.account_id}
+          onChange={(value, option) =>
+            onUpdate('account', {
+              id: value,
+              code: option?.label ?? (value === item.account_id ? item.account_code : ''),
+              name: option?.sublabel ?? (value === item.account_id ? item.account_name : ''),
+            } satisfies AccountSelection)
+          }
+          // Label opsi = kode akun, sublabel = nama akun (lihat coaApi.searchByCode),
+          // supaya trigger kolom ini menampilkan nomor akun dan kolom sebelahnya namanya.
+          onSearch={coaApi.searchByCode}
+          placeholder="Pilih akun..."
+          disabled={isReadOnly}
+          size="sm"
+          selectedOptions={
+            item.account_id
+              ? [{ value: item.account_id, label: item.account_code || `#${item.account_id}`, sublabel: item.account_name }]
+              : []
+          }
+        />
       ),
     },
-    { id: 'description', header: 'Keterangan', width: 180, render: ({ item, isReadOnly, onUpdate }) => <Input value={item.description} onChange={(e) => onUpdate('description', e.target.value)} disabled={isReadOnly} placeholder="Keterangan..." className="h-8 text-[12px]" /> },
+    {
+      id: 'account_name', header: 'Nama Akun', width: 200,
+      render: ({ item }) => (
+        <span className="block truncate py-1 text-[12px] text-[#334155]" title={item.account_name}>
+          {item.account_name || (item.account_id ? '—' : '')}
+        </span>
+      ),
+    },
     {
       id: 'debit', header: 'Debit', width: 130, align: 'right',
       render: ({ item, isReadOnly, onUpdate }) => (
-        <Input type="number" value={item.debit || ''} onChange={(e) => { onUpdate('debit', Number(e.target.value)); onUpdate('credit', 0) }} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} placeholder="0" />
+        <AmountInput
+          value={item.debit}
+          onChange={(value) => { onUpdate('debit', value); onUpdate('credit', 0) }}
+          disabled={isReadOnly}
+          decimals={2}
+          ariaLabel="Debit"
+        />
       ),
     },
     {
       id: 'credit', header: 'Kredit', width: 130, align: 'right',
       render: ({ item, isReadOnly, onUpdate }) => (
-        <Input type="number" value={item.credit || ''} onChange={(e) => { onUpdate('credit', Number(e.target.value)); onUpdate('debit', 0) }} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} placeholder="0" />
+        <AmountInput
+          value={item.credit}
+          onChange={(value) => { onUpdate('credit', value); onUpdate('debit', 0) }}
+          disabled={isReadOnly}
+          decimals={2}
+          ariaLabel="Kredit"
+        />
+      ),
+    },
+    // Keterangan dipindah ke belakang Kredit: pasangan akun–nominal adalah inti
+    // baris jurnal dan harus terbaca berurutan tanpa disela teks bebas.
+    {
+      id: 'description', header: 'Keterangan', width: 200,
+      render: ({ item, isReadOnly, onUpdate }) => (
+        <Input value={item.description} onChange={(e) => onUpdate('description', e.target.value)} disabled={isReadOnly} placeholder="Keterangan baris..." className="h-8 text-[12px]" />
       ),
     },
   ]
@@ -213,6 +308,7 @@ function JournalFormPageContent() {
         documentNumber={journal?.journal_number}
         status={status}
         readOnly={!isEditable}
+        isSystemGenerated={journal?.is_system_generated}
         breadcrumb={[{ label: 'Akuntansi' }, { label: 'Jurnal', path: '/accounting/journals' }, { label: isCreate ? 'Buat Jurnal' : (journal?.journal_number ?? '') }]}
         headerActions={
           <>
@@ -221,42 +317,81 @@ function JournalFormPageContent() {
           </>
         }
       >
-        <div className="space-y-3">
-          <FormSection title="Header">
-            <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
-              <Input {...register('journal_date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.journal_date))} />
-              <FieldError message={errors.journal_date?.message} />
-            </div>
-            <div className="flex flex-col gap-1 md:col-span-2">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Deskripsi</Label>
-              <Textarea {...register('description')} disabled={!isEditable} placeholder="Deskripsi jurnal..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.description))} rows={2} />
-              <FieldError message={errors.description?.message} />
-            </div>
-          </FormSection>
+        {/* Kepadatan mengikuti spec-23 §7.1–7.2: identitas dokumen dibuat satu
+            baris ringkas supaya tabel baris jurnal — bagian yang benar-benar
+            dikerjakan user — mendapat sisa tinggi layar tablet. */}
+        <div className="space-y-2.5 [@media(max-height:620px)]:space-y-2">
+          <section className="rounded-lg border border-[#d9e2e5] bg-white px-3 py-2.5 lg:px-4 [@media(max-height:620px)]:py-2">
+            <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
+              <FormField label="No. Jurnal" className="w-[170px]">
+                <div className="flex h-8 items-center rounded-md border border-[#e2e8f0] bg-[#f8fbfc] px-2 text-[12px] tabular-nums text-[#64748b]">
+                  {journal?.journal_number ?? 'Otomatis'}
+                </div>
+              </FormField>
 
-          <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Baris Jurnal</p>
-            <LineItemsTable
-          errors={lineErrors}
-              items={lines} columns={columns}
-              onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
-              onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}
-              onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))}
-              isReadOnly={!isEditable} addLabel="Tambah Baris"
-            />
-            <div className="mt-2 flex justify-end gap-8 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-2 text-[12px]">
-              <div className="flex gap-2">
-                <span className="text-[#64748b]">Total Debit:</span>
-                <span className="tabular-nums font-semibold text-[#334155]">{formatCurrency(totalDebit)}</span>
+              <FormField label="Tgl. Jurnal" htmlFor="journal-date" required error={errors.journal_date?.message} className="w-[160px]">
+                <Input
+                  id="journal-date"
+                  {...register('journal_date')}
+                  type="date"
+                  disabled={!isEditable}
+                  className={cn('h-8 text-[12px]', fieldErrorClass(errors.journal_date))}
+                />
+              </FormField>
+
+              <FormField label="Sumber" className="w-[190px]">
+                <div className="flex h-8 items-center truncate rounded-md border border-[#e2e8f0] bg-[#f8fbfc] px-2 text-[12px] text-[#64748b]">
+                  {journal?.is_system_generated ? (journal.source_number ?? journal.source_type ?? 'Sistem') : 'Jurnal manual'}
+                </div>
+              </FormField>
+            </div>
+          </section>
+
+          <LineItemsTable
+            items={lines}
+            columns={columns}
+            errors={lineErrors}
+            onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
+            onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}
+            onUpdate={(i, field, value) =>
+              setLines((prev) => prev.map((l, idx) => (idx === i ? applyLineUpdate(l, field, value) : l)))
+            }
+            isReadOnly={!isEditable}
+            addLabel="Tambah Baris"
+            emptyLabel="Belum ada baris jurnal"
+          />
+
+          {/* Deskripsi dokumen dan ringkasan saldo disandingkan dalam satu baris
+              — keduanya pendek, jadi menumpuknya hanya membuang tinggi layar. */}
+          <div className="grid gap-2.5 md:grid-cols-[minmax(0,1fr)_280px]">
+            <FormField label="Deskripsi" htmlFor="journal-description" error={errors.description?.message}>
+              <Textarea
+                id="journal-description"
+                {...register('description')}
+                disabled={!isEditable}
+                placeholder="Deskripsi jurnal..."
+                rows={2}
+                className={cn('min-h-[58px] resize-none text-[12px]', fieldErrorClass(errors.description))}
+              />
+            </FormField>
+
+            <div className="h-fit rounded-lg border border-[#d9e2e5] bg-[#f8fafc] px-3 py-2 text-[12px]">
+              <div className="flex items-center justify-between gap-3 py-0.5">
+                <span className="text-[#64748b]">Total Debit</span>
+                <span className="font-semibold tabular-nums text-[#334155]">{formatCurrency(totalDebit)}</span>
               </div>
-              <div className="flex gap-2">
-                <span className="text-[#64748b]">Total Kredit:</span>
-                <span className="tabular-nums font-semibold text-[#334155]">{formatCurrency(totalCredit)}</span>
+              <div className="flex items-center justify-between gap-3 py-0.5">
+                <span className="text-[#64748b]">Total Kredit</span>
+                <span className="font-semibold tabular-nums text-[#334155]">{formatCurrency(totalCredit)}</span>
               </div>
-              {!isBalanced && (
-                <span className="font-semibold text-red-500">⚠ Tidak seimbang: {formatCurrency(Math.abs(totalDebit - totalCredit))}</span>
-              )}
+              <div className="mt-1 flex items-center justify-between gap-3 border-t border-[#e2e8f0] pt-1.5">
+                <span className={cn('font-medium', isBalanced ? 'text-[#15803d]' : 'text-red-600')}>
+                  {isBalanced ? 'Seimbang' : 'Selisih'}
+                </span>
+                <span className={cn('font-semibold tabular-nums', isBalanced ? 'text-[#15803d]' : 'text-red-600')}>
+                  {isBalanced ? '✓' : formatCurrency(Math.abs(difference))}
+                </span>
+              </div>
             </div>
           </div>
         </div>
