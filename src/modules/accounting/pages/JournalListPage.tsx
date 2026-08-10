@@ -20,17 +20,22 @@ import { useRecordTab } from '@/hooks/useRecordTab'
 const STATUSES: JournalEntryStatus[] = ['draft', 'approved', 'posted', 'void']
 
 /**
- * Total debit/kredit jurnal untuk tampilan list.
+ * Nilai satu jurnal untuk tampilan list.
+ *
+ * Sisi debit yang dipakai, dan itu cukup mewakili: `validateBalanced()` di
+ * `JournalValidationService` dijalankan saat create **dan** update, jadi tidak
+ * ada jurnal tersimpan yang debit dan kreditnya berbeda. Menampilkan keduanya
+ * berarti dua kolom berisi angka yang sama persis.
+ *
  * Prioritas: aggregate dari backend → hitung dari lines bila ada → undefined.
- * Sejak backend mengirim `total_debit`/`total_credit` (withSum di
+ * Sejak backend mengirim `total_debit` (withSum di
  * `JournalEntryService::list()`), jalur aggregate yang dipakai; fallback lines
  * dipertahankan untuk pemanggil lain yang mengirim lines lengkap.
  */
-function journalTotal(entry: JournalEntry, side: 'debit' | 'credit'): number | undefined {
-  const aggregate = side === 'debit' ? entry.total_debit : entry.total_credit
-  if (aggregate !== undefined && aggregate !== null) return aggregate
+function journalAmount(entry: JournalEntry): number | undefined {
+  if (entry.total_debit !== undefined && entry.total_debit !== null) return entry.total_debit
   if (Array.isArray(entry.lines) && entry.lines.length > 0) {
-    return entry.lines.reduce((sum, line) => sum + (line[side] || 0), 0)
+    return entry.lines.reduce((sum, line) => sum + (line.debit || 0), 0)
   }
   return undefined
 }
@@ -100,12 +105,12 @@ export default function JournalListPage() {
   ]
 
   // Urutan kolom ditetapkan pemilik produk:
-  // checkbox | Tanggal | Nomor Jurnal | Deskripsi | Debit | Kredit | Dibuat Oleh.
+  // checkbox | Tanggal | Nomor Jurnal | Deskripsi | Nilai Jurnal | Dibuat Oleh.
   // Checkbox disuntikkan DataTable saat seleksi aktif, jadi tidak didaftarkan di sini.
   // Status tidak jadi kolom — penyaringannya lewat filter Status di sidebar.
   //
-  // Anggaran lebar di tablet 1024px (sidebar filter terbuka) hanya ~754px untuk
-  // tujuh kolom, jadi: padding sel dirapatkan ke `px-2`, dan teks bebas
+  // Anggaran lebar di tablet 1024px (sidebar filter terbuka) hanya ~754px, jadi:
+  // padding sel dirapatkan ke `px-2`, dan teks bebas
   // (deskripsi, nama pembuat) dipotong di sel dengan tooltip berisi teks penuh.
   // Tabel memakai `min-w-max` sehingga tanpa pemotongan itu satu deskripsi
   // panjang saja sudah mendorong kolom nominal keluar layar.
@@ -133,33 +138,30 @@ export default function JournalListPage() {
       ),
     },
     {
+      // Melebar dari 115px setelah Debit+Kredit jadi satu kolom: lebar yang
+      // dulu dipakai kolom kedua kembali ke deskripsi, yang paling sering
+      // terpotong. Pemotongan + tooltip tetap dipertahankan.
       id: 'description',
       header: 'Deskripsi',
-      size: 115,
+      size: 200,
       meta: { className: 'px-2', headerClassName: 'px-2' },
       cell: ({ original }) => (
-        <span className="block max-w-[115px] truncate" title={original.description ?? undefined}>
+        <span className="block max-w-[200px] truncate" title={original.description ?? undefined}>
           {original.description ?? '-'}
         </span>
       ),
     },
     {
-      id: 'debit',
-      header: 'Debit',
-      size: 110,
+      // Satu kolom nilai, bukan Debit + Kredit: jurnal selalu seimbang, jadi
+      // dua kolom itu isinya identik. `sortKey` tetap `total_debit` -- alias
+      // withSum yang sudah ada di allowlist `$listSortable` backend.
+      id: 'amount',
+      header: 'Nilai Jurnal',
+      size: 130,
       sortable: true,
       sortKey: 'total_debit',
       meta: { className: 'px-2 tabular-nums text-right', headerClassName: 'px-2 text-right' },
-      cell: ({ original }) => formatCurrency(journalTotal(original, 'debit')),
-    },
-    {
-      id: 'credit',
-      header: 'Kredit',
-      size: 110,
-      sortable: true,
-      sortKey: 'total_credit',
-      meta: { className: 'px-2 tabular-nums text-right', headerClassName: 'px-2 text-right' },
-      cell: ({ original }) => formatCurrency(journalTotal(original, 'credit')),
+      cell: ({ original }) => formatCurrency(journalAmount(original)),
     },
     {
       id: 'created_by',
