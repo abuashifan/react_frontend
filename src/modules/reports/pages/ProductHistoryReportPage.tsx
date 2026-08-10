@@ -25,6 +25,7 @@ const DOCUMENT_LABELS: Record<ProductHistoryDocumentType, string> = {
   stock_adjustment: 'Penyesuaian',
   stock_opname: 'Opname',
   stock_transfer: 'Transfer',
+  opening_balance: 'Saldo Awal',
   stock_movement: 'Pergerakan',
 }
 
@@ -36,6 +37,7 @@ const DOCUMENT_CLASSES: Record<ProductHistoryDocumentType, string> = {
   stock_adjustment: 'bg-amber-100 text-amber-700',
   stock_opname: 'bg-amber-100 text-amber-700',
   stock_transfer: 'bg-slate-100 text-slate-700',
+  opening_balance: 'bg-violet-100 text-violet-700',
   stock_movement: 'bg-slate-100 text-slate-600',
 }
 

@@ -183,7 +183,9 @@ export type ProductHistoryDocumentType =
   | 'stock_adjustment'
   | 'stock_opname'
   | 'stock_transfer'
-  /** Pergerakan tanpa dokumen sumber (mis. saldo awal hasil impor). */
+  /** Titik mulai pembukuan — tanpa dokumen sumber, jadi tidak bisa dibuka. */
+  | 'opening_balance'
+  /** Jenis sumber yang belum dikenali; tetap tampil, tidak ditautkan. */
   | 'stock_movement'
 
 export interface ProductHistoryRow {
