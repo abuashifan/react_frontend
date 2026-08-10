@@ -205,6 +205,8 @@ export interface ProductHistoryRow {
 }
 
 export interface ProductHistoryReport {
+  /** Identitas produk yang dilaporkan; null bila produknya sudah dihapus. */
+  product: { id: number; product_code: string; product_name: string } | null
   rows: ProductHistoryRow[]
   totals: {
     purchased_qty: number

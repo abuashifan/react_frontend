@@ -7,6 +7,12 @@ interface Props {
   params: ReportParams
   onOpenModal: () => void
   mode?: 'range' | 'as_of_date'
+  /**
+   * Subjek laporan, dirender paling depan sebelum tanggal — untuk laporan yang
+   * berporos pada satu record, mis. "Beras Premium 5kg" di Riwayat Transaksi
+   * Produk. Berbeda dari `filterSummary` yang jadi chip setelah tanggal.
+   */
+  title?: string
   /** Ringkasan filter aktif selain tanggal, mis. "Pelanggan: PT ABC" (Fase 14). */
   filterSummary?: string
   /** Ringkasan kolom tampil, mis. "5 kolom" (Fase 14). */
@@ -25,7 +31,7 @@ function Chip({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function ReportCompactBar({ params, onOpenModal, mode = 'range', filterSummary, columnSummary, actions }: Props) {
+export function ReportCompactBar({ params, onOpenModal, mode = 'range', title, filterSummary, columnSummary, actions }: Props) {
   const paramLabel = mode === 'as_of_date'
     ? `Per ${params.as_of_date ? formatDate(params.as_of_date) : '-'}`
     : `${params.start_date ? formatDate(params.start_date) : '-'} — ${params.end_date ? formatDate(params.end_date) : '-'}`
@@ -34,6 +40,14 @@ export function ReportCompactBar({ params, onOpenModal, mode = 'range', filterSu
     // Strip datar melebar penuh: bingkai & garis bawah disediakan slot `toolbar`
     // WorkspaceLayout, supaya bar menyatu dengan baris tab di atasnya.
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-3 py-1.5 lg:px-4">
+      {title && (
+        <>
+          <span className="truncate text-[12px] font-semibold text-[#24323a]" title={title}>
+            {title}
+          </span>
+          <span className="h-4 w-px shrink-0 bg-[#e2e8f0]" />
+        </>
+      )}
       <CalendarRange className="h-3.5 w-3.5 shrink-0 text-[#5c9ead]" />
       <span className="text-[12px] font-medium tabular-nums text-[#334155]">{paramLabel}</span>
       {filterSummary && <Chip>{filterSummary}</Chip>}

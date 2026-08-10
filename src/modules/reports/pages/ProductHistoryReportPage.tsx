@@ -81,6 +81,15 @@ export default function ProductHistoryReportPage() {
   const report = data?.data
   const allRows = useMemo(() => report?.rows ?? [], [report])
 
+  // Nama produk diambil dari respons laporan, bukan diingat di klien: dengan
+  // begitu ia tetap benar setelah halaman dimuat ulang atau laporan dibuka
+  // dari daftar tersimpan, di mana yang tersimpan hanya `product_id`.
+  const product = report?.product ?? null
+  const productLabel = product
+    ? `${product.product_code ? `${product.product_code} — ` : ''}${product.product_name}`
+    : undefined
+  const productOption = product ? { value: product.id, label: productLabel ?? '' } : null
+
   const pagedRows = useMemo(() => {
     const start = pagination.pageIndex * pagination.pageSize
     return allRows.slice(start, start + pagination.pageSize)
@@ -100,6 +109,7 @@ export default function ProductHistoryReportPage() {
           params={activeParams ?? params}
           onOpenModal={() => setShowFilter(true)}
           mode="range"
+          title={productLabel}
         />
       }
     >
@@ -113,6 +123,7 @@ export default function ProductHistoryReportPage() {
             onSubmit={handleSubmit}
             mode="range"
             contextFilters={{ product: true }}
+            contextOptions={{ product: productOption }}
             isLoading={isLoading}
           />
         )}

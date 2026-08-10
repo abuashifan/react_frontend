@@ -1280,10 +1280,19 @@ export const reportsApi = {
           department_name: typeof r.department_name === 'string' ? r.department_name : null,
           project_name: typeof r.project_name === 'string' ? r.project_name : null,
         }))
+        const rawProduct = asRecord(raw.product)
+        const product = rawProduct.id === undefined
+          ? null
+          : {
+              id: num(rawProduct.id),
+              product_code: str(rawProduct.product_code),
+              product_name: str(rawProduct.product_name),
+            }
         const t = asRecord(raw.totals)
         return {
           ...res,
           data: {
+            product,
             rows,
             totals: {
               purchased_qty: num(t.purchased_qty),

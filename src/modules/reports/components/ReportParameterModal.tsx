@@ -18,6 +18,7 @@ import type {
   ContextFilterConfig,
   ColumnConfig,
 } from '../types/reports.types'
+import type { SelectOption } from '@/types/common.types'
 
 interface Props {
   open: boolean
@@ -30,6 +31,16 @@ interface Props {
   dimensions?: DimensionFilterConfig
   extras?: ExtraFilterConfig
   contextFilters?: ContextFilterConfig
+  /**
+   * Label untuk nilai `contextFilters` yang sudah terpilih, dikunci nama filter
+   * (mis. `{ product: { value: 1, label: 'Beras Premium 5kg' } }`).
+   *
+   * Diperlukan karena modal ini di-unmount setiap kali ditutup, sehingga
+   * `SearchableSelect` kehilangan label pilihan sebelumnya dan jatuh ke
+   * "ID 1". Pemanggil yang tahu namanya — biasanya dari respons laporan —
+   * meneruskannya lewat sini.
+   */
+  contextOptions?: Partial<Record<keyof ContextFilterConfig, SelectOption<number> | null>>
   columns?: ColumnConfig[]
   visibleColumns?: string[]
   onColumnsChange?: (cols: string[]) => void
@@ -37,7 +48,7 @@ interface Props {
 
 export function ReportParameterModal({
   open, onClose, params, onChange, onSubmit, mode = 'range', isLoading,
-  dimensions, extras, contextFilters, columns, visibleColumns, onColumnsChange,
+  dimensions, extras, contextFilters, contextOptions, columns, visibleColumns, onColumnsChange,
 }: Props) {
   const searchDept = useCallback((q: string) => departemenApi.search(q), [])
   const searchProject = useCallback((q: string) => proyekApi.search(q), [])
@@ -129,7 +140,7 @@ export function ReportParameterModal({
                   <FilterSelect label="Kontak" value={params.contact_id} onChange={(v) => onChange({ contact_id: v })} onSearch={searchContact} placeholder="Semua kontak" />
                 )}
                 {contextFilters?.product && (
-                  <FilterSelect label="Produk" value={params.product_id} onChange={(v) => onChange({ product_id: v })} onSearch={searchProduct} placeholder="Semua produk" />
+                  <FilterSelect label="Produk" value={params.product_id} onChange={(v) => onChange({ product_id: v })} onSearch={searchProduct} placeholder="Semua produk" selectedOption={contextOptions?.product} />
                 )}
                 {contextFilters?.account && (
                   <FilterSelect label="Akun" value={params.account_id} onChange={(v) => onChange({ account_id: v })} onSearch={searchAccount} placeholder="Semua akun" />
@@ -200,17 +211,26 @@ export function ReportParameterModal({
   )
 }
 
-function FilterSelect({ label, value, onChange, onSearch, placeholder }: {
+function FilterSelect({ label, value, onChange, onSearch, placeholder, selectedOption }: {
   label: string
   value: number | undefined
   onChange: (v: number | undefined) => void
-  onSearch: (q: string) => Promise<{ value: number; label: string }[]>
+  onSearch: (q: string) => Promise<SelectOption<number>[]>
   placeholder: string
+  /** Label nilai terpilih; tanpa ini SearchableSelect menampilkan "ID 1". */
+  selectedOption?: SelectOption<number> | null
 }) {
   return (
     <div className="flex flex-col gap-1">
       <Label className="text-[11px] font-medium text-[#64748b]">{label}</Label>
-      <SearchableSelect value={value ?? null} onChange={(v) => onChange(v ?? undefined)} onSearch={onSearch} placeholder={placeholder} size="sm" />
+      <SearchableSelect
+        value={value ?? null}
+        onChange={(v) => onChange(v ?? undefined)}
+        onSearch={onSearch}
+        placeholder={placeholder}
+        size="sm"
+        selectedOptions={selectedOption && selectedOption.value === value ? [selectedOption] : []}
+      />
     </div>
   )
 }
