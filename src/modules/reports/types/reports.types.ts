@@ -179,7 +179,11 @@ export type ProductHistoryDocumentType =
   | 'sales_return'
   | 'vendor_bill'
   | 'purchase_return'
-  /** Penyesuaian, opname, saldo awal, transfer — tanpa lawan transaksi. */
+  /** Pergerakan stok — tanpa lawan transaksi, dinilai dengan HPP. */
+  | 'stock_adjustment'
+  | 'stock_opname'
+  | 'stock_transfer'
+  /** Pergerakan tanpa dokumen sumber (mis. saldo awal hasil impor). */
   | 'stock_movement'
 
 export interface ProductHistoryRow {

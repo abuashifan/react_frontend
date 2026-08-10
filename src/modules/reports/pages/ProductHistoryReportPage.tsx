@@ -22,7 +22,10 @@ const DOCUMENT_LABELS: Record<ProductHistoryDocumentType, string> = {
   purchase_return: 'Retur Beli',
   sales_invoice: 'Jual',
   sales_return: 'Retur Jual',
-  stock_movement: 'Penyesuaian',
+  stock_adjustment: 'Penyesuaian',
+  stock_opname: 'Opname',
+  stock_transfer: 'Transfer',
+  stock_movement: 'Pergerakan',
 }
 
 const DOCUMENT_CLASSES: Record<ProductHistoryDocumentType, string> = {
@@ -30,23 +33,28 @@ const DOCUMENT_CLASSES: Record<ProductHistoryDocumentType, string> = {
   purchase_return: 'bg-blue-50 text-blue-600',
   sales_invoice: 'bg-green-100 text-green-700',
   sales_return: 'bg-green-50 text-green-600',
-  stock_movement: 'bg-amber-100 text-amber-700',
+  stock_adjustment: 'bg-amber-100 text-amber-700',
+  stock_opname: 'bg-amber-100 text-amber-700',
+  stock_transfer: 'bg-slate-100 text-slate-700',
+  stock_movement: 'bg-slate-100 text-slate-600',
 }
 
 /**
  * Rute dokumen per jenis, untuk membuka dokumen sumber dari laporan.
  *
- * `stock_movement` sengaja tidak dipetakan: barisnya bisa berasal dari
- * penyesuaian, opname, saldo awal, atau transfer, dan `document_id` yang
- * dikirim backend adalah id **pergerakan stok** — bukan id dokumen sumbernya.
- * Menebak rutenya akan membuka dokumen yang salah, jadi baris itu tidak
- * ditautkan sampai backend mengirim jenis sumbernya secara eksplisit.
+ * `stock_movement` sengaja TIDAK dipetakan — dan itu bukan kelalaian: jenis itu
+ * hanya dipakai untuk pergerakan yang tidak punya dokumen sumber (mis. saldo
+ * awal hasil impor), sehingga `document_id`-nya adalah id pergerakan yang
+ * memang tidak punya halaman. Sisanya membawa id dokumen sumbernya.
  */
 const DOCUMENT_ROUTES: Partial<Record<ProductHistoryDocumentType, string>> = {
   sales_invoice: '/sales/invoices',
   sales_return: '/sales/returns',
   vendor_bill: '/purchase/bills',
   purchase_return: '/purchase/returns',
+  stock_adjustment: '/inventory/adjustments',
+  stock_opname: '/inventory/opnames',
+  stock_transfer: '/inventory/movements',
 }
 
 const formatQty = (value: number) =>
