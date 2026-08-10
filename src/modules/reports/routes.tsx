@@ -41,6 +41,7 @@ const SalesByProductReportPage = lazy(() => import('./pages/SalesByProductReport
 const PurchaseSummaryReportPage = lazy(() => import('./pages/PurchaseSummaryReportPage'))
 const PurchaseByVendorReportPage = lazy(() => import('./pages/PurchaseByVendorReportPage'))
 const PurchaseByProductReportPage = lazy(() => import('./pages/PurchaseByProductReportPage'))
+const ProductHistoryReportPage = lazy(() => import('./pages/ProductHistoryReportPage'))
 const ArOutstandingReportPage = lazy(() => import('./pages/ArOutstandingReportPage'))
 const ApOutstandingReportPage = lazy(() => import('./pages/ApOutstandingReportPage'))
 const ArCustomerSummaryPage = lazy(() => import('./pages/ArCustomerSummaryPage'))
@@ -89,6 +90,7 @@ export const reportsRoutes: RouteObject[] = [
   { path: '/reports/purchase/summary', element: wrap(<PurchaseSummaryReportPage />) },
   { path: '/reports/purchase/by-vendor', element: wrap(<PurchaseByVendorReportPage />) },
   { path: '/reports/purchase/by-product', element: wrap(<PurchaseByProductReportPage />) },
+  { path: '/reports/product-history', element: wrap(<ProductHistoryReportPage />) },
   { path: '/reports/ar-outstanding', element: wrap(<ArOutstandingReportPage />) },
   { path: '/reports/ap-outstanding', element: wrap(<ApOutstandingReportPage />) },
   { path: '/reports/ar-customer-summary', element: wrap(<ArCustomerSummaryPage />) },

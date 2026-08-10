@@ -23,6 +23,9 @@ import type {
   InventoryAgingReport,
   InventoryAgingRow,
   InventoryAgingBuckets,
+  ProductHistoryReport,
+  ProductHistoryRow,
+  ProductHistoryDocumentType,
   OpnameWorksheetReport,
   OpnameWorksheetRow,
   RetainedEarningsReport,
@@ -1254,6 +1257,41 @@ export const reportsApi = {
           data: {
             rows,
             totals: { invoice_count: num(t.invoice_count), subtotal: num(t.subtotal), tax: num(t.tax), total: num(t.total) },
+          },
+        }
+      }),
+
+  productHistory: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/product-history', { params })
+      .then((res): ApiResponse<ProductHistoryReport> => {
+        const raw = asRecord(res.data)
+        const rows: ProductHistoryRow[] = asArray(raw.rows).map((r) => ({
+          date: str(r.date),
+          document_type: str(r.document_type) as ProductHistoryDocumentType,
+          document_number: str(r.document_number),
+          direction: r.direction === 'in' ? 'in' : 'out',
+          contact_name: typeof r.contact_name === 'string' ? r.contact_name : null,
+          description: typeof r.description === 'string' ? r.description : null,
+          quantity: num(r.quantity),
+          unit_price: num(r.unit_price),
+          line_total: num(r.line_total),
+          department_name: typeof r.department_name === 'string' ? r.department_name : null,
+          project_name: typeof r.project_name === 'string' ? r.project_name : null,
+        }))
+        const t = asRecord(raw.totals)
+        return {
+          ...res,
+          data: {
+            rows,
+            totals: {
+              purchased_qty: num(t.purchased_qty),
+              purchased_value: num(t.purchased_value),
+              sold_qty: num(t.sold_qty),
+              sold_value: num(t.sold_value),
+              avg_buy_price: num(t.avg_buy_price),
+              avg_sell_price: num(t.avg_sell_price),
+            },
           },
         }
       }),

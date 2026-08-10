@@ -174,6 +174,40 @@ export interface InventoryAgingReport {
   totals: { total_quantity_on_hand: number; total_value: number; buckets: InventoryAgingBuckets }
 }
 
+export type ProductHistoryDocumentType =
+  | 'sales_invoice'
+  | 'sales_return'
+  | 'vendor_bill'
+  | 'purchase_return'
+
+export interface ProductHistoryRow {
+  date: string
+  document_type: ProductHistoryDocumentType
+  document_number: string
+  direction: 'in' | 'out'
+  contact_name: string | null
+  description: string | null
+  /** Bertanda: negatif untuk yang mengurangi stok (jual, retur beli). */
+  quantity: number
+  unit_price: number
+  line_total: number
+  department_name: string | null
+  project_name: string | null
+}
+
+export interface ProductHistoryReport {
+  rows: ProductHistoryRow[]
+  totals: {
+    purchased_qty: number
+    purchased_value: number
+    sold_qty: number
+    sold_value: number
+    /** Tertimbang (nilai ÷ kuantitas), bukan rata-rata harga satuan. */
+    avg_buy_price: number
+    avg_sell_price: number
+  }
+}
+
 // Kertas Kerja Opname (Fase 8 T8.3) — /inventory/reports/opname-worksheet.
 export interface OpnameWorksheetRow {
   product_id: number
