@@ -179,10 +179,13 @@ export type ProductHistoryDocumentType =
   | 'sales_return'
   | 'vendor_bill'
   | 'purchase_return'
+  /** Penyesuaian, opname, saldo awal, transfer — tanpa lawan transaksi. */
+  | 'stock_movement'
 
 export interface ProductHistoryRow {
   date: string
   document_type: ProductHistoryDocumentType
+  document_id: number
   document_number: string
   direction: 'in' | 'out'
   contact_name: string | null
@@ -202,6 +205,8 @@ export interface ProductHistoryReport {
     purchased_value: number
     sold_qty: number
     sold_value: number
+    /** Bertanda; negatif berarti stok berkurang lewat penyesuaian. */
+    adjusted_qty: number
     /** Tertimbang (nilai ÷ kuantitas), bukan rata-rata harga satuan. */
     avg_buy_price: number
     avg_sell_price: number

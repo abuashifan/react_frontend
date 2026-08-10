@@ -1269,6 +1269,7 @@ export const reportsApi = {
         const rows: ProductHistoryRow[] = asArray(raw.rows).map((r) => ({
           date: str(r.date),
           document_type: str(r.document_type) as ProductHistoryDocumentType,
+          document_id: num(r.document_id),
           document_number: str(r.document_number),
           direction: r.direction === 'in' ? 'in' : 'out',
           contact_name: typeof r.contact_name === 'string' ? r.contact_name : null,
@@ -1289,6 +1290,7 @@ export const reportsApi = {
               purchased_value: num(t.purchased_value),
               sold_qty: num(t.sold_qty),
               sold_value: num(t.sold_value),
+              adjusted_qty: num(t.adjusted_qty),
               avg_buy_price: num(t.avg_buy_price),
               avg_sell_price: num(t.avg_sell_price),
             },

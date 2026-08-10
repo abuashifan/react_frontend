@@ -11,6 +11,7 @@ import { reportsApi } from '../services/reportsApi'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
 import { useReportParams } from '../hooks/useReportParams'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import type { ProductHistoryDocumentType } from '../types/reports.types'
 
 const today = new Date().toISOString().slice(0, 10)
@@ -21,6 +22,7 @@ const DOCUMENT_LABELS: Record<ProductHistoryDocumentType, string> = {
   purchase_return: 'Retur Beli',
   sales_invoice: 'Jual',
   sales_return: 'Retur Jual',
+  stock_movement: 'Penyesuaian',
 }
 
 const DOCUMENT_CLASSES: Record<ProductHistoryDocumentType, string> = {
@@ -28,6 +30,23 @@ const DOCUMENT_CLASSES: Record<ProductHistoryDocumentType, string> = {
   purchase_return: 'bg-blue-50 text-blue-600',
   sales_invoice: 'bg-green-100 text-green-700',
   sales_return: 'bg-green-50 text-green-600',
+  stock_movement: 'bg-amber-100 text-amber-700',
+}
+
+/**
+ * Rute dokumen per jenis, untuk membuka dokumen sumber dari laporan.
+ *
+ * `stock_movement` sengaja tidak dipetakan: barisnya bisa berasal dari
+ * penyesuaian, opname, saldo awal, atau transfer, dan `document_id` yang
+ * dikirim backend adalah id **pergerakan stok** — bukan id dokumen sumbernya.
+ * Menebak rutenya akan membuka dokumen yang salah, jadi baris itu tidak
+ * ditautkan sampai backend mengirim jenis sumbernya secara eksplisit.
+ */
+const DOCUMENT_ROUTES: Partial<Record<ProductHistoryDocumentType, string>> = {
+  sales_invoice: '/sales/invoices',
+  sales_return: '/sales/returns',
+  vendor_bill: '/purchase/bills',
+  purchase_return: '/purchase/returns',
 }
 
 const formatQty = (value: number) =>
@@ -36,6 +55,7 @@ const formatQty = (value: number) =>
 export default function ProductHistoryReportPage() {
   const { params, setParams, activeParams, setActiveParams, showFilter, setShowFilter } =
     useReportParams({ start_date: firstDayOfMonth, end_date: today })
+  const { openRecordTab } = useRecordTab()
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
 
   // Backend mewajibkan `product_id`; tanpa itu requestnya pasti 422, jadi
@@ -132,20 +152,30 @@ export default function ProductHistoryReportPage() {
             )}
 
             {allRows.length > 0 && (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                 {[
                   { label: 'Total Dibeli', qty: report.totals.purchased_qty, value: report.totals.purchased_value },
                   { label: 'Rata-rata Beli', qty: null, value: report.totals.avg_buy_price },
                   { label: 'Total Dijual', qty: report.totals.sold_qty, value: report.totals.sold_value },
                   { label: 'Rata-rata Jual', qty: null, value: report.totals.avg_sell_price },
+                  // Kuantitas saja: penyesuaian dinilai dengan HPP, bukan harga
+                  // transaksi, jadi menampilkan nilainya di sebelah nilai jual
+                  // akan mengundang perbandingan yang keliru.
+                  { label: 'Penyesuaian', qty: report.totals.adjusted_qty, value: null },
                 ].map((card) => (
                   <div key={card.label} className="rounded-lg border border-[#e2e8f0] bg-white px-4 py-3">
                     <p className="text-[11px] text-[#64748b]">{card.label}</p>
-                    <p className="text-[13px] font-semibold tabular-nums text-[#1e293b]">
-                      {formatCurrency(card.value)}
-                    </p>
+                    {card.value !== null && (
+                      <p className="text-[13px] font-semibold tabular-nums text-[#1e293b]">
+                        {formatCurrency(card.value)}
+                      </p>
+                    )}
                     {card.qty !== null && (
-                      <p className="text-[11px] tabular-nums text-[#64748b]">{formatQty(card.qty)} unit</p>
+                      <p
+                        className={`tabular-nums ${card.value === null ? 'text-[13px] font-semibold text-[#1e293b]' : 'text-[11px] text-[#64748b]'}`}
+                      >
+                        {formatQty(card.qty)} unit
+                      </p>
                     )}
                   </div>
                 ))}
@@ -169,7 +199,24 @@ export default function ProductHistoryReportPage() {
                   {pagedRows.map((row) => (
                     <tr key={`${row.document_type}-${row.document_number}-${row.date}`} className="hover:bg-[#f8fafc]">
                       <td className="px-3 py-1.5 whitespace-nowrap text-[#64748b]">{formatDate(row.date)}</td>
-                      <td className="px-3 py-1.5 font-medium text-[#334155]">{row.document_number}</td>
+                      <td className="px-3 py-1.5 font-medium">
+                        {DOCUMENT_ROUTES[row.document_type] ? (
+                          <button
+                            type="button"
+                            className="text-[#5c9ead] hover:underline"
+                            onClick={() =>
+                              openRecordTab({
+                                label: row.document_number,
+                                path: `${DOCUMENT_ROUTES[row.document_type]}/${row.document_id}`,
+                              })
+                            }
+                          >
+                            {row.document_number}
+                          </button>
+                        ) : (
+                          <span className="text-[#334155]">{row.document_number}</span>
+                        )}
+                      </td>
                       <td className="px-3 py-1.5">
                         <span className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium ${DOCUMENT_CLASSES[row.document_type]}`}>
                           {DOCUMENT_LABELS[row.document_type]}
