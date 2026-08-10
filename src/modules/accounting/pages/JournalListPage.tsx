@@ -4,6 +4,7 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar } from '@/components/shared/layout/FilterSidebar'
 import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
+import { MultiSelectModalFilter } from '@/components/shared/filter/MultiSelectModalFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
@@ -13,7 +14,9 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { useListSort } from '@/hooks/useListSort'
 import { useBulkVoid } from '@/hooks/useBulkVoid'
 import { useJournalEntryList, useJournalEntryMutations } from '../hooks/useJournalEntryList'
+import { JOURNAL_SOURCE_TYPE_GROUPS } from '../constants/journalSourceTypes'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
+import type { JournalSourceType } from '../constants/journalSourceTypes'
 import type { JournalEntry, JournalEntryStatus } from '../types/journalEntry.types'
 import { useRecordTab } from '@/hooks/useRecordTab'
 
@@ -46,6 +49,7 @@ export default function JournalListPage() {
   const [search, setSearch] = useState('')
   const [prevFilters, setPrevFilters] = useState('')
   const [filterStatuses, setFilterStatuses] = useState<JournalEntryStatus[]>([])
+  const [filterSourceTypes, setFilterSourceTypes] = useState<JournalSourceType[]>([])
   const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [selectedRows, setSelectedRows] = useState<string[]>([])
 
@@ -62,7 +66,7 @@ export default function JournalListPage() {
 
   // Semua filter dikirim ke server, jadi perubahannya harus mengembalikan
   // halaman ke 1 -- memfilter dari halaman jauh akan mendarat di daftar kosong.
-  const filterKey = `${search}|${filterStatuses.join(',')}|${dateRange.from}|${dateRange.to}|${sort?.key ?? ''}|${sort?.direction ?? ''}`
+  const filterKey = `${search}|${filterStatuses.join(',')}|${filterSourceTypes.join(',')}|${dateRange.from}|${dateRange.to}|${sort?.key ?? ''}|${sort?.direction ?? ''}`
   if (filterKey !== prevFilters) {
     setPrevFilters(filterKey)
     setPage(0)
@@ -74,6 +78,7 @@ export default function JournalListPage() {
     per_page: 25,
     search: search || undefined,
     status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
+    source_type: filterSourceTypes.length > 0 ? filterSourceTypes.join(',') : undefined,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
     ...sortParams,
@@ -176,13 +181,14 @@ export default function JournalListPage() {
     },
   ]
 
-  const activeFilterCount = [filterStatuses.length > 0, dateRange.from, dateRange.to].filter(Boolean).length
+  const activeFilterCount = [filterStatuses.length > 0, filterSourceTypes.length > 0, dateRange.from, dateRange.to].filter(Boolean).length
 
   const sidebar = (
     <FilterSidebar
       activeCount={activeFilterCount}
       onReset={() => {
         setFilterStatuses([])
+        setFilterSourceTypes([])
         setDateRange({ from: '', to: '' })
         setSort({ key: 'journal_date', direction: 'desc' })
         resetSelection()
@@ -205,6 +211,20 @@ export default function JournalListPage() {
           setFilterStatuses(next)
           resetSelection()
         }}
+      />
+      {/* Opsi jenis jurnal ada 21 dan akan menenggelamkan section lain kalau
+          digelar inline di sidebar 220px, jadi pemilihannya lewat modal. */}
+      <MultiSelectModalFilter
+        title="Jenis Jurnal"
+        groups={JOURNAL_SOURCE_TYPE_GROUPS}
+        value={filterSourceTypes}
+        onChange={(next) => {
+          setFilterSourceTypes(next)
+          resetSelection()
+        }}
+        emptyLabel="Semua jenis"
+        itemNoun="jenis"
+        note="Jenis diambil dari dokumen asal jurnal."
       />
       <DateRangeFilterSection
         title="Tanggal"

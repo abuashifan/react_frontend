@@ -53,6 +53,12 @@ export interface JournalEntryListParams {
   status?: string
   date_from?: string
   date_to?: string
+  /**
+   * Jenis jurnal (`source_type`): satu nilai, atau beberapa dipisah koma
+   * (mis. "fixed_asset_depreciation,manual_journal"). Nilai yang dikenal ada
+   * di `constants/journalSourceTypes.ts`.
+   */
+  source_type?: string
   is_system_generated?: boolean
   /**
    * Kolom pengurutan server-side. Nilai yang didukung backend:
