@@ -84,11 +84,14 @@ export default function ProductHistoryReportPage() {
   // Nama produk diambil dari respons laporan, bukan diingat di klien: dengan
   // begitu ia tetap benar setelah halaman dimuat ulang atau laporan dibuka
   // dari daftar tersimpan, di mana yang tersimpan hanya `product_id`.
+  // Hanya nama produknya; kodenya sengaja tidak ikut. Di picker, kode tetap
+  // muncul sebagai sublabel — bentuk yang sama dengan hasil `produkApi.search`,
+  // supaya pilihan tersimpan dan hasil pencarian terbaca seragam.
   const product = report?.product ?? null
-  const productLabel = product
-    ? `${product.product_code ? `${product.product_code} — ` : ''}${product.product_name}`
-    : undefined
-  const productOption = product ? { value: product.id, label: productLabel ?? '' } : null
+  const productLabel = product?.product_name
+  const productOption = product
+    ? { value: product.id, label: product.product_name, sublabel: product.product_code || undefined }
+    : null
 
   const pagedRows = useMemo(() => {
     const start = pagination.pageIndex * pagination.pageSize
