@@ -36,6 +36,8 @@ export interface ClientUser {
   /** null berarti kuota mengikuti paket; angka berarti kuota khusus. */
   company_quota: number | null
   user_quota: number | null
+  /** Add-on user: dibeli per client, menambah slot di semua perusahaannya. */
+  extra_users: number
   companies_used: number
   companies_limit: number
   limit_source: 'plan' | 'custom'
@@ -65,6 +67,7 @@ export interface ClientProfileFields {
   plan_id?: number | null
   company_quota?: number | null
   user_quota?: number | null
+  extra_users?: number | null
 }
 
 export interface CreateClientPayload extends ClientProfileFields {

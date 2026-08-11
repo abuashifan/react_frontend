@@ -46,9 +46,10 @@ const TAB_FIELDS = {
     'notes',
   ],
   langganan: ['plan_id', 'company_quota', 'user_quota'],
+  addons: ['extra_users'],
 } as const
 
-type TabKey = keyof typeof TAB_FIELDS | 'addons' | 'password'
+type TabKey = keyof typeof TAB_FIELDS | 'password'
 
 const inputClass = 'h-9 text-[13px]'
 const selectClass =
@@ -113,6 +114,7 @@ export default function AdminClientFormPage() {
       plan_id: '',
       company_quota: '',
       user_quota: '',
+      extra_users: '',
     },
   })
   const editForm = useForm<EditClientValues>({
@@ -124,6 +126,7 @@ export default function AdminClientFormPage() {
       plan_id: '',
       company_quota: '',
       user_quota: '',
+      extra_users: '',
     },
   })
 
@@ -142,6 +145,9 @@ export default function AdminClientFormPage() {
       plan_id: client.plan ? String(client.plan.id) : '',
       company_quota: client.company_quota !== null ? String(client.company_quota) : '',
       user_quota: client.user_quota !== null ? String(client.user_quota) : '',
+      // Nol ditampilkan kosong: "belum beli add-on" lebih jelas dibaca sebagai
+      // kolom kosong ketimbang angka 0.
+      extra_users: client.extra_users ? String(client.extra_users) : '',
     })
   }, [client, editForm])
 
@@ -157,6 +163,8 @@ export default function AdminClientFormPage() {
     // String kosong berarti "ikut paket", bukan nol.
     company_quota: values.company_quota ? Number(values.company_quota) : null,
     user_quota: values.user_quota ? Number(values.user_quota) : null,
+    // Add-on tidak punya keadaan "ikut paket": kosong berarti nol.
+    extra_users: values.extra_users ? Number(values.extra_users) : 0,
   })
 
   const onCreate = async (values: CreateClientValues) => {
@@ -229,10 +237,21 @@ export default function AdminClientFormPage() {
   // tier itu — jadi kolomnya dikunci di sini supaya tidak menyesatkan.
   const isCustomTier = selectedPlan?.is_custom ?? false
   const customUserQuota = isEdit ? editForm.watch('user_quota') : createForm.watch('user_quota')
+  const extraUsersInput = isEdit ? editForm.watch('extra_users') : createForm.watch('extra_users')
   const effectiveLimit =
     isCustomTier && customQuota ? Number(customQuota) : (selectedPlan?.max_companies ?? 1)
-  const effectiveUserLimit =
+
+  // Angka yang sedang diketik bisa belum valid; jangan biarkan NaN merambat ke
+  // ringkasan batas.
+  const toNumber = (value: string | undefined) => {
+    const parsed = Number(value)
+    return value && Number.isFinite(parsed) ? parsed : 0
+  }
+
+  const baseUserLimit =
     isCustomTier && customUserQuota ? Number(customUserQuota) : (selectedPlan?.max_users ?? 1)
+  const addOnUsers = toNumber(extraUsersInput)
+  const effectiveUserLimit = baseUserLimit + addOnUsers
 
   const tabTriggerClass =
     'data-[state=active]:bg-white data-[state=active]:text-[#24323a] text-[13px] text-[#64748b]'
@@ -271,6 +290,7 @@ export default function AdminClientFormPage() {
               [
                 ['detail', 'Detail Client'],
                 ['langganan', 'Langganan'],
+                ['addons', 'Add-ons'],
               ] as const
             ).map(([key, label]) => (
               <TabsTrigger key={key} value={key} className={tabTriggerClass}>
@@ -278,9 +298,6 @@ export default function AdminClientFormPage() {
                 {hasErrorIn(key) && <span className="ml-1.5 text-red-500">•</span>}
               </TabsTrigger>
             ))}
-            <TabsTrigger value="addons" className={tabTriggerClass}>
-              Add-ons
-            </TabsTrigger>
             {isEdit && (
               <TabsTrigger value="password" className={tabTriggerClass}>
                 Reset Password
@@ -469,7 +486,8 @@ export default function AdminClientFormPage() {
                   <span className="font-semibold tabular-nums">{effectiveLimit}</span> perusahaan,
                   masing-masing sampai{' '}
                   <span className="font-semibold tabular-nums">{effectiveUserLimit}</span> user
-                  {isCustomTier ? ' (tier Custom, ditentukan manual)' : ' (dari paket)'}.
+                  {isCustomTier ? ' (tier Custom, ditentukan manual)' : ' (dari paket)'}
+                  {addOnUsers > 0 && `, sudah termasuk add-on ${addOnUsers} user`}.
                   {isEdit && client && client.companies_used > effectiveLimit && (
                     <>
                       {' '}
@@ -481,20 +499,58 @@ export default function AdminClientFormPage() {
                 </p>
               </TabsContent>
 
-              <TabsContent value="addons" className="mt-0">
-                <div className="text-center py-8">
-                  <p className="text-[13px] font-medium text-[#24323a]">Belum ada add-on tersedia</p>
-                  <p className="text-[12px] text-[#64748b] mt-1 max-w-md mx-auto">
-                    Tempat untuk tambahan di luar paket — misalnya modul opsional atau kapasitas
-                    ekstra. Isinya menyusul setelah daftar add-on ditentukan.
+              <TabsContent value="addons" className="mt-0 grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="Tambahan User"
+                  hint="Berlaku di setiap perusahaan milik client, bukan dibagi rata."
+                  error={errors.extra_users?.message}
+                >
+                  <Input
+                    {...register('extra_users')}
+                    inputMode="numeric"
+                    placeholder="0"
+                    className={cn(inputClass, 'tabular-nums', fieldErrorClass(errors.extra_users))}
+                  />
+                </Field>
+
+                <div className="sm:col-span-2 text-[12px] text-[#475569] bg-[#EFF9FB] border border-[#d9e2e5] rounded-md px-3 py-2">
+                  <p>
+                    Batas user jadi{' '}
+                    <span className="font-semibold tabular-nums">{baseUserLimit}</span>
+                    {addOnUsers > 0 && (
+                      <>
+                        {' + '}
+                        <span className="font-semibold tabular-nums">{addOnUsers}</span>
+                        {' = '}
+                        <span className="font-semibold tabular-nums">{effectiveUserLimit}</span>
+                      </>
+                    )}{' '}
+                    user di <span className="font-semibold">masing-masing</span> perusahaan.
                   </p>
+                  {addOnUsers > 0 && effectiveLimit > 1 && (
+                    <p className="mt-1">
+                      Client ini boleh punya{' '}
+                      <span className="font-semibold tabular-nums">{effectiveLimit}</span>{' '}
+                      perusahaan, jadi add-on {addOnUsers} user menambah total{' '}
+                      <span className="font-semibold tabular-nums">
+                        {addOnUsers * effectiveLimit}
+                      </span>{' '}
+                      slot kalau semua perusahaannya terisi penuh.
+                    </p>
+                  )}
                 </div>
+
+                <p className="sm:col-span-2 text-[12px] text-[#64748b]">
+                  Add-on dibeli terpisah dari paket dan tidak ikut terhapus saat paketnya diganti.
+                  Menurunkan angkanya tidak mengeluarkan user yang sudah ada — hanya penambahan
+                  berikutnya yang ditahan.
+                </p>
               </TabsContent>
             </div>
 
             {/* Tombol simpan di luar TabsContent supaya selalu terlihat di tab
                 mana pun yang isinya memang tersimpan bersama form ini. */}
-            {tab !== 'password' && tab !== 'addons' && (
+            {tab !== 'password' && (
               <div className="flex justify-end gap-2 mt-4">
                 <Button
                   type="button"

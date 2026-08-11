@@ -29,6 +29,8 @@ const profileFields = {
   company_quota: quota(0),
   // Minimal 1: perusahaan selalu punya owner.
   user_quota: quota(1),
+  // Add-on boleh nol — kosong berarti client belum membeli tambahan apa pun.
+  extra_users: quota(0),
 }
 
 export const createClientSchema = z.object({

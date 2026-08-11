@@ -135,8 +135,16 @@ export default function AdminClientsPage() {
       header: 'Maks User',
       size: 100,
       cell: ({ original }) => (
-        <span className="tabular-nums" title="Batas user di tiap perusahaan milik client ini.">
+        <span
+          className="tabular-nums"
+          title={
+            original.extra_users > 0
+              ? `Batas user di tiap perusahaan: ${original.users_limit - original.extra_users} dari paket + ${original.extra_users} add-on.`
+              : 'Batas user di tiap perusahaan milik client ini.'
+          }
+        >
           {original.users_limit}
+          {original.extra_users > 0 ? '⁺' : ''}
         </span>
       ),
     },
@@ -248,7 +256,8 @@ export default function AdminClientsPage() {
 
           <p className="text-[11px] text-[#64748b] mt-2">
             Kuota bertanda <span className="font-medium">*</span> adalah kuota khusus yang menimpa
-            paket. Klik baris untuk mengubah data client.
+            paket; maks user bertanda <span className="font-medium">⁺</span> sudah termasuk add-on.
+            Klik baris untuk mengubah data client.
           </p>
         </div>
       </div>
