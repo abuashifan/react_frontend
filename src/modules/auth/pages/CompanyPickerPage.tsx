@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Building2, LogOut, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -11,7 +12,7 @@ import { companyApi } from '../services/companyApi'
 import { CreateCompanyDialog } from '../components/CreateCompanyDialog'
 import { cn } from '@/lib/utils'
 import { APP_NAME } from '@/lib/constants'
-import type { Company } from '@/types/auth.types'
+import type { Company, CompanyQuota } from '@/types/auth.types'
 import { getApiErrorMessage } from '@/lib/apiError'
 
 function formatTimeAgo(dateStr: string): string {
@@ -72,14 +73,23 @@ function CompanyCard({ company, onClick, isLoading }: CompanyCardProps) {
 interface AddCompanyCardProps {
   onClick: () => void
   disabled: boolean
+  quota: CompanyQuota
 }
 
-function AddCompanyCard({ onClick, disabled }: AddCompanyCardProps) {
+function AddCompanyCard({ onClick, disabled, quota }: AddCompanyCardProps) {
+  const blocked = !quota.can_create
+  const planLabel = quota.plan_name ?? 'Paket Anda'
+
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || blocked}
+      title={
+        blocked
+          ? `${planLabel} mencakup ${quota.limit} perusahaan dan Anda sudah memakai ${quota.used}.`
+          : undefined
+      }
       className={cn(
         'bg-white border border-dashed border-[#d9e2e5] rounded-lg p-5 [@media(max-height:620px)]:p-3',
         'cursor-pointer transition-all duration-150 text-left w-full',
@@ -93,7 +103,9 @@ function AddCompanyCard({ onClick, disabled }: AddCompanyCardProps) {
       </div>
       <div>
         <p className="font-semibold text-[#24323a] text-sm leading-snug">Tambah Perusahaan</p>
-        <p className="text-[11px] text-[#64748b] mt-1">Buat perusahaan baru</p>
+        <p className="text-[11px] text-[#64748b] mt-1">
+          {blocked ? `Kuota ${quota.used}/${quota.limit} terpakai` : 'Buat perusahaan baru'}
+        </p>
       </div>
     </button>
   )
@@ -105,10 +117,38 @@ export function CompanyPickerPage() {
     useAuthStore()
   const { setActiveCompany: setCompanyStore } = useCompanyStore()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
   const [loadingId, setLoadingId] = useState<number | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
 
-  const sorted = sortByLastAccessed(companies)
+  /**
+   * Daftar perusahaan sekaligus kuotanya. `companies` di store diisi saat login
+   * dan bisa basi; query ini menyegarkannya sekaligus memberi tahu apakah user
+   * masih boleh menambah perusahaan. Backend tetap gerbang sebenarnya —
+   * ini hanya supaya tombolnya tidak menjanjikan yang tidak bisa ditepati.
+   */
+  const companiesQuery = useQuery({
+    queryKey: ['companies', 'picker'],
+    queryFn: companyApi.list,
+    staleTime: 30_000,
+  })
+
+  const quota = companiesQuery.data?.quota ?? {
+    used: 0,
+    limit: 0,
+    can_create: true,
+    plan_code: null,
+    plan_name: null,
+  }
+
+  const sorted = sortByLastAccessed(companiesQuery.data?.data ?? companies)
+
+  // Store dijaga tetap sinkron karena pengalih perusahaan di dalam aplikasi
+  // membacanya dari sana, bukan dari query ini.
+  const fetchedCompanies = companiesQuery.data?.data
+  useEffect(() => {
+    if (fetchedCompanies) setCompanies(fetchedCompanies)
+  }, [fetchedCompanies, setCompanies])
 
   /**
    * Buka database sebuah perusahaan.
@@ -159,6 +199,7 @@ export function CompanyPickerPage() {
     try {
       const listResponse = await companyApi.list()
       setCompanies(listResponse.data)
+      queryClient.setQueryData(['companies', 'picker'], listResponse)
     } catch {
       // Daftar gagal disegarkan bukan alasan menahan user: perusahaan sudah
       // terbentuk dan tetap bisa dibuka di bawah.
@@ -201,7 +242,11 @@ export function CompanyPickerPage() {
                 isLoading={loadingId !== null}
               />
             ))}
-            <AddCompanyCard onClick={() => setCreateOpen(true)} disabled={loadingId !== null} />
+            <AddCompanyCard
+              onClick={() => setCreateOpen(true)}
+              disabled={loadingId !== null}
+              quota={quota}
+            />
           </div>
 
           <div className="flex justify-center">

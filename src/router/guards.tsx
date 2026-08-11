@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useAdminAuthStore } from '@/stores/useAdminAuthStore'
 import { AppShell } from '@/components/shared/layout/AppShell'
 import { hasPermission } from '@/hooks/usePermission'
 import { useSetupGate } from '@/modules/onboarding/hooks/useSetupStatus'
@@ -51,6 +52,23 @@ export function CompanySelectionGuard({ children }: { children: React.ReactNode 
 
   if (!token) {
     return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  return <>{children}</>
+}
+
+/**
+ * Penjaga area admin aplikasi.
+ *
+ * Memakai sesi admin yang terpisah dari sesi client — token client tidak
+ * membuka halaman ini, dan sebaliknya. Penjaga sebenarnya tetap di backend
+ * (`platform.admin`); yang di sini hanya menghindarkan layar kosong.
+ */
+export function PlatformAdminGuard({ children }: { children: React.ReactNode }) {
+  const { token, admin } = useAdminAuthStore()
+
+  if (!token || !admin) {
+    return <Navigate to="/admin/login" replace />
   }
 
   return <>{children}</>

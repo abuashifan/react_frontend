@@ -67,3 +67,11 @@ export interface SelectCompanyResponse {
 export interface CreateCompanyPayload {
   name: string
 }
+
+export interface CompanyQuota {
+  used: number
+  limit: number
+  can_create: boolean
+  plan_code: string | null
+  plan_name: string | null
+}

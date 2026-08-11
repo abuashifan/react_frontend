@@ -18,6 +18,7 @@ import { reportsRoutes } from '@/modules/reports/routes'
 import { settingsRoutes } from '@/modules/settings/routes'
 import { budgetRoutes } from '@/modules/budget/routes'
 import { openingBalanceRoutes } from '@/modules/opening-balance/routes'
+import { adminRoutes } from '@/modules/admin/routes'
 
 const initialEntry = `${window.location.pathname}${window.location.search}${window.location.hash}`
 
@@ -27,6 +28,9 @@ if (window.location.pathname !== '/') {
 
 export const router = createMemoryRouter([
   { path: '/login', element: <LoginPage /> },
+  // Area pengelolaan client. Sesi dan tokennya terpisah dari sesi client, dan
+  // tidak satu pun layarnya membaca data perusahaan.
+  ...adminRoutes,
   {
     path: '/select-company',
     element: (

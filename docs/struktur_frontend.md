@@ -341,6 +341,20 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____utils.ts
 | |____main.tsx
 | |____modules/
+| | |____admin/
+| | | |____components/
+| | | | |____ClientFormDialog.tsx
+| | | | |____ResetPasswordDialog.tsx
+| | | |____hooks/
+| | | | |____useClientUsers.ts
+| | | |____pages/
+| | | | |____AdminClientsPage.tsx
+| | | | |____AdminLoginPage.tsx
+| | | |____routes.tsx
+| | | |____schemas/
+| | | | |____clientSchema.ts
+| | | |____services/
+| | | | |____adminApi.ts
 | | |____accounting/
 | | | |____constants/
 | | | | |____journalSourceTypes.ts
@@ -805,13 +819,16 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____legacy/
 | | | |____reportsRibbon.legacy.ts
 | |____services/
+| | |____adminHttp.ts
 | | |____http.ts
 | |____stores/
+| | |____useAdminAuthStore.ts
 | | |____useAuthStore.ts
 | | |____useCompanyStore.ts
 | | |____useTabStore.ts
 | | |____useUnsavedFormsStore.ts
 | |____types/
+| | |____admin.types.ts
 | | |____api.types.ts
 | | |____auth.types.ts
 | | |____common.types.ts

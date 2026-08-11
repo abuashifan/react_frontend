@@ -3,6 +3,7 @@ import type { ApiResponse } from '@/types/api.types'
 import type {
   BackendCompany,
   Company,
+  CompanyQuota,
   CompanySettings,
   CreateCompanyPayload,
   SelectCompanyResponse,
@@ -14,6 +15,35 @@ const DEFAULT_COMPANY_SETTINGS: CompanySettings = {
   currency: 'IDR',
   timezone: 'Asia/Jakarta',
   session_timeout_minutes: 30,
+}
+
+/**
+ * Kuota perusahaan milik user yang sedang login, dikirim backend di `meta`.
+ *
+ * Nilai cadangannya permisif: kalau backend belum mengirim kuota, tombol tambah
+ * tetap muncul dan backend yang menolak — lebih baik daripada menyembunyikan
+ * tombol dari client yang sebenarnya berhak.
+ */
+const FALLBACK_QUOTA: CompanyQuota = {
+  used: 0,
+  limit: 0,
+  can_create: true,
+  plan_code: null,
+  plan_name: null,
+}
+
+function normalizeQuota(raw: unknown): CompanyQuota {
+  if (typeof raw !== 'object' || raw === null) return FALLBACK_QUOTA
+
+  const quota = raw as Partial<CompanyQuota>
+
+  return {
+    used: typeof quota.used === 'number' ? quota.used : 0,
+    limit: typeof quota.limit === 'number' ? quota.limit : 0,
+    can_create: typeof quota.can_create === 'boolean' ? quota.can_create : true,
+    plan_code: quota.plan_code ?? null,
+    plan_name: quota.plan_name ?? null,
+  }
 }
 
 export function normalizeCompany(company: BackendCompany): Company {
@@ -29,12 +59,13 @@ export function normalizeCompany(company: BackendCompany): Company {
 }
 
 export const companyApi = {
-  async list(): Promise<ApiResponse<Company[]>> {
+  async list(): Promise<ApiResponse<Company[]> & { quota: CompanyQuota }> {
     const response = await http.get<unknown, ApiResponse<BackendCompany[]>>('/companies')
 
     return {
       ...response,
       data: response.data.map(normalizeCompany),
+      quota: normalizeQuota(response.meta?.quota),
     }
   },
 
