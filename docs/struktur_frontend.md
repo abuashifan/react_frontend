@@ -343,11 +343,11 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | |____modules/
 | | |____admin/
 | | | |____components/
-| | | | |____ClientFormDialog.tsx
-| | | | |____ResetPasswordDialog.tsx
+| | | | |____ResetPasswordSection.tsx
 | | | |____hooks/
 | | | | |____useClientUsers.ts
 | | | |____pages/
+| | | | |____AdminClientFormPage.tsx
 | | | | |____AdminClientsPage.tsx
 | | | | |____AdminLoginPage.tsx
 | | | |____routes.tsx

@@ -16,6 +16,14 @@ export function useClientUsers(params: ClientUserListParams) {
   })
 }
 
+export function useClientUser(id: number | null) {
+  return useQuery({
+    queryKey: [...CLIENT_USERS_KEY, 'detail', id],
+    queryFn: () => adminApi.client(id as number),
+    enabled: id !== null,
+  })
+}
+
 export function useAdminPlans() {
   return useQuery({
     queryKey: ADMIN_PLANS_KEY,

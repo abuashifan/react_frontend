@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { KeyRound, LogOut, Plus, ShieldCheck } from 'lucide-react'
+import { LogOut, Plus, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DataTable } from '@/components/shared/table/DataTable'
@@ -10,8 +10,6 @@ import { APP_NAME } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { adminApi } from '../services/adminApi'
 import { useAdminPlans, useClientUsers } from '../hooks/useClientUsers'
-import { ClientFormDialog } from '../components/ClientFormDialog'
-import { ResetPasswordDialog } from '../components/ResetPasswordDialog'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import type { ClientUser } from '@/types/admin.types'
 
@@ -43,9 +41,6 @@ export default function AdminClientsPage() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
-  const [formOpen, setFormOpen] = useState(false)
-  const [resetOpen, setResetOpen] = useState(false)
-  const [selected, setSelected] = useState<ClientUser | null>(null)
 
   const { data, isLoading, isFetching } = useClientUsers({
     page,
@@ -64,20 +59,8 @@ export default function AdminClientsPage() {
     setPage(1)
   }
 
-  const openCreate = () => {
-    setSelected(null)
-    setFormOpen(true)
-  }
-
-  const openEdit = (client: ClientUser) => {
-    setSelected(client)
-    setFormOpen(true)
-  }
-
-  const openReset = (client: ClientUser) => {
-    setSelected(client)
-    setResetOpen(true)
-  }
+  const openCreate = () => navigate('/admin/clients/new')
+  const openEdit = (client: ClientUser) => navigate(`/admin/clients/${client.id}`)
 
   const handleLogout = async () => {
     try {
@@ -100,8 +83,29 @@ export default function AdminClientsPage() {
     {
       id: 'email',
       header: 'Email',
-      size: 220,
+      size: 200,
       cell: ({ original }) => original.email,
+    },
+    {
+      id: 'phone',
+      header: 'Telepon',
+      size: 130,
+      cell: ({ original }) => (
+        <span className="tabular-nums">{original.phone ?? '—'}</span>
+      ),
+    },
+    {
+      id: 'company_name',
+      header: 'Perusahaan',
+      size: 170,
+      cell: ({ original }) => (
+        <div>
+          <p>{original.company_name ?? '—'}</p>
+          {original.job_title && (
+            <p className="text-[11px] text-[#64748b]">{original.job_title}</p>
+          )}
+        </div>
+      ),
     },
     {
       id: 'status',
@@ -123,23 +127,26 @@ export default function AdminClientsPage() {
     {
       id: 'plan',
       header: 'Paket',
-      size: 130,
+      size: 120,
       cell: ({ original }) => original.plan?.name ?? 'Tanpa paket',
     },
     {
       id: 'quota',
-      header: 'Perusahaan',
-      size: 120,
+      header: 'Kuota',
+      size: 110,
       cell: ({ original }) => (
         <span
           className={cn('tabular-nums', original.over_quota && 'text-[#b45309] font-medium')}
           title={
             original.over_quota
-              ? 'Melebihi jatah paket. Perusahaan lama tetap bisa diakses, penambahan baru ditahan.'
-              : undefined
+              ? 'Melebihi jatah. Perusahaan lama tetap bisa diakses, penambahan baru ditahan.'
+              : original.limit_source === 'custom'
+                ? 'Kuota khusus, menimpa paket.'
+                : undefined
           }
         >
           {original.companies_used}/{original.companies_limit}
+          {original.limit_source === 'custom' ? '*' : ''}
           {original.over_quota ? ' ⚠' : ''}
         </span>
       ),
@@ -150,25 +157,6 @@ export default function AdminClientsPage() {
       size: 140,
       cell: ({ original }) => (
         <span className="tabular-nums">{formatDate(original.last_login_at)}</span>
-      ),
-    },
-    {
-      id: 'actions',
-      header: '',
-      size: 60,
-      cell: ({ original }) => (
-        <Button
-          type="button"
-          variant="ghost"
-          className="h-7 px-2 text-[12px] text-[#64748b]"
-          title="Reset password"
-          onClick={(event) => {
-            event.stopPropagation()
-            openReset(original)
-          }}
-        >
-          <KeyRound className="w-3.5 h-3.5" />
-        </Button>
       ),
     },
   ]
@@ -217,7 +205,7 @@ export default function AdminClientsPage() {
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Cari nama atau email..."
+              placeholder="Cari nama, email, telepon, perusahaan..."
               className="h-8 text-[13px] max-w-xs"
             />
             <select
@@ -247,11 +235,13 @@ export default function AdminClientsPage() {
             emptyTitle="Belum ada client"
             emptyDescription="Tambahkan akun client supaya mereka bisa login dan menyiapkan perusahaannya."
           />
+
+          <p className="text-[11px] text-[#64748b] mt-2">
+            Kuota bertanda <span className="font-medium">*</span> adalah kuota khusus yang menimpa
+            paket. Klik baris untuk mengubah data client.
+          </p>
         </div>
       </div>
-
-      <ClientFormDialog open={formOpen} onOpenChange={setFormOpen} client={selected} />
-      <ResetPasswordDialog open={resetOpen} onOpenChange={setResetOpen} client={selected} />
     </div>
   )
 }

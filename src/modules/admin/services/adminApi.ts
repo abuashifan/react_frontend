@@ -56,6 +56,10 @@ export const adminApi = {
     return toPaginated(response.data)
   },
 
+  async client(id: number): Promise<ApiResponse<ClientUser>> {
+    return adminHttp.get<unknown, ApiResponse<ClientUser>>(`/admin/clients/${id}`)
+  },
+
   async createClient(payload: CreateClientPayload): Promise<ApiResponse<ClientUser>> {
     return adminHttp.post<unknown, ApiResponse<ClientUser>>('/admin/clients', payload)
   },
