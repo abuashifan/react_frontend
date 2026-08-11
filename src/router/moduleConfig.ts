@@ -17,6 +17,12 @@ export interface RibbonItem {
   icon: LucideIcon
   path: string
   permission?: string
+  /**
+   * Item hanya relevan saat pengaturan awal perusahaan: dipakai sekali, lalu
+   * tidak pernah lagi. Ribbon menyembunyikannya begitu setup difinalisasi atau
+   * buku perusahaan sudah berisi transaksi — lihat `useSetupGate`.
+   */
+  setupOnly?: boolean
 }
 
 export interface ModuleConfig {
@@ -70,7 +76,11 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     path: '/accounting',
     ribbonItems: [
       { id: 'journals', label: 'Jurnal Umum', icon: BookOpen, path: '/accounting/journals', permission: 'journal.view' },
-      { id: 'opening-balance', label: 'Saldo Awal', icon: Archive, path: '/opening-balance', permission: 'opening_balance.view' },
+      // Saldo awal hanya boleh ada satu batch per perusahaan seumur hidupnya
+      // (OPENING_BALANCE_ACTIVE_BATCH_EXISTS di backend), jadi item ini hilang
+      // dari ribbon setelah setup awal selesai. Rutenya tetap hidup untuk
+      // wizard dan drill-down.
+      { id: 'opening-balance', label: 'Saldo Awal', icon: Archive, path: '/opening-balance', permission: 'opening_balance.view', setupOnly: true },
       { id: 'period-locks', label: 'Periode Akuntansi', icon: Calendar, path: '/accounting/period-locks', permission: 'accounting.period-locks.manage' },
       { id: 'period-end', label: 'Akhir Periode', icon: CheckSquare, path: '/accounting/period-end', permission: 'period_end.view' },
       { id: 'fiscal-years', label: 'Tahun Fiskal', icon: CalendarDays, path: '/accounting/fiscal-years', permission: 'accounting.fiscal-years.manage' },

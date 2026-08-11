@@ -12,7 +12,6 @@ export interface CompanySettings {
   currency: string
   timezone: string
   session_timeout_minutes: number
-  onboarding_completed?: boolean
 }
 
 export interface Company {
@@ -63,4 +62,8 @@ export interface BackendCompany {
 
 export interface SelectCompanyResponse {
   active_company: BackendCompany
+}
+
+export interface CreateCompanyPayload {
+  name: string
 }

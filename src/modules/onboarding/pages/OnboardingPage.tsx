@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { WizardSidebar, type WizardStep, type StepStatus } from '../components/WizardSidebar'
 import { Step1CompanyInfo } from '../components/steps/Step1CompanyInfo'
+import { StepModuleSelection } from '../components/steps/StepModuleSelection'
 import { Step2TemplateCOA } from '../components/steps/Step2TemplateCOA'
 import { Step3AccountMapping } from '../components/steps/Step3AccountMapping'
 import { Step4MasterData } from '../components/steps/Step4MasterData'
@@ -8,7 +9,7 @@ import { Step5OpeningBalance } from '../components/steps/Step5OpeningBalance'
 import { Step6Complete } from '../components/steps/Step6Complete'
 import type { CompanyInfoValues } from '../schemas/companyInfoSchema'
 import type { QuickAddItem } from '../components/MasterDataQuickAdd'
-import { COA_TEMPLATES } from '../constants'
+import { COA_TEMPLATES, WIZARD_STATE_KEY } from '../constants'
 
 interface WizardState {
   currentStep: number
@@ -27,27 +28,60 @@ interface WizardState {
   openingBalanceSkipped: boolean
 }
 
+/*
+ * Urutan mengikuti step canonical backend (SetupWizardService::$steps).
+ * Nomor langkah hidup di sini, bukan di nama file komponen.
+ */
 const STEP_TITLES = [
   { number: 1, title: 'Informasi Perusahaan' },
-  { number: 2, title: 'Template COA' },
-  { number: 3, title: 'Account Mapping' },
-  { number: 4, title: 'Master Data Dasar' },
-  { number: 5, title: 'Opening Balance', subtitle: 'Opsional' },
-  { number: 6, title: 'Selesai' },
+  { number: 2, title: 'Modul Aktif' },
+  { number: 3, title: 'Template COA' },
+  { number: 4, title: 'Account Mapping' },
+  { number: 5, title: 'Master Data Dasar' },
+  { number: 6, title: 'Opening Balance', subtitle: 'Opsional' },
+  { number: 7, title: 'Selesai' },
 ]
 
+const INITIAL_STATE: WizardState = {
+  currentStep: 1,
+  visitedSteps: [1],
+  completedSteps: [],
+  companyInfo: null,
+  selectedTemplate: null,
+  templateLabel: null,
+  mappingCompleted: false,
+  masterData: { warehouses: [], units: [], paymentTerms: [] },
+  openingBalanceSkipped: false,
+}
+
+/*
+ * Posisi wizard disimpan di sessionStorage. Langkah Opening Balance
+ * memindahkan user ke halaman Saldo Awal, dan tanpa ini wizard akan mengulang
+ * dari langkah 1 saat ia kembali. Backend tetap pemegang status resmi setup —
+ * ini murni kenyamanan navigasi, sesuai batasan di setup-wizard plan.
+ */
+function readPersistedState(): WizardState {
+  try {
+    const raw = sessionStorage.getItem(WIZARD_STATE_KEY)
+    if (!raw) return INITIAL_STATE
+    return { ...INITIAL_STATE, ...(JSON.parse(raw) as Partial<WizardState>) }
+  } catch {
+    return INITIAL_STATE
+  }
+}
+
 export function OnboardingPage() {
-  const [state, setState] = useState<WizardState>({
-    currentStep: 1,
-    visitedSteps: [1],
-    completedSteps: [],
-    companyInfo: null,
-    selectedTemplate: null,
-    templateLabel: null,
-    mappingCompleted: false,
-    masterData: { warehouses: [], units: [], paymentTerms: [] },
-    openingBalanceSkipped: false,
-  })
+  const [state, setStateRaw] = useState<WizardState>(readPersistedState)
+
+  const setState: typeof setStateRaw = (update) => {
+    setStateRaw((prev) => {
+      const next = typeof update === 'function' ? update(prev) : update
+      try {
+        sessionStorage.setItem(WIZARD_STATE_KEY, JSON.stringify(next))
+      } catch { /* sessionStorage penuh/diblokir — wizard tetap jalan */ }
+      return next
+    })
+  }
 
   const markCompleted = (step: number, next: number) => {
     setState((prev) => ({
@@ -124,6 +158,13 @@ export function OnboardingPage() {
             )}
 
             {state.currentStep === 2 && (
+              <StepModuleSelection
+                onComplete={() => markCompleted(2, 3)}
+                onBack={goBack}
+              />
+            )}
+
+            {state.currentStep === 3 && (
               <Step2TemplateCOA
                 currentTemplate={state.selectedTemplate}
                 mappingCompleted={state.mappingCompleted}
@@ -135,16 +176,6 @@ export function OnboardingPage() {
                     // Reset mapping if template changes
                     mappingCompleted: templateId === prev.selectedTemplate ? prev.mappingCompleted : false,
                   }))
-                  markCompleted(2, 3)
-                }}
-                onBack={goBack}
-              />
-            )}
-
-            {state.currentStep === 3 && (
-              <Step3AccountMapping
-                onComplete={() => {
-                  setState((prev) => ({ ...prev, mappingCompleted: true }))
                   markCompleted(3, 4)
                 }}
                 onBack={goBack}
@@ -152,9 +183,9 @@ export function OnboardingPage() {
             )}
 
             {state.currentStep === 4 && (
-              <Step4MasterData
-                onComplete={(masterData) => {
-                  setState((prev) => ({ ...prev, masterData }))
+              <Step3AccountMapping
+                onComplete={() => {
+                  setState((prev) => ({ ...prev, mappingCompleted: true }))
                   markCompleted(4, 5)
                 }}
                 onBack={goBack}
@@ -162,9 +193,9 @@ export function OnboardingPage() {
             )}
 
             {state.currentStep === 5 && (
-              <Step5OpeningBalance
-                onComplete={(skipped) => {
-                  setState((prev) => ({ ...prev, openingBalanceSkipped: skipped }))
+              <Step4MasterData
+                onComplete={(masterData) => {
+                  setState((prev) => ({ ...prev, masterData }))
                   markCompleted(5, 6)
                 }}
                 onBack={goBack}
@@ -172,6 +203,16 @@ export function OnboardingPage() {
             )}
 
             {state.currentStep === 6 && (
+              <Step5OpeningBalance
+                onComplete={(skipped) => {
+                  setState((prev) => ({ ...prev, openingBalanceSkipped: skipped }))
+                  markCompleted(6, 7)
+                }}
+                onBack={goBack}
+              />
+            )}
+
+            {state.currentStep === 7 && (
               <Step6Complete
                 summary={{
                   templateLabel: state.templateLabel,

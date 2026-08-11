@@ -2,6 +2,12 @@ import { Flame, ShoppingCart, Briefcase, Factory, FileText } from 'lucide-react'
 import type { FC, SVGProps } from 'react'
 type LucideIcon = FC<SVGProps<SVGSVGElement> & { size?: number | string; strokeWidth?: number | string }>
 
+/**
+ * Kunci sessionStorage untuk posisi langkah wizard. Dipakai OnboardingPage
+ * (menyimpan/memulihkan) dan Step6Complete (membersihkan setelah finalize).
+ */
+export const WIZARD_STATE_KEY = 'seaside-onboarding-wizard'
+
 // ─── Account Mapping ──────────────────────────────────────────────────────────
 
 export interface MappingDef {

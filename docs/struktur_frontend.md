@@ -366,10 +366,13 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____fiscalYear.types.ts
 | | | | |____journalEntry.types.ts
 | | |____auth/
+| | | |____components/
+| | | | |____CreateCompanyDialog.tsx
 | | | |____pages/
 | | | | |____CompanyPickerPage.tsx
 | | | | |____LoginPage.tsx
 | | | |____schemas/
+| | | | |____companySchema.ts
 | | | | |____loginSchema.ts
 | | | |____services/
 | | | | |____authApi.ts
@@ -549,13 +552,18 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | | |____Step4MasterData.tsx
 | | | | | |____Step5OpeningBalance.tsx
 | | | | | |____Step6Complete.tsx
+| | | | | |____StepModuleSelection.tsx
 | | | |____constants.ts
+| | | |____hooks/
+| | | | |____useSetupStatus.ts
 | | | |____pages/
 | | | | |____OnboardingPage.tsx
 | | | |____schemas/
 | | | | |____companyInfoSchema.ts
 | | | |____services/
 | | | | |____onboardingApi.ts
+| | | |____types/
+| | | | |____setup.types.ts
 | | |____opening-balance/
 | | | |____hooks/
 | | | | |____useOpeningBalance.ts

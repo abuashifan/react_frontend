@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Building2, LogOut } from 'lucide-react'
+import { Building2, LogOut, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useCompanyStore } from '@/stores/useCompanyStore'
@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/useToast'
 import { closeDatabase, getUnsavedForms, logoutFromApp } from '@/lib/companySession'
 import { authApi } from '../services/authApi'
 import { companyApi } from '../services/companyApi'
+import { CreateCompanyDialog } from '../components/CreateCompanyDialog'
 import { cn } from '@/lib/utils'
 import { APP_NAME } from '@/lib/constants'
 import type { Company } from '@/types/auth.types'
@@ -68,12 +69,44 @@ function CompanyCard({ company, onClick, isLoading }: CompanyCardProps) {
   )
 }
 
+interface AddCompanyCardProps {
+  onClick: () => void
+  disabled: boolean
+}
+
+function AddCompanyCard({ onClick, disabled }: AddCompanyCardProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'bg-white border border-dashed border-[#d9e2e5] rounded-lg p-5 [@media(max-height:620px)]:p-3',
+        'cursor-pointer transition-all duration-150 text-left w-full',
+        'hover:border-[#5c9ead] hover:shadow-md',
+        'flex flex-col items-center text-center gap-3 [@media(max-height:620px)]:gap-2',
+        'disabled:opacity-60 disabled:cursor-not-allowed',
+      )}
+    >
+      <div className="w-12 h-12 [@media(max-height:620px)]:w-9 [@media(max-height:620px)]:h-9 rounded-lg bg-[#EFF9FB] flex items-center justify-center">
+        <Plus className="w-6 h-6 [@media(max-height:620px)]:w-5 [@media(max-height:620px)]:h-5 text-[#5c9ead]" />
+      </div>
+      <div>
+        <p className="font-semibold text-[#24323a] text-sm leading-snug">Tambah Perusahaan</p>
+        <p className="text-[11px] text-[#64748b] mt-1">Buat perusahaan baru</p>
+      </div>
+    </button>
+  )
+}
+
 export function CompanyPickerPage() {
   const navigate = useNavigate()
-  const { user, companies, activeCompanyId, setActiveCompany, setPermissions } = useAuthStore()
+  const { user, companies, activeCompanyId, setActiveCompany, setCompanies, setPermissions } =
+    useAuthStore()
   const { setActiveCompany: setCompanyStore } = useCompanyStore()
   const { toast } = useToast()
   const [loadingId, setLoadingId] = useState<number | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
 
   const sorted = sortByLastAccessed(companies)
 
@@ -116,6 +149,24 @@ export function CompanyPickerPage() {
     }
   }
 
+  /**
+   * Perusahaan baru langsung dibuka, sama seperti user mengkliknya sendiri.
+   * Daftar perusahaan disegarkan lebih dulu karena `companies` di store hanya
+   * diisi saat login — tanpa itu kartu perusahaan baru hilang begitu user
+   * kembali ke halaman ini.
+   */
+  async function handleCompanyCreated(company: Company) {
+    try {
+      const listResponse = await companyApi.list()
+      setCompanies(listResponse.data)
+    } catch {
+      // Daftar gagal disegarkan bukan alasan menahan user: perusahaan sudah
+      // terbentuk dan tetap bisa dibuka di bawah.
+    }
+
+    await handleSelectCompany(company)
+  }
+
   async function handleLogout() {
     await logoutFromApp()
     navigate('/login', { replace: true })
@@ -150,6 +201,7 @@ export function CompanyPickerPage() {
                 isLoading={loadingId !== null}
               />
             ))}
+            <AddCompanyCard onClick={() => setCreateOpen(true)} disabled={loadingId !== null} />
           </div>
 
           <div className="flex justify-center">
@@ -164,6 +216,12 @@ export function CompanyPickerPage() {
           </div>
         </div>
       </div>
+
+      <CreateCompanyDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={handleCompanyCreated}
+      />
     </div>
   )
 }

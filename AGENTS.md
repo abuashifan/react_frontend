@@ -215,6 +215,29 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 ### 6C. Build Status
 
 ```
+Terakhir dicek  : 2026-08-10 (Setup awal — gate menu Saldo Awal & wizard)
+npm run build   : ✅ 0 error
+npm run lint    : ✅ 0 error, 0 warning
+Backend test    : ✅ php artisan test (1128 passed, 5 skipped) + pint --test clean
+Setup awal      : - Backend: /setup/status & /setup/steps kini mengembalikan `gate`
+                    (is_finalized, has_operational_data, initial_setup_available)
+                  - Frontend: hook useSetupStatus/useSetupGate jadi satu-satunya
+                    sumber status setup; flag `onboarding_completed` di
+                    CompanySettings dihapus (backend tidak pernah mengirimnya,
+                    default `true` di companyApi membuat guard tak pernah aktif)
+                  - RibbonItem punya `setupOnly`; item Saldo Awal hilang dari
+                    ribbon Buku Besar setelah setup final / buku sudah berisi
+                  - Wizard jadi 7 langkah: "Modul Aktif" (step canonical
+                    `module_selection`) disisipkan setelah Informasi Perusahaan
+                  - Posisi langkah wizard disimpan di sessionStorage
+                  - Backend fix: route OpeningBalance {batch} → {id}; implicit
+                    binding berjalan sebelum `company.access` sehingga 8 dari 11
+                    endpoint selalu 500. Regression test menonaktifkan koneksi
+                    tenant sebelum request agar urutan itu benar-benar teruji
+Playwright      : ✅ Chromium headless 1280×900, dev server lokal: ribbon Buku
+                  Besar tanpa Saldo Awal pada perusahaan berjalan, wizard 7
+                  langkah, resume langkah, batch saldo awal tidak lagi stuck
+
 Terakhir dicek  : 2026-08-09 (Jurnal Umum — UX daftar & form)
 npm run build   : ✅ 0 error
 npm run lint    : ✅ 0 error, 0 warning

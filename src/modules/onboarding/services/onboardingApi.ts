@@ -1,6 +1,7 @@
 import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type { SelectOption } from '@/types/common.types'
+import type { SetupStatus } from '../types/setup.types'
 
 interface AccountSearchResult {
   id: number
@@ -25,8 +26,8 @@ export interface OnboardingAccountMapping {
  * secara internal, jadi penyelesaian wizard cukup memanggil `finalize`.
  */
 export const setupApi = {
-  getStatus: () => http.get<unknown, ApiResponse<Record<string, unknown>>>('/setup/status'),
-  getSteps: () => http.get<unknown, ApiResponse<Record<string, unknown>>>('/setup/steps'),
+  getStatus: () => http.get<unknown, ApiResponse<SetupStatus>>('/setup/status'),
+  getSteps: () => http.get<unknown, ApiResponse<SetupStatus>>('/setup/steps'),
   updateCurrentStep: (step: string, openingDate?: string) =>
     http.patch<unknown, ApiResponse<Record<string, unknown>>>('/setup/current-step', { current_step: step, opening_date: openingDate }),
   validateStep: (step: string, data?: { opening_date?: string; confirm_no_opening_fixed_assets?: boolean }) =>
