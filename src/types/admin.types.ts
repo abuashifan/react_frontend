@@ -17,6 +17,8 @@ export interface AdminPlan {
   name: string
   max_companies: number
   max_users: number
+  /** Tier yang jumlah perusahaannya diisi manual per client. */
+  is_custom: boolean
 }
 
 export interface ClientUser {
@@ -30,12 +32,15 @@ export interface ClientUser {
   address: string | null
   notes: string | null
   status: string
-  plan: Pick<AdminPlan, 'id' | 'code' | 'name' | 'max_companies'> | null
+  plan: Pick<AdminPlan, 'id' | 'code' | 'name' | 'max_companies' | 'is_custom'> | null
   /** null berarti kuota mengikuti paket; angka berarti kuota khusus. */
   company_quota: number | null
+  user_quota: number | null
   companies_used: number
   companies_limit: number
   limit_source: 'plan' | 'custom'
+  /** Batas user per perusahaan milik client ini. */
+  users_limit: number
   /** Client yang paketnya diturunkan setelah terlanjur punya banyak perusahaan. */
   over_quota: boolean
   last_login_at: string | null
@@ -59,6 +64,7 @@ export interface ClientProfileFields {
   notes?: string | null
   plan_id?: number | null
   company_quota?: number | null
+  user_quota?: number | null
 }
 
 export interface CreateClientPayload extends ClientProfileFields {

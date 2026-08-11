@@ -131,6 +131,16 @@ export default function AdminClientsPage() {
       cell: ({ original }) => original.plan?.name ?? 'Tanpa paket',
     },
     {
+      id: 'users_limit',
+      header: 'Maks User',
+      size: 100,
+      cell: ({ original }) => (
+        <span className="tabular-nums" title="Batas user di tiap perusahaan milik client ini.">
+          {original.users_limit}
+        </span>
+      ),
+    },
+    {
       id: 'quota',
       header: 'Kuota',
       size: 110,

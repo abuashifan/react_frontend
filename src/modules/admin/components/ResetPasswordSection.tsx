@@ -44,7 +44,7 @@ export function ResetPasswordSection({ client }: { client: ClientUser }) {
   }
 
   return (
-    <section className="bg-white border border-[#d9e2e5] rounded-lg p-5 mt-4">
+    <section className="bg-white border border-[#d9e2e5] rounded-lg p-5 mt-3">
       <div className="mb-4">
         <h2 className="text-[14px] font-semibold text-[#24323a]">Reset Password</h2>
         <p className="text-[12px] text-[#64748b] mt-0.5">

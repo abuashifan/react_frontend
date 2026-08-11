@@ -9,14 +9,15 @@ const optionalText = (max: number, label: string) =>
  * Kuota khusus dan paket dikirim sebagai string dari input/select. Kosong
  * berarti "ikut paket" untuk kuota, dan "tanpa paket" untuk plan_id.
  */
-const quota = z
-  .string()
-  .trim()
-  .optional()
-  .refine(
-    (value) => !value || (/^\d+$/.test(value) && Number(value) <= 999),
-    'Kuota harus berupa angka 0 sampai 999',
-  )
+const quota = (min: number) =>
+  z
+    .string()
+    .trim()
+    .optional()
+    .refine(
+      (value) => !value || (/^\d+$/.test(value) && Number(value) >= min && Number(value) <= 999),
+      `Isi angka ${min} sampai 999`,
+    )
 
 const profileFields = {
   phone: optionalText(50, 'Nomor telepon'),
@@ -25,7 +26,9 @@ const profileFields = {
   address: optionalText(1000, 'Alamat'),
   notes: optionalText(2000, 'Catatan'),
   plan_id: z.string().optional(),
-  company_quota: quota,
+  company_quota: quota(0),
+  // Minimal 1: perusahaan selalu punya owner.
+  user_quota: quota(1),
 }
 
 export const createClientSchema = z.object({
