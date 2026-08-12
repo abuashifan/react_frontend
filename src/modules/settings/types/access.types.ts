@@ -98,6 +98,14 @@ export interface PermissionModule {
 export interface PermissionCatalog {
   matrix_columns: string[]
   modules: PermissionModule[]
+  /**
+   * Kunci izin yang terkunci paket client saat ini (skema tier, Fase 2).
+   * Ditampilkan terkunci, bukan disembunyikan — admin perusahaan tetap tahu
+   * izin itu ada dan kenapa mati.
+   */
+  blocked_by_plan_keys: string[]
+  /** Tautan WhatsApp ke penyedia aplikasi; `null` kalau nomornya belum diisi. */
+  upgrade_url: string | null
 }
 
 // Payloads

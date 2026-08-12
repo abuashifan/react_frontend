@@ -26,6 +26,7 @@ import { MODULE_MAP, TOP_MODULES } from '@/router/moduleConfig'
 import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
 import { useCompanySession } from '@/hooks/useCompanySession'
 import { UnsavedFormsDialog } from '@/components/shared/feedback/UnsavedFormsDialog'
+import { SubscriptionWarningBadge } from './SubscriptionWarningBadge'
 import { cn } from '@/lib/utils'
 import { APP_NAME } from '@/lib/constants'
 
@@ -164,8 +165,9 @@ export function Topbar() {
         </nav>
       </TooltipProvider>
 
-      {/* Right: company name + avatar */}
+      {/* Right: subscription warning + company name + avatar */}
       <div className="flex items-center gap-3 ml-2 flex-shrink-0">
+        <SubscriptionWarningBadge />
         {activeCompany && (
           <span className="text-white/70 text-[13px] hidden md:block max-w-[140px] truncate">
             {activeCompany.name}

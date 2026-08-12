@@ -1,6 +1,12 @@
 import { http } from '@/services/http'
 import type { ApiResponse } from '@/types/api.types'
-import type { LoginPayload, LoginResponse, PermissionsResponse, User } from '@/types/auth.types'
+import type {
+  LoginPayload,
+  LoginResponse,
+  PermissionsResponse,
+  SubscriptionSummary,
+  User,
+} from '@/types/auth.types'
 
 export const authApi = {
   login(payload: LoginPayload): Promise<ApiResponse<LoginResponse>> {
@@ -11,8 +17,8 @@ export const authApi = {
     return http.post<unknown, ApiResponse<null>>('/auth/logout')
   },
 
-  me(): Promise<ApiResponse<{ user: User }>> {
-    return http.get<unknown, ApiResponse<{ user: User }>>('/auth/me')
+  me(): Promise<ApiResponse<{ user: User; subscription: SubscriptionSummary | null }>> {
+    return http.get<unknown, ApiResponse<{ user: User; subscription: SubscriptionSummary | null }>>('/auth/me')
   },
 
   permissions(): Promise<ApiResponse<PermissionsResponse>> {

@@ -14,6 +14,8 @@ import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { cn, fieldErrorClass } from '@/lib/utils'
 import { useAdminPlans, useClientUser, useClientUserMutations } from '../hooks/useClientUsers'
 import { ResetPasswordSection } from '../components/ResetPasswordSection'
+import { SubscriptionCycleSection } from '../components/SubscriptionCycleSection'
+import { StorageUsageSection } from '../components/StorageUsageSection'
 import {
   createClientSchema,
   editClientSchema,
@@ -49,7 +51,7 @@ const TAB_FIELDS = {
   addons: ['extra_users'],
 } as const
 
-type TabKey = keyof typeof TAB_FIELDS | 'password'
+type TabKey = keyof typeof TAB_FIELDS | 'password' | 'siklus' | 'penyimpanan'
 
 const inputClass = 'h-9 text-[13px]'
 const selectClass =
@@ -289,7 +291,7 @@ export default function AdminClientFormPage() {
             {(
               [
                 ['detail', 'Detail Client'],
-                ['langganan', 'Langganan'],
+                ['langganan', 'Kuota Paket'],
                 ['addons', 'Add-ons'],
               ] as const
             ).map(([key, label]) => (
@@ -298,6 +300,16 @@ export default function AdminClientFormPage() {
                 {hasErrorIn(key) && <span className="ml-1.5 text-red-500">•</span>}
               </TabsTrigger>
             ))}
+            {isEdit && (
+              <TabsTrigger value="siklus" className={tabTriggerClass}>
+                Siklus Langganan
+              </TabsTrigger>
+            )}
+            {isEdit && (
+              <TabsTrigger value="penyimpanan" className={tabTriggerClass}>
+                Penyimpanan
+              </TabsTrigger>
+            )}
             {isEdit && (
               <TabsTrigger value="password" className={tabTriggerClass}>
                 Reset Password
@@ -571,6 +583,18 @@ export default function AdminClientFormPage() {
               </div>
             )}
           </form>
+
+          {isEdit && client && (
+            <TabsContent value="siklus" className="mt-0">
+              <SubscriptionCycleSection client={client} />
+            </TabsContent>
+          )}
+
+          {isEdit && clientId && (
+            <TabsContent value="penyimpanan" className="mt-0">
+              <StorageUsageSection clientId={clientId} />
+            </TabsContent>
+          )}
 
           {isEdit && client && (
             <TabsContent value="password" className="mt-0">

@@ -2,6 +2,7 @@ import axios from 'axios'
 import type { AxiosInstance } from 'axios'
 import type { ApiError } from '@/types/api.types'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { notifyFeatureNotInPlan } from '@/lib/upgradeToast'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -189,6 +190,14 @@ http.interceptors.response.use(
         code: 'NETWORK_ERROR',
         message: 'Tidak dapat terhubung ke server.',
       } as ApiError)
+    }
+
+    // Ditolak paket, bukan izin (skema tier Fase 2) — jaring pengaman global.
+    // Aksi yang digerbangi normalnya sudah tersembunyi lewat PermissionGuard,
+    // jadi ini seharusnya jarang benar-benar terpicu; kalau terpicu, satu
+    // tempat ini yang menampilkan tautan upgrade, bukan tiap halaman sendiri.
+    if (responseError.code === 'FEATURE_NOT_IN_PLAN') {
+      notifyFeatureNotInPlan(responseError)
     }
 
     return Promise.reject(responseError)

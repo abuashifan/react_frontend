@@ -41,6 +41,7 @@ const API_ERROR_MESSAGES_ID: Record<string, string> = {
   EDIT_REASON_REQUIRED: 'Alasan perubahan wajib diisi.',
   PERMISSION_DENIED: 'Anda tidak punya izin untuk aksi ini.',
   FORBIDDEN: 'Anda tidak punya izin untuk aksi ini.',
+  FEATURE_NOT_IN_PLAN: 'Fitur ini tidak termasuk dalam paket langganan Anda.',
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -166,6 +167,20 @@ export function getApiValidationErrors(error: unknown): ValidationErrorMap {
       .map(([field, messages]) => [field, firstMessage(messages)])
       .filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
   )
+}
+
+/**
+ * Tautan WhatsApp "Minta Upgrade" dari respons `FEATURE_NOT_IN_PLAN`
+ * (`meta.upgrade_url`, dikirim `EnsurePermission` — lihat skema tier Fase 2).
+ * `null` kalau bukan penolakan paket, atau nomornya belum diisi di backend.
+ */
+export function getUpgradeUrl(error: unknown): string | null {
+  const apiError = apiErrorFrom(error)
+  if (apiError?.code !== 'FEATURE_NOT_IN_PLAN') return null
+
+  const meta = apiError.meta
+  const url = isRecord(meta) ? meta.upgrade_url : null
+  return typeof url === 'string' && url.trim() !== '' ? url : null
 }
 
 export function isApiNotFound(error: unknown): boolean {

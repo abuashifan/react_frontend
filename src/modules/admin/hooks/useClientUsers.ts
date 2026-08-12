@@ -33,6 +33,23 @@ export function useAdminPlans() {
   })
 }
 
+/** Client yang akan jatuh tempo ≤14 hari atau sedang tenggang (Fase 3, §4d). */
+export function useDueSoonClients() {
+  return useQuery({
+    queryKey: ['admin', 'clients', 'due-soon'],
+    queryFn: () => adminApi.dueSoonClients(),
+  })
+}
+
+/** Pemakaian penyimpanan tiap perusahaan milik client (Fase 4). */
+export function useClientStorage(id: number | null) {
+  return useQuery({
+    queryKey: [...CLIENT_USERS_KEY, 'detail', id, 'storage'],
+    queryFn: () => adminApi.clientStorage(id as number),
+    enabled: id !== null,
+  })
+}
+
 export function useClientUserMutations() {
   const queryClient = useQueryClient()
   const invalidate = () => queryClient.invalidateQueries({ queryKey: CLIENT_USERS_KEY })
@@ -59,5 +76,22 @@ export function useClientUserMutations() {
       adminApi.resetClientPassword(id, password),
   })
 
-  return { create, update, updatePlan, resetPassword }
+  const subscribe = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: { plan_id: number; billing_cycle: 'monthly' | 'yearly' } }) =>
+      adminApi.subscribeClient(id, payload),
+    onSuccess: invalidate,
+  })
+
+  const renew = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload?: { plan_id?: number | null; billing_cycle?: 'monthly' | 'yearly' | null } }) =>
+      adminApi.renewClient(id, payload),
+    onSuccess: invalidate,
+  })
+
+  const unlock = useMutation({
+    mutationFn: (id: number) => adminApi.unlockClient(id),
+    onSuccess: invalidate,
+  })
+
+  return { create, update, updatePlan, resetPassword, subscribe, renew, unlock }
 }

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Plus, Copy } from 'lucide-react'
+import { Plus, Copy, Lock, MessageCircle } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useToast } from '@/hooks/useToast'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { FieldError } from '@/components/shared/form/FieldError'
@@ -38,6 +39,8 @@ export default function RolesPage() {
   const roles = rolesData?.data ?? []
   const role = roleData?.data
   const catalog = catalogData?.data
+  const blockedByPlan = new Set(catalog?.blocked_by_plan_keys ?? [])
+  const upgradeUrl = catalog?.upgrade_url ?? null
 
   const createForm = useForm<RoleForm>({ resolver: zodResolver(roleSchema), defaultValues: { name: '', description: '' } })
 
@@ -136,6 +139,13 @@ export default function RolesPage() {
                   {role.description && <p className="truncate text-[11px] text-[#64748b]">{role.description}</p>}
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
+                  {blockedByPlan.size > 0 && upgradeUrl && (
+                    <Button asChild type="button" size="sm" variant="outline" className="h-7 gap-1 border-[#e39774] text-[11px] text-[#e39774] hover:bg-[#fdf3ee]">
+                      <a href={upgradeUrl} target="_blank" rel="noopener noreferrer">
+                        <MessageCircle className="h-3 w-3" /> Minta Upgrade
+                      </a>
+                    </Button>
+                  )}
                   <PermissionGuard permission="access.roles.clone" fallback={null}>
                     <Button type="button" size="sm" variant="ghost" onClick={() => void handleClone(role)} className="h-7 gap-1 text-[11px]"><Copy className="h-3 w-3" /> Klon</Button>
                   </PermissionGuard>
@@ -161,14 +171,37 @@ export default function RolesPage() {
                   return (
                     <div key={mod.key} className="border-t border-[#f1f5f9] pt-3 first:border-t-0 first:pt-0">
                       <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">{mod.label}</p>
-                      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4">
-                        {modPerms.map((p) => (
-                          <label key={p.key} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition hover:bg-[#f8fafc]">
-                            <Checkbox checked={perms.has(p.key)} onCheckedChange={() => togglePerm(p.key)} disabled={role.is_system} />
-                            <span className="text-[12px] text-[#1e2d35]">{p.label}</span>
-                          </label>
-                        ))}
-                      </div>
+                      <TooltipProvider delayDuration={300}>
+                        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4">
+                          {modPerms.map((p) => {
+                            const isBlocked = blockedByPlan.has(p.key)
+                            const row = (
+                              <label
+                                key={p.key}
+                                className={cn(
+                                  'flex items-center gap-2 rounded-md px-2 py-1.5 transition',
+                                  isBlocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-[#f8fafc]',
+                                )}
+                              >
+                                <Checkbox
+                                  checked={isBlocked ? false : perms.has(p.key)}
+                                  onCheckedChange={() => togglePerm(p.key)}
+                                  disabled={role.is_system || isBlocked}
+                                />
+                                <span className="text-[12px] text-[#1e2d35]">{p.label}</span>
+                                {isBlocked && <Lock className="h-3 w-3 shrink-0 text-[#94a3b8]" />}
+                              </label>
+                            )
+                            if (!isBlocked) return row
+                            return (
+                              <Tooltip key={p.key}>
+                                <TooltipTrigger asChild>{row}</TooltipTrigger>
+                                <TooltipContent className="text-[11px]">Tidak termasuk paket saat ini</TooltipContent>
+                              </Tooltip>
+                            )
+                          })}
+                        </div>
+                      </TooltipProvider>
                     </div>
                   )
                 })}

@@ -9,7 +9,7 @@ import { useAdminAuthStore } from '@/stores/useAdminAuthStore'
 import { APP_NAME } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { adminApi } from '../services/adminApi'
-import { useAdminPlans, useClientUsers } from '../hooks/useClientUsers'
+import { useAdminPlans, useClientUsers, useDueSoonClients } from '../hooks/useClientUsers'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import type { ClientUser } from '@/types/admin.types'
 
@@ -17,6 +17,22 @@ const STATUS_LABELS: Record<string, string> = {
   active: 'Aktif',
   inactive: 'Nonaktif',
   suspended: 'Ditangguhkan',
+}
+
+const SUBSCRIPTION_STATE_LABELS: Record<ClientUser['subscription']['state'], string> = {
+  none: 'Belum berlangganan',
+  active: 'Aktif',
+  grace: 'Tenggang',
+  expired: 'Kedaluwarsa',
+  cancelled: 'Dibatalkan',
+}
+
+const SUBSCRIPTION_STATE_CLASS: Record<ClientUser['subscription']['state'], string> = {
+  none: 'bg-[#F1F5F9] text-[#64748b]',
+  active: 'bg-[#D1FAE5] text-[#065F46]',
+  grace: 'bg-[#FEF3C7] text-[#92400E]',
+  expired: 'bg-[#FEE2E2] text-[#991B1B]',
+  cancelled: 'bg-[#FEE2E2] text-[#991B1B]',
 }
 
 function formatDate(value: string | null): string {
@@ -49,6 +65,8 @@ export default function AdminClientsPage() {
     status: status || undefined,
   })
   const { data: plansResponse } = useAdminPlans()
+  const { data: dueSoonResponse } = useDueSoonClients()
+  const dueSoon = dueSoonResponse?.data ?? []
 
   // Kembali ke halaman 1 saat filter berubah supaya tidak mendarat di halaman
   // kosong setelah hasilnya menyusut.
@@ -170,6 +188,33 @@ export default function AdminClientsPage() {
       ),
     },
     {
+      id: 'subscription',
+      header: 'Langganan',
+      size: 150,
+      cell: ({ original }) => {
+        const sub = original.subscription
+        return (
+          <div>
+            <span
+              className={cn(
+                'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
+                SUBSCRIPTION_STATE_CLASS[sub.state],
+              )}
+            >
+              {SUBSCRIPTION_STATE_LABELS[sub.state]}
+            </span>
+            {sub.ends_at && (
+              <p className="text-[11px] text-[#64748b] mt-0.5 tabular-nums">
+                {sub.days_remaining !== null && sub.days_remaining >= 0
+                  ? `${sub.days_remaining} hari lagi`
+                  : `berakhir ${formatDate(sub.ends_at)}`}
+              </p>
+            )}
+          </div>
+        )
+      },
+    },
+    {
       id: 'last_login_at',
       header: 'Terakhir Login',
       size: 140,
@@ -218,6 +263,31 @@ export default function AdminClientsPage() {
               <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Client
             </Button>
           </div>
+
+          {dueSoon.length > 0 && (
+            <div className="mb-4 rounded-lg border border-[#FDE68A] bg-[#FFFBEB] p-3">
+              <p className="text-[12px] font-semibold text-[#92400E] mb-2">
+                {dueSoon.length} client perlu dihubungi (jatuh tempo ≤14 hari atau masa tenggang)
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {dueSoon.map((row) => (
+                  <button
+                    key={row.id}
+                    type="button"
+                    onClick={() => navigate(`/admin/clients/${row.id}`)}
+                    className="flex items-center gap-1.5 rounded-md border border-[#FDE68A] bg-white px-2 py-1 text-[11px] text-[#92400E] hover:bg-[#FEF3C7]"
+                  >
+                    <span className="font-medium">{row.name}</span>
+                    <span className="tabular-nums text-[#b45309]">
+                      {row.state === 'grace'
+                        ? `tenggang ${row.days_remaining !== null ? Math.abs(row.days_remaining) : ''} hari`
+                        : `${row.days_remaining} hari lagi`}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center gap-2 mb-3">
             <Input

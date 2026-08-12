@@ -21,6 +21,51 @@ export interface AdminPlan {
   is_custom: boolean
 }
 
+/** Fase 3 — siklus langganan. `state: null` berarti client belum pernah berlangganan sama sekali (BUKAN kedaluwarsa). */
+export interface ClientSubscription {
+  state: 'none' | 'active' | 'grace' | 'expired' | 'cancelled'
+  ends_at: string | null
+  /** Negatif kalau sudah lewat (termasuk masa tenggang). `null` kalau belum pernah berlangganan. */
+  days_remaining: number | null
+  billing_cycle: 'monthly' | 'yearly' | null
+  price: string | null
+  plan_name: string | null
+  history: ClientSubscriptionHistoryRow[]
+}
+
+export interface ClientSubscriptionHistoryRow {
+  id: number
+  plan_name: string | null
+  billing_cycle: string
+  price: string
+  starts_at: string | null
+  ends_at: string | null
+  cancelled_at: string | null
+}
+
+/** Fase 4 — kuota penyimpanan, satu baris per perusahaan milik client. */
+export interface ClientCompanyStorage {
+  id: number
+  name: string
+  status: string
+  used_bytes: number
+  quota_bytes: number
+  percent_used: number
+  can_accept: boolean
+  /** null berarti belum pernah diukur `storage:measure` — dianggap 0, bukan penuh. */
+  measured_at: string | null
+  near_limit: boolean
+}
+
+export interface ClientDueSoonRow {
+  id: number
+  name: string
+  email: string
+  phone: string | null
+  state: 'active' | 'grace'
+  days_remaining: number | null
+}
+
 export interface ClientUser {
   id: number
   name: string
@@ -47,6 +92,7 @@ export interface ClientUser {
   over_quota: boolean
   last_login_at: string | null
   created_at: string | null
+  subscription: ClientSubscription
 }
 
 export interface ClientUserListParams {

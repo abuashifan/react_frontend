@@ -3,6 +3,8 @@ import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type {
   AdminLoginResponse,
   AdminPlan,
+  ClientCompanyStorage,
+  ClientDueSoonRow,
   ClientUser,
   ClientUserListParams,
   CreateClientPayload,
@@ -76,5 +78,31 @@ export const adminApi = {
 
   async resetClientPassword(id: number, password: string): Promise<void> {
     await adminHttp.post(`/admin/clients/${id}/reset-password`, { password })
+  },
+
+  async subscribeClient(
+    id: number,
+    payload: { plan_id: number; billing_cycle: 'monthly' | 'yearly' },
+  ): Promise<ApiResponse<ClientUser>> {
+    return adminHttp.post<unknown, ApiResponse<ClientUser>>(`/admin/clients/${id}/subscribe`, payload)
+  },
+
+  async renewClient(
+    id: number,
+    payload?: { plan_id?: number | null; billing_cycle?: 'monthly' | 'yearly' | null },
+  ): Promise<ApiResponse<ClientUser>> {
+    return adminHttp.post<unknown, ApiResponse<ClientUser>>(`/admin/clients/${id}/renew`, payload ?? {})
+  },
+
+  async unlockClient(id: number): Promise<ApiResponse<ClientUser>> {
+    return adminHttp.post<unknown, ApiResponse<ClientUser>>(`/admin/clients/${id}/unlock`)
+  },
+
+  async dueSoonClients(): Promise<ApiResponse<ClientDueSoonRow[]>> {
+    return adminHttp.get<unknown, ApiResponse<ClientDueSoonRow[]>>('/admin/clients/due-soon')
+  },
+
+  async clientStorage(id: number): Promise<ApiResponse<ClientCompanyStorage[]>> {
+    return adminHttp.get<unknown, ApiResponse<ClientCompanyStorage[]>>(`/admin/clients/${id}/storage`)
   },
 }

@@ -281,6 +281,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____PrimaryTabs.tsx
 | | | | |____RibbonPanel.tsx
 | | | | |____SecondaryTabs.tsx
+| | | | |____SubscriptionWarningBadge.tsx
 | | | | |____Topbar.tsx
 | | | | |____WorkspaceLayout.tsx
 | | | |____table/
@@ -326,8 +327,9 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____useRecordSequence.ts
 | | |____useRecordTab.ts
 | | |____useSessionTimeout.ts
+| | |____useSubscriptionStatus.ts
 | | |____useTabFormState.ts
-| | |____useToast.ts
+| | |____useToast.tsx
 | | |____useUnsavedFormTracker.ts
 | | |____useViewMode.ts
 | |____index.css
@@ -338,12 +340,15 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____constants.ts
 | | |____exportCsv.ts
 | | |____formDraftStorage.ts
+| | |____upgradeToast.tsx
 | | |____utils.ts
 | |____main.tsx
 | |____modules/
 | | |____admin/
 | | | |____components/
 | | | | |____ResetPasswordSection.tsx
+| | | | |____StorageUsageSection.tsx
+| | | | |____SubscriptionCycleSection.tsx
 | | | |____hooks/
 | | | | |____useClientUsers.ts
 | | | |____pages/
