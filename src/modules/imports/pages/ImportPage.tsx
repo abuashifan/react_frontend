@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, ArrowLeft, CheckCircle2, Download, Upload, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Download, Upload, XCircle } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -36,7 +35,6 @@ const STATUS_LABELS: Record<string, string> = {
  * terlihat utuh tanpa berpindah URL. Rencana impor data, Fase 1.
  */
 export default function ImportPage() {
-  const navigate = useNavigate()
   const { toast } = useToast()
   const { can } = usePermission()
 
@@ -154,15 +152,6 @@ export default function ImportPage() {
     <WorkspaceLayout
       title="Impor Data"
       breadcrumb={[{ label: 'Master Data' }, { label: 'Impor Data' }]}
-      action={
-        <button
-          type="button"
-          onClick={() => navigate('/master-data')}
-          className="flex items-center gap-1.5 text-[13px] text-[#64748b] hover:text-[#24323a]"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" /> Kembali
-        </button>
-      }
     >
       <div className="max-w-3xl mx-auto p-6 flex flex-col gap-4">
         <Stepper step={step} />
