@@ -8,6 +8,7 @@ import { MaintenancePage } from '@/modules/errors/MaintenancePage'
 import { OnboardingPage } from '@/modules/onboarding/pages/OnboardingPage'
 import DashboardPage from '@/modules/dashboard/pages/DashboardPage'
 import { masterDataRoutes } from '@/modules/master-data/routes'
+import { importsRoutes } from '@/modules/imports/routes'
 import { salesRoutes } from '@/modules/sales/routes'
 import { purchaseRoutes } from '@/modules/purchase/routes'
 import { inventoryRoutes } from '@/modules/inventory/routes'
@@ -56,6 +57,7 @@ export const router = createMemoryRouter([
     ),
   },
   ...masterDataRoutes,
+  ...importsRoutes,
   ...salesRoutes,
   { path: '/sales/ar', element: <Navigate to="/sales/ar/summary" replace /> },
   ...purchaseRoutes,

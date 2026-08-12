@@ -8,7 +8,7 @@ import {
   CheckSquare,
   Landmark, Users, Ruler, Warehouse, CalendarClock, Building2,
   FolderKanban, Map, Building, RefreshCcw, UserCog, ShieldCheck, Star,
-  Mail, Shield, Archive, Tags, CalendarRange, GitCompare,
+  Mail, Shield, Archive, Tags, CalendarRange, GitCompare, Upload,
 } from 'lucide-react'
 
 export interface RibbonItem {
@@ -68,6 +68,7 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
       { id: 'payment-terms', label: 'Syarat Bayar', icon: CalendarClock, path: '/master-data/payment-terms', permission: 'master-data.view' },
       { id: 'departments', label: 'Departemen', icon: Building2, path: '/master-data/departments', permission: 'master-data.view' },
       { id: 'projects', label: 'Proyek', icon: FolderKanban, path: '/master-data/projects', permission: 'master-data.view' },
+      { id: 'import', label: 'Impor Data', icon: Upload, path: '/master-data/import', permission: 'imports.view' },
     ],
   },
   {
