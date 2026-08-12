@@ -78,8 +78,8 @@ export default function BudgetPeriodFormPage() {
       <form onSubmit={submit} className="max-w-lg space-y-4">
         <div className="rounded-lg border border-[#e2e8f0] bg-white p-5 space-y-4">
           <div className="space-y-1">
-            <Label htmlFor="name" className="text-[12px]">Nama Periode</Label>
-            <Input id="name" {...register('name')} placeholder="Anggaran 2026" className={cn(fieldErrorClass(errors.name))} />
+            <Label htmlFor="name" className="text-[12px]">Nama Anggaran</Label>
+            <Input id="name" {...register('name')} placeholder="Contoh: Anggaran Operasional 2026" className={cn(fieldErrorClass(errors.name))} />
             <FieldError message={errors.name?.message} />
           </div>
 

@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react'
-import { AlertTriangle, CheckCircle2, Download, Upload, XCircle } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { AlertTriangle, CheckCircle2, Download, FileDown, Upload, XCircle } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { TablePagination } from '@/components/shared/table/TablePagination'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
-import { getApiErrorMessage } from '@/lib/apiError'
+import { getApiErrorMessage, getApiValidationErrors } from '@/lib/apiError'
 import { cn } from '@/lib/utils'
 import { importsApi } from '../services/importsApi'
 import { useImportBatch, useImportMutations, useImportProfiles, useImportRows } from '../hooks/useImports'
@@ -45,6 +45,7 @@ export default function ImportPage() {
   const [uploadHeaders, setUploadHeaders] = useState<string[]>([])
   const [columnMap, setColumnMap] = useState<Record<string, string>>({})
   const [duplicateWarning, setDuplicateWarning] = useState<DuplicateFileWarningMeta['duplicate'] | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const [rowsPage, setRowsPage] = useState(1)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -54,6 +55,22 @@ export default function ImportPage() {
 
   const { data: batchResponse } = useImportBatch(activeUuid)
   const batch = batchResponse?.data ?? null
+
+  // Pantau transisi committing → completed/failed (async profile) — toast
+  // begitu job antrean selesai, tanpa perlu refresh manual.
+  const prevStatusRef = useRef(batch?.status)
+  useEffect(() => {
+    const prev = prevStatusRef.current
+    const current = batch?.status
+
+    if (prev === 'committing' && current === 'completed' && (batch?.committed_rows ?? 0) > 0) {
+      toast.success(`${batch?.committed_rows} baris berhasil di-commit.`)
+    } else if (prev === 'committing' && (current === 'failed' || current === 'completed')) {
+      toast.error(batch?.error_message ?? 'Commit gagal — tidak ada baris yang berhasil di-commit.')
+    }
+
+    prevStatusRef.current = current
+  }, [batch?.status, batch?.committed_rows, batch?.error_message, toast])
 
   const { data: rowsResponse, isFetching: rowsFetching } = useImportRows(step === 'preview' ? activeUuid : null, rowsPage)
 
@@ -68,6 +85,7 @@ export default function ImportPage() {
     setUploadHeaders([])
     setColumnMap({})
     setDuplicateWarning(null)
+    setUploadError(null)
     setRowsPage(1)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
@@ -102,6 +120,26 @@ export default function ImportPage() {
         return
       }
 
+      // Tampilkan error validasi per-field (mis. "file harus berupa csv/txt/xlsx",
+      // "file terlalu besar") di samping input file agar user tahu persis apa yang salah.
+      const fieldErrors = getApiValidationErrors(error)
+      const fileMsg = fieldErrors.file ?? fieldErrors.profile
+
+      if (fileMsg) {
+        setUploadError(fileMsg)
+      } else {
+        // Jangan kosongkan uploadError begitu saja -- tampilkan ringkasan dari
+        // SEMUA field error yang tersedia, atau pesan API, supaya user tetap
+        // mendapat petunjuk meskipun error-nya tidak khusus di field "file".
+        const allMessages = Object.values(fieldErrors).filter(Boolean)
+        const summary =
+          allMessages.length > 0
+            ? allMessages.join('; ')
+            : getApiErrorMessage(error, '')
+
+        setUploadError(summary || null)
+      }
+
       toast.error(getApiErrorMessage(error, 'Gagal mengunggah berkas.'))
     }
   }
@@ -126,7 +164,19 @@ export default function ImportPage() {
 
     try {
       const res = await commit.mutateAsync(activeUuid)
-      toast.success(`${res.data.committed_rows} baris berhasil di-commit.`)
+
+      // Async — job dikirim ke antrean, status committing, hasil belum final.
+      if (res.data.status === 'committing') {
+        toast.info('Commit dikirim ke antrean. Status akan diperbarui setelah selesai.')
+        return
+      }
+
+      // Sync — hasil final langsung tersedia.
+      if (res.data.committed_rows > 0) {
+        toast.success(`${res.data.committed_rows} baris berhasil di-commit.`)
+      } else {
+        toast.error(res.data.error_message ?? 'Commit gagal — tidak ada baris yang berhasil di-commit.')
+      }
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Gagal melakukan commit.'))
     }
@@ -144,9 +194,19 @@ export default function ImportPage() {
     }
   }
 
+  const doDownloadErrorLog = async () => {
+    if (!activeUuid) return
+    try {
+      await importsApi.downloadErrorLog(activeUuid)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal mengunduh log error.'))
+    }
+  }
+
   const rows = rowsResponse?.data ?? []
   const canCommit = (batch?.valid_rows ?? 0) > 0 && batch?.status === 'previewed' && can('imports.commit')
   const isDone = batch?.status === 'completed' || batch?.status === 'failed'
+  const isCommitting = batch?.status === 'committing'
 
   return (
     <WorkspaceLayout
@@ -199,9 +259,15 @@ export default function ImportPage() {
                   ref={fileInputRef}
                   type="file"
                   accept=".csv,.txt,.xlsx"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  onChange={(e) => { setFile(e.target.files?.[0] ?? null); setUploadError(null) }}
                   className="mt-1 block w-full text-[12px] text-[#64748b] file:mr-3 file:rounded-md file:border-0 file:bg-[#5c9ead] file:px-3 file:py-1.5 file:text-[12px] file:text-white hover:file:bg-[#4a8a9b]"
                 />
+                {uploadError && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-red-500">
+                    <AlertTriangle className="w-3 h-3 shrink-0" />
+                    {uploadError}
+                  </p>
+                )}
               </div>
 
               {duplicateWarning && (
@@ -301,17 +367,47 @@ export default function ImportPage() {
               <SummaryTile label="Gagal" value={batch.failed_rows} tone="danger" />
             </div>
 
+            {batch.failed_rows > 0 && (
+              <div className="mb-4 flex items-center justify-between rounded-md border border-[#FEE2E2] bg-[#FEF2F2] p-3">
+                <p className="text-[12px] text-[#991B1B]">
+                  <AlertTriangle className="w-3.5 h-3.5 inline mr-1" />
+                  {batch.failed_rows} baris gagal divalidasi. Unduh log error untuk melihat detail dan memperbaiki data.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 text-[11px] border-[#FCA5A5] text-[#991B1B] hover:bg-[#FEE2E2]"
+                  onClick={() => void doDownloadErrorLog()}
+                >
+                  <FileDown className="w-3.5 h-3.5" /> Unduh Log Error
+                </Button>
+              </div>
+            )}
+
+            {isCommitting && (
+              <div className="mb-4 flex items-center gap-2 rounded-md border border-[#EFF9FB] bg-[#EFF9FB] p-3 text-[12px] text-[#326273]">
+                <span className="inline-block w-3.5 h-3.5 border-2 border-[#326273] border-t-transparent rounded-full animate-spin" />
+                Commit sedang diproses di latar belakang. Status akan diperbarui otomatis...
+              </div>
+            )}
+
             {isDone && (
               <div
                 className={cn(
-                  'mb-4 flex items-center gap-2 rounded-md border p-3 text-[12px]',
+                  'mb-4 flex flex-col gap-2 rounded-md border p-3 text-[12px]',
                   batch.committed_rows > 0
                     ? 'border-[#A7F3D0] bg-[#D1FAE5] text-[#065F46]'
-                    : 'border-[#FEE2E2] bg-[#FEE2E2] text-[#991B1B]',
+                    : 'border-[#FEE2E2] bg-[#FEF2F2] text-[#991B1B]',
                 )}
               >
-                {batch.committed_rows > 0 ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-                {batch.committed_rows} dari {batch.valid_rows} baris valid berhasil di-commit.
+                <div className="flex items-center gap-2">
+                  {batch.committed_rows > 0 ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                  {batch.committed_rows} dari {batch.valid_rows} baris valid berhasil di-commit.
+                </div>
+                {batch.committed_rows === 0 && batch.error_message && (
+                  <p className="whitespace-pre-wrap">{batch.error_message}</p>
+                )}
               </div>
             )}
 
@@ -364,7 +460,7 @@ export default function ImportPage() {
             )}
 
             <div className="flex justify-between mt-5">
-              <Button type="button" variant="outline" className="h-9 text-[13px]" disabled={busy || isDone} onClick={() => void doCancel()}>
+              <Button type="button" variant="outline" className="h-9 text-[13px]" disabled={busy || isDone || isCommitting} onClick={() => void doCancel()}>
                 Batalkan Batch
               </Button>
               {isDone ? (

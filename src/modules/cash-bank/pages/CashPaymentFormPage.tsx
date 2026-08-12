@@ -3,15 +3,14 @@ import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
-import { FormSection } from '@/components/shared/form/FormSection'
+import { FormField } from '@/components/shared/form/FormField'
 import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
+import { AmountInput } from '@/components/shared/form/AmountInput'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
-import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
@@ -23,7 +22,7 @@ import { cashPaymentApi } from '../services/cashBankApi'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
-import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, formatCurrency, toDateInputValue } from '@/lib/utils'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine { account_id: number | null; account?: { id: number; code: string; name: string } | null; amount: number; description: string }
@@ -62,6 +61,14 @@ function CashPaymentFormPageContent() {
       setLines(payment.lines.map((l) => ({ account_id: l.account_id, account: l.account, amount: l.amount, description: l.description ?? '' })))
     }
   }, [payment, reset])
+
+  // Auto-sum: "Jumlah" header adalah total dari seluruh baris alokasi.
+  // Setiap kali baris berubah (tambah, hapus, edit nominal), nilai amount
+  // di form header ikut diperbarui otomatis — user tidak perlu input manual.
+  useEffect(() => {
+    const total = lines.reduce((s, l) => s + (l.amount || 0), 0)
+    setValue('amount', total)
+  }, [lines, setValue])
 
 
   // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
@@ -108,7 +115,7 @@ function CashPaymentFormPageContent() {
 
   const columns: LineItemColumn<EditableLine>[] = [
     { id: 'account', header: 'Akun Lawan', width: 200, render: ({ item, isReadOnly, onUpdate }) => <SearchableSelect value={item.account_id} onChange={(v, opt) => { onUpdate('account_id', v); onUpdate('account', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null) }} onSearch={coaApi.search} placeholder="Pilih akun..." disabled={isReadOnly} size="sm" selectedOptions={item.account ? [{ value: item.account.id, label: item.account.name, sublabel: item.account.code }] : []} /> },
-    { id: 'amount', header: 'Jumlah', width: 130, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <Input type="number" value={item.amount || ''} onChange={(e) => onUpdate('amount', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} /> },
+    { id: 'amount', header: 'Jumlah', width: 130, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <AmountInput value={item.amount} onChange={(v) => onUpdate('amount', v)} disabled={isReadOnly} decimals={2} ariaLabel="Jumlah" /> },
     { id: 'description', header: 'Keterangan', width: 180, render: ({ item, isReadOnly, onUpdate }) => <Input value={item.description} onChange={(e) => onUpdate('description', e.target.value)} disabled={isReadOnly} placeholder="Keterangan..." className="h-8 text-[12px]" /> },
   ]
 
@@ -129,18 +136,90 @@ function CashPaymentFormPageContent() {
             <DocumentActionBar placement="header" documentStatus={status} documentNumber={payment?.number} actions={actions} />
           </>
         }>
-        <div className="space-y-3">
-          <FormSection title="Header">
-            <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label><Input {...register('payment_date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.payment_date))} /><FieldError message={errors.payment_date?.message} /></div>
-            <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Kas/Bank <span className="text-red-500">*</span></Label><SearchableSelect value={watch('cash_bank_account_id') ?? null} onChange={(v) => setValue('cash_bank_account_id', v as number)} onSearch={coaApi.search} placeholder="Pilih akun kas/bank..." disabled={!isEditable} error={errors.cash_bank_account_id?.message} selectedOptions={payment?.cash_bank_account ? [{ value: payment.cash_bank_account.id, label: payment.cash_bank_account.name }] : []} /></div>
-            <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kontak</Label><SearchableSelect value={watch('contact_id') ?? null} onChange={(v) => setValue('contact_id', v)} onSearch={kontakApi.search} placeholder="Pilih kontak..." disabled={!isEditable} error={errors.contact_id?.message} selectedOptions={payment?.contact ? [{ value: payment.contact.id, label: payment.contact.name }] : []} /></div>
-            <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jumlah <span className="text-red-500">*</span></Label><Input {...register('amount', { valueAsNumber: true })} type="number" disabled={!isEditable} className={cn('h-9 text-[13px] text-right tabular-nums', fieldErrorClass(errors.amount))} min={0} /><FieldError message={errors.amount?.message} /></div>
-            <div className="flex flex-col gap-1 md:col-span-2"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label><Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} /><FieldError message={errors.notes?.message} /></div>
-          </FormSection>
-          <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Alokasi Akun (Opsional)</p>
-            <LineItemsTable
-          errors={lineErrors} items={lines} columns={columns} onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])} onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))} onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))} isReadOnly={!isEditable} addLabel="Tambah Baris" />
+        <div className="space-y-2.5 [@media(max-height:620px)]:space-y-2">
+          {/* Header ringkas — mengikuti pola form jurnal: identitas dokumen
+              satu baris agar tabel baris alokasi mendapat sisa tinggi layar. */}
+          <section className="rounded-lg border border-[#d9e2e5] bg-white px-3 py-2.5 lg:px-4 [@media(max-height:620px)]:py-2">
+            <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
+              <FormField label="Tgl. Bayar" htmlFor="payment-date" required error={errors.payment_date?.message} className="w-[160px]">
+                <Input
+                  id="payment-date"
+                  {...register('payment_date')}
+                  type="date"
+                  disabled={!isEditable}
+                  className={cn('h-8 text-[12px]', fieldErrorClass(errors.payment_date))}
+                />
+              </FormField>
+
+              <FormField label="Akun Kas/Bank" required error={errors.cash_bank_account_id?.message} className="w-[240px]">
+                <SearchableSelect
+                  value={watch('cash_bank_account_id') ?? null}
+                  onChange={(v) => setValue('cash_bank_account_id', v as number)}
+                  onSearch={(q) => coaApi.search(q, { is_cash_bank: true })}
+                  placeholder="Pilih akun kas/bank..."
+                  disabled={!isEditable}
+                  size="sm"
+                  selectedOptions={payment?.cash_bank_account ? [{ value: payment.cash_bank_account.id, label: payment.cash_bank_account.name, sublabel: payment.cash_bank_account.code }] : []}
+                />
+              </FormField>
+
+              <FormField label="Kontak" error={errors.contact_id?.message} className="w-[220px]">
+                <SearchableSelect
+                  value={watch('contact_id') ?? null}
+                  onChange={(v) => setValue('contact_id', v)}
+                  onSearch={kontakApi.search}
+                  placeholder="Pilih kontak..."
+                  disabled={!isEditable}
+                  size="sm"
+                  selectedOptions={payment?.contact ? [{ value: payment.contact.id, label: payment.contact.name }] : []}
+                />
+              </FormField>
+            </div>
+          </section>
+
+          <LineItemsTable
+            errors={lineErrors}
+            items={lines}
+            columns={columns}
+            onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
+            onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}
+            onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))}
+            isReadOnly={!isEditable}
+            addLabel="Tambah Baris"
+            emptyLabel="Belum ada baris alokasi"
+          />
+
+          {/* Catatan dan ringkasan jumlah disandingkan — keduanya pendek. */}
+          <div className="grid gap-2.5 md:grid-cols-[minmax(0,1fr)_280px]">
+            <FormField label="Catatan" htmlFor="payment-notes" error={errors.notes?.message}>
+              <Textarea
+                id="payment-notes"
+                {...register('notes')}
+                disabled={!isEditable}
+                placeholder="Catatan..."
+                rows={2}
+                className={cn('min-h-[58px] resize-none text-[12px]', fieldErrorClass(errors.notes))}
+              />
+            </FormField>
+
+            <div className="h-fit rounded-lg border border-[#d9e2e5] bg-[#f8fafc] px-3 py-2 text-[12px]">
+              <div className="flex items-center justify-between gap-3 py-0.5">
+                <span className="text-[#64748b]">Total Alokasi</span>
+                <span className="font-semibold tabular-nums text-[#334155]">{formatCurrency(lines.reduce((s, l) => s + (l.amount || 0), 0))}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 py-0.5">
+                <span className="text-[#64748b]">Jumlah</span>
+                <span className="font-semibold tabular-nums text-[#334155]">{formatCurrency(watch('amount') ?? 0)}</span>
+              </div>
+              <div className="mt-1 flex items-center justify-between gap-3 border-t border-[#e2e8f0] pt-1.5">
+                <span className={cn('font-medium', lines.reduce((s, l) => s + (l.amount || 0), 0) === (watch('amount') ?? 0) ? 'text-[#15803d]' : 'text-red-600')}>
+                  {lines.reduce((s, l) => s + (l.amount || 0), 0) === (watch('amount') ?? 0) ? 'Seimbang' : 'Selisih'}
+                </span>
+                <span className={cn('font-semibold tabular-nums', lines.reduce((s, l) => s + (l.amount || 0), 0) === (watch('amount') ?? 0) ? 'text-[#15803d]' : 'text-red-600')}>
+                  {lines.reduce((s, l) => s + (l.amount || 0), 0) === (watch('amount') ?? 0) ? '✓' : formatCurrency(Math.abs((lines.reduce((s, l) => s + (l.amount || 0), 0)) - (watch('amount') ?? 0)))}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </FormLayout>

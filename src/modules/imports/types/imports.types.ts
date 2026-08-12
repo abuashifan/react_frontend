@@ -33,6 +33,7 @@ export interface ImportBatch {
   valid_rows: number
   failed_rows: number
   committed_rows: number
+  error_message: string | null
   created_by: number | null
   created_at: string | null
   updated_at: string | null

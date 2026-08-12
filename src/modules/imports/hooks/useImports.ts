@@ -14,6 +14,13 @@ export function useImportBatch(uuid: string | null) {
     queryKey: ['imports', 'batch', uuid],
     queryFn: () => importsApi.show(uuid as string),
     enabled: uuid !== null,
+    // Polling tiap 3 detik saat status committing (async profile) — supaya
+    // UI otomatis berubah ke completed/failed begitu job selesai, tanpa
+    // user harus refresh manual.
+    refetchInterval: (query) => {
+      const batch = query.state.data?.data
+      return batch?.status === 'committing' ? 3_000 : false
+    },
   })
 }
 

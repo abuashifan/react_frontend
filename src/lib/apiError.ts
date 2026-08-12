@@ -42,6 +42,12 @@ const API_ERROR_MESSAGES_ID: Record<string, string> = {
   PERMISSION_DENIED: 'Anda tidak punya izin untuk aksi ini.',
   FORBIDDEN: 'Anda tidak punya izin untuk aksi ini.',
   FEATURE_NOT_IN_PLAN: 'Fitur ini tidak termasuk dalam paket langganan Anda.',
+
+  // Import
+  IMPORT_FILE_INVALID: 'Berkas impor tidak valid. Periksa format dan isi berkas.',
+  IMPORT_FILE_DUPLICATE: 'Berkas ini sudah pernah diunggah.',
+  IMPORT_ACTIVE_BATCH_EXISTS: 'Masih ada batch impor aktif. Selesaikan atau batalkan dulu.',
+  STORAGE_QUOTA_EXCEEDED: 'Kuota penyimpanan perusahaan sudah penuh.',
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -91,7 +97,16 @@ export function getApiErrorMessage(error: unknown, fallback = 'Terjadi kesalahan
   // Pesan validasi backend berbahasa Inggris ("Please review the highlighted
   // fields."). Detail per field sudah tampil di bawah input lewat
   // `applyApiValidationErrors`, jadi toast cukup mengarahkan ke sana.
-  if (apiError?.code === 'VALIDATION_ERROR') {
+  //
+  // Kode VALIDATION_ERROR kini juga dikeluarkan interceptor http.ts untuk
+  // respons 422 tanpa kode eksplisit. Tetap tangani HTTP_422 dan status 422
+  // sebagai jaring pengaman — jangan sampai pesan mentah berbahasa Inggris
+  // lolos ke toast hanya karena bentuk kodenya berbeda.
+  if (
+    apiError?.code === 'VALIDATION_ERROR' ||
+    apiError?.code === 'HTTP_422' ||
+    apiError?.status === 422
+  ) {
     return 'Periksa kembali isian yang ditandai.'
   }
 

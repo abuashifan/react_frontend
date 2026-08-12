@@ -56,4 +56,29 @@ export const importsApi = {
     link.remove()
     URL.revokeObjectURL(url)
   },
+
+  /** Unduh log error baris gagal dari batch impor dalam format Excel. */
+  async downloadErrorLog(uuid: string): Promise<void> {
+    const { token, activeCompanyId } = useAuthStore.getState()
+    const response = await axios.get<Blob>(
+      `${import.meta.env.VITE_API_BASE_URL}/api/imports/${uuid}/export-errors`,
+      {
+        responseType: 'blob',
+        headers: {
+          Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(activeCompanyId ? { 'X-Company-ID': String(activeCompanyId) } : {}),
+        },
+      },
+    )
+
+    const url = URL.createObjectURL(response.data)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `import-errors-${uuid.slice(0, 8)}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  },
 }

@@ -3,14 +3,13 @@ import { useParams } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
-import { FormSection } from '@/components/shared/form/FormSection'
+import { FormField } from '@/components/shared/form/FormField'
+import { AmountInput } from '@/components/shared/form/AmountInput'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
-import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
@@ -46,6 +45,7 @@ function BankTransferFormPageContent() {
   const { control, getValues, register, handleSubmit, setValue, reset, setError, formState: { errors, isSubmitting } } = useForm<BankTransferFormValues>({ resolver: zodResolver(bankTransferSchema), defaultValues: { transfer_date: new Date().toISOString().slice(0, 10) } })
   const fromAccountId = useWatch({ control, name: 'from_cash_bank_account_id' })
   const toAccountId = useWatch({ control, name: 'to_cash_bank_account_id' })
+  const transferAmount = useWatch({ control, name: 'amount' })
   const status = (transfer?.status ?? 'draft') as DocumentStatus
   const isEditable = isCreate
 
@@ -112,13 +112,50 @@ function BankTransferFormPageContent() {
             <DocumentActionBar placement="header" documentStatus={status} documentNumber={transfer?.number} actions={actions} />
           </>
         }>
-        <FormSection title="Header">
-          <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label><Input {...register('transfer_date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.transfer_date))} /><FieldError message={errors.transfer_date?.message} /></div>
-          <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Dari Akun <span className="text-red-500">*</span></Label><SearchableSelect value={fromAccountId ?? null} onChange={(v) => setValue('from_cash_bank_account_id', v as number)} onSearch={coaApi.search} placeholder="Pilih akun asal..." disabled={!isEditable} error={errors.from_cash_bank_account_id?.message} selectedOptions={transfer?.from_cash_bank_account ? [{ value: transfer.from_cash_bank_account.id, label: transfer.from_cash_bank_account.name }] : []} /></div>
-          <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Ke Akun <span className="text-red-500">*</span></Label><SearchableSelect value={toAccountId ?? null} onChange={(v) => setValue('to_cash_bank_account_id', v as number)} onSearch={coaApi.search} placeholder="Pilih akun tujuan..." disabled={!isEditable} error={errors.to_cash_bank_account_id?.message} selectedOptions={transfer?.to_cash_bank_account ? [{ value: transfer.to_cash_bank_account.id, label: transfer.to_cash_bank_account.name }] : []} /></div>
-          <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jumlah <span className="text-red-500">*</span></Label><Input {...register('amount', { valueAsNumber: true })} type="number" disabled={!isEditable} className={cn('h-9 text-[13px] text-right tabular-nums', fieldErrorClass(errors.amount))} min={0} /><FieldError message={errors.amount?.message} /></div>
-          <div className="flex flex-col gap-1 md:col-span-2"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label><Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} /><FieldError message={errors.notes?.message} /></div>
-        </FormSection>
+        <div className="space-y-2.5 [@media(max-height:620px)]:space-y-2">
+          <section className="rounded-lg border border-[#d9e2e5] bg-white px-3 py-2.5 lg:px-4 [@media(max-height:620px)]:py-2">
+            <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
+              <FormField label="Tgl. Transfer" htmlFor="transfer-date" required error={errors.transfer_date?.message} className="w-[160px]">
+                <Input
+                  id="transfer-date"
+                  {...register('transfer_date')}
+                  type="date"
+                  disabled={!isEditable}
+                  className={cn('h-8 text-[12px]', fieldErrorClass(errors.transfer_date))}
+                />
+              </FormField>
+
+              <FormField label="Dari Akun" required error={errors.from_cash_bank_account_id?.message} className="w-[240px]">
+                <SearchableSelect value={fromAccountId ?? null} onChange={(v) => setValue('from_cash_bank_account_id', v as number)} onSearch={(q) => coaApi.search(q, { is_cash_bank: true })} placeholder="Pilih akun asal..." disabled={!isEditable} size="sm" selectedOptions={transfer?.from_cash_bank_account ? [{ value: transfer.from_cash_bank_account.id, label: transfer.from_cash_bank_account.name, sublabel: transfer.from_cash_bank_account.code }] : []} />
+              </FormField>
+
+              <FormField label="Ke Akun" required error={errors.to_cash_bank_account_id?.message} className="w-[240px]">
+                <SearchableSelect value={toAccountId ?? null} onChange={(v) => setValue('to_cash_bank_account_id', v as number)} onSearch={(q) => coaApi.search(q, { is_cash_bank: true })} placeholder="Pilih akun tujuan..." disabled={!isEditable} size="sm" selectedOptions={transfer?.to_cash_bank_account ? [{ value: transfer.to_cash_bank_account.id, label: transfer.to_cash_bank_account.name, sublabel: transfer.to_cash_bank_account.code }] : []} />
+              </FormField>
+
+              <FormField label="Jumlah" required error={errors.amount?.message} className="w-[180px]">
+                <AmountInput
+                  value={transferAmount ?? 0}
+                  onChange={(v) => setValue('amount', v)}
+                  disabled={!isEditable}
+                  decimals={2}
+                  ariaLabel="Jumlah transfer"
+                />
+              </FormField>
+            </div>
+          </section>
+
+          <FormField label="Catatan" htmlFor="transfer-notes" error={errors.notes?.message}>
+            <Textarea
+              id="transfer-notes"
+              {...register('notes')}
+              disabled={!isEditable}
+              placeholder="Catatan..."
+              rows={2}
+              className={cn('min-h-[58px] resize-none text-[12px]', fieldErrorClass(errors.notes))}
+            />
+          </FormField>
+        </div>
       </FormLayout>
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={transfer?.number ?? ''} isLoading={voidTransfer.isPending} />
     </>

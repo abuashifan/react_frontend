@@ -115,10 +115,16 @@ function normalizeApiResponse<T>(payload: T): T {
   } as T
 }
 
+// JANGAN setel Content-Type default. Axios otomatis menyetelnya:
+// - plain object → application/json
+// - FormData   → (dikosongkan, browser mengisi multipart/form-data + boundary)
+// Content-Type: application/json yang dipasang permanen mencegah browser
+// mengisi boundary pada unggahan FormData, sehingga field `file` tidak
+// sampai ke server — user mendapat "Berkas wajib diunggah." walaupun
+// sudah memilih berkas.
 export const http: AxiosInstance = axios.create({
   baseURL: `${import.meta.env.VITE_API_BASE_URL}/api`,
   headers: {
-    'Content-Type': 'application/json',
     Accept: 'application/json',
   },
 })
@@ -163,11 +169,23 @@ http.interceptors.response.use(
   (error) => {
     const status = error.response?.status
     const headers = error.response?.headers
+    const responseData = error.response?.data ?? {}
+
+    // Laravel mengembalikan 422 tanpa field `code`. Supaya frontend bisa
+    // mengenali error validasi (dan menampilkan "Periksa kembali isian yang
+    // ditandai." alih-alih pesan mentah berbahasa Inggris), beri kode
+    // VALIDATION_ERROR di sini. Kalau backend sudah menyertakan kode eksplisit
+    // (mis. IMPORT_FILE_INVALID lewat ApiException), kode itu tetap dipakai.
+    const explicitCode = typeof responseData.code === 'string' && responseData.code !== '' ? responseData.code : null
+    const code = explicitCode
+      ?? (status === 422 ? 'VALIDATION_ERROR' : null)
+      ?? (status ? `HTTP_${status}` : 'UNKNOWN_ERROR')
+
     const responseError = {
-      ...(error.response?.data ?? {}),
+      ...responseData,
       success: false,
-      code: error.response?.data?.code ?? (status ? `HTTP_${status}` : 'UNKNOWN_ERROR'),
-      message: error.response?.data?.message ?? error.message ?? 'Terjadi kesalahan.',
+      code,
+      message: responseData.message ?? error.message ?? 'Terjadi kesalahan.',
       status,
     } as ApiError
 
