@@ -37,6 +37,13 @@ export interface CoaListParams {
   account_type?: CoaType
   is_active?: boolean
   is_cash_bank?: boolean
+  /**
+   * Sembunyikan akun induk (yang punya akun anak) -- akun induk hanya
+   * merangkum saldo di laporan dan tidak boleh dipakai transaksi. Dipakai
+   * semua pemilih akun transaksi; hanya dimatikan eksplisit untuk pemilih
+   * "Akun Induk" di CoaFormPage.
+   */
+  postable_only?: boolean
 }
 
 export interface CreateCoaPayload {

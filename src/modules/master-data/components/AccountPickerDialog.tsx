@@ -55,6 +55,7 @@ export function AccountPickerDialog({
         account_code: applied.code || undefined,
         account_name: applied.name || undefined,
         is_active: true,
+        postable_only: true,
       }),
     enabled: open,
   })

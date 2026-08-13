@@ -26,13 +26,19 @@ export const coaApi = {
   deactivate: (id: number) =>
     http.patch<unknown, ApiResponse<void>>(`/master-data/chart-of-accounts/${id}/deactivate`),
 
+  /**
+   * `postable_only` default `true` -- akun induk tidak boleh dipakai
+   * transaksi (lihat `PostableAccount` di backend), jadi pemilih akun tidak
+   * boleh menawarkannya. Kirim `{ postable_only: false }` eksplisit untuk
+   * pemilih yang justru butuh akun induk (mis. "Akun Induk" di CoaFormPage).
+   */
   search: async (
     query: string,
-    filters: Partial<Pick<CoaListParams, 'account_type' | 'is_active' | 'is_cash_bank'>> = {},
+    filters: Partial<Pick<CoaListParams, 'account_type' | 'is_active' | 'is_cash_bank' | 'postable_only'>> = {},
   ): Promise<SelectOption<number>[]> => {
     const res = await http.get<unknown, PaginatedResponse<Coa>>(
       '/master-data/chart-of-accounts',
-      { params: { search: query, per_page: 10, ...filters } },
+      { params: { search: query, per_page: 10, postable_only: true, ...filters } },
     )
     return res.data.map((a) => ({
       value: a.id,
@@ -53,11 +59,11 @@ export const coaApi = {
    */
   searchByCode: async (
     query: string,
-    filters: Partial<Pick<CoaListParams, 'account_type' | 'is_active' | 'is_cash_bank'>> = {},
+    filters: Partial<Pick<CoaListParams, 'account_type' | 'is_active' | 'is_cash_bank' | 'postable_only'>> = {},
   ): Promise<SelectOption<number>[]> => {
     const res = await http.get<unknown, PaginatedResponse<Coa>>(
       '/master-data/chart-of-accounts',
-      { params: { search: query, per_page: 10, is_active: true, ...filters } },
+      { params: { search: query, per_page: 10, is_active: true, postable_only: true, ...filters } },
     )
     return res.data.map((a) => ({
       value: a.id,

@@ -229,7 +229,7 @@ function CoaFormPageContent() {
             <SearchableSelect
               value={watch('parent_account_id') ?? null}
               onChange={(v) => setValue('parent_account_id', v)}
-              onSearch={coaApi.search}
+              onSearch={(q) => coaApi.search(q, { postable_only: false })}
               placeholder="Pilih akun induk..."
               error={errors.parent_account_id?.message}
               selectedOptions={coa?.parent ? [{ value: coa.parent.id, label: coa.parent.account_name, sublabel: coa.parent.account_code }] : []}
