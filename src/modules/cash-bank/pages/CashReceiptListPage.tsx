@@ -3,7 +3,6 @@ import { Plus, Trash2 } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar } from '@/components/shared/layout/FilterSidebar'
 import { DataTable } from '@/components/shared/table/DataTable'
-import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
@@ -13,6 +12,7 @@ import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilt
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
+import { useListSort } from '@/hooks/useListSort'
 import { useCashReceiptList, useCashReceiptMutations } from '../hooks/useCashBankList'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { CashReceipt, CashBankStatus } from '../types/cashBank.types'
@@ -37,10 +37,14 @@ export default function CashReceiptListPage() {
     setSelectedRows([])
   }
 
+  // Sorting dilakukan server-side; nilai `key` harus cocok dengan allowlist
+  // `$listSortable` di CashReceiptService.
+  const { sort, toggleSort, setSort, sortParams } = useListSort({ key: 'receipt_date', direction: 'desc' })
+
   // Semua filter kini dikirim ke server, jadi perubahannya harus
   // mengembalikan halaman ke 1 -- kalau tidak, memfilter dari halaman jauh
   // akan mendarat di daftar kosong.
-  const filterKey = `${search}|${filterStatuses.join(',')}|${dateRange.from}|${dateRange.to}`
+  const filterKey = `${search}|${filterStatuses.join(',')}|${dateRange.from}|${dateRange.to}|${sort?.key ?? ''}|${sort?.direction ?? ''}`
   if (filterKey !== prevFilters) {
     setPrevFilters(filterKey)
     setPage(0)
@@ -54,6 +58,7 @@ export default function CashReceiptListPage() {
     status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
+    ...sortParams,
   })
   const rows = useMemo(() => data?.data ?? [], [data])
 
@@ -116,6 +121,8 @@ export default function CashReceiptListPage() {
       id: 'number',
       header: 'Nomor',
       size: 140,
+      sortable: true,
+      sortKey: 'receipt_number',
       meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => (
         <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/cash-bank/cash-receipts/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
@@ -123,11 +130,28 @@ export default function CashReceiptListPage() {
         </button>
       ),
     },
-    { id: 'date', header: 'Tanggal', size: 110, cell: ({ original }) => formatDate(original.receipt_date) },
-    { id: 'account', header: 'Akun Kas/Bank', size: 180, cell: ({ original }) => original.cash_bank_account?.name ?? '-' },
-    { id: 'contact', header: 'Kontak', size: 160, cell: ({ original }) => original.contact?.name ?? '-' },
-    { id: 'amount', header: 'Jumlah', size: 140, meta: { className: 'tabular-nums text-right' }, cell: ({ original }) => formatCurrency(original.amount) },
-    { id: 'status', header: 'Status', size: 110, cell: ({ original }) => <DocumentStatusBadge status={original.status} /> },
+    { id: 'date', header: 'Tanggal', size: 110, sortable: true, sortKey: 'receipt_date', cell: ({ original }) => formatDate(original.receipt_date) },
+    {
+      id: 'notes',
+      header: 'Catatan',
+      size: 200,
+      cell: ({ original }) => (
+        <span className="block max-w-[200px] truncate" title={original.notes ?? undefined}>
+          {original.notes ?? '-'}
+        </span>
+      ),
+    },
+    { id: 'amount', header: 'Jumlah', size: 140, sortable: true, sortKey: 'amount', meta: { className: 'tabular-nums text-right' }, cell: ({ original }) => formatCurrency(original.amount) },
+    {
+      id: 'created_by',
+      header: 'Dibuat Oleh',
+      size: 90,
+      cell: ({ original }) => (
+        <span className="block max-w-[90px] truncate text-[#64748b]" title={original.created_by_name ?? undefined}>
+          {original.created_by_name ?? '-'}
+        </span>
+      ),
+    },
   ]
 
   const sidebar = (
@@ -136,6 +160,7 @@ export default function CashReceiptListPage() {
       onReset={() => {
         setFilterStatuses([])
         setDateRange({ from: '', to: '' })
+        setSort({ key: 'receipt_date', direction: 'desc' })
         resetSelection()
       }}
     >
@@ -143,7 +168,8 @@ export default function CashReceiptListPage() {
         <ListSearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Cari nomor penerimaan..."
+          placeholder="Cari penerimaan kas..."
+          hint="Mencari di nomor dokumen dan catatan."
           className="w-full max-w-none"
         />
       </div>
@@ -192,6 +218,8 @@ export default function CashReceiptListPage() {
             setPage(p.pageIndex)
             setSelectedRows([])
           }}
+          sort={sort}
+          onSortChange={toggleSort}
           selectedRows={selectedRows}
           onRowSelect={setSelectedRows}
           bulkActions={bulkActions}

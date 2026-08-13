@@ -13,6 +13,7 @@ import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilt
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
+import { useListSort } from '@/hooks/useListSort'
 import { useCashPaymentList, useCashPaymentMutations } from '../hooks/useCashBankList'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { CashPayment, CashBankStatus } from '../types/cashBank.types'
@@ -32,10 +33,14 @@ export default function CashPaymentListPage() {
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
   const { void: voidPayment } = useCashPaymentMutations()
 
+  // Sorting dilakukan server-side; nilai `key` harus cocok dengan allowlist
+  // `$listSortable` di CashPaymentService.
+  const { sort, toggleSort, setSort, sortParams } = useListSort({ key: 'payment_date', direction: 'desc' })
+
   // Semua filter kini dikirim ke server, jadi perubahannya harus
   // mengembalikan halaman ke 1 -- kalau tidak, memfilter dari halaman jauh
   // akan mendarat di daftar kosong.
-  const filterKey = `${search}|${filterStatuses.join(',')}|${dateRange.from}|${dateRange.to}`
+  const filterKey = `${search}|${filterStatuses.join(',')}|${dateRange.from}|${dateRange.to}|${sort?.key ?? ''}|${sort?.direction ?? ''}`
   if (filterKey !== prevFilters) {
     setPrevFilters(filterKey)
     setPage(0)
@@ -49,6 +54,7 @@ export default function CashPaymentListPage() {
     status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
+    ...sortParams,
   })
   const rows = useMemo(() => data?.data ?? [], [data])
 
@@ -116,6 +122,8 @@ export default function CashPaymentListPage() {
       id: 'number',
       header: 'Nomor',
       size: 140,
+      sortable: true,
+      sortKey: 'payment_number',
       meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => (
         <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/cash-bank/cash-payments/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
@@ -123,11 +131,30 @@ export default function CashPaymentListPage() {
         </button>
       ),
     },
-    { id: 'date', header: 'Tanggal', size: 110, cell: ({ original }) => formatDate(original.payment_date) },
-    { id: 'account', header: 'Akun Kas/Bank', size: 180, cell: ({ original }) => original.cash_bank_account?.name ?? '-' },
+    { id: 'date', header: 'Tanggal', size: 110, sortable: true, sortKey: 'payment_date', cell: ({ original }) => formatDate(original.payment_date) },
     { id: 'contact', header: 'Kontak', size: 160, cell: ({ original }) => original.contact?.name ?? '-' },
-    { id: 'amount', header: 'Jumlah', size: 140, meta: { className: 'tabular-nums text-right' }, cell: ({ original }) => formatCurrency(original.amount) },
+    {
+      id: 'notes',
+      header: 'Catatan',
+      size: 200,
+      cell: ({ original }) => (
+        <span className="block max-w-[200px] truncate" title={original.notes ?? undefined}>
+          {original.notes ?? '-'}
+        </span>
+      ),
+    },
+    { id: 'amount', header: 'Jumlah', size: 140, sortable: true, sortKey: 'amount', meta: { className: 'tabular-nums text-right' }, cell: ({ original }) => formatCurrency(original.amount) },
     { id: 'status', header: 'Status', size: 110, cell: ({ original }) => <DocumentStatusBadge status={original.status} /> },
+    {
+      id: 'created_by',
+      header: 'Dibuat Oleh',
+      size: 90,
+      cell: ({ original }) => (
+        <span className="block max-w-[90px] truncate text-[#64748b]" title={original.created_by_name ?? undefined}>
+          {original.created_by_name ?? '-'}
+        </span>
+      ),
+    },
   ]
 
   const sidebar = (
@@ -136,6 +163,7 @@ export default function CashPaymentListPage() {
       onReset={() => {
         setFilterStatuses([])
         setDateRange({ from: '', to: '' })
+        setSort({ key: 'payment_date', direction: 'desc' })
         resetSelection()
       }}
     >
@@ -143,7 +171,8 @@ export default function CashPaymentListPage() {
         <ListSearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Cari nomor pengeluaran..."
+          placeholder="Cari pengeluaran kas..."
+          hint="Mencari di nomor dokumen dan catatan."
           className="w-full max-w-none"
         />
       </div>
@@ -192,6 +221,8 @@ export default function CashPaymentListPage() {
             setPage(p.pageIndex)
             setSelectedRows([])
           }}
+          sort={sort}
+          onSortChange={toggleSort}
           selectedRows={selectedRows}
           onRowSelect={setSelectedRows}
           bulkActions={bulkActions}

@@ -45,6 +45,14 @@ interface LineItemsTableProps<T> {
    * error ditandai merah dan pesannya ditampilkan di bawah baris tersebut.
    */
   errors?: LineItemErrorMap
+  /**
+   * Tambahkan garis pembatas vertikal antar kolom, membuat tabel terbaca
+   * sebagai satu grid bordered utuh (gaya spreadsheet) alih-alih sel kosong
+   * berisi input yang masing-masing punya border/rounded sendiri. Dipakai
+   * bersama input "flush" (`border-0 rounded-none`) di kolom pemanggil —
+   * tanpa itu tabel akan punya dua border yang tumpang tindih.
+   */
+  bordered?: boolean
 }
 
 /** Reusable horizontal table for transaction line items. */
@@ -60,15 +68,17 @@ export function LineItemsTable<T>({
   emptyLabel = 'Belum ada item',
   currency = 'IDR',
   errors,
+  bordered = false,
 }: LineItemsTableProps<T>) {
   const columnCount = columns.length + (getSubtotal ? 3 : 2)
+  const dividerClass = bordered ? 'border-r border-[#e2e8f0] last:border-r-0' : undefined
   return (
     <div className="overflow-hidden rounded-lg border border-[#d9e2e5] bg-white">
       <div className="overflow-x-auto">
         <table className="min-w-full border-collapse text-[13px]">
           <thead>
             <tr className="bg-[#eeeeee]">
-              <th className="w-8 px-2 py-2 text-center text-[11px] font-bold uppercase text-[#64748b]">
+              <th className={cn('w-8 px-2 py-2 text-center text-[11px] font-bold uppercase text-[#64748b]', dividerClass)}>
                 #
               </th>
               {columns.map((column) => (
@@ -79,6 +89,7 @@ export function LineItemsTable<T>({
                     column.align === 'right' && 'text-right',
                     column.align === 'center' && 'text-center',
                     !column.align && 'text-left',
+                    dividerClass,
                   )}
                   style={column.width ? { minWidth: column.width } : undefined}
                 >
@@ -86,7 +97,7 @@ export function LineItemsTable<T>({
                 </th>
               ))}
               {getSubtotal && (
-                <th className="min-w-[120px] px-2.5 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">
+                <th className={cn('min-w-[120px] px-2.5 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]', dividerClass)}>
                   Subtotal
                 </th>
               )}
@@ -121,6 +132,7 @@ export function LineItemsTable<T>({
                     className={cn(
                       'px-2 py-2 text-center text-[12px] text-[#94a3b8]',
                       rowMessages.length > 0 && 'border-l-2 border-red-500 font-semibold text-red-600',
+                      dividerClass,
                     )}
                   >
                     {index + 1}
@@ -138,6 +150,7 @@ export function LineItemsTable<T>({
                         column.align === 'right' && 'text-right tabular-nums',
                         column.align === 'center' && 'text-center',
                         cellHasError && 'rounded-sm ring-1 ring-inset ring-red-400',
+                        dividerClass,
                       )}
                     >
                       {column.render({
@@ -150,7 +163,7 @@ export function LineItemsTable<T>({
                     )
                   })}
                   {getSubtotal && (
-                    <td className="px-2.5 py-2 text-right font-medium tabular-nums text-[#24323a]">
+                    <td className={cn('px-2.5 py-2 text-right font-medium tabular-nums text-[#24323a]', dividerClass)}>
                       {formatCurrency(getSubtotal(item), currency)}
                     </td>
                   )}

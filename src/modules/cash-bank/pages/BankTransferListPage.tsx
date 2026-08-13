@@ -13,6 +13,7 @@ import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilt
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
+import { useListSort } from '@/hooks/useListSort'
 import { useBankTransferList, useBankTransferMutations } from '../hooks/useCashBankList'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { BankTransfer, CashBankStatus } from '../types/cashBank.types'
@@ -32,10 +33,14 @@ export default function BankTransferListPage() {
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
   const { void: voidTransfer } = useBankTransferMutations()
 
+  // Sorting dilakukan server-side; nilai `key` harus cocok dengan allowlist
+  // `$listSortable` di BankTransferService.
+  const { sort, toggleSort, setSort, sortParams } = useListSort({ key: 'transfer_date', direction: 'desc' })
+
   // Semua filter kini dikirim ke server, jadi perubahannya harus
   // mengembalikan halaman ke 1 -- kalau tidak, memfilter dari halaman jauh
   // akan mendarat di daftar kosong.
-  const filterKey = `${search}|${filterStatuses.join(',')}|${dateRange.from}|${dateRange.to}`
+  const filterKey = `${search}|${filterStatuses.join(',')}|${dateRange.from}|${dateRange.to}|${sort?.key ?? ''}|${sort?.direction ?? ''}`
   if (filterKey !== prevFilters) {
     setPrevFilters(filterKey)
     setPage(0)
@@ -49,6 +54,7 @@ export default function BankTransferListPage() {
     status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
+    ...sortParams,
   })
   const rows = useMemo(() => data?.data ?? [], [data])
 
@@ -116,6 +122,8 @@ export default function BankTransferListPage() {
       id: 'number',
       header: 'Nomor',
       size: 140,
+      sortable: true,
+      sortKey: 'transfer_number',
       meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => (
         <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/cash-bank/bank-transfers/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
@@ -123,11 +131,29 @@ export default function BankTransferListPage() {
         </button>
       ),
     },
-    { id: 'date', header: 'Tanggal', size: 110, cell: ({ original }) => formatDate(original.transfer_date) },
-    { id: 'from', header: 'Dari Akun', size: 180, cell: ({ original }) => original.from_cash_bank_account?.name ?? '-' },
-    { id: 'to', header: 'Ke Akun', size: 180, cell: ({ original }) => original.to_cash_bank_account?.name ?? '-' },
-    { id: 'amount', header: 'Jumlah', size: 140, meta: { className: 'tabular-nums text-right' }, cell: ({ original }) => formatCurrency(original.amount) },
+    { id: 'date', header: 'Tanggal', size: 110, sortable: true, sortKey: 'transfer_date', cell: ({ original }) => formatDate(original.transfer_date) },
+    {
+      id: 'notes',
+      header: 'Catatan',
+      size: 220,
+      cell: ({ original }) => (
+        <span className="block max-w-[220px] truncate" title={original.notes ?? undefined}>
+          {original.notes ?? '-'}
+        </span>
+      ),
+    },
+    { id: 'amount', header: 'Jumlah', size: 140, sortable: true, sortKey: 'amount', meta: { className: 'tabular-nums text-right' }, cell: ({ original }) => formatCurrency(original.amount) },
     { id: 'status', header: 'Status', size: 110, cell: ({ original }) => <DocumentStatusBadge status={original.status} /> },
+    {
+      id: 'created_by',
+      header: 'Dibuat Oleh',
+      size: 90,
+      cell: ({ original }) => (
+        <span className="block max-w-[90px] truncate text-[#64748b]" title={original.created_by_name ?? undefined}>
+          {original.created_by_name ?? '-'}
+        </span>
+      ),
+    },
   ]
 
   const sidebar = (
@@ -136,6 +162,7 @@ export default function BankTransferListPage() {
       onReset={() => {
         setFilterStatuses([])
         setDateRange({ from: '', to: '' })
+        setSort({ key: 'transfer_date', direction: 'desc' })
         resetSelection()
       }}
     >
@@ -143,7 +170,8 @@ export default function BankTransferListPage() {
         <ListSearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Cari nomor transfer..."
+          placeholder="Cari transfer bank..."
+          hint="Mencari di nomor dokumen dan catatan."
           className="w-full max-w-none"
         />
       </div>
@@ -192,6 +220,8 @@ export default function BankTransferListPage() {
             setPage(p.pageIndex)
             setSelectedRows([])
           }}
+          sort={sort}
+          onSortChange={toggleSort}
           selectedRows={selectedRows}
           onRowSelect={setSelectedRows}
           bulkActions={bulkActions}
