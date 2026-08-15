@@ -37,6 +37,31 @@ export interface BudgetPeriod {
   updated_at: string
 }
 
+/**
+ * Pagu top-down (Gap A) — dua tingkat saja: root (`department_id: null`,
+ * pagu perusahaan, dihitung otomatis = SUM anaknya, tidak pernah diinput
+ * manual) dan anaknya (pagu per departemen). Proyek tidak dapat pagu sendiri
+ * (Gap F) — tetap dimensi di `BudgetLine`, bukan di sini.
+ */
+export interface BudgetAllocation {
+  id: number
+  budget_period_id: number
+  department_id: number | null
+  department?: { id: number; code: string; name: string } | null
+  parent_allocation_id: number | null
+  amount: string
+  notes: string | null
+  created_by: number
+  created_at: string
+  updated_at: string
+}
+
+export interface BudgetAllocationInput {
+  department_id: number
+  amount: number
+  notes?: string | null
+}
+
 export interface BudgetLine {
   id: number
   budget_submission_id: number

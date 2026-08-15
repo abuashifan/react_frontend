@@ -108,11 +108,12 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     ribbonItems: [
       { id: 'budget-dashboard', group: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/budget/dashboard', permission: 'budgets.view' },
 
-      // Objek utama modul ini adalah submission — di situlah approval dan
-      // versioning hidup. Periode turun jadi master data pendukung.
+      // Urutan mengikuti alur proses: pagu top-down (Tahap 1-2) dulu, baru
+      // pengajuan RAB bottom-up (Tahap 4) — bukan urutan CRUD submission yang
+      // jadi objek utama modul ini secara teknis.
+      { id: 'budget-periods', group: 'Budget', label: 'Pagu Anggaran', icon: CalendarRange, path: '/budget/periods', permission: 'budgets.view' },
       { id: 'budget-list', group: 'Budget', label: 'Daftar Budget', icon: ClipboardList, path: '/budget/submissions', permission: 'budgets.view' },
       { id: 'budget-create', group: 'Budget', label: 'Buat Budget', icon: FilePlus, path: '/budget/submissions/new', permission: 'budgets.submit' },
-      { id: 'budget-periods', group: 'Budget', label: 'Periode Anggaran', icon: CalendarRange, path: '/budget/periods', permission: 'budgets.view' },
 
       // Empat entri Monitoring adalah preset dari SATU halaman analisis, bukan
       // empat halaman. Yang berbeda hanya `group_by` dan `mode` awalnya.

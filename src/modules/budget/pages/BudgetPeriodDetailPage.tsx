@@ -17,10 +17,11 @@ import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { budgetApi } from '../services/budgetApi'
 import { BudgetStatusBadge } from '../components/BudgetStatusBadge'
 import { BudgetConsolidationTable } from '../components/BudgetConsolidationTable'
+import { BudgetAllocationPanel } from '../components/BudgetAllocationPanel'
 import type { BudgetSubmission } from '../types/budget.types'
 import type { ColumnDef, PaginationState } from '@/components/shared/table/DataTable'
 
-type Tab = 'submissions' | 'consolidation'
+type Tab = 'allocations' | 'submissions' | 'consolidation'
 
 export default function BudgetPeriodDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -29,7 +30,7 @@ export default function BudgetPeriodDetailPage() {
   const { can } = usePermission()
   const { toast } = useToast()
   const qc = useQueryClient()
-  const [activeTab, setActiveTab] = useState<Tab>('submissions')
+  const [activeTab, setActiveTab] = useState<Tab>('allocations')
 
   const { data: periodData, isLoading: periodLoading } = useQuery({
     queryKey: ['budget', 'period', periodId],
@@ -112,8 +113,8 @@ export default function BudgetPeriodDetailPage() {
 
   return (
     <WorkspaceLayout
-      title={period?.name ?? 'Detail Periode Anggaran'}
-      breadcrumb={[{ label: 'Anggaran', path: '/budget' }, { label: period?.name ?? '...' }]}
+      title={period?.name ?? 'Detail Pagu Anggaran'}
+      breadcrumb={[{ label: 'Anggaran', path: '/budget' }, { label: 'Pagu Anggaran', path: '/budget/periods' }, { label: period?.name ?? '...' }]}
     >
       <div className="space-y-4">
         {period && (
@@ -132,7 +133,7 @@ export default function BudgetPeriodDetailPage() {
         )}
 
         <div className="flex gap-1 border-b border-[#e2e8f0]">
-          {(['submissions', 'consolidation'] as Tab[]).map((tab) => (
+          {(['allocations', 'submissions', 'consolidation'] as Tab[]).map((tab) => (
             <button
               key={tab}
               type="button"
@@ -141,10 +142,12 @@ export default function BudgetPeriodDetailPage() {
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-2 text-[13px] font-medium border-b-2 transition-colors ${activeTab === tab ? 'border-[#5c9ead] text-[#5c9ead]' : 'border-transparent text-[#64748b] hover:text-[#334155]'}`}
             >
-              {tab === 'submissions' ? 'Pengajuan' : 'Konsolidasi'}
+              {tab === 'allocations' ? 'Pagu Departemen' : tab === 'submissions' ? 'Pengajuan' : 'Konsolidasi'}
             </button>
           ))}
         </div>
+
+        {activeTab === 'allocations' && <BudgetAllocationPanel periodId={periodId} />}
 
         {activeTab === 'submissions' && (
           <div className="space-y-3">

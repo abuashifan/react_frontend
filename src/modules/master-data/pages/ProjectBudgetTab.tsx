@@ -41,15 +41,15 @@ export function ProjectBudgetTab({ projectId, projectName, onOpenBudget }: Proje
   if (hasNoPeriods) {
     return (
       <section className="rounded-lg border border-[#d9e2e5] bg-white p-6 text-center">
-        <p className="text-[13px] text-[#64748b]">Belum ada periode anggaran.</p>
+        <p className="text-[13px] text-[#64748b]">Belum ada pagu anggaran.</p>
         {can('budgets.manage') && (
           <Button
             size="sm"
             variant="outline"
             className="mt-3 text-[12px]"
-            onClick={() => onOpenBudget({ label: 'Periode Anggaran', path: '/budget/periods' })}
+            onClick={() => onOpenBudget({ label: 'Pagu Anggaran', path: '/budget/periods' })}
           >
-            Buat Periode Anggaran
+            Buat Pagu Anggaran
           </Button>
         )}
       </section>

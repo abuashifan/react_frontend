@@ -2,6 +2,8 @@ import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type {
   BudgetPeriod,
+  BudgetAllocation,
+  BudgetAllocationInput,
   BudgetSubmission,
   BudgetSubmissionListRow,
   BudgetSubmissionListParams,
@@ -27,11 +29,17 @@ export const budgetApi = {
   listPeriods: () =>
     http.get<unknown, ApiResponse<BudgetPeriod[]>>('/budget-periods'),
 
+  // `name` opsional — kosong berarti BudgetPeriodService generate dari
+  // fiscal_year. `department_allocations` opsional — form gabungan pagu+
+  // periode mengirim ini sekaligus; backend membuat root (SUM otomatis) +
+  // baris per departemen dalam satu transaksi (`createWithAllocations()`).
   createPeriod: (data: {
-    name: string
+    name?: string
     fiscal_year: number
+    fiscal_year_id?: number | null
     period_from: string
     period_to: string
+    department_allocations?: BudgetAllocationInput[]
   }) => http.post<unknown, ApiResponse<BudgetPeriod>>('/budget-periods', data),
 
   getPeriod: (id: number) =>
@@ -44,6 +52,18 @@ export const budgetApi = {
 
   closePeriod: (id: number) =>
     http.post<unknown, ApiResponse<BudgetPeriod>>(`/budget-periods/${id}/close`),
+
+  // --- Budget Allocations (pagu top-down, Gap A) ---
+  listAllocations: (periodId: number) =>
+    http.get<unknown, ApiResponse<BudgetAllocation[]>>(`/budget-periods/${periodId}/allocations`),
+
+  createAllocation: (
+    periodId: number,
+    data: { department_id: number | null; parent_allocation_id: number | null; amount: number; notes?: string | null },
+  ) => http.post<unknown, ApiResponse<BudgetAllocation>>(`/budget-periods/${periodId}/allocations`, data),
+
+  updateAllocation: (id: number, data: { amount?: number; notes?: string | null }) =>
+    http.put<unknown, ApiResponse<BudgetAllocation>>(`/budget-allocations/${id}`, data),
 
   // --- Budget Submissions ---
   // Daftar lintas periode — sumber halaman "Daftar Budget". Terpaginasi di

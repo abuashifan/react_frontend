@@ -8,6 +8,7 @@ import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { formatDate } from '@/lib/utils'
 import { budgetApi } from '../services/budgetApi'
@@ -37,6 +38,13 @@ export default function BudgetPeriodListPage() {
     queryKey: ['budget', 'periods'],
     queryFn: budgetApi.listPeriods,
   })
+
+  // Satu pagu & periode aktif dalam satu waktu — tombol "Buat Pagu" dikunci
+  // selama masih ada yang `open`, supaya tidak ada dua periode beririsan yang
+  // bikin transaksi bisa dibandingkan ke dua anggaran sekaligus (backend
+  // menolak ini juga lewat BudgetPeriodService::assertNoOverlap, tapi
+  // menunggu submit gagal untuk tahu itu bukan pengalaman yang baik).
+  const openPeriod = (data?.data ?? []).find((p) => p.status === 'open')
 
   // GET /budget-periods mengembalikan seluruh koleksi sekaligus — service-nya
   // tidak memakai AppliesListQuery. Karena semua baris memang sudah ada di
@@ -132,17 +140,35 @@ export default function BudgetPeriodListPage() {
 
   return (
     <WorkspaceLayout
-      title="Periode Anggaran"
-      breadcrumb={[{ label: 'Anggaran' }, { label: 'Periode Anggaran' }]}
+      title="Pagu Anggaran"
+      breadcrumb={[{ label: 'Anggaran' }, { label: 'Pagu Anggaran' }]}
       sidebar={sidebar}
       action={
         <PermissionGuard permission="budgets.manage">
-          <Button
-            className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]"
-            onClick={() => openRecordTab({ label: 'Periode Baru', path: '/budget/periods/new' })}
-          >
-            <Plus className="w-3.5 h-3.5 mr-1" /> Buat Periode
-          </Button>
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              {/* Bungkus dengan <span> supaya tooltip tetap muncul saat hover —
+                  <button disabled> menekan pointer events di sebagian besar
+                  browser, jadi TooltipTrigger tidak akan pernah menyala kalau
+                  langsung dipasang di tombolnya sendiri. */}
+              <TooltipTrigger asChild>
+                <span tabIndex={openPeriod ? 0 : undefined}>
+                  <Button
+                    className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]"
+                    disabled={!!openPeriod}
+                    onClick={() => openRecordTab({ label: 'Pagu Baru', path: '/budget/periods/new' })}
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Buat Pagu
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {openPeriod && (
+                <TooltipContent className="max-w-64 text-[12px]">
+                  Sudah ada pagu &amp; periode aktif: <strong>{openPeriod.name}</strong>. Tutup periode ini dulu untuk membuat yang baru.
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         </PermissionGuard>
       }
     >
@@ -155,8 +181,8 @@ export default function BudgetPeriodListPage() {
         pagination={pagination}
         onPaginationChange={setPagination}
         onRowClick={(row) => openRecordTab({ label: row.name, path: `/budget/periods/${row.id}` })}
-        emptyTitle="Belum ada periode anggaran"
-        emptyDescription="Buat periode anggaran untuk mulai mengumpulkan pengajuan per departemen."
+        emptyTitle="Belum ada pagu anggaran"
+        emptyDescription="Buat pagu anggaran untuk mulai mengumpulkan pengajuan per departemen."
       />
     </WorkspaceLayout>
   )
