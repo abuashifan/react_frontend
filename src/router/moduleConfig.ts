@@ -9,7 +9,7 @@ import {
   Landmark, Users, Ruler, Warehouse, CalendarClock, Building2,
   FolderKanban, Map, Building, RefreshCcw, UserCog, ShieldCheck, Star,
   Mail, Shield, Archive, Tags, CalendarRange, GitCompare, Upload,
-  Wallet, LayoutDashboard,
+  Wallet, LayoutDashboard, FilePlus,
 } from 'lucide-react'
 
 export interface RibbonItem {
@@ -24,6 +24,16 @@ export interface RibbonItem {
    * buku perusahaan sudah berisi transaksi — lihat `useSetupGate`.
    */
   setupOnly?: boolean
+  /**
+   * Pengelompokan visual di dalam ribbon. **Opsional** — modul yang tidak
+   * mengisinya tetap dirender datar seperti sebelumnya, jadi menambahkan field
+   * ini tidak menyentuh sembilan modul lain.
+   *
+   * Ribbon adalah strip horizontal setinggi 64px, bukan menu bertingkat: grup
+   * ditandai garis pemisah antar kelompok, bukan submenu. Nama grupnya sendiri
+   * hidup di breadcrumb halaman dan di katalog Laporan.
+   */
+  group?: string
 }
 
 export interface ModuleConfig {
@@ -96,14 +106,29 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     label: 'Anggaran',
     path: '/budget',
     ribbonItems: [
-      { id: 'budget-periods', label: 'Periode Anggaran', icon: CalendarRange, path: '/budget', permission: 'budgets.view' },
-      // Satu halaman analisis melayani view #1–#9 lewat filter — bukan sembilan
-      // menu terpisah. Cerminan "one engine, many views" di sisi navigasi.
-      { id: 'budget-analysis', label: 'Analisis Anggaran', icon: BarChart3, path: '/budget/analysis', permission: 'budgets.view' },
-      { id: 'budget-cash', label: 'Cash Budget', icon: Wallet, path: '/budget/cash', permission: 'budgets.view' },
-      { id: 'budget-projects', label: 'Anggaran Proyek', icon: FolderKanban, path: '/budget/projects', permission: 'budgets.view' },
-      { id: 'budget-dashboard', label: 'Dashboard Anggaran', icon: LayoutDashboard, path: '/budget/dashboard', permission: 'budgets.view' },
-      { id: 'budget-comparison', label: 'Realisasi vs Anggaran', icon: GitCompare, path: '/reports/budget/comparison', permission: 'budgets.view' },
+      { id: 'budget-dashboard', group: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/budget/dashboard', permission: 'budgets.view' },
+
+      // Objek utama modul ini adalah submission — di situlah approval dan
+      // versioning hidup. Periode turun jadi master data pendukung.
+      { id: 'budget-list', group: 'Budget', label: 'Daftar Budget', icon: ClipboardList, path: '/budget/submissions', permission: 'budgets.view' },
+      { id: 'budget-create', group: 'Budget', label: 'Buat Budget', icon: FilePlus, path: '/budget/submissions/new', permission: 'budgets.submit' },
+      { id: 'budget-periods', group: 'Budget', label: 'Periode Anggaran', icon: CalendarRange, path: '/budget/periods', permission: 'budgets.view' },
+
+      // Empat entri Monitoring adalah preset dari SATU halaman analisis, bukan
+      // empat halaman. Yang berbeda hanya `group_by` dan `mode` awalnya.
+      { id: 'budget-vs-actual', group: 'Monitoring', label: 'Budget vs Actual', icon: GitCompare, path: '/budget/analysis?preset=vs-actual', permission: 'budgets.view' },
+      { id: 'budget-variance', group: 'Monitoring', label: 'Variance', icon: TrendingDown, path: '/budget/analysis?preset=variance', permission: 'budgets.view' },
+      { id: 'budget-utilization', group: 'Monitoring', label: 'Utilization', icon: BarChart3, path: '/budget/analysis?preset=utilization', permission: 'budgets.view' },
+      { id: 'budget-summary', group: 'Monitoring', label: 'Summary', icon: LayoutDashboard, path: '/budget/analysis?preset=summary', permission: 'budgets.view' },
+
+      // Lima entri Project juga satu halaman, bertab.
+      { id: 'budget-project-budget', group: 'Project', label: 'Project Budget', icon: FolderKanban, path: '/budget/projects?tab=budget', permission: 'budgets.view' },
+      { id: 'budget-project-actual', group: 'Project', label: 'Project Actual', icon: Receipt, path: '/budget/projects?tab=actual', permission: 'budgets.view' },
+      { id: 'budget-project-profit', group: 'Project', label: 'Project Profitability', icon: TrendingUp, path: '/budget/projects?tab=profitability', permission: 'budgets.view' },
+      { id: 'budget-project-cash', group: 'Project', label: 'Project Cash Flow', icon: Banknote, path: '/budget/projects?tab=cash-flow', permission: 'budgets.view' },
+      { id: 'budget-project-tx', group: 'Project', label: 'Project Transactions', icon: BookOpen, path: '/budget/projects?tab=transactions', permission: 'budgets.view' },
+
+      { id: 'budget-cash', group: 'Cash', label: 'Cash Budget', icon: Wallet, path: '/budget/cash', permission: 'budgets.view' },
     ],
   },
   {

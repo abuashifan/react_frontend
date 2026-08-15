@@ -7,6 +7,12 @@ export const proyekApi = {
   list: (params?: { search?: string; status?: string; is_active?: boolean; page?: number; per_page?: number }) =>
     http.get<unknown, PaginatedResponse<Proyek>>('/master-data/projects', { params }),
 
+  // Endpoint `GET /master-data/projects/{id}` sudah lama ada di backend
+  // (`ProjectController::show`) tapi tidak pernah dipanggil frontend — itu sebabnya
+  // form proyek mode edit selalu tampil kosong.
+  get: (id: number) =>
+    http.get<unknown, ApiResponse<Proyek>>(`/master-data/projects/${id}`),
+
   create: (payload: CreateProyekPayload) =>
     http.post<unknown, ApiResponse<Proyek>>('/master-data/projects', payload),
 

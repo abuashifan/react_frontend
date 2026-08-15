@@ -99,14 +99,25 @@ export function RibbonPanel() {
       )}
     >
       <div className="flex h-[64px] items-stretch overflow-x-auto overflow-y-hidden no-scrollbar px-1">
-        {visibleItems.map((item) => (
-          <RibbonItemButton
-            key={item.id}
-            item={item}
-            isActive={activeId === item.id}
-            onClick={() => handleItemClick(item)}
-          />
-        ))}
+        {visibleItems.map((item, index) => {
+          // Pemisah antar grup. Ribbon adalah strip horizontal 64px, bukan menu
+          // bertingkat — jadi grup ditandai garis, bukan submenu. Modul tanpa
+          // `group` tidak pernah memunculkan pemisah dan tampil persis seperti
+          // sebelumnya.
+          const previousGroup = index > 0 ? visibleItems[index - 1].group : undefined
+          const needsDivider = !!item.group && index > 0 && item.group !== previousGroup
+
+          return (
+            <div key={item.id} className="flex items-stretch">
+              {needsDivider && <div className="my-3 w-px flex-shrink-0 bg-[#e2e8f0]" aria-hidden="true" />}
+              <RibbonItemButton
+                item={item}
+                isActive={activeId === item.id}
+                onClick={() => handleItemClick(item)}
+              />
+            </div>
+          )
+        })}
       </div>
     </div>
   )

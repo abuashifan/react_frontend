@@ -132,8 +132,8 @@ export default function BudgetPeriodListPage() {
 
   return (
     <WorkspaceLayout
-      title="Anggaran"
-      breadcrumb={[{ label: 'Anggaran' }]}
+      title="Periode Anggaran"
+      breadcrumb={[{ label: 'Anggaran' }, { label: 'Periode Anggaran' }]}
       sidebar={sidebar}
       action={
         <PermissionGuard permission="budgets.manage">

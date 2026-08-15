@@ -64,7 +64,8 @@ export default function BudgetSubmissionPage() {
     <WorkspaceLayout
       title={submission ? `Pengajuan Anggaran — ${submission.department?.name ?? `Dept #${submission.department_id}`}` : 'Pengajuan Anggaran'}
       breadcrumb={[
-        { label: 'Anggaran', path: '/budget' },
+        { label: 'Anggaran' },
+        { label: 'Daftar Budget', path: '/budget/submissions' },
         ...(submission ? [{ label: submission.period?.name ?? `Period #${submission.budget_period_id}`, path: `/budget/periods/${submission.budget_period_id}` }] : []),
         { label: 'Pengajuan' },
       ]}

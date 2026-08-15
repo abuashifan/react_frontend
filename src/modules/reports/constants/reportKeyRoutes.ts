@@ -14,16 +14,23 @@ export const REPORT_KEY_META: Record<string, { path: string; label: string }> = 
   'equity-changes': { path: '/reports/equity-changes', label: 'Perubahan Ekuitas' },
   'financial-summary': { path: '/reports/financial-summary', label: 'Ringkasan Keuangan' },
   // Seluruh view anggaran mendarat di satu halaman analisis; yang membedakan
-  // hanya `group_by`/`direction` yang dibawa parameter tersimpan.
-  'budget-analysis': { path: '/budget/analysis', label: 'Analisis Anggaran' },
-  'budget-by-account': { path: '/budget/analysis', label: 'Anggaran per Akun' },
-  'budget-by-cost-center': { path: '/budget/analysis', label: 'Anggaran per Cost Center' },
-  'budget-by-project': { path: '/budget/analysis', label: 'Anggaran per Proyek' },
-  'budget-by-period': { path: '/budget/analysis', label: 'Anggaran per Bulan' },
-  'budget-utilization': { path: '/budget/analysis', label: 'Serapan Anggaran' },
-  'budget-variance': { path: '/budget/analysis', label: 'Analisis Selisih Anggaran' },
-  'budget-cash': { path: '/budget/cash', label: 'Cash Budget' },
-  'budget-project-financials': { path: '/budget/projects', label: 'Finansial Proyek' },
+  // hanya `?preset=`, yang mengisi `group_by`/`mode`/`direction` awalnya.
+  // Tanpa preset di path, klik dari katalog akan mendarat dengan filter default
+  // dan report key yang dipisah jadi tidak ada gunanya.
+  'budget-summary': { path: '/budget/analysis?preset=summary', label: 'Ringkasan Anggaran' },
+  'budget-analysis': { path: '/budget/analysis?preset=vs-actual', label: 'Anggaran vs Aktual' },
+  'budget-by-account': { path: '/budget/analysis?preset=by-account', label: 'Anggaran per Akun' },
+  'budget-by-cost-center': { path: '/budget/analysis?preset=by-cost-center', label: 'Anggaran per Cost Center' },
+  'budget-by-project': { path: '/budget/analysis?preset=by-project', label: 'Anggaran per Project' },
+  'budget-by-period': { path: '/budget/analysis?preset=by-period', label: 'Anggaran per Periode' },
+  'budget-utilization': { path: '/budget/analysis?preset=utilization', label: 'Serapan Anggaran' },
+  'budget-variance': { path: '/budget/analysis?preset=variance', label: 'Analisis Variance' },
+  'budget-cash': { path: '/budget/cash', label: 'Cash Budget vs Actual' },
+  'budget-project-financials': { path: '/budget/projects?tab=budget', label: 'Keuangan Project' },
+  'project-profitability': { path: '/budget/projects?tab=profitability', label: 'Profitabilitas Project' },
+  'project-budget-vs-actual': { path: '/budget/projects?tab=actual', label: 'Budget vs Actual Project' },
+  'project-cash-flow': { path: '/budget/projects?tab=cash-flow', label: 'Cash Flow Project' },
+  'project-transactions': { path: '/budget/projects?tab=transactions', label: 'Transaksi Project' },
   journals: { path: '/reports/journals', label: 'Semua Jurnal' },
   'account-ledger': { path: '/reports/account-ledger', label: 'Buku Besar per Akun' },
   'account-statement': { path: '/reports/account-statement', label: 'Mutasi Rekening' },

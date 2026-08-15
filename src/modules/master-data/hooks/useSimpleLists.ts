@@ -203,6 +203,14 @@ export function useProyekList(params?: SimpleListParams & { status?: string }) {
   })
 }
 
+export function useProyek(id: number | undefined) {
+  return useQuery({
+    queryKey: ['master-data-proyek', 'detail', id],
+    queryFn: () => proyekApi.get(id as number),
+    enabled: !!id,
+  })
+}
+
 export function useProyekMutations() {
   const qc = useQueryClient()
   const invalidate = () => qc.invalidateQueries({ queryKey: ['master-data-proyek'] })

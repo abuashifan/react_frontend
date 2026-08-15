@@ -242,6 +242,40 @@ export interface BudgetVersion {
   total_amount: string
 }
 
+/**
+ * Satu baris di halaman "Daftar Budget". Bukan `BudgetSubmission` penuh —
+ * daftar hanya membawa yang ditampilkan, plus `total_amount` dari subquery.
+ */
+export interface BudgetSubmissionListRow {
+  id: number
+  budget_period_id: number
+  department_id: number | null
+  status: BudgetSubmissionStatus
+  version_no: number
+  is_active: boolean
+  revision_number: number
+  revision_reason: string | null
+  /** null bila submission belum punya baris anggaran sama sekali. */
+  total_amount: string | null
+  submitted_at: string | null
+  created_at: string
+  department?: { id: number; code: string; name: string } | null
+  period?: { id: number; name: string; fiscal_year: number } | null
+}
+
+export interface BudgetSubmissionListParams {
+  budget_period_id?: number
+  department_id?: number
+  status?: BudgetSubmissionStatus
+  /** Kirim `false` untuk ikut memunculkan versi lama (`superseded`). */
+  is_active?: boolean
+  search?: string
+  sort_by?: 'created_at' | 'version_no' | 'status' | 'budget_period_id' | 'department_id'
+  sort_direction?: 'asc' | 'desc'
+  page?: number
+  per_page?: number
+}
+
 export interface ProjectFinancialBlock {
   revenue: string
   cost: string
@@ -260,6 +294,43 @@ export interface ProjectFinancialSummary {
   revenue_rows: BudgetAnalysisRow[]
   cost_rows: BudgetAnalysisRow[]
   meta: BudgetAnalysisMeta & { limitation: string }
+}
+
+export interface ProjectTransactionLine {
+  journal_entry_id: number
+  journal_entry_line_id: number
+  journal_number: string
+  journal_date: string
+  description: string | null
+  account_id: number
+  account_code: string
+  account_name: string
+  department_id: number | null
+  department_name: string | null
+  direction: BudgetDirection
+  debit: string
+  credit: string
+  amount: string
+  source_type: string | null
+  source_number: string | null
+  source_module: string | null
+}
+
+export interface ProjectTransactions {
+  project: { id: number; code: string; name: string }
+  period: { budget_period_id: number; name: string }
+  filter: {
+    date_from: string
+    date_to: string
+    department_id: number | null
+    account_id: number | null
+    direction: BudgetDirection | null
+  }
+  lines: ProjectTransactionLine[]
+  totals: { revenue: string; cost: string; net: string }
+  total_lines: number
+  /** true = melebihi 2000 baris, hanya sebagian yang dikirim — persempit rentang tanggal. */
+  truncated: boolean
 }
 
 export interface CashBudgetSection {

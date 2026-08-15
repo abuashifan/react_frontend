@@ -24,6 +24,12 @@
 >
 > Untuk skema, mesin agregasi, dan definisi variance: baca
 > `/workspace/laravel_backend/app/Modules/Budget/README.md`.
+>
+> **Tambahan 2026-08-15.** Alur approval yang dijelaskan dokumen ini sekarang
+> punya UI-nya: `/budget/submissions` (daftar lintas periode), `/budget/submissions/new`
+> (buat), detail, dan riwayat versi. Objek utama modul di navigasi adalah
+> **submission**, bukan period — period turun jadi master data di `/budget/periods`.
+> Rencananya: `Finlite_knowladge/plans/budget-module/UI_Reporting/`.
 
 ---
 

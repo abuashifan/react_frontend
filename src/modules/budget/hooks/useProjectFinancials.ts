@@ -17,3 +17,14 @@ export function useProjectCashFlow(projectId: number | null, params: BudgetParam
     enabled: !!projectId && !!params.budget_period_id,
   })
 }
+
+export function useProjectTransactions(
+  projectId: number | null,
+  params: BudgetParams & { account_id?: number; direction?: 'revenue' | 'expense' },
+) {
+  return useQuery({
+    queryKey: ['budget', 'project-transactions', projectId, params],
+    queryFn: () => budgetApi.getProjectTransactions(projectId as number, params),
+    enabled: !!projectId && !!params.budget_period_id,
+  })
+}

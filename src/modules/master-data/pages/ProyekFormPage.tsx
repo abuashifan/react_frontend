@@ -1,164 +1,116 @@
-import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useEffect } from 'react'
+import { useParams } from 'react-router-dom'
+import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useRecordTab } from '@/hooks/useRecordTab'
+import { usePermission } from '@/hooks/usePermission'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormField } from '@/components/shared/form/FormField'
 import { FormSaveActions } from '@/components/shared/layout/FormSaveActions'
-import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
-import { AmountInput } from '@/components/shared/form/AmountInput'
-import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
-import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
-import { coaApi } from '@/modules/master-data/services/coaApi'
+import { cn, fieldErrorClass } from '@/lib/utils'
 import { proyekApi } from '../services/proyekApi'
+import { useProyek } from '../hooks/useSimpleLists'
 import { proyekSchema, type ProyekFormValues } from '../schemas/proyekSchema'
 import type { ProyekStatus } from '../types/proyek.types'
-
-interface BudgetLine {
-  account_id: number | null
-  account?: { id: number; code: string; name: string } | null
-  type: 'revenue' | 'expense'
-  /** Periode bulanan opsional, format YYYY-MM. */
-  period: string
-  amount: number
-  notes: string
-}
-
-const DEFAULT_BUDGET_LINE: BudgetLine = {
-  account_id: null,
-  account: null,
-  type: 'expense',
-  period: '',
-  amount: 0,
-  notes: '',
-}
+import { ProjectBudgetTab } from './ProjectBudgetTab'
 
 const STATUS_OPTIONS: { value: ProyekStatus; label: string }[] = [
   { value: 'active', label: 'Aktif' },
+  { value: 'on_hold', label: 'Ditunda' },
   { value: 'completed', label: 'Selesai' },
   { value: 'cancelled', label: 'Dibatalkan' },
 ]
 
+/**
+ * `/master-data/projects/create` dan `/master-data/projects/:id` merender komponen
+ * yang sama dan React Router tidak me-remount saat berpindah di antaranya — hanya
+ * param yang berubah. Tanpa `key`, state form dari record sebelumnya bocor ke tab
+ * form lain. Pola yang sama dipakai `KontakFormPage`.
+ */
 export default function ProyekFormPage() {
+  const { id } = useParams()
+
+  return <ProyekFormPageContent key={id ?? 'create'} />
+}
+
+function ProyekFormPageContent() {
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
-  const navigate = useNavigate()
+  const { can } = usePermission()
+  const { openRecordTab, closeRecordTab, replaceRecordTab } = useRecordTab()
 
-  const [formStatus, setFormStatus] = useState<ProyekStatus>('active')
-  const [budgetLines, setBudgetLines] = useState<BudgetLine[]>([DEFAULT_BUDGET_LINE])
-  const [activeTab, setActiveTab] = useState('detail')
+  const { data, isLoading } = useProyek(id ? Number(id) : undefined)
+  const proyek = data?.data
 
-  const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<ProyekFormValues>({
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<ProyekFormValues>({
     resolver: zodResolver(proyekSchema),
-    defaultValues: { status: 'active' as ProyekStatus },
+    defaultValues: { code: '', name: '', description: '', status: 'active' },
   })
 
-  const totalRevenue = budgetLines
-    .filter((l) => l.type === 'revenue')
-    .reduce((s, l) => s + (l.amount || 0), 0)
-  const totalExpense = budgetLines
-    .filter((l) => l.type === 'expense')
-    .reduce((s, l) => s + (l.amount || 0), 0)
-  const surplus = totalRevenue - totalExpense
+  // Status dulu disimpan di useState terpisah dari React Hook Form. Itu sumber
+  // kebenaran ganda yang luput saat reset(), jadi sekarang ikut RHF lewat
+  // Controller — satu reset() mengisi seluruh form.
+  useEffect(() => {
+    if (!proyek) return
+    reset({
+      code: proyek.code,
+      name: proyek.name,
+      description: proyek.description ?? '',
+      status: proyek.status,
+      start_date: proyek.start_date ?? '',
+      end_date: proyek.end_date ?? '',
+    })
+  }, [proyek, reset])
 
   const onSubmit = async (values: ProyekFormValues) => {
-    const payload = { ...values, status: formStatus }
+    // Field tanggal kosong dikirim sebagai undefined, bukan '' — backend
+    // memvalidasi `date_format:Y-m-d` dan string kosong akan ditolak.
+    const payload = {
+      ...values,
+      description: values.description || undefined,
+      start_date: values.start_date || undefined,
+      end_date: values.end_date || undefined,
+    }
+
     try {
       if (isCreate) {
         const res = await proyekApi.create(payload)
         toast.success('Proyek berhasil dibuat.')
-        // Navigasi ke halaman proyek yang baru dibuat
-        navigate(`/master-data/projects/${res.data.id}`, { replace: true })
+        replaceRecordTab('/master-data/projects/create', {
+          label: res.data.code,
+          path: `/master-data/projects/${res.data.id}`,
+        })
       } else {
         await proyekApi.update(Number(id), payload)
         toast.success('Proyek berhasil diperbarui.')
       }
     } catch (error) {
+      // Backend melempar DUPLICATE_PROJECT_CODE dengan errors.code — pemetaan ini
+      // menaruhnya di field yang benar, bukan hanya di toast.
       applyApiValidationErrors(error, setError)
       toast.error(getApiErrorMessage(error, 'Gagal menyimpan proyek.'))
     }
   }
 
-  const budgetColumns: LineItemColumn<BudgetLine>[] = [
-    {
-      id: 'type', header: 'Jenis', width: 110,
-      render: ({ item, isReadOnly, onUpdate }) => (
-        <select
-          value={item.type}
-          onChange={(e) => onUpdate('type', e.target.value as 'revenue' | 'expense')}
-          disabled={isReadOnly}
-          className="h-8 w-full rounded-md border border-[#d9e2e5] bg-white px-2 text-[12px]"
-        >
-          <option value="revenue">Pendapatan</option>
-          <option value="expense">Pengeluaran</option>
-        </select>
-      ),
-    },
-    {
-      id: 'account', header: 'Akun', width: 200,
-      render: ({ item, isReadOnly, onUpdate }) => (
-        <SearchableSelect
-          value={item.account_id}
-          onChange={(v, opt) => {
-            onUpdate('account_id', v)
-            onUpdate('account', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null)
-          }}
-          onSearch={coaApi.search}
-          placeholder="Pilih akun..."
-          disabled={isReadOnly}
-          size="sm"
-          selectedOptions={item.account ? [{ value: item.account.id, label: item.account.name, sublabel: item.account.code }] : []}
-        />
-      ),
-    },
-    {
-      id: 'period', header: 'Periode', width: 110,
-      render: ({ item, isReadOnly, onUpdate }) => (
-        <Input
-          type="month"
-          value={item.period}
-          onChange={(e) => onUpdate('period', e.target.value)}
-          disabled={isReadOnly}
-          placeholder="YYYY-MM"
-          className="h-8 text-[12px]"
-        />
-      ),
-    },
-    {
-      id: 'amount', header: 'Jumlah', width: 150, align: 'right',
-      render: ({ item, isReadOnly, onUpdate }) => (
-        <AmountInput
-          value={item.amount}
-          onChange={(v) => onUpdate('amount', v)}
-          disabled={isReadOnly}
-          decimals={2}
-          ariaLabel="Jumlah anggaran"
-        />
-      ),
-    },
-    {
-      id: 'notes', header: 'Catatan', width: 160,
-      render: ({ item, isReadOnly, onUpdate }) => (
-        <Input
-          value={item.notes}
-          onChange={(e) => onUpdate('notes', e.target.value)}
-          disabled={isReadOnly}
-          placeholder="Catatan..."
-          className="h-8 text-[12px]"
-        />
-      ),
-    },
-  ]
+  const currentPath = isCreate ? '/master-data/projects/create' : `/master-data/projects/${id}`
 
   return (
     <FormLayout
-      title={isCreate ? 'Buat Proyek' : 'Proyek'}
+      title={isCreate ? 'Buat Proyek' : (proyek?.name ?? 'Proyek')}
       breadcrumb={[
         { label: 'Master Data' },
         { label: 'Proyek', path: '/master-data/projects' },
@@ -166,21 +118,37 @@ export default function ProyekFormPage() {
       ]}
       headerActions={
         <FormSaveActions
-          onCancel={() => navigate('/master-data/projects')}
+          onCancel={() => closeRecordTab(currentPath, '/master-data/projects')}
           onSave={() => void handleSubmit(onSubmit)()}
           isSaving={isSubmitting}
         />
       }
     >
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
+      <Tabs defaultValue="detail" className="space-y-3">
         <TabsList className="h-9">
           <TabsTrigger value="detail" className="text-[12px]">Detail Proyek</TabsTrigger>
-          <TabsTrigger value="budget" className="text-[12px]">Anggaran</TabsTrigger>
+          {/* Tab anggaran hanya untuk yang boleh melihat anggaran. Tanpa izin,
+              tabnya tidak muncul sama sekali — bukan muncul lalu kosong. */}
+          {!isCreate && can('budgets.view') && (
+            <TabsTrigger value="budget" className="text-[12px]">Anggaran</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="detail" className="space-y-2.5">
           <section className="rounded-lg border border-[#d9e2e5] bg-white px-3 py-2.5 lg:px-4">
             <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
+              <FormField label="Kode Proyek" htmlFor="project-code" required error={errors.code?.message} className="w-[180px]">
+                <Input
+                  id="project-code"
+                  {...register('code')}
+                  // Kode dipakai sebagai rujukan di transaksi yang sudah berjalan;
+                  // mengubahnya diizinkan backend tapi tidak ditawarkan di sini.
+                  disabled={!isCreate}
+                  placeholder="PRJ-001"
+                  className={cn('h-8 text-[12px]', fieldErrorClass(errors.code))}
+                />
+              </FormField>
+
               <FormField label="Nama Proyek" htmlFor="project-name" required error={errors.name?.message} className="w-[280px]">
                 <Input
                   id="project-name"
@@ -191,16 +159,22 @@ export default function ProyekFormPage() {
               </FormField>
 
               <FormField label="Status" error={errors.status?.message} className="w-[160px]">
-                <Select value={formStatus} onValueChange={(v) => setFormStatus(v as ProyekStatus)}>
-                  <SelectTrigger className="h-8 text-[12px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Controller
+                  control={control}
+                  name="status"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="h-8 text-[12px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUS_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </FormField>
 
               <FormField label="Tanggal Mulai" error={errors.start_date?.message} className="w-[160px]">
@@ -218,59 +192,32 @@ export default function ProyekFormPage() {
                   className={cn('h-8 text-[12px]', fieldErrorClass(errors.end_date))}
                 />
               </FormField>
+
+              <FormField label="Deskripsi" error={errors.description?.message} className="w-full">
+                <Textarea
+                  {...register('description')}
+                  rows={2}
+                  placeholder="Deskripsi proyek..."
+                  className="text-[12px]"
+                />
+              </FormField>
             </div>
+
+            {isLoading && !isCreate && (
+              <p className="mt-2 text-[12px] text-[#64748b]">Memuat data proyek...</p>
+            )}
           </section>
         </TabsContent>
 
-        <TabsContent value="budget" className="space-y-2.5">
-          <section className="rounded-lg border border-[#d9e2e5] bg-white p-3 lg:p-4">
-            <p className="mb-3 text-[12px] text-[#64748b]">
-              Anggaran proyek terdiri dari <strong>pendapatan</strong> (revenue) dan <strong>pengeluaran</strong> (expense).
-              Setiap baris dikaitkan dengan akun COA dan periode opsional.
-            </p>
-
-            <LineItemsTable
-              errors={{}}
-              items={budgetLines}
-              columns={budgetColumns}
-              onAdd={() => setBudgetLines((prev) => [...prev, { ...DEFAULT_BUDGET_LINE }])}
-              onRemove={(i) => setBudgetLines((prev) => prev.filter((_, idx) => idx !== i))}
-              onUpdate={(i, field, value) =>
-                setBudgetLines((prev) =>
-                  prev.map((l, idx) => (idx === i ? { ...l, [field]: value } : l)),
-                )
-              }
-              isReadOnly={false}
-              addLabel="Tambah Baris Anggaran"
-              emptyLabel="Belum ada baris anggaran"
+        {!isCreate && can('budgets.view') && (
+          <TabsContent value="budget" className="space-y-2.5">
+            <ProjectBudgetTab
+              projectId={Number(id)}
+              projectName={proyek?.name ?? ''}
+              onOpenBudget={openRecordTab}
             />
-
-            {/* Ringkasan anggaran proyek */}
-            <div className="mt-3 grid gap-2.5 md:grid-cols-3">
-              <div className="rounded-lg border border-[#d9e2e5] bg-[#f0fdf4] px-3 py-2 text-[12px]">
-                <span className="text-[#64748b]">Total Pendapatan</span>
-                <p className="font-semibold tabular-nums text-[#15803d]">{formatCurrency(totalRevenue)}</p>
-              </div>
-              <div className="rounded-lg border border-[#d9e2e5] bg-[#fef2f2] px-3 py-2 text-[12px]">
-                <span className="text-[#64748b]">Total Pengeluaran</span>
-                <p className="font-semibold tabular-nums text-[#991B1B]">{formatCurrency(totalExpense)}</p>
-              </div>
-              <div className={cn(
-                'rounded-lg border px-3 py-2 text-[12px]',
-                surplus >= 0
-                  ? 'border-[#A7F3D0] bg-[#D1FAE5]'
-                  : 'border-[#FEE2E2] bg-[#FEF2F2]',
-              )}>
-                <span className={surplus >= 0 ? 'text-[#065F46]' : 'text-[#991B1B]'}>
-                  {surplus >= 0 ? 'Surplus' : 'Defisit'}
-                </span>
-                <p className={cn('font-semibold tabular-nums', surplus >= 0 ? 'text-[#065F46]' : 'text-[#991B1B]')}>
-                  {formatCurrency(Math.abs(surplus))}
-                </p>
-              </div>
-            </div>
-          </section>
-        </TabsContent>
+          </TabsContent>
+        )}
       </Tabs>
     </FormLayout>
   )

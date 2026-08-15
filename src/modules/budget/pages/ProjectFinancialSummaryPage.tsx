@@ -1,27 +1,68 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Info } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { cn, formatCurrency } from '@/lib/utils'
 import { proyekApi } from '@/modules/master-data/services/proyekApi'
 import { budgetApi } from '../services/budgetApi'
-import { useProjectFinancials } from '../hooks/useProjectFinancials'
-import type { BudgetParams, ProjectFinancialBlock } from '../types/budget.types'
+import { CashBudgetView } from '../components/CashBudgetView'
+import { FinancialBlock, VarianceItem } from '../components/ProjectFinancialBlocks'
+import { ProjectTransactionsTable } from '../components/ProjectTransactionsTable'
+import { useProjectCashFlow, useProjectFinancials } from '../hooks/useProjectFinancials'
+import type { BudgetAnalysisRow, BudgetParams, ProjectFinancialSummary } from '../types/budget.types'
 
 /**
- * Project Profitability & Margin. Semua angkanya turunan — Profit dan Margin
- * tidak pernah disimpan, dihitung dari baris anggaran dan ledger yang sama
- * dengan view lain.
+ * Halaman Project — lima entri menu, satu halaman.
+ *
+ * Empat dari lima tab dilayani endpoint yang sama (`/budget/projects/{id}/summary`).
+ * Memecahnya jadi lima halaman berarti lima kali memilih proyek dan periode, dan
+ * lima kali memanggil endpoint yang identik. Tab bertukar tanpa fetch ulang.
+ *
+ * Semua angkanya turunan — Profit dan Margin tidak pernah disimpan, dihitung dari
+ * baris anggaran dan ledger yang sama dengan view lain.
+ */
+
+const TABS = ['budget', 'actual', 'profitability', 'cash-flow', 'transactions'] as const
+type ProjectTab = (typeof TABS)[number]
+
+function resolveTab(value: string | null): ProjectTab {
+  // Tab tak dikenal jatuh ke default, bukan error — URL bisa datang dari
+  // bookmark lama atau tautan yang salah ketik.
+  return TABS.includes(value as ProjectTab) ? (value as ProjectTab) : 'profitability'
+}
+
+/**
+ * Kelima entri Project mendarat di rute yang sama dan hanya berbeda `?tab=`.
+ * React Router tidak me-remount saat query berubah, jadi tanpa `key` berpindah
+ * entri menu akan mengubah URL tanpa memindahkan tab yang aktif.
  */
 export default function ProjectFinancialSummaryPage() {
+  const [searchParams] = useSearchParams()
+
+  return (
+    <ProjectFinancialSummaryPageContent
+      key={`${searchParams.get('tab') ?? 'default'}|${searchParams.get('project_id') ?? ''}`}
+    />
+  )
+}
+
+function ProjectFinancialSummaryPageContent() {
+  // Query string mengisi state awal saja — satu arah, saat mount. Tab "Anggaran"
+  // di form Proyek menautkan ke sini dengan proyek sudah terpilih.
+  const [searchParams] = useSearchParams()
+  const initialProjectId = Number(searchParams.get('project_id')) || null
+
   const [periodIdStr, setPeriodIdStr] = useState('')
-  const [projectId, setProjectId] = useState<number | null>(null)
+  const [projectId, setProjectId] = useState<number | null>(initialProjectId)
   const [appliedProjectId, setAppliedProjectId] = useState<number | null>(null)
   const [params, setParams] = useState<BudgetParams>({})
+  const [tab, setTab] = useState<ProjectTab>(() => resolveTab(searchParams.get('tab')))
 
   const searchProject = useCallback((q: string) => proyekApi.search(q), [])
 
@@ -29,10 +70,17 @@ export default function ProjectFinancialSummaryPage() {
     queryKey: ['budget', 'periods'],
     queryFn: budgetApi.listPeriods,
   })
-  const periods = periodsData?.data ?? []
+  const periods = useMemo(() => periodsData?.data ?? [], [periodsData])
 
   const { data, isLoading, isError } = useProjectFinancials(appliedProjectId, params)
   const summary = data?.data
+
+  // Arus kas proyek dipanggil hanya saat tabnya dibuka — endpointnya berbeda dari
+  // `summary`, jadi memuatnya di muka jadi request yang sering tak terpakai.
+  const { data: cashData, isLoading: isCashLoading, isError: isCashError } = useProjectCashFlow(
+    tab === 'cash-flow' ? appliedProjectId : null,
+    params,
+  )
 
   const toolbar = (
     <div className="flex flex-wrap items-end gap-3 px-4 py-2.5 lg:px-6">
@@ -96,31 +144,56 @@ export default function ProjectFinancialSummaryPage() {
             </div>
 
             {/* Keterbatasan ini muncul di UI, bukan hanya di dokumen: menampilkan
-                angka yang diam-diam kurang lebih berbahaya daripada tidak menampilkan. */}
+                angka yang diam-diam kurang lebih berbahaya daripada tidak
+                menampilkan. Ditaruh di luar tab supaya berlaku untuk semuanya. */}
             <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <p>{summary.meta.limitation}</p>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
-              <FinancialBlock title="Anggaran" block={summary.budget} />
-              <FinancialBlock title="Realisasi" block={summary.actual} />
-            </div>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as ProjectTab)} className="space-y-3">
+              <TabsList className="h-9">
+                <TabsTrigger value="budget" className="text-[12px]">Anggaran</TabsTrigger>
+                <TabsTrigger value="actual" className="text-[12px]">Realisasi</TabsTrigger>
+                <TabsTrigger value="profitability" className="text-[12px]">Profitabilitas</TabsTrigger>
+                <TabsTrigger value="cash-flow" className="text-[12px]">Arus Kas</TabsTrigger>
+                <TabsTrigger value="transactions" className="text-[12px]">Transaksi</TabsTrigger>
+              </TabsList>
 
-            <div className="rounded-lg border border-[#e2e8f0] bg-white p-4">
-              <p className="mb-3 text-[11px] font-bold uppercase tracking-wide text-[#64748b]">Selisih</p>
-              <dl className="grid gap-2 text-[12px] md:grid-cols-3">
-                <VarianceItem label="Pendapatan" value={summary.variance.revenue} />
-                <VarianceItem label="Biaya" value={summary.variance.cost} />
-                <VarianceItem label="Laba" value={summary.variance.profit} />
-              </dl>
-              <p className="mt-3 text-[11px] text-[#64748b]">
-                Serapan biaya:{' '}
-                <span className="tabular-nums font-medium text-[#334155]">
-                  {summary.cost_utilization_pct !== null ? `${summary.cost_utilization_pct.toFixed(1)}%` : '—'}
-                </span>
-              </p>
-            </div>
+              <TabsContent value="budget" className="space-y-3">
+                <div className="md:max-w-sm">
+                  <FinancialBlock title="Anggaran" block={summary.budget} />
+                </div>
+                <AccountRows title="Anggaran Pendapatan" rows={summary.revenue_rows} column="budget_amount" />
+                <AccountRows title="Anggaran Biaya" rows={summary.cost_rows} column="budget_amount" />
+              </TabsContent>
+
+              <TabsContent value="actual" className="space-y-3">
+                <div className="md:max-w-sm">
+                  <FinancialBlock title="Realisasi" block={summary.actual} />
+                </div>
+                <AccountRows title="Realisasi Pendapatan" rows={summary.revenue_rows} column="actual_amount" />
+                <AccountRows title="Realisasi Biaya" rows={summary.cost_rows} column="actual_amount" />
+              </TabsContent>
+
+              <TabsContent value="profitability" className="space-y-3">
+                <ProfitabilityPanel summary={summary} />
+              </TabsContent>
+
+              <TabsContent value="cash-flow">
+                {isCashLoading && <p className="py-6 text-center text-[12px] text-[#64748b]">Memuat arus kas...</p>}
+                {isCashError && (
+                  <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">
+                    Gagal memuat arus kas proyek.
+                  </div>
+                )}
+                {cashData?.data && <CashBudgetView cash={cashData.data} />}
+              </TabsContent>
+
+              <TabsContent value="transactions">
+                <ProjectTransactionsTable projectId={appliedProjectId} params={params} />
+              </TabsContent>
+            </Tabs>
           </>
         )}
       </div>
@@ -128,54 +201,71 @@ export default function ProjectFinancialSummaryPage() {
   )
 }
 
-function FinancialBlock({ title, block }: { title: string; block: ProjectFinancialBlock }) {
+function ProfitabilityPanel({ summary }: { summary: ProjectFinancialSummary }) {
   return (
-    <div className="rounded-lg border border-[#e2e8f0] bg-white p-4">
-      <p className="mb-3 text-[11px] font-bold uppercase tracking-wide text-[#64748b]">{title}</p>
-      <dl className="space-y-1.5 text-[12px]">
-        <div className="flex justify-between">
-          <dt className="text-[#64748b]">Pendapatan</dt>
-          <dd className="tabular-nums">{formatCurrency(parseFloat(block.revenue))}</dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="text-[#64748b]">Biaya</dt>
-          <dd className="tabular-nums">{formatCurrency(parseFloat(block.cost))}</dd>
-        </div>
-        <div className="flex justify-between border-t border-[#e2e8f0] pt-1.5">
-          <dt className="font-semibold text-[#334155]">Laba</dt>
-          <dd
-            className={cn(
-              'font-bold tabular-nums',
-              parseFloat(block.profit) < 0 ? 'text-red-600' : 'text-green-700',
-            )}
-          >
-            {formatCurrency(parseFloat(block.profit))}
-          </dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="text-[#64748b]">Margin</dt>
-          {/* null = tidak ada pendapatan sama sekali, bukan margin 0%. */}
-          <dd className="tabular-nums text-[#334155]">
-            {block.margin_pct !== null ? `${block.margin_pct.toFixed(1)}%` : '—'}
-          </dd>
-        </div>
-      </dl>
-    </div>
+    <>
+      <div className="grid gap-3 md:grid-cols-2">
+        <FinancialBlock title="Anggaran" block={summary.budget} />
+        <FinancialBlock title="Realisasi" block={summary.actual} />
+      </div>
+
+      <div className="rounded-lg border border-[#e2e8f0] bg-white p-4">
+        <p className="mb-3 text-[11px] font-bold uppercase tracking-wide text-[#64748b]">Selisih</p>
+        <dl className="grid gap-2 text-[12px] md:grid-cols-3">
+          <VarianceItem label="Pendapatan" value={summary.variance.revenue} />
+          <VarianceItem label="Biaya" value={summary.variance.cost} />
+          <VarianceItem label="Laba" value={summary.variance.profit} />
+        </dl>
+        <p className="mt-3 text-[11px] text-[#64748b]">
+          Serapan biaya:{' '}
+          <span className="tabular-nums font-medium text-[#334155]">
+            {summary.cost_utilization_pct !== null ? `${summary.cost_utilization_pct.toFixed(1)}%` : '—'}
+          </span>
+        </p>
+      </div>
+    </>
   )
 }
 
-function VarianceItem({ label, value }: { label: string; value: string }) {
+function AccountRows({
+  title,
+  rows,
+  column,
+}: {
+  title: string
+  rows: BudgetAnalysisRow[]
+  column: 'budget_amount' | 'actual_amount'
+}) {
+  if (rows.length === 0) return null
+
+  const total = rows.reduce((sum, row) => sum + parseFloat(row[column]), 0)
+
   return (
-    <div>
-      <dt className="text-[11px] text-[#64748b]">{label}</dt>
-      <dd
-        className={cn(
-          'tabular-nums font-semibold',
-          parseFloat(value) < 0 ? 'text-red-600' : 'text-green-700',
-        )}
-      >
-        {formatCurrency(parseFloat(value))}
-      </dd>
+    <div className="overflow-auto rounded-lg border border-[#e2e8f0]">
+      <table className="w-full text-[12px]">
+        <thead className="bg-[#f8fafc]">
+          <tr>
+            <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">{title}</th>
+            <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jumlah</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[#f1f5f9]">
+          {rows.map((row) => (
+            <tr key={row.account_id ?? row.account_code} className="hover:bg-[#f8fafc]">
+              <td className="px-3 py-1.5 text-[#334155]">{row.account_code} — {row.account_name}</td>
+              <td className="px-3 py-1.5 text-right tabular-nums">{formatCurrency(parseFloat(row[column]))}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot className="border-t-2 border-[#cbd5e1] bg-[#f1f5f9]">
+          <tr>
+            <td className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-[#334155]">Total</td>
+            <td className={cn('px-3 py-2 text-right font-bold tabular-nums', total < 0 && 'text-red-600')}>
+              {formatCurrency(total)}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
     </div>
   )
 }

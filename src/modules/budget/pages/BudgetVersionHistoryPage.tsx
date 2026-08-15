@@ -19,7 +19,7 @@ export default function BudgetVersionHistoryPage() {
     <WorkspaceLayout
       title="Riwayat Versi Anggaran"
       breadcrumb={[
-        { label: 'Anggaran', path: '/budget' },
+        { label: 'Anggaran', path: '/budget/submissions' },
         { label: 'Pengajuan', path: `/budget/submissions/${id}` },
         { label: 'Riwayat Versi' },
       ]}

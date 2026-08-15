@@ -27,12 +27,14 @@ const STATUS_OPTIONS: { value: boolean | undefined; label: string }[] = [
 
 const STATUS_LABELS: Record<ProyekStatus, string> = {
   active: 'Aktif',
+  on_hold: 'Ditunda',
   completed: 'Selesai',
   cancelled: 'Dibatalkan',
 }
 
 const STATUS_COLORS: Record<ProyekStatus, string> = {
   active: 'bg-[#D1FAE5] text-[#065F46] hover:bg-[#D1FAE5]',
+  on_hold: 'bg-[#FEF3C7] text-[#92400E] hover:bg-[#FEF3C7]',
   completed: 'bg-[#DBEAFE] text-[#1E40AF] hover:bg-[#DBEAFE]',
   cancelled: 'bg-[#F1F5F9] text-[#64748b] hover:bg-[#F1F5F9]',
 }

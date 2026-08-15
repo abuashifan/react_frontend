@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronRight, Download } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -14,6 +15,7 @@ import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { proyekApi } from '@/modules/master-data/services/proyekApi'
 import { budgetApi } from '../services/budgetApi'
 import { useBudgetAnalysis } from '../hooks/useBudgetAnalysis'
+import { resolvePreset } from '../constants/analysisPresets'
 import type {
   BudgetAnalysisParams,
   BudgetAnalysisRow,
@@ -57,12 +59,31 @@ interface DrillStep {
   label: string
 }
 
+/**
+ * Keempat entri Monitoring mendarat di rute yang sama (`/budget/analysis`) dan
+ * hanya berbeda `?preset=`. React Router tidak me-remount saat query berubah,
+ * jadi tanpa `key` di sini berpindah dari Variance ke Utilization akan mengubah
+ * URL tapi membiarkan filter tetap milik preset sebelumnya. Pola `key` yang sama
+ * dipakai form record di modul lain.
+ */
 export default function BudgetAnalysisPage() {
+  const [searchParams] = useSearchParams()
+
+  return <BudgetAnalysisPageContent key={searchParams.get('preset') ?? 'default'} />
+}
+
+function BudgetAnalysisPageContent() {
+  // Preset hanya mengisi state awal — satu arah, saat mount. Setelah itu filter
+  // milik pengguna dan URL tidak ikut berubah.
+  const [searchParams] = useSearchParams()
+  const preset = useMemo(() => resolvePreset(searchParams.get('preset')), [searchParams])
+
   const [periodIdStr, setPeriodIdStr] = useState('')
-  const [groupBy, setGroupBy] = useState<BudgetGroupBy[]>(['account'])
+  const [groupBy, setGroupBy] = useState<BudgetGroupBy[]>(preset?.groupBy ?? ['account'])
   const [deptId, setDeptId] = useState<number | null>(null)
   const [projectId, setProjectId] = useState<number | null>(null)
-  const [direction, setDirection] = useState<'all' | 'revenue' | 'expense'>('all')
+  const [direction, setDirection] = useState<'all' | 'revenue' | 'expense'>(preset?.direction ?? 'all')
+  const [mode, setMode] = useState<NonNullable<BudgetAnalysisParams['mode']>>(preset?.mode ?? 'summary')
   const [version, setVersion] = useState('active')
   const [allocation, setAllocation] = useState<'annual_row' | 'even'>('annual_row')
   const [dateFrom, setDateFrom] = useState('')
@@ -105,12 +126,35 @@ export default function BudgetAnalysisPage() {
   const { data, isLoading, isError } = useBudgetAnalysis(effectiveParams)
   const result = data?.data
 
+  /**
+   * Serapan tertinggi lebih dulu. Diurutkan di klien, bukan lewat parameter
+   * backend: seluruh baris sudah ada di memori dan `/budget/analysis` sengaja
+   * tidak punya opsi sort — menambahkannya berarti dua tempat memutuskan urutan.
+   * `null` (anggaran 0) selalu di bawah; ia bukan "serapan 0%".
+   */
+  const rows = useMemo(() => {
+    if (!result) return []
+    if (!preset?.sortByUtilization) return result.rows
+
+    return [...result.rows].sort((a, b) => (b.utilization_pct ?? -1) - (a.utilization_pct ?? -1))
+  }, [result, preset])
+
+  /**
+   * Pada tampilan yang difilter beban, `variance` **adalah** sisa anggaran, jadi
+   * kolomnya diberi nama itu. Pada baris pendapatan artinya berbeda — selisih
+   * positif berarti target terlampaui, bukan anggaran yang belum terpakai — jadi
+   * di luar filter beban namanya tetap "Selisih". Angkanya satu, hanya labelnya
+   * yang mengikuti konteks; tidak ada field kedua di backend.
+   */
+  const varianceLabel = applied?.direction === 'expense' ? 'Sisa Anggaran' : 'Selisih'
+
   const handleApply = () => {
     if (!periodIdStr) return
     setDrill([])
     setApplied({
       budget_period_id: Number(periodIdStr),
       group_by: groupBy,
+      mode,
       version,
       allocation,
       ...(deptId ? { department_id: deptId } : {}),
@@ -165,8 +209,8 @@ export default function BudgetAnalysisPage() {
     if (!result) return
     exportCsv(
       `analisis-anggaran-${result.period.name}.csv`,
-      ['Keterangan', 'Arah', 'Anggaran', 'Realisasi', 'Selisih', 'Selisih %', 'Serapan %', 'Status'],
-      result.rows.map((row) => [
+      ['Keterangan', 'Arah', 'Anggaran', 'Realisasi', varianceLabel, 'Selisih %', 'Serapan %', 'Status'],
+      rows.map((row) => [
         rowLabel(row),
         row.direction,
         row.budget_amount,
@@ -221,6 +265,18 @@ export default function BudgetAnalysisPage() {
         </div>
 
         <div>
+          <Label htmlFor="analysis-mode" className="text-[11px] text-[#64748b]">Mode</Label>
+          <Select value={mode} onValueChange={(v) => setMode(v as typeof mode)}>
+            <SelectTrigger id="analysis-mode" className="h-8 w-32 text-[12px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="summary">Ringkas</SelectItem>
+              <SelectItem value="variance">Variance</SelectItem>
+              <SelectItem value="detail">Rinci</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
           <Label htmlFor="analysis-version" className="text-[11px] text-[#64748b]">Versi</Label>
           <Select value={version} onValueChange={setVersion}>
             <SelectTrigger id="analysis-version" className="h-8 w-32 text-[12px]"><SelectValue /></SelectTrigger>
@@ -233,7 +289,14 @@ export default function BudgetAnalysisPage() {
 
         <div>
           <Label htmlFor="analysis-allocation" className="text-[11px] text-[#64748b]">Alokasi</Label>
-          <Select value={allocation} onValueChange={(v) => setAllocation(v as typeof allocation)}>
+          <Select
+            value={allocation}
+            onValueChange={(v) => setAllocation(v as typeof allocation)}
+            // Parameter ini hanya berpengaruh saat baris dikelompokkan per bulan.
+            // Kontrol yang bisa diubah tapi tidak berefek lebih membingungkan
+            // daripada kontrol yang jelas dinonaktifkan.
+            disabled={!groupBy.includes('period')}
+          >
             <SelectTrigger id="analysis-allocation" className="h-8 w-40 text-[12px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="annual_row">Tahunan apa adanya</SelectItem>
@@ -340,20 +403,20 @@ export default function BudgetAnalysisPage() {
                     <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-white">Keterangan</th>
                     <th className="px-3 py-2 text-right text-[11px] font-bold uppercase tracking-wide text-white">Anggaran</th>
                     <th className="px-3 py-2 text-right text-[11px] font-bold uppercase tracking-wide text-white">Realisasi</th>
-                    <th className="px-3 py-2 text-right text-[11px] font-bold uppercase tracking-wide text-white">Selisih</th>
+                    <th className="px-3 py-2 text-right text-[11px] font-bold uppercase tracking-wide text-white">{varianceLabel}</th>
                     <th className="px-3 py-2 text-right text-[11px] font-bold uppercase tracking-wide text-white">Serapan</th>
                     <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-white">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#f1f5f9]">
-                  {result.rows.length === 0 && (
+                  {rows.length === 0 && (
                     <tr>
                       <td colSpan={6} className="px-3 py-8 text-center text-[#94a3b8]">
                         Tidak ada baris untuk filter ini.
                       </td>
                     </tr>
                   )}
-                  {result.rows.map((row, index) => {
+                  {rows.map((row, index) => {
                     const target = drillTargetOf(row)
                     const state = STATE_STYLES[row.state]
 
@@ -371,6 +434,15 @@ export default function BudgetAnalysisPage() {
                             </button>
                           ) : (
                             rowLabel(row)
+                          )}
+                          {/* Baris yang mencampur pendapatan dan beban ditandai
+                              apa adanya. "Favorable" tidak punya arti tunggal di
+                              baris seperti itu, dan mesin sengaja tidak memilih
+                              salah satu konvensi diam-diam. */}
+                          {row.direction === 'mixed' && (
+                            <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                              Campuran
+                            </span>
                           )}
                         </td>
                         <td className="px-3 py-1.5 text-right tabular-nums">{formatCurrency(parseFloat(row.budget_amount))}</td>

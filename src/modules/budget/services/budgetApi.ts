@@ -1,8 +1,10 @@
 import { http } from '@/services/http'
-import type { ApiResponse } from '@/types/api.types'
+import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type {
   BudgetPeriod,
   BudgetSubmission,
+  BudgetSubmissionListRow,
+  BudgetSubmissionListParams,
   BudgetConsolidation,
   BudgetComparison,
   BudgetParams,
@@ -12,6 +14,7 @@ import type {
   BudgetVersion,
   CashBudget,
   ProjectFinancialSummary,
+  ProjectTransactions,
 } from '../types/budget.types'
 
 // Tipe hasil ditaruh di generic kedua http.*, bukan sebagai anotasi return.
@@ -43,6 +46,11 @@ export const budgetApi = {
     http.post<unknown, ApiResponse<BudgetPeriod>>(`/budget-periods/${id}/close`),
 
   // --- Budget Submissions ---
+  // Daftar lintas periode — sumber halaman "Daftar Budget". Terpaginasi di
+  // server; jangan disaring ulang di klien.
+  listAllSubmissions: (params?: BudgetSubmissionListParams) =>
+    http.get<unknown, PaginatedResponse<BudgetSubmissionListRow>>('/budget-submissions', { params }),
+
   listSubmissions: (periodId: number, params?: { department_id?: number }) =>
     http.get<unknown, ApiResponse<BudgetSubmission[]>>(
       `/budget-periods/${periodId}/submissions`,
@@ -125,6 +133,15 @@ export const budgetApi = {
     http.get<unknown, ApiResponse<CashBudget>>(`/budget/projects/${projectId}/cash-flow`, {
       params,
     }),
+
+  getProjectTransactions: (
+    projectId: number,
+    params: BudgetParams & { account_id?: number; direction?: 'revenue' | 'expense' },
+  ) =>
+    http.get<unknown, ApiResponse<ProjectTransactions>>(
+      `/budget/projects/${projectId}/transactions`,
+      { params },
+    ),
 
   // --- Reports ---
   getComparison: (params: BudgetParams) =>
