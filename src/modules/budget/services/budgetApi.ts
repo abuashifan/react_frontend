@@ -26,8 +26,21 @@ import type {
 // dipakai langsung — jangan meng-unwrap sekali lagi di service.
 export const budgetApi = {
   // --- Budget Periods ---
+  // Tanpa params: koleksi utuh (dipakai dropdown `BudgetPeriodSelect`).
   listPeriods: () =>
     http.get<unknown, ApiResponse<BudgetPeriod[]>>('/budget-periods'),
+
+  // Dengan params: terpaginasi di server, untuk halaman daftar. Dipisah dari
+  // `listPeriods` supaya tipe balasannya jujur — bentuknya memang berbeda
+  // (`PaginatedResponse` dengan `meta.total`), bukan sekadar argumen opsional.
+  listPeriodsPaginated: (params: {
+    page?: number
+    per_page?: number
+    search?: string
+    status?: string
+    sort_by?: string
+    sort_direction?: 'asc' | 'desc'
+  }) => http.get<unknown, PaginatedResponse<BudgetPeriod>>('/budget-periods', { params }),
 
   // `name` opsional — kosong berarti BudgetPeriodService generate dari
   // fiscal_year. `department_allocations` opsional — form gabungan pagu+

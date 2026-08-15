@@ -1,16 +1,14 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { Info } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { FormField } from '@/components/shared/form/FormField'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { cn, formatCurrency } from '@/lib/utils'
 import { proyekApi } from '@/modules/master-data/services/proyekApi'
-import { budgetApi } from '../services/budgetApi'
+import { BudgetPeriodSelect } from '../components/BudgetPeriodSelect'
 import { CashBudgetView } from '../components/CashBudgetView'
 import { FinancialBlock, VarianceItem } from '../components/ProjectFinancialBlocks'
 import { ProjectTransactionsTable } from '../components/ProjectTransactionsTable'
@@ -58,19 +56,13 @@ function ProjectFinancialSummaryPageContent() {
   const [searchParams] = useSearchParams()
   const initialProjectId = Number(searchParams.get('project_id')) || null
 
-  const [periodIdStr, setPeriodIdStr] = useState('')
+  const [periodId, setPeriodId] = useState<number | null>(null)
   const [projectId, setProjectId] = useState<number | null>(initialProjectId)
   const [appliedProjectId, setAppliedProjectId] = useState<number | null>(null)
   const [params, setParams] = useState<BudgetParams>({})
   const [tab, setTab] = useState<ProjectTab>(() => resolveTab(searchParams.get('tab')))
 
   const searchProject = useCallback((q: string) => proyekApi.search(q), [])
-
-  const { data: periodsData } = useQuery({
-    queryKey: ['budget', 'periods'],
-    queryFn: budgetApi.listPeriods,
-  })
-  const periods = useMemo(() => periodsData?.data ?? [], [periodsData])
 
   const { data, isLoading, isError } = useProjectFinancials(appliedProjectId, params)
   const summary = data?.data
@@ -84,35 +76,26 @@ function ProjectFinancialSummaryPageContent() {
 
   const toolbar = (
     <div className="flex flex-wrap items-end gap-3 px-4 py-2.5 lg:px-6">
-      <div>
-        <Label htmlFor="project-period" className="text-[11px] text-[#64748b]">
-          Periode Anggaran <span className="text-red-500">*</span>
-        </Label>
-        <Select value={periodIdStr} onValueChange={setPeriodIdStr}>
-          <SelectTrigger id="project-period" className="h-8 w-52 text-[12px]">
-            <SelectValue placeholder="Pilih periode..." />
-          </SelectTrigger>
-          <SelectContent>
-            {periods.map((period) => (
-              <SelectItem key={period.id} value={String(period.id)}>{period.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <BudgetPeriodSelect
+        id="project-period"
+        value={periodId}
+        onChange={setPeriodId}
+        required
+        emptyHint="Belum ada pagu anggaran."
+      />
 
-      <div className="w-56">
-        <Label className="text-[11px] text-[#64748b]">Proyek <span className="text-red-500">*</span></Label>
+      <FormField label="Proyek" required className="w-56">
         <SearchableSelect value={projectId} onSearch={searchProject} onChange={setProjectId} placeholder="Pilih proyek..." size="sm" />
-      </div>
+      </FormField>
 
       <Button
         size="sm"
         onClick={() => {
-          if (!periodIdStr || !projectId) return
+          if (!periodId || !projectId) return
           setAppliedProjectId(projectId)
-          setParams({ budget_period_id: Number(periodIdStr) })
+          setParams({ budget_period_id: periodId })
         }}
-        disabled={!periodIdStr || !projectId || isLoading}
+        disabled={!periodId || !projectId || isLoading}
       >
         {isLoading ? 'Memuat...' : 'Tampilkan'}
       </Button>

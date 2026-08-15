@@ -1,21 +1,25 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSaveActions } from '@/components/shared/layout/FormSaveActions'
-import { FieldError } from '@/components/shared/form/FieldError'
+import { FormField } from '@/components/shared/form/FormField'
+import { AmountInput } from '@/components/shared/form/AmountInput'
+import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
+import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { useToast } from '@/hooks/useToast'
-import { useUnsavedFormTracker } from '@/hooks/useUnsavedFormTracker'
-import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
 import { fiscalYearApi } from '@/modules/accounting/services/fiscalYearApi'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
+import { useQuery } from '@tanstack/react-query'
 import { budgetApi } from '../services/budgetApi'
+import { BUDGET_PERIODS_QUERY_KEY } from '../hooks/useBudgetPeriods'
 import type { BudgetAllocationInput } from '../types/budget.types'
 
 const schema = z.object({
@@ -26,6 +30,19 @@ const schema = z.object({
 })
 
 type FormValues = z.infer<typeof schema>
+
+/** Satu baris pagu departemen. `department_label` disimpan agar pilihan tetap terbaca setelah draft dipulihkan. */
+interface AllocationLine {
+  department_id: number | null
+  department_label?: string
+  amount: number
+}
+
+const DEFAULT_LINE: AllocationLine = { department_id: null, amount: 0 }
+
+/** Style input "flush" — menyatu dengan sel tabel `bordered`, sama seperti CashReceiptFormPage. */
+const FLUSH_INPUT_CLASS =
+  'rounded-none border-0 bg-transparent px-2 focus:shadow-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#5c9ead]/40'
 
 const FORM_PATH = '/budget/periods/new'
 
@@ -40,24 +57,19 @@ export default function BudgetPeriodFormPage() {
   })
   const activeFiscalYear = fyData?.data.active_fiscal_year
 
-  const { data: deptData, isLoading: deptLoading } = useQuery({
-    queryKey: ['master-data', 'departments', 'all-active'],
-    queryFn: () => departemenApi.list({ is_active: true, per_page: 200 }),
-  })
-  const departments = deptData?.data ?? []
+  const searchDept = useCallback((q: string) => departemenApi.search(q), [])
 
-  // department_id -> pagu (string mentah dari input). Departemen yang
-  // dikosongkan/nol tidak dikirim — mengisi pagu tidak wajib untuk semua
-  // departemen sekaligus, bisa ditambah belakangan lewat tab "Pagu Departemen"
-  // di halaman detail.
-  const [allocations, setAllocations] = useState<Record<number, string>>({})
-  const totalAllocated = Object.values(allocations).reduce((sum, v) => sum + (parseFloat(v) || 0), 0)
+  const [lines, setLines] = useState<AllocationLine[]>([DEFAULT_LINE])
+  const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
+  const totalAllocated = lines.reduce((sum, l) => sum + (l.amount || 0), 0)
 
   const {
     control,
     register,
     handleSubmit,
+    getValues,
     setValue,
+    reset,
     setError,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
@@ -65,9 +77,20 @@ export default function BudgetPeriodFormPage() {
     defaultValues: { name: '', fiscal_year: String(new Date().getFullYear()), period_from: '', period_to: '' },
   })
 
-  // Halaman ini tidak memakai `usePersistentFormDraft`, jadi pelacaknya dipasang
-  // langsung — tanpa ini, Tutup Database/Keluar tidak tahu ada isian di sini.
-  useUnsavedFormTracker({ control })
+  // Baris pagu hidup di `useState`, DI LUAR react-hook-form. `useUnsavedFormTracker`
+  // sendirian tidak cukup: ia hanya melihat `dirtyFields` RHF, dan komponen ini
+  // tetap di-unmount saat user sekadar pindah tab — jadi seluruh angka pagu yang
+  // sudah diketik hilang tanpa peringatan. Draft dipersist lewat `extra` supaya
+  // isian kembali utuh. (Hook ini sudah memanggil `useUnsavedFormTracker` di
+  // dalamnya, jadi tidak dipasang dua kali.)
+  const formDraft = usePersistentFormDraft<FormValues, AllocationLine[]>({
+    draftKey: 'budget.period.new',
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
+  })
 
   // Prefill sekali saja saat tahun fiskal aktif datang — bukan tiap refetch,
   // supaya tidak menimpa tanggal/nama yang sudah diubah user secara manual.
@@ -75,17 +98,22 @@ export default function BudgetPeriodFormPage() {
   useEffect(() => {
     if (prefilled.current || !activeFiscalYear) return
     prefilled.current = true
+    // Draft yang dipulihkan selalu menang atas prefill — kalau tidak, isian yang
+    // ditinggalkan user akan ditimpa nilai tahun fiskal begitu query-nya selesai.
+    // `getValues` ikut diperiksa untuk kasus draft dan fiscal year yang tiba pada
+    // pass render yang sama (isRestored belum sempat terbaca).
+    if (formDraft.isRestored || getValues('period_from')) return
     setValue('name', `Pagu Anggaran ${activeFiscalYear.year}`)
     setValue('fiscal_year', String(activeFiscalYear.year))
     setValue('period_from', activeFiscalYear.start_date)
     setValue('period_to', activeFiscalYear.end_date)
-  }, [activeFiscalYear, setValue])
+  }, [activeFiscalYear, formDraft.isRestored, getValues, setValue])
 
   const createMut = useMutation({
     mutationFn: (data: FormValues) => {
-      const department_allocations: BudgetAllocationInput[] = Object.entries(allocations)
-        .map(([deptId, amount]) => ({ department_id: Number(deptId), amount: parseFloat(amount) || 0 }))
-        .filter((row) => row.amount > 0)
+      const department_allocations: BudgetAllocationInput[] = lines
+        .filter((l) => l.department_id !== null && l.amount > 0)
+        .map((l) => ({ department_id: l.department_id as number, amount: l.amount }))
 
       return budgetApi.createPeriod({
         name: data.name.trim() || undefined,
@@ -97,13 +125,18 @@ export default function BudgetPeriodFormPage() {
       })
     },
     onSuccess: (res) => {
-      void qc.invalidateQueries({ queryKey: ['budget', 'periods'] })
-      // Tab "Pagu Baru" berubah jadi tab pagu itu sendiri, bukan menambah
-      // tab kedua yang menunjuk record yang sama.
+      void qc.invalidateQueries({ queryKey: BUDGET_PERIODS_QUERY_KEY })
+      // Draft dibuang setelah tersimpan — tanpa ini, membuka form "Pagu Baru"
+      // berikutnya akan memulihkan isian pagu yang sudah jadi periode.
+      formDraft.clearDraft()
+      setLineErrors({})
+      // Tab "Pagu Baru" berubah jadi tab pagu itu sendiri, bukan menambah tab
+      // kedua yang menunjuk record yang sama.
       replaceRecordTab(FORM_PATH, { label: res.data.name, path: `/budget/periods/${res.data.id}` })
     },
     onError: (error) => {
-      // Tandai field penyebabnya, jangan hanya "Gagal menyimpan".
+      // Tandai field dan baris penyebabnya, jangan hanya "Gagal menyimpan".
+      setLineErrors(getApiLineErrors(error))
       applyApiValidationErrors(error, setError)
       toast.error(getApiErrorMessage(error, 'Gagal menyimpan pagu anggaran.'))
     },
@@ -111,111 +144,142 @@ export default function BudgetPeriodFormPage() {
 
   const submit = handleSubmit((data) => createMut.mutate(data))
 
+  const columns: LineItemColumn<AllocationLine>[] = [
+    {
+      id: 'department',
+      header: 'Departemen',
+      width: 280,
+      render: ({ item, isReadOnly, onUpdate }) => (
+        <SearchableSelect
+          value={item.department_id}
+          onSearch={searchDept}
+          onChange={(v, opt) => {
+            onUpdate('department_id', v)
+            onUpdate('department_label', opt?.label)
+          }}
+          placeholder="Pilih departemen..."
+          disabled={isReadOnly}
+          size="sm"
+          selectedOptions={
+            item.department_id && item.department_label
+              ? [{ value: item.department_id, label: item.department_label }]
+              : []
+          }
+        />
+      ),
+    },
+    {
+      id: 'amount',
+      header: 'Pagu',
+      width: 160,
+      align: 'right',
+      render: ({ item, isReadOnly, onUpdate }) => (
+        <AmountInput
+          value={item.amount}
+          onChange={(v) => onUpdate('amount', v)}
+          disabled={isReadOnly}
+          ariaLabel="Pagu departemen"
+          className={cn(FLUSH_INPUT_CLASS, 'text-right')}
+        />
+      ),
+    },
+  ]
+
   return (
     <FormLayout
       title="Buat Pagu Anggaran"
-      breadcrumb={[{ label: 'Anggaran', path: '/budget' }, { label: 'Buat Pagu Anggaran' }]}
+      breadcrumb={[
+        { label: 'Anggaran' },
+        { label: 'Pagu Anggaran', path: '/budget/periods' },
+        { label: 'Buat' },
+      ]}
       headerActions={
         <FormSaveActions
-          onCancel={() => closeRecordTab(FORM_PATH, '/budget')}
+          onCancel={() => closeRecordTab(FORM_PATH, '/budget/periods')}
           onSave={() => void submit()}
           isSaving={isSubmitting || createMut.isPending}
         />
       }
     >
-      <form onSubmit={submit} className="max-w-3xl space-y-4">
-        <div className="rounded-lg border border-[#e2e8f0] bg-white p-5 space-y-4">
-          <div className="space-y-1">
-            <Label htmlFor="name" className="text-[12px]">Nama Pagu Anggaran</Label>
-            <Input id="name" {...register('name')} placeholder="Contoh: Pagu Anggaran 2026" className={cn(fieldErrorClass(errors.name))} />
-            <FieldError message={errors.name?.message} />
-          </div>
+      <form onSubmit={submit} className="space-y-2.5">
+        {/* Header ringkas — mengikuti pola CashReceiptFormPage. */}
+        <section className="rounded-lg border border-[#d9e2e5] bg-white px-3 py-2.5 lg:px-4">
+          <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
+            <FormField label="Nama Pagu" htmlFor="period-name" error={errors.name?.message} className="w-[280px]">
+              <Input
+                id="period-name"
+                {...register('name')}
+                placeholder="Contoh: Pagu Anggaran 2026"
+                className={cn('h-8 text-[12px]', fieldErrorClass(errors.name))}
+              />
+            </FormField>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="fiscal_year" className="text-[12px]">Tahun Fiskal</Label>
-              <Input id="fiscal_year" type="number" {...register('fiscal_year')} className={cn('tabular-nums', fieldErrorClass(errors.fiscal_year))} />
-              <FieldError message={errors.fiscal_year?.message} />
+            <FormField label="Tahun Fiskal" htmlFor="fiscal-year" required error={errors.fiscal_year?.message} className="w-[130px]">
+              <Input
+                id="fiscal-year"
+                type="number"
+                {...register('fiscal_year')}
+                className={cn('h-8 text-[12px] tabular-nums', fieldErrorClass(errors.fiscal_year))}
+              />
+            </FormField>
+
+            <FormField label="Dari Tanggal" htmlFor="period-from" required error={errors.period_from?.message} className="w-[160px]">
+              <Input
+                id="period-from"
+                type="date"
+                {...register('period_from')}
+                className={cn('h-8 text-[12px]', fieldErrorClass(errors.period_from))}
+              />
+            </FormField>
+
+            <FormField
+              label="Sampai Tanggal"
+              htmlFor="period-to"
+              required
+              error={errors.period_to?.message}
+              className="w-[160px]"
+              hint="Terisi otomatis dari tahun fiskal aktif."
+            >
+              <Input
+                id="period-to"
+                type="date"
+                {...register('period_to')}
+                className={cn('h-8 text-[12px]', fieldErrorClass(errors.period_to))}
+              />
+            </FormField>
+          </div>
+        </section>
+
+        <LineItemsTable
+          items={lines}
+          columns={columns}
+          errors={lineErrors}
+          onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
+          onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}
+          onUpdate={(i, field, value) =>
+            setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, [field]: value } : l)))
+          }
+          addLabel="Tambah Departemen"
+          emptyLabel="Belum ada pagu departemen"
+          bordered
+        />
+
+        {/* Total pagu perusahaan tidak diinput — selalu jumlah baris di atas,
+            supaya batas induk tidak pernah bisa lebih kecil dari isinya. */}
+        <div className="flex justify-end">
+          <div className="h-fit w-[280px] rounded-lg border border-[#d9e2e5] bg-[#f8fafc] px-3 py-2 text-[12px]">
+            <div className="flex items-center justify-between gap-3 py-0.5">
+              <span className="text-[#64748b]">Jumlah Departemen</span>
+              <span className="font-semibold tabular-nums text-[#334155]">
+                {lines.filter((l) => l.department_id !== null && l.amount > 0).length}
+              </span>
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="period_from" className="text-[12px]">Dari Tanggal</Label>
-              <Input id="period_from" type="date" {...register('period_from')} className={cn(fieldErrorClass(errors.period_from))} />
-              <FieldError message={errors.period_from?.message} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="period_to" className="text-[12px]">Sampai Tanggal</Label>
-              <Input id="period_to" type="date" {...register('period_to')} className={cn(fieldErrorClass(errors.period_to))} />
-              <FieldError message={errors.period_to?.message} />
+            <div className="mt-1 flex items-center justify-between gap-3 border-t border-[#e2e8f0] pt-1.5">
+              <span className="font-medium text-[#334155]">Total Pagu Perusahaan</span>
+              <span className="font-semibold tabular-nums text-[#1e293b]">{formatCurrency(totalAllocated)}</span>
             </div>
           </div>
-          <p className="text-[11px] text-[#64748b]">
-            Nama dan tanggal terisi otomatis mengikuti tahun fiskal aktif perusahaan — ubah bila perlu.
-          </p>
         </div>
-
-        <div className="rounded-lg border border-[#e2e8f0] bg-white p-5 space-y-3">
-          <div>
-            <p className="text-[13px] font-semibold text-[#1e293b]">Pagu per Departemen</p>
-            <p className="text-[11px] text-[#64748b]">
-              Isi pagu langsung per departemen — pagu tingkat perusahaan dihitung otomatis dari jumlah baris di
-              bawah, bukan diisi terpisah. Departemen boleh dikosongkan dan ditambah belakangan.
-            </p>
-          </div>
-
-          {deptLoading && <p className="py-4 text-center text-[12px] text-[#64748b]">Memuat departemen...</p>}
-
-          {!deptLoading && departments.length === 0 && (
-            <p className="py-4 text-center text-[12px] text-[#94a3b8]">Belum ada departemen aktif.</p>
-          )}
-
-          {!deptLoading && departments.length > 0 && (
-            <div className="overflow-hidden rounded-lg border border-[#e2e8f0]">
-              <table className="w-full text-[12px]">
-                <thead className="bg-[#1e293b]">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-white">Departemen</th>
-                    <th className="px-3 py-2 text-right text-[11px] font-bold uppercase tracking-wide text-white">Pagu</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#f1f5f9]">
-                  {departments.map((dept) => (
-                    <tr key={dept.id} className="hover:bg-[#f8fafc]">
-                      <td className="px-3 py-1.5 text-[#334155]">
-                        {dept.name} <span className="text-[#94a3b8]">({dept.code})</span>
-                      </td>
-                      <td className="px-3 py-1.5 text-right">
-                        <Input
-                          type="number"
-                          min={0}
-                          value={allocations[dept.id] ?? ''}
-                          onChange={(e) =>
-                            setAllocations((prev) => ({ ...prev, [dept.id]: e.target.value }))
-                          }
-                          className="h-8 w-40 text-right text-[12px] tabular-nums"
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="border-t-2 border-[#cbd5e1] bg-[#f1f5f9]">
-                  <tr>
-                    <td className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-[#334155]">
-                      Total Pagu Perusahaan
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums font-bold text-[#1e293b]">
-                      {formatCurrency(totalAllocated)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          )}
-        </div>
-        {/*
-          Rute `/budget/periods/:id` adalah halaman detail, bukan form, jadi
-          tidak ada record sebelum/sesudah yang bisa dituju — Prev/Next tidak
-          dipasang. Simpan menukar tab ini dengan tab detail pagu.
-        */}
       </form>
     </FormLayout>
   )

@@ -2,18 +2,18 @@ import { useState, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { FormField } from '@/components/shared/form/FormField'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { formatCurrency } from '@/lib/utils'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { proyekApi } from '@/modules/master-data/services/proyekApi'
+import { BudgetPeriodSelect } from '../components/BudgetPeriodSelect'
 import { budgetApi } from '../services/budgetApi'
 import type { BudgetParams } from '../types/budget.types'
 
 export default function BudgetComparisonPage() {
-  const [periodIdStr, setPeriodIdStr] = useState('')
+  const [periodId, setPeriodId] = useState<number | null>(null)
   const [deptId, setDeptId] = useState<number | null>(null)
   const [projectId, setProjectId] = useState<number | null>(null)
   const [periodFrom, setPeriodFrom] = useState('')
@@ -23,12 +23,6 @@ export default function BudgetComparisonPage() {
   const searchDept = useCallback((q: string) => departemenApi.search(q), [])
   const searchProject = useCallback((q: string) => proyekApi.search(q), [])
 
-  const { data: periodsData } = useQuery({
-    queryKey: ['budget', 'periods'],
-    queryFn: budgetApi.listPeriods,
-  })
-  const periods = periodsData?.data ?? []
-
   const { data, isLoading, isError } = useQuery({
     queryKey: ['reports', 'budget-comparison', activeParams],
     queryFn: () => budgetApi.getComparison(activeParams!),
@@ -37,9 +31,9 @@ export default function BudgetComparisonPage() {
   const result = data?.data
 
   const handleSubmit = () => {
-    if (!periodIdStr) return
+    if (!periodId) return
     setActiveParams({
-      budget_period_id: Number(periodIdStr),
+      budget_period_id: periodId,
       ...(deptId ? { department_id: deptId } : {}),
       ...(projectId ? { project_id: projectId } : {}),
       ...(periodFrom ? { period_from: periodFrom } : {}),
@@ -53,41 +47,31 @@ export default function BudgetComparisonPage() {
   // karena parameternya tidak lewat `useReportParams`.
   const toolbar = (
     <div className="flex flex-wrap items-end gap-3 px-4 py-2.5 lg:px-6">
-      <div>
-        <Label htmlFor="period-select" className="text-[11px] text-[#64748b]">Periode Anggaran <span className="text-red-500">*</span></Label>
-        <Select value={periodIdStr} onValueChange={setPeriodIdStr}>
-          <SelectTrigger id="period-select" className="h-8 w-52 text-[12px]">
-            <SelectValue placeholder="Pilih periode..." />
-          </SelectTrigger>
-          <SelectContent>
-            {periods.map((p) => (
-              <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <BudgetPeriodSelect
+        id="period-select"
+        value={periodId}
+        onChange={setPeriodId}
+        required
+        emptyHint="Belum ada pagu anggaran."
+      />
 
-      <div className="w-44">
-        <Label className="text-[11px] text-[#64748b]">Departemen</Label>
+      <FormField label="Departemen" className="w-44">
         <SearchableSelect value={deptId} onSearch={searchDept} onChange={setDeptId} placeholder="Semua dept" size="sm" />
-      </div>
+      </FormField>
 
-      <div className="w-44">
-        <Label className="text-[11px] text-[#64748b]">Proyek</Label>
+      <FormField label="Proyek" className="w-44">
         <SearchableSelect value={projectId} onSearch={searchProject} onChange={setProjectId} placeholder="Semua proyek" size="sm" />
-      </div>
+      </FormField>
 
-      <div>
-        <Label className="text-[11px] text-[#64748b]">Dari</Label>
-        <Input type="date" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} className="h-8 w-36 text-[12px]" />
-      </div>
+      <FormField label="Dari" className="w-36">
+        <Input type="date" value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} className="h-8 text-[12px]" />
+      </FormField>
 
-      <div>
-        <Label className="text-[11px] text-[#64748b]">Sampai</Label>
-        <Input type="date" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} className="h-8 w-36 text-[12px]" />
-      </div>
+      <FormField label="Sampai" className="w-36">
+        <Input type="date" value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} className="h-8 text-[12px]" />
+      </FormField>
 
-      <Button size="sm" onClick={handleSubmit} disabled={!periodIdStr || isLoading}>
+      <Button size="sm" onClick={handleSubmit} disabled={!periodId || isLoading}>
         {isLoading ? 'Memuat...' : 'Tampilkan'}
       </Button>
     </div>

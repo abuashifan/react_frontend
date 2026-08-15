@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { budgetApi } from '../services/budgetApi'
+import { useBudgetPeriods } from './useBudgetPeriods'
 import { useProjectFinancials } from './useProjectFinancials'
 
 /**
@@ -15,13 +14,7 @@ import { useProjectFinancials } from './useProjectFinancials'
 export function useProjectBudgetForProject(projectId: number | null, enabled = true) {
   const [overridePeriodId, setOverridePeriodId] = useState<number | null>(null)
 
-  const { data: periodsData, isLoading: isPeriodsLoading } = useQuery({
-    queryKey: ['budget', 'periods'],
-    queryFn: budgetApi.listPeriods,
-    enabled,
-  })
-
-  const periods = useMemo(() => periodsData?.data ?? [], [periodsData])
+  const { periods, isLoading: isPeriodsLoading } = useBudgetPeriods(enabled)
 
   const defaultPeriodId = useMemo(() => {
     if (periods.length === 0) return null

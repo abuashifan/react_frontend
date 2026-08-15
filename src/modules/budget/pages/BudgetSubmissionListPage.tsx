@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar } from '@/components/shared/layout/FilterSidebar'
 import { SingleCheckboxFilter } from '@/components/shared/filter/SingleCheckboxFilter'
@@ -9,12 +8,13 @@ import { DataTable } from '@/components/shared/table/DataTable'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
 import { useRecordTab } from '@/hooks/useRecordTab'
+import { useListSort } from '@/hooks/useListSort'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { BudgetStatusBadge } from '../components/BudgetStatusBadge'
 import { useBudgetSubmissionList } from '../hooks/useBudgetSubmissions'
-import { budgetApi } from '../services/budgetApi'
+import { useBudgetPeriods } from '../hooks/useBudgetPeriods'
 import type { BudgetSubmissionListRow, BudgetSubmissionStatus } from '../types/budget.types'
-import type { ColumnDef, PaginationState, SortState } from '@/components/shared/table/DataTable'
+import type { ColumnDef, PaginationState } from '@/components/shared/table/DataTable'
 
 const STATUS_OPTIONS: { value: BudgetSubmissionStatus | undefined; label: string }[] = [
   { value: 'draft', label: 'Draft' },
@@ -36,14 +36,14 @@ export default function BudgetSubmissionListPage() {
   const [filterStatus, setFilterStatus] = useState<BudgetSubmissionStatus | undefined>()
   const [filterPeriodId, setFilterPeriodId] = useState<number | undefined>()
   const [includeOldVersions, setIncludeOldVersions] = useState<boolean | undefined>(undefined)
-  const [sort, setSort] = useState<SortState | null>(null)
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 25 })
 
-  const { data: periodsData } = useQuery({
-    queryKey: ['budget', 'periods'],
-    queryFn: budgetApi.listPeriods,
-  })
-  const periods = periodsData?.data ?? []
+  // Sorting server-side; `key` harus cocok dengan allowlist `$listSortable` di
+  // BudgetSubmissionService. `useListSort` menggantikan state + handler toggle
+  // yang sebelumnya ditulis tangan di halaman ini.
+  const { sort, toggleSort, setSort, sortParams } = useListSort()
+
+  const { periods } = useBudgetPeriods()
 
   const { data, isLoading, isFetching } = useBudgetSubmissionList({
     page: pagination.pageIndex + 1,
@@ -54,16 +54,16 @@ export default function BudgetSubmissionListPage() {
     // default ke versi aktif, jadi mengirim `true` cuma menambah noise di URL.
     is_active: includeOldVersions === false ? false : undefined,
     search: search || undefined,
-    sort_by: sort?.key as never,
-    sort_direction: sort?.direction,
+    ...sortParams,
   })
 
   const rows = data?.data ?? []
   const totalRows = data?.meta.total ?? 0
 
   // Kembali ke halaman 1 saat filter berubah, supaya tidak mendarat di halaman
-  // kosong setelah hasilnya menyusut.
-  const filterKey = `${search}|${String(filterStatus)}|${String(filterPeriodId)}|${String(includeOldVersions)}`
+  // kosong setelah hasilnya menyusut. Sort ikut dihitung: mengubah urutan pada
+  // halaman jauh membuat baris teratas hasil pengurutan tidak pernah terlihat.
+  const filterKey = `${search}|${String(filterStatus)}|${String(filterPeriodId)}|${String(includeOldVersions)}|${sort?.key ?? ''}|${sort?.direction ?? ''}`
   const [prevFilters, setPrevFilters] = useState('')
   if (filterKey !== prevFilters) {
     setPrevFilters(filterKey)
@@ -143,6 +143,7 @@ export default function BudgetSubmissionListPage() {
         setFilterStatus(undefined)
         setFilterPeriodId(undefined)
         setIncludeOldVersions(undefined)
+        setSort(null)
       }}
     >
       <div className="border-b border-[#f1f5f9] px-4 py-3">
@@ -202,13 +203,7 @@ export default function BudgetSubmissionListPage() {
         pagination={pagination}
         onPaginationChange={setPagination}
         sort={sort}
-        onSortChange={(key) =>
-          setSort((prev) =>
-            prev?.key === key
-              ? { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
-              : { key, direction: 'asc' },
-          )
-        }
+        onSortChange={toggleSort}
         onRowClick={(row) =>
           openRecordTab({
             label: row.department?.name ?? 'Perusahaan',

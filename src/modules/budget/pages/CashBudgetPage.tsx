@@ -1,10 +1,7 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { budgetApi } from '../services/budgetApi'
+import { BudgetPeriodSelect } from '../components/BudgetPeriodSelect'
 import { CashBudgetView } from '../components/CashBudgetView'
 import { useCashBudget } from '../hooks/useCashBudget'
 import type { BudgetParams } from '../types/budget.types'
@@ -17,40 +14,26 @@ import type { BudgetParams } from '../types/budget.types'
  * Project yang memakai endpoint sama dengan filter proyek.
  */
 export default function CashBudgetPage() {
-  const [periodIdStr, setPeriodIdStr] = useState('')
+  const [periodId, setPeriodId] = useState<number | null>(null)
   const [params, setParams] = useState<BudgetParams>({})
-
-  const { data: periodsData } = useQuery({
-    queryKey: ['budget', 'periods'],
-    queryFn: budgetApi.listPeriods,
-  })
-  const periods = periodsData?.data ?? []
 
   const { data, isLoading, isError } = useCashBudget(params)
   const cash = data?.data
 
   const toolbar = (
     <div className="flex flex-wrap items-end gap-3 px-4 py-2.5 lg:px-6">
-      <div>
-        <Label htmlFor="cash-period" className="text-[11px] text-[#64748b]">
-          Periode Anggaran <span className="text-red-500">*</span>
-        </Label>
-        <Select value={periodIdStr} onValueChange={setPeriodIdStr}>
-          <SelectTrigger id="cash-period" className="h-8 w-52 text-[12px]">
-            <SelectValue placeholder="Pilih periode..." />
-          </SelectTrigger>
-          <SelectContent>
-            {periods.map((period) => (
-              <SelectItem key={period.id} value={String(period.id)}>{period.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <BudgetPeriodSelect
+        id="cash-period"
+        value={periodId}
+        onChange={setPeriodId}
+        required
+        emptyHint="Belum ada pagu anggaran."
+      />
 
       <Button
         size="sm"
-        onClick={() => periodIdStr && setParams({ budget_period_id: Number(periodIdStr) })}
-        disabled={!periodIdStr || isLoading}
+        onClick={() => periodId && setParams({ budget_period_id: periodId })}
+        disabled={!periodId || isLoading}
       >
         {isLoading ? 'Memuat...' : 'Tampilkan'}
       </Button>

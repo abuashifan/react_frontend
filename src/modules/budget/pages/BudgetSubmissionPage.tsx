@@ -16,7 +16,22 @@ import { BudgetStatusBadge } from '../components/BudgetStatusBadge'
 import { BudgetLineEditor } from '../components/BudgetLineEditor'
 import { BudgetApprovalActions } from '../components/BudgetApprovalActions'
 
+/**
+ * `/budget/submissions/:id` merender komponen yang sama untuk setiap pengajuan,
+ * dan React Router tidak me-remount saat berpindah antar id — hanya param yang
+ * berubah. Tanpa `key`, state `BudgetLineEditor` (baris RAB) dari pengajuan yang
+ * dibuka sebelumnya bertahan sementara `submissionId` sudah menunjuk pengajuan
+ * lain — menekan "Simpan Baris" berarti menulis baris milik pengajuan A ke
+ * pengajuan B. Pola `key` yang sama dipakai `CashReceiptFormPage` dan
+ * `ProyekFormPage`.
+ */
 export default function BudgetSubmissionPage() {
+  const { id } = useParams<{ id: string }>()
+
+  return <BudgetSubmissionPageContent key={id ?? 'none'} />
+}
+
+function BudgetSubmissionPageContent() {
   const { id } = useParams<{ id: string }>()
   const submissionId = Number(id)
   const qc = useQueryClient()

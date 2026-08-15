@@ -295,7 +295,14 @@ export interface BudgetSubmissionListParams {
   /** Kirim `false` untuk ikut memunculkan versi lama (`superseded`). */
   is_active?: boolean
   search?: string
-  sort_by?: 'created_at' | 'version_no' | 'status' | 'budget_period_id' | 'department_id'
+  /**
+   * String bebas, bukan union — allowlist-nya hidup di `$listSortable`
+   * (BudgetSubmissionService) dan kolom di luar itu diabaikan backend. Union di
+   * sini memaksa pemanggil meng-`as never` hasil `useListSort` (yang memang
+   * mengembalikan `string`) tanpa menambah keamanan apa pun, karena tipe
+   * TypeScript tidak ikut terkirim ke server.
+   */
+  sort_by?: string
   sort_direction?: 'asc' | 'desc'
   page?: number
   per_page?: number

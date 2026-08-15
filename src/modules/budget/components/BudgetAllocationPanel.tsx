@@ -2,10 +2,10 @@ import { useCallback, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { FormField } from '@/components/shared/form/FormField'
+import { AmountInput } from '@/components/shared/form/AmountInput'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { usePermission } from '@/hooks/usePermission'
 import { useToast } from '@/hooks/useToast'
@@ -48,21 +48,21 @@ export function BudgetAllocationPanel({ periodId }: Props) {
   // --- Dialog "Pagu Perusahaan" (buat root kalau belum ada, atau ubah root
   //     yang sudah ada) ---
   const [rootDialogOpen, setRootDialogOpen] = useState(false)
-  const [rootAmount, setRootAmount] = useState('')
+  const [rootAmount, setRootAmount] = useState(0)
 
   const openRootDialog = () => {
-    setRootAmount(root ? root.amount : '')
+    setRootAmount(root ? parseFloat(root.amount) || 0 : 0)
     setRootDialogOpen(true)
   }
 
   const saveRootMut = useMutation({
     mutationFn: () =>
       root
-        ? budgetApi.updateAllocation(root.id, { amount: parseFloat(rootAmount) || 0 })
+        ? budgetApi.updateAllocation(root.id, { amount: rootAmount })
         : budgetApi.createAllocation(periodId, {
             department_id: null,
             parent_allocation_id: null,
-            amount: parseFloat(rootAmount) || 0,
+            amount: rootAmount,
           }),
     onSuccess: () => {
       setRootDialogOpen(false)
@@ -76,14 +76,14 @@ export function BudgetAllocationPanel({ periodId }: Props) {
   const [deptDialogOpen, setDeptDialogOpen] = useState(false)
   const [editingRow, setEditingRow] = useState<BudgetAllocation | null>(null)
   const [deptId, setDeptId] = useState<number | null>(null)
-  const [deptAmount, setDeptAmount] = useState('')
+  const [deptAmount, setDeptAmount] = useState(0)
   const [deptNotes, setDeptNotes] = useState('')
   const searchDept = useCallback((q: string) => departemenApi.search(q), [])
 
   const openAddDeptDialog = () => {
     setEditingRow(null)
     setDeptId(null)
-    setDeptAmount('')
+    setDeptAmount(0)
     setDeptNotes('')
     setDeptDialogOpen(true)
   }
@@ -91,17 +91,15 @@ export function BudgetAllocationPanel({ periodId }: Props) {
   const openEditDeptDialog = (row: BudgetAllocation) => {
     setEditingRow(row)
     setDeptId(row.department_id)
-    setDeptAmount(row.amount)
+    setDeptAmount(parseFloat(row.amount) || 0)
     setDeptNotes(row.notes ?? '')
     setDeptDialogOpen(true)
   }
 
   const saveDeptMut = useMutation({
     mutationFn: () => {
-      const amount = parseFloat(deptAmount) || 0
-
       if (editingRow) {
-        return budgetApi.updateAllocation(editingRow.id, { amount, notes: deptNotes || null })
+        return budgetApi.updateAllocation(editingRow.id, { amount: deptAmount, notes: deptNotes || null })
       }
 
       if (!root) throw new Error('Pagu perusahaan belum dibuat.')
@@ -109,7 +107,7 @@ export function BudgetAllocationPanel({ periodId }: Props) {
       return budgetApi.createAllocation(periodId, {
         department_id: deptId as number,
         parent_allocation_id: root.id,
-        amount,
+        amount: deptAmount,
         notes: deptNotes || undefined,
       })
     },
@@ -210,9 +208,10 @@ export function BudgetAllocationPanel({ periodId }: Props) {
               Pagu ini jadi batas atas total pagu seluruh departemen di periode ini.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-1 pt-1">
-            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jumlah</Label>
-            <Input type="number" min={0} value={rootAmount} onChange={(e) => setRootAmount(e.target.value)} className="tabular-nums" />
+          <div className="pt-1">
+            <FormField label="Jumlah" htmlFor="root-amount">
+              <AmountInput id="root-amount" value={rootAmount} onChange={setRootAmount} ariaLabel="Pagu perusahaan" />
+            </FormField>
           </div>
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" className="h-8 text-[13px]" onClick={() => setRootDialogOpen(false)}>
@@ -236,22 +235,19 @@ export function BudgetAllocationPanel({ periodId }: Props) {
             <DialogTitle className="text-[15px]">{editingRow ? 'Ubah Pagu Departemen' : 'Tambah Pagu Departemen'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-1">
-            <div className="space-y-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Departemen</Label>
+            <FormField label="Departemen">
               {editingRow ? (
                 <p className="text-[13px] text-[#1e293b]">{editingRow.department?.name}</p>
               ) : (
                 <SearchableSelect value={deptId} onChange={setDeptId} onSearch={searchDept} placeholder="Cari departemen..." size="sm" />
               )}
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jumlah</Label>
-              <Input type="number" min={0} value={deptAmount} onChange={(e) => setDeptAmount(e.target.value)} className="tabular-nums" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan (opsional)</Label>
+            </FormField>
+            <FormField label="Jumlah" htmlFor="dept-amount">
+              <AmountInput id="dept-amount" value={deptAmount} onChange={setDeptAmount} ariaLabel="Pagu departemen" />
+            </FormField>
+            <FormField label="Catatan (opsional)">
               <Textarea value={deptNotes} onChange={(e) => setDeptNotes(e.target.value)} rows={2} className="text-[12px]" />
-            </div>
+            </FormField>
           </div>
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" className="h-8 text-[13px]" onClick={() => setDeptDialogOpen(false)}>

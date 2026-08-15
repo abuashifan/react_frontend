@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { budgetApi } from '../services/budgetApi'
+import { BUDGET_PERIODS_QUERY_KEY } from './useBudgetPeriods'
 import type { BudgetSubmissionListParams } from '../types/budget.types'
 
 export function useBudgetSubmissionList(params: BudgetSubmissionListParams) {
@@ -14,7 +15,7 @@ export function useBudgetSubmissionMutations() {
   // Membuat submission mengubah daftar DAN jumlah pengajuan di daftar periode.
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ['budget', 'submissions'] })
-    void qc.invalidateQueries({ queryKey: ['budget', 'periods'] })
+    void qc.invalidateQueries({ queryKey: BUDGET_PERIODS_QUERY_KEY })
   }
 
   const create = useMutation({

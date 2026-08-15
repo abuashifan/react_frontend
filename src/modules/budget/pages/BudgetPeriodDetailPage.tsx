@@ -23,7 +23,18 @@ import type { ColumnDef, PaginationState } from '@/components/shared/table/DataT
 
 type Tab = 'allocations' | 'submissions' | 'consolidation'
 
+/**
+ * Sama seperti `BudgetSubmissionPage`: satu komponen melayani semua id di
+ * `/budget/periods/:id`, jadi tanpa `key` state tab aktif dan isian dialog di
+ * `BudgetAllocationPanel` ikut terbawa saat berpindah periode.
+ */
 export default function BudgetPeriodDetailPage() {
+  const { id } = useParams<{ id: string }>()
+
+  return <BudgetPeriodDetailPageContent key={id ?? 'none'} />
+}
+
+function BudgetPeriodDetailPageContent() {
   const { id } = useParams<{ id: string }>()
   const periodId = Number(id)
   const { openRecordTab } = useRecordTab()

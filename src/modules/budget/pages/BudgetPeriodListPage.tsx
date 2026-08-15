@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -10,8 +10,10 @@ import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useRecordTab } from '@/hooks/useRecordTab'
+import { useListSort } from '@/hooks/useListSort'
 import { formatDate } from '@/lib/utils'
 import { budgetApi } from '../services/budgetApi'
+import { useBudgetPeriods } from '../hooks/useBudgetPeriods'
 import type { BudgetPeriod, BudgetPeriodStatus } from '../types/budget.types'
 import type { ColumnDef, PaginationState } from '@/components/shared/table/DataTable'
 
@@ -34,53 +36,46 @@ export default function BudgetPeriodListPage() {
   const [filterStatus, setFilterStatus] = useState<BudgetPeriodStatus | undefined>(undefined)
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 25 })
 
-  const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['budget', 'periods'],
-    queryFn: budgetApi.listPeriods,
-  })
+  // Sorting dilakukan server-side; nilai `key` harus cocok dengan allowlist
+  // `$listSortable` di BudgetPeriodService.
+  const { sort, toggleSort, setSort, sortParams } = useListSort({ key: 'fiscal_year', direction: 'desc' })
 
-  // Satu pagu & periode aktif dalam satu waktu — tombol "Buat Pagu" dikunci
-  // selama masih ada yang `open`, supaya tidak ada dua periode beririsan yang
-  // bikin transaksi bisa dibandingkan ke dua anggaran sekaligus (backend
-  // menolak ini juga lewat BudgetPeriodService::assertNoOverlap, tapi
-  // menunggu submit gagal untuk tahu itu bukan pengalaman yang baik).
-  const openPeriod = (data?.data ?? []).find((p) => p.status === 'open')
-
-  // GET /budget-periods mengembalikan seluruh koleksi sekaligus — service-nya
-  // tidak memakai AppliesListQuery. Karena semua baris memang sudah ada di
-  // klien, menyaring dan memotong halaman di sini berlaku ke seluruh data,
-  // bukan hanya satu halaman. Itu membedakannya dari pola yang dibuang
-  // list-query-pushdown, di mana filter browser hanya mengenai 25 baris teratas.
-  const periods: BudgetPeriod[] = useMemo(() => {
-    const rows = data?.data ?? []
-    const keyword = search.trim().toLowerCase()
-
-    return rows.filter((p) => {
-      if (filterStatus !== undefined && p.status !== filterStatus) return false
-      if (keyword === '') return true
-      return p.name.toLowerCase().includes(keyword) || String(p.fiscal_year).includes(keyword)
-    })
-  }, [data, search, filterStatus])
-
-  // Kembali ke halaman 1 saat filter berubah, supaya tidak mendarat di halaman
-  // kosong setelah hasilnya menyusut.
-  const filterKey = `${search}|${String(filterStatus)}`
+  // Seluruh filter dikirim ke server (sebelumnya disaring & dipotong di browser
+  // atas koleksi penuh). Karena itu perubahannya harus mengembalikan halaman ke
+  // 1 — memfilter dari halaman jauh akan mendarat di daftar kosong.
+  const filterKey = `${search}|${String(filterStatus)}|${sort?.key ?? ''}|${sort?.direction ?? ''}`
   const [prevFilters, setPrevFilters] = useState('')
   if (filterKey !== prevFilters) {
     setPrevFilters(filterKey)
     setPagination((s) => ({ ...s, pageIndex: 0 }))
   }
 
-  const pageRows = periods.slice(
-    pagination.pageIndex * pagination.pageSize,
-    (pagination.pageIndex + 1) * pagination.pageSize,
-  )
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['budget', 'periods', 'list', { search, filterStatus, pagination, sort }],
+    queryFn: () =>
+      budgetApi.listPeriodsPaginated({
+        page: pagination.pageIndex + 1,
+        per_page: pagination.pageSize,
+        search: search || undefined,
+        status: filterStatus,
+        ...sortParams,
+      }),
+  })
+
+  const rows = data?.data ?? []
+
+  // Tombol "Buat Pagu" dikunci selama masih ada pagu `open`, dan itu harus
+  // dinilai dari SELURUH data — bukan dari `rows` halaman aktif, yang bisa saja
+  // sedang difilter ke "Ditutup" sehingga pagu terbuka tidak ikut terlihat.
+  const { periods: allPeriods } = useBudgetPeriods()
+  const openPeriod = allPeriods.find((p) => p.status === 'open')
 
   const columns: ColumnDef<BudgetPeriod>[] = [
     {
       id: 'name',
       header: 'Nama',
       size: 220,
+      sortable: true,
       meta: { sticky: true, stickyLeft: 0, className: 'font-medium text-[#5c9ead]' },
       cell: ({ original }) => original.name,
     },
@@ -88,19 +83,22 @@ export default function BudgetPeriodListPage() {
       id: 'fiscal_year',
       header: 'Tahun',
       size: 90,
+      sortable: true,
       meta: { className: 'tabular-nums' },
       cell: ({ original }) => original.fiscal_year,
     },
     {
-      id: 'range',
+      id: 'period_from',
       header: 'Periode',
       size: 220,
+      sortable: true,
       cell: ({ original }) => `${formatDate(original.period_from)} — ${formatDate(original.period_to)}`,
     },
     {
       id: 'status',
       header: 'Status',
       size: 100,
+      sortable: true,
       cell: ({ original }) => (
         <span className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium ${STATUS_CLASSES[original.status]}`}>
           {STATUS_LABELS[original.status]}
@@ -119,13 +117,17 @@ export default function BudgetPeriodListPage() {
   const sidebar = (
     <FilterSidebar
       activeCount={filterStatus !== undefined ? 1 : 0}
-      onReset={() => setFilterStatus(undefined)}
+      onReset={() => {
+        setFilterStatus(undefined)
+        setSort({ key: 'fiscal_year', direction: 'desc' })
+      }}
     >
       <div className="border-b border-[#f1f5f9] px-4 py-3">
         <ListSearchBar
           value={search}
           onChange={setSearch}
           placeholder="Cari nama atau tahun anggaran..."
+          hint="Mencari di nama pagu dan tahun fiskal."
           className="w-full max-w-none"
         />
       </div>
@@ -154,11 +156,11 @@ export default function BudgetPeriodListPage() {
               <TooltipTrigger asChild>
                 <span tabIndex={openPeriod ? 0 : undefined}>
                   <Button
-                    className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]"
+                    className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]"
                     disabled={!!openPeriod}
                     onClick={() => openRecordTab({ label: 'Pagu Baru', path: '/budget/periods/new' })}
                   >
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Buat Pagu
+                    <Plus className="mr-1 h-3.5 w-3.5" /> Buat Pagu
                   </Button>
                 </span>
               </TooltipTrigger>
@@ -173,13 +175,15 @@ export default function BudgetPeriodListPage() {
       }
     >
       <DataTable
-        data={pageRows}
+        data={rows}
         columns={columns}
-        totalRows={periods.length}
+        totalRows={data?.meta.total ?? 0}
         isLoading={isLoading}
         isFetching={isFetching}
         pagination={pagination}
         onPaginationChange={setPagination}
+        sort={sort}
+        onSortChange={toggleSort}
         onRowClick={(row) => openRecordTab({ label: row.name, path: `/budget/periods/${row.id}` })}
         emptyTitle="Belum ada pagu anggaran"
         emptyDescription="Buat pagu anggaran untuk mulai mengumpulkan pengajuan per departemen."

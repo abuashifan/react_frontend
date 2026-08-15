@@ -1,19 +1,18 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { ChevronRight, Download } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { FormField } from '@/components/shared/form/FormField'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { cn, formatCurrency } from '@/lib/utils'
 import { exportCsv } from '@/lib/exportCsv'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { proyekApi } from '@/modules/master-data/services/proyekApi'
-import { budgetApi } from '../services/budgetApi'
+import { BudgetPeriodSelect } from '../components/BudgetPeriodSelect'
 import { useBudgetAnalysis } from '../hooks/useBudgetAnalysis'
 import { resolvePreset } from '../constants/analysisPresets'
 import type {
@@ -78,7 +77,7 @@ function BudgetAnalysisPageContent() {
   const [searchParams] = useSearchParams()
   const preset = useMemo(() => resolvePreset(searchParams.get('preset')), [searchParams])
 
-  const [periodIdStr, setPeriodIdStr] = useState('')
+  const [periodId, setPeriodId] = useState<number | null>(null)
   const [groupBy, setGroupBy] = useState<BudgetGroupBy[]>(preset?.groupBy ?? ['account'])
   const [deptId, setDeptId] = useState<number | null>(null)
   const [projectId, setProjectId] = useState<number | null>(null)
@@ -93,12 +92,6 @@ function BudgetAnalysisPageContent() {
 
   const searchDept = useCallback((q: string) => departemenApi.search(q), [])
   const searchProject = useCallback((q: string) => proyekApi.search(q), [])
-
-  const { data: periodsData } = useQuery({
-    queryKey: ['budget', 'periods'],
-    queryFn: budgetApi.listPeriods,
-  })
-  const periods = useMemo(() => periodsData?.data ?? [], [periodsData])
 
   // Drill-down bukan query terpisah: ia panggilan ulang dengan `group_by` lebih
   // panjang dan nilai baris induk sebagai filter. Karena itu angkanya konsisten
@@ -149,10 +142,10 @@ function BudgetAnalysisPageContent() {
   const varianceLabel = applied?.direction === 'expense' ? 'Sisa Anggaran' : 'Selisih'
 
   const handleApply = () => {
-    if (!periodIdStr) return
+    if (!periodId) return
     setDrill([])
     setApplied({
-      budget_period_id: Number(periodIdStr),
+      budget_period_id: periodId,
       group_by: groupBy,
       mode,
       version,
@@ -226,69 +219,55 @@ function BudgetAnalysisPageContent() {
   const toolbar = (
     <div className="space-y-2 px-4 py-2.5 lg:px-6">
       <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <Label htmlFor="analysis-period" className="text-[11px] text-[#64748b]">
-            Periode Anggaran <span className="text-red-500">*</span>
-          </Label>
-          <Select value={periodIdStr} onValueChange={setPeriodIdStr}>
-            <SelectTrigger id="analysis-period" className="h-8 w-52 text-[12px]">
-              <SelectValue placeholder="Pilih periode..." />
-            </SelectTrigger>
-            <SelectContent>
-              {periods.map((period) => (
-                <SelectItem key={period.id} value={String(period.id)}>{period.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <BudgetPeriodSelect
+          id="analysis-period"
+          value={periodId}
+          onChange={setPeriodId}
+          required
+          emptyHint="Belum ada pagu anggaran."
+        />
 
-        <div className="w-40">
-          <Label className="text-[11px] text-[#64748b]">Cost Center</Label>
+        <FormField label="Cost Center" className="w-40">
           <SearchableSelect value={deptId} onSearch={searchDept} onChange={setDeptId} placeholder="Semua" size="sm" />
-        </div>
+        </FormField>
 
-        <div className="w-40">
-          <Label className="text-[11px] text-[#64748b]">Proyek</Label>
+        <FormField label="Proyek" className="w-40">
           <SearchableSelect value={projectId} onSearch={searchProject} onChange={setProjectId} placeholder="Semua" size="sm" />
-        </div>
+        </FormField>
 
-        <div>
-          <Label htmlFor="analysis-direction" className="text-[11px] text-[#64748b]">Arah</Label>
+        <FormField label="Arah" htmlFor="analysis-direction" className="w-32">
           <Select value={direction} onValueChange={(v) => setDirection(v as typeof direction)}>
-            <SelectTrigger id="analysis-direction" className="h-8 w-32 text-[12px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger id="analysis-direction" className="h-8 text-[12px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Semua</SelectItem>
               <SelectItem value="revenue">Pendapatan</SelectItem>
               <SelectItem value="expense">Beban</SelectItem>
             </SelectContent>
           </Select>
-        </div>
+        </FormField>
 
-        <div>
-          <Label htmlFor="analysis-mode" className="text-[11px] text-[#64748b]">Mode</Label>
+        <FormField label="Mode" htmlFor="analysis-mode" className="w-32">
           <Select value={mode} onValueChange={(v) => setMode(v as typeof mode)}>
-            <SelectTrigger id="analysis-mode" className="h-8 w-32 text-[12px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger id="analysis-mode" className="h-8 text-[12px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="summary">Ringkas</SelectItem>
               <SelectItem value="variance">Variance</SelectItem>
               <SelectItem value="detail">Rinci</SelectItem>
             </SelectContent>
           </Select>
-        </div>
+        </FormField>
 
-        <div>
-          <Label htmlFor="analysis-version" className="text-[11px] text-[#64748b]">Versi</Label>
+        <FormField label="Versi" htmlFor="analysis-version" className="w-32">
           <Select value={version} onValueChange={setVersion}>
-            <SelectTrigger id="analysis-version" className="h-8 w-32 text-[12px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger id="analysis-version" className="h-8 text-[12px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="active">Versi Aktif</SelectItem>
               <SelectItem value="all">Semua Versi</SelectItem>
             </SelectContent>
           </Select>
-        </div>
+        </FormField>
 
-        <div>
-          <Label htmlFor="analysis-allocation" className="text-[11px] text-[#64748b]">Alokasi</Label>
+        <FormField label="Alokasi" htmlFor="analysis-allocation" className="w-40">
           <Select
             value={allocation}
             onValueChange={(v) => setAllocation(v as typeof allocation)}
@@ -297,25 +276,23 @@ function BudgetAnalysisPageContent() {
             // daripada kontrol yang jelas dinonaktifkan.
             disabled={!groupBy.includes('period')}
           >
-            <SelectTrigger id="analysis-allocation" className="h-8 w-40 text-[12px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger id="analysis-allocation" className="h-8 text-[12px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="annual_row">Tahunan apa adanya</SelectItem>
               <SelectItem value="even">Ratakan per bulan</SelectItem>
             </SelectContent>
           </Select>
-        </div>
+        </FormField>
 
-        <div>
-          <Label className="text-[11px] text-[#64748b]">Dari</Label>
-          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 w-36 text-[12px]" />
-        </div>
+        <FormField label="Dari" className="w-36">
+          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 text-[12px]" />
+        </FormField>
 
-        <div>
-          <Label className="text-[11px] text-[#64748b]">Sampai</Label>
-          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 w-36 text-[12px]" />
-        </div>
+        <FormField label="Sampai" className="w-36">
+          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 text-[12px]" />
+        </FormField>
 
-        <Button size="sm" onClick={handleApply} disabled={!periodIdStr || isLoading}>
+        <Button size="sm" onClick={handleApply} disabled={!periodId || isLoading}>
           {isLoading ? 'Memuat...' : 'Tampilkan'}
         </Button>
 

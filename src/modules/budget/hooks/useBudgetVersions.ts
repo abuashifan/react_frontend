@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { budgetApi } from '../services/budgetApi'
+import { BUDGET_PERIODS_QUERY_KEY } from './useBudgetPeriods'
 
 export function useBudgetVersions(submissionId: number | undefined) {
   return useQuery({
@@ -22,7 +23,7 @@ export function useBudgetRevision(submissionId: number | undefined) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['budget', 'versions', submissionId] })
       void queryClient.invalidateQueries({ queryKey: ['budget', 'submission', submissionId] })
-      void queryClient.invalidateQueries({ queryKey: ['budget', 'periods'] })
+      void queryClient.invalidateQueries({ queryKey: BUDGET_PERIODS_QUERY_KEY })
     },
   })
 

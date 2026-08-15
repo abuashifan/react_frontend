@@ -1,7 +1,8 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { AmountInput } from '@/components/shared/form/AmountInput'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
 import { coaApi } from '@/modules/master-data/services/coaApi'
@@ -57,6 +58,26 @@ function linesToState(lines: BudgetLine[]): LineState[] {
 export function BudgetLineEditor({ submissionId, lines, readonly = false, onSaveSuccess }: Props) {
   const qc = useQueryClient()
   const [rows, setRows] = useState<LineState[]>(() => linesToState(lines))
+
+  /**
+   * `useState` di atas hanya berjalan sekali saat mount, sehingga baris yang
+   * ditampilkan bisa tertinggal dari server: setelah "Simpan Baris" backend
+   * mengembalikan bentuk kanonik (mis. `direction` terisi, baris tanpa akun
+   * dibuang), dan tanpa sinkronisasi ini layar tetap menampilkan bentuk lama.
+   *
+   * Yang dibandingkan adalah SIDIK JARI data server, bukan identitas prop.
+   * `invalidateQueries` pada aksi persetujuan membuat objek `lines` baru dengan
+   * isi yang sama persis — menyeed ulang di situ akan membuang baris yang
+   * sedang diketik user tapi belum disimpan. Membandingkan isinya membuat
+   * re-seed hanya terjadi saat baris di server benar-benar berubah.
+   */
+  const serverSignature = useMemo(() => JSON.stringify(linesToState(lines)), [lines])
+  const lastSyncedRef = useRef(serverSignature)
+  useEffect(() => {
+    if (lastSyncedRef.current === serverSignature) return
+    lastSyncedRef.current = serverSignature
+    setRows(linesToState(lines))
+  }, [serverSignature, lines])
 
   const searchCoa = useCallback((q: string) => coaApi.search(q), [])
   const searchDepartment = useCallback((q: string) => departemenApi.search(q), [])
@@ -228,12 +249,15 @@ export function BudgetLineEditor({ submissionId, lines, readonly = false, onSave
         isReadOnly ? (
           <span className="text-[12px] tabular-nums">{formatCurrency(parseFloat(item.amount) || 0)}</span>
         ) : (
-          <Input
-            type="number"
-            min={0}
+          // `AmountInput` menggantikan `<Input type="number">`: nominal anggaran
+          // umumnya berjuta-juta dan tanpa pemisah ribuan praktis tidak terbaca
+          // di layar tablet. Nilainya tetap disimpan sebagai string karena payload
+          // baris memakai `parseFloat` saat dikirim.
+          <AmountInput
             value={item.amount}
-            onChange={(e) => onUpdate('amount', e.target.value)}
-            className="h-8 text-right text-[12px] tabular-nums"
+            onChange={(v) => onUpdate('amount', String(v))}
+            ariaLabel="Nominal anggaran"
+            className="h-8 text-right text-[12px]"
           />
         ),
     },

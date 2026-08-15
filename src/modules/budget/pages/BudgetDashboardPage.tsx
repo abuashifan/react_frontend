@@ -1,11 +1,8 @@
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn, formatCurrency } from '@/lib/utils'
-import { budgetApi } from '../services/budgetApi'
+import { BudgetPeriodSelect } from '../components/BudgetPeriodSelect'
 import { useBudgetAnalysis } from '../hooks/useBudgetAnalysis'
 import type { BudgetAnalysisParams } from '../types/budget.types'
 
@@ -14,17 +11,11 @@ import type { BudgetAnalysisParams } from '../types/budget.types'
  * Datanya dari mesin analisis yang sama — bukan agregasi terpisah.
  */
 export default function BudgetDashboardPage() {
-  const [periodIdStr, setPeriodIdStr] = useState('')
-
-  const { data: periodsData } = useQuery({
-    queryKey: ['budget', 'periods'],
-    queryFn: budgetApi.listPeriods,
-  })
-  const periods = useMemo(() => periodsData?.data ?? [], [periodsData])
+  const [periodId, setPeriodId] = useState<number | null>(null)
 
   const params = useMemo<BudgetAnalysisParams | null>(
-    () => (periodIdStr ? { budget_period_id: Number(periodIdStr), group_by: ['department'] } : null),
-    [periodIdStr],
+    () => (periodId ? { budget_period_id: periodId, group_by: ['department'] } : null),
+    [periodId],
   )
 
   const { data, isLoading } = useBudgetAnalysis(params)
@@ -47,19 +38,12 @@ export default function BudgetDashboardPage() {
 
   const toolbar = (
     <div className="flex flex-wrap items-end gap-3 px-4 py-2.5 lg:px-6">
-      <div>
-        <Label htmlFor="dashboard-period" className="text-[11px] text-[#64748b]">Periode Anggaran</Label>
-        <Select value={periodIdStr} onValueChange={setPeriodIdStr}>
-          <SelectTrigger id="dashboard-period" className="h-8 w-52 text-[12px]">
-            <SelectValue placeholder="Pilih periode..." />
-          </SelectTrigger>
-          <SelectContent>
-            {periods.map((period) => (
-              <SelectItem key={period.id} value={String(period.id)}>{period.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <BudgetPeriodSelect
+        id="dashboard-period"
+        value={periodId}
+        onChange={setPeriodId}
+        emptyHint="Belum ada pagu anggaran."
+      />
     </div>
   )
 
