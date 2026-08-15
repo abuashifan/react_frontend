@@ -32,7 +32,13 @@ export interface LineItemColumn<T> {
 interface LineItemsTableProps<T> {
   items: T[]
   columns: LineItemColumn<T>[]
-  onAdd: () => void
+  /**
+   * Tombol "+ Tambah Item" bawaan. Kalau tidak diisi, tombolnya tidak dirender
+   * sama sekali — dipakai form yang menambah baris dari kontrol lain (mis.
+   * `SearchableSelect` di atas tabel), sehingga barisnya datang sudah terisi
+   * data alih-alih kosong.
+   */
+  onAdd?: () => void
   onRemove: (index: number) => void
   onUpdate: (index: number, field: string, value: unknown) => void
   getSubtotal?: (item: T) => number
@@ -53,6 +59,17 @@ interface LineItemsTableProps<T> {
    * tanpa itu tabel akan punya dua border yang tumpang tindih.
    */
   bordered?: boolean
+  /**
+   * Baris ringkasan opsional di bawah baris terakhir (mis. Total). Callback
+   * mengembalikan satu atau beberapa `<tr>`; komponen hanya menyediakan
+   * `<tfoot>` beserta garis pemisahnya — isinya sepenuhnya milik pemanggil,
+   * sama seperti `column.render`.
+   *
+   * `cellCount` adalah jumlah sel per baris (kolom `#`, semua kolom data,
+   * Subtotal bila ada, dan kolom aksi) supaya `colSpan` bisa dihitung tanpa
+   * menebak jumlah kolom internal.
+   */
+  footer?: (items: T[], cellCount: number) => React.ReactNode
 }
 
 /** Reusable horizontal table for transaction line items. */
@@ -69,6 +86,7 @@ export function LineItemsTable<T>({
   currency = 'IDR',
   errors,
   bordered = false,
+  footer,
 }: LineItemsTableProps<T>) {
   const columnCount = columns.length + (getSubtotal ? 3 : 2)
   const dividerClass = bordered ? 'border-r border-[#e2e8f0] last:border-r-0' : undefined
@@ -108,7 +126,7 @@ export function LineItemsTable<T>({
             {items.length === 0 ? (
               <tr>
                 <td
-                  colSpan={columns.length + (getSubtotal ? 3 : 2)}
+                  colSpan={columnCount}
                   className="px-3 py-8 text-center text-[13px] text-[#94a3b8]"
                 >
                   {emptyLabel}
@@ -199,10 +217,16 @@ export function LineItemsTable<T>({
               })
             )}
           </tbody>
+
+          {footer && (
+            <tfoot className="border-t border-[#d9e2e5] bg-[#f8fafc]">
+              {footer(items, columnCount)}
+            </tfoot>
+          )}
         </table>
       </div>
 
-      {!isReadOnly && (
+      {!isReadOnly && onAdd && (
         <Button
           type="button"
           variant="ghost"

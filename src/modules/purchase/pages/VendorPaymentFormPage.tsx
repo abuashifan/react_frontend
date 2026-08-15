@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
+import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
 import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
@@ -91,6 +92,40 @@ function VendorPaymentFormPageContent() {
       setBillLines((prev) => [...prev, { vendor_bill_id: bill.vendor_bill_id, bill_number: bill.bill_number, balance_due: bill.balance_due, amount: bill.balance_due }])
     }
   }
+
+  const billColumns: LineItemColumn<BillLine>[] = [
+    {
+      id: 'bill_number',
+      header: 'Nomor Bill',
+      width: 180,
+      render: ({ item }) => <span className="text-[12px] font-medium text-[#5c9ead]">{item.bill_number}</span>,
+    },
+    {
+      id: 'balance_due',
+      header: 'Sisa Tagihan',
+      width: 140,
+      align: 'right',
+      render: ({ item }) => <span className="text-[12px] tabular-nums">{formatCurrency(item.balance_due)}</span>,
+    },
+    {
+      id: 'amount',
+      header: 'Dibayar',
+      width: 140,
+      align: 'right',
+      render: ({ item, isReadOnly, onUpdate }) =>
+        isReadOnly ? (
+          <span className="text-[12px] tabular-nums">{formatCurrency(item.amount)}</span>
+        ) : (
+          <Input
+            type="number"
+            min={0}
+            value={item.amount}
+            onChange={(e) => onUpdate('amount', Number(e.target.value))}
+            className="h-8 text-right text-[12px] tabular-nums"
+          />
+        ),
+    },
+  ]
 
 
   // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
@@ -209,49 +244,27 @@ function VendorPaymentFormPageContent() {
                 />
               )}
             </div>
-            <div className="overflow-auto rounded border border-[#e2e8f0]">
-              <table className="w-full text-[12px]">
-                <thead className="bg-[#f8fafc]">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-semibold text-[#64748b]">Nomor Bill</th>
-                    <th className="px-3 py-2 text-right font-semibold text-[#64748b]">Sisa Tagihan</th>
-                    <th className="px-3 py-2 text-right font-semibold text-[#64748b]">Dibayar</th>
-                    {isCreate && <th className="w-8 px-2 py-2" />}
-                  </tr>
-                </thead>
-                <tbody>
-                  {billLines.length === 0 ? (
-                    <tr><td colSpan={4} className="py-6 text-center text-[#94a3b8]">Belum ada tagihan dipilih</td></tr>
-                  ) : billLines.map((line, i) => (
-                    <tr key={line.vendor_bill_id} className="border-t border-[#f1f5f9]">
-                      <td className="px-3 py-2 font-medium text-[#5c9ead]">{line.bill_number}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(line.balance_due)}</td>
-                      <td className="px-3 py-2 text-right">
-                        <Input
-                          type="number" value={line.amount}
-                          onChange={(e) => setBillLines((prev) => prev.map((l, idx) => idx === i ? { ...l, amount: Number(e.target.value) } : l))}
-                          disabled={!isCreate} className="h-7 w-28 text-[12px] tabular-nums text-right" min={0}
-                        />
-                      </td>
-                      {isCreate && (
-                        <td className="px-2 py-2">
-                          <button type="button" onClick={() => setBillLines((prev) => prev.filter((_, idx) => idx !== i))} className="text-[#94a3b8] hover:text-red-500">×</button>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-                {billLines.length > 0 && (
-                  <tfoot className="border-t border-[#e2e8f0] bg-[#f8fafc]">
-                    <tr>
-                      <td colSpan={2} className="px-3 py-2 font-semibold text-[#64748b]">Total</td>
-                      <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatCurrency(totalAmount)}</td>
-                      {isCreate && <td />}
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
-            </div>
+            {/* Baris ditambahkan lewat `SearchableSelect` "Tambah tagihan..." di atas
+                (bukan baris kosong), jadi tombol "+ Tambah Item" bawaan tabel tidak dipakai. */}
+            <LineItemsTable<BillLine>
+              items={billLines}
+              columns={billColumns}
+              onRemove={(index) => setBillLines((prev) => prev.filter((_, idx) => idx !== index))}
+              onUpdate={(index, field, value) => setBillLines((prev) => prev.map((l, idx) => (idx === index ? { ...l, [field]: value } : l)))}
+              isReadOnly={!isCreate}
+              emptyLabel="Belum ada tagihan dipilih"
+              footer={billLines.length === 0 ? undefined : (_items, cellCount) => (
+                <tr>
+                  <td colSpan={cellCount - 2} className="px-2.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
+                    Total
+                  </td>
+                  <td className="px-2.5 py-2 text-right text-[13px] font-semibold tabular-nums text-[#24323a]">
+                    {formatCurrency(totalAmount)}
+                  </td>
+                  <td />
+                </tr>
+              )}
+            />
           </div>
         </div>
       </FormLayout>

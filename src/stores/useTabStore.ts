@@ -24,6 +24,7 @@ export type ModuleKey =
   | 'purchase'
   | 'inventory'
   | 'fixed-assets'
+  | 'budget'
   | 'reports'
   | 'settings'
 

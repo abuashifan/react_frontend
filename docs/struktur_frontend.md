@@ -402,13 +402,25 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____BudgetConsolidationTable.tsx
 | | | | |____BudgetLineEditor.tsx
 | | | | |____BudgetStatusBadge.tsx
+| | | |____hooks/
+| | | | |____useBudgetAnalysis.ts
+| | | | |____useBudgetVersions.ts
+| | | | |____useCashBudget.ts
+| | | | |____useProjectFinancials.ts
 | | | |____pages/
+| | | | |____BudgetAnalysisPage.tsx
 | | | | |____BudgetComparisonPage.tsx
+| | | | |____BudgetDashboardPage.tsx
 | | | | |____BudgetPeriodDetailPage.tsx
 | | | | |____BudgetPeriodFormPage.tsx
 | | | | |____BudgetPeriodListPage.tsx
 | | | | |____BudgetSubmissionPage.tsx
+| | | | |____BudgetVersionHistoryPage.tsx
+| | | | |____CashBudgetPage.tsx
+| | | | |____ProjectFinancialSummaryPage.tsx
 | | | |____routes.tsx
+| | | |____schemas/
+| | | | |____budgetSchema.ts
 | | | |____services/
 | | | | |____budgetApi.ts
 | | | |____types/

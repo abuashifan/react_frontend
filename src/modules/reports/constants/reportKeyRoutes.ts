@@ -13,6 +13,17 @@ export const REPORT_KEY_META: Record<string, { path: string; label: string }> = 
   'retained-earnings': { path: '/reports/retained-earnings', label: 'Laba Ditahan' },
   'equity-changes': { path: '/reports/equity-changes', label: 'Perubahan Ekuitas' },
   'financial-summary': { path: '/reports/financial-summary', label: 'Ringkasan Keuangan' },
+  // Seluruh view anggaran mendarat di satu halaman analisis; yang membedakan
+  // hanya `group_by`/`direction` yang dibawa parameter tersimpan.
+  'budget-analysis': { path: '/budget/analysis', label: 'Analisis Anggaran' },
+  'budget-by-account': { path: '/budget/analysis', label: 'Anggaran per Akun' },
+  'budget-by-cost-center': { path: '/budget/analysis', label: 'Anggaran per Cost Center' },
+  'budget-by-project': { path: '/budget/analysis', label: 'Anggaran per Proyek' },
+  'budget-by-period': { path: '/budget/analysis', label: 'Anggaran per Bulan' },
+  'budget-utilization': { path: '/budget/analysis', label: 'Serapan Anggaran' },
+  'budget-variance': { path: '/budget/analysis', label: 'Analisis Selisih Anggaran' },
+  'budget-cash': { path: '/budget/cash', label: 'Cash Budget' },
+  'budget-project-financials': { path: '/budget/projects', label: 'Finansial Proyek' },
   journals: { path: '/reports/journals', label: 'Semua Jurnal' },
   'account-ledger': { path: '/reports/account-ledger', label: 'Buku Besar per Akun' },
   'account-statement': { path: '/reports/account-statement', label: 'Mutasi Rekening' },

@@ -7,6 +7,11 @@ import type {
   BudgetComparison,
   BudgetParams,
   BudgetLineInput,
+  BudgetAnalysis,
+  BudgetAnalysisParams,
+  BudgetVersion,
+  CashBudget,
+  ProjectFinancialSummary,
 } from '../types/budget.types'
 
 // Tipe hasil ditaruh di generic kedua http.*, bukan sebagai anotasi return.
@@ -44,7 +49,7 @@ export const budgetApi = {
       { params },
     ),
 
-  createSubmission: (periodId: number, data: { department_id: number; notes?: string }) =>
+  createSubmission: (periodId: number, data: { department_id: number | null; notes?: string }) =>
     http.post<unknown, ApiResponse<BudgetSubmission>>(
       `/budget-periods/${periodId}/submissions`,
       data,
@@ -88,7 +93,45 @@ export const budgetApi = {
       { params },
     ),
 
+  // --- Versioning (fase 5) ---
+  getVersions: (id: number) =>
+    http.get<unknown, ApiResponse<BudgetVersion[]>>(`/budget-submissions/${id}/versions`),
+
+  revise: (id: number, revision_reason: string) =>
+    http.post<unknown, ApiResponse<BudgetSubmission>>(`/budget-submissions/${id}/revise`, {
+      revision_reason,
+    }),
+
+  // --- Mesin analisis (fase 6) ---
+  // Semua endpoint di bawah ini preset di atas satu service backend; bedanya
+  // hanya `group_by`. Report key-nya dipisah karena katalog laporan butuh id
+  // diskrit untuk fitur simpan laporan.
+  getAnalysis: (params: BudgetAnalysisParams) =>
+    http.get<unknown, ApiResponse<BudgetAnalysis>>('/budget/analysis', { params }),
+
+  getSummary: (params: BudgetAnalysisParams) =>
+    http.get<unknown, ApiResponse<BudgetAnalysis>>('/budget/summary', { params }),
+
+  getCashBudget: (params: BudgetParams) =>
+    http.get<unknown, ApiResponse<CashBudget>>('/budget/cash', { params }),
+
+  getProjectSummary: (projectId: number, params: BudgetParams) =>
+    http.get<unknown, ApiResponse<ProjectFinancialSummary>>(
+      `/budget/projects/${projectId}/summary`,
+      { params },
+    ),
+
+  getProjectCashFlow: (projectId: number, params: BudgetParams) =>
+    http.get<unknown, ApiResponse<CashBudget>>(`/budget/projects/${projectId}/cash-flow`, {
+      params,
+    }),
+
   // --- Reports ---
   getComparison: (params: BudgetParams) =>
     http.get<unknown, ApiResponse<BudgetComparison>>('/reports/budget/comparison', { params }),
+
+  getReport: (
+    key: 'by-account' | 'by-cost-center' | 'by-project' | 'by-period' | 'utilization' | 'variance',
+    params: BudgetAnalysisParams,
+  ) => http.get<unknown, ApiResponse<BudgetAnalysis>>(`/reports/budget/${key}`, { params }),
 }

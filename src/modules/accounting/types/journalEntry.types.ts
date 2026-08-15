@@ -43,7 +43,25 @@ export interface BudgetWarning {
   actual_amount: number
   new_total: number
   overage: number
+  /**
+   * Opsional supaya respons dari backend versi lama tetap bertipe benar.
+   *
+   * Untuk `direction: 'revenue'`, melampaui anggaran berarti **target
+   * terlampaui** — `state` akan `under_budget` dan UI harus menghijaukannya,
+   * bukan memerahkannya.
+   */
+  state?: BudgetWarningState
+  direction?: 'revenue' | 'expense'
+  /** Anggaran mana yang tersentuh, mis. `department:7|project:all|period:annual`. */
+  matched_scope?: string
 }
+
+export type BudgetWarningState =
+  | 'on_budget'
+  | 'under_budget'
+  | 'over_budget'
+  | 'no_budget'
+  | 'no_actual'
 
 export interface JournalEntryListParams {
   page: number

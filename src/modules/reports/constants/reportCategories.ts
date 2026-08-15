@@ -30,6 +30,15 @@ export const REPORT_DOMAINS: ReportDomain[] = [
       { id: 'profit-loss-multi', title: 'Laba Rugi Multi-Periode', description: 'Laba rugi perbandingan beberapa periode side-by-side', path: '/reports/profit-loss-multi' },
       { id: 'financial-summary', title: 'Ringkasan Keuangan', description: 'Indikator keuangan utama sekilas', path: '/reports/financial-summary' },
       { id: 'budget-comparison', title: 'Realisasi vs Anggaran', description: 'Perbandingan anggaran disetujui dengan realisasi jurnal', path: '/reports/budget/comparison', permission: 'budgets.view' },
+      // Sembilan view di bawah ini adalah preset dari mesin yang sama; semuanya
+      // mendarat di satu halaman analisis dengan `group_by` berbeda.
+      { id: 'budget-analysis', title: 'Analisis Anggaran', description: 'Anggaran vs realisasi lintas dimensi dengan drill-down', path: '/budget/analysis', permission: 'budgets.view' },
+      { id: 'budget-by-cost-center', title: 'Anggaran per Cost Center', description: 'Anggaran dan realisasi dikelompokkan per departemen', path: '/budget/analysis', permission: 'budgets.view' },
+      { id: 'budget-by-project', title: 'Anggaran per Proyek', description: 'Anggaran dan realisasi dikelompokkan per proyek', path: '/budget/analysis', permission: 'budgets.view' },
+      { id: 'budget-by-period', title: 'Anggaran per Bulan', description: 'Anggaran bulanan; baris tahunan ditampilkan terpisah', path: '/budget/analysis', permission: 'budgets.view' },
+      { id: 'budget-utilization', title: 'Serapan Anggaran', description: 'Persentase penyerapan anggaran, tertinggi lebih dulu', path: '/budget/analysis', permission: 'budgets.view' },
+      { id: 'budget-cash', title: 'Cash Budget', description: 'Saldo awal + kas masuk − kas keluar = saldo akhir (asumsi akrual)', path: '/budget/cash', permission: 'budgets.view' },
+      { id: 'budget-project-financials', title: 'Finansial Proyek', description: 'Pendapatan, biaya, laba, dan margin per proyek', path: '/budget/projects', permission: 'budgets.view' },
     ],
   },
   {

@@ -9,6 +9,7 @@ import {
   Landmark, Users, Ruler, Warehouse, CalendarClock, Building2,
   FolderKanban, Map, Building, RefreshCcw, UserCog, ShieldCheck, Star,
   Mail, Shield, Archive, Tags, CalendarRange, GitCompare, Upload,
+  Wallet, LayoutDashboard,
 } from 'lucide-react'
 
 export interface RibbonItem {
@@ -96,6 +97,12 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     path: '/budget',
     ribbonItems: [
       { id: 'budget-periods', label: 'Periode Anggaran', icon: CalendarRange, path: '/budget', permission: 'budgets.view' },
+      // Satu halaman analisis melayani view #1–#9 lewat filter — bukan sembilan
+      // menu terpisah. Cerminan "one engine, many views" di sisi navigasi.
+      { id: 'budget-analysis', label: 'Analisis Anggaran', icon: BarChart3, path: '/budget/analysis', permission: 'budgets.view' },
+      { id: 'budget-cash', label: 'Cash Budget', icon: Wallet, path: '/budget/cash', permission: 'budgets.view' },
+      { id: 'budget-projects', label: 'Anggaran Proyek', icon: FolderKanban, path: '/budget/projects', permission: 'budgets.view' },
+      { id: 'budget-dashboard', label: 'Dashboard Anggaran', icon: LayoutDashboard, path: '/budget/dashboard', permission: 'budgets.view' },
       { id: 'budget-comparison', label: 'Realisasi vs Anggaran', icon: GitCompare, path: '/reports/budget/comparison', permission: 'budgets.view' },
     ],
   },

@@ -1,5 +1,24 @@
 export type BudgetPeriodStatus = 'open' | 'closed'
-export type BudgetSubmissionStatus = 'draft' | 'submitted' | 'approved_by_head' | 'approved' | 'rejected'
+export type BudgetSubmissionStatus =
+  | 'draft'
+  | 'submitted'
+  | 'approved_by_head'
+  | 'approved'
+  | 'rejected'
+  /** Versi yang sudah digantikan versi berikutnya — tetap terbaca, tidak bisa diubah. */
+  | 'superseded'
+
+/**
+ * Untuk `revenue`, "melampaui anggaran" berarti target terlampaui — favorable.
+ * `BudgetState` sudah memperhitungkannya, jadi `under_budget` selalu berarti
+ * kabar baik apa pun arahnya.
+ */
+export type BudgetState = 'on_budget' | 'under_budget' | 'over_budget' | 'no_budget' | 'no_actual'
+
+/** `mixed` hanya muncul di keluaran analisis saat satu baris mencampur dua arah. */
+export type BudgetDirection = 'revenue' | 'expense' | 'mixed'
+
+export type BudgetGroupBy = 'department' | 'project' | 'account' | 'period' | 'direction'
 
 export interface BudgetPeriod {
   id: number
@@ -9,6 +28,9 @@ export interface BudgetPeriod {
   period_from: string
   period_to: string
   status: BudgetPeriodStatus
+  fiscal_year_id?: number | null
+  /** Saldo awal kas manual; null = dihitung dari ledger. */
+  beginning_cash_override?: string | null
   created_by: number
   submissions_count?: number
   created_at: string
@@ -21,9 +43,16 @@ export interface BudgetLine {
   account_id: number
   account_code?: string
   account_name?: string
+  /** Dimensi baris, bukan pemilik dokumen — lihat `BudgetSubmission.department_id`. */
+  department_id?: number | null
+  department_name?: string | null
   project_id: number | null
   project_name?: string | null
-  period: string | null
+  /** 'YYYY-MM'; null = anggaran tahunan. Nama lama kolom ini `period`. */
+  period_month?: string | null
+  period?: string | null
+  /** Diturunkan dari jenis akun saat baris disimpan, tidak pernah diinput. */
+  direction?: Exclude<BudgetDirection, 'mixed'>
   amount: string
   notes: string | null
   created_at: string
@@ -34,7 +63,14 @@ export interface BudgetSubmission {
   id: number
   company_id: number
   budget_period_id: number
-  department_id: number
+  /** null = anggaran tingkat perusahaan (tanpa tahap kepala departemen). */
+  department_id: number | null
+  parent_submission_id?: number | null
+  /** Versi anggaran. Berbeda dari `revision_number`, yang menghitung penolakan. */
+  version_no?: number
+  /** Versi yang berlaku — tepat satu per (periode, departemen). */
+  is_active?: boolean
+  revision_reason?: string | null
   department_name?: string
   department?: { id: number; name: string }
   period?: { id: number; name: string }
@@ -110,8 +146,141 @@ export interface BudgetParams {
 
 export interface BudgetLineInput {
   account_id: number
+  /** Tidak dikirim = warisi departemen pemilik dokumen; null = lintas departemen. */
+  department_id?: number | null
   project_id?: number | null
-  period?: string | null
+  period_month?: string | null
   amount: number
   notes?: string | null
+}
+
+
+// --- Mesin analisis (fase 2 & 6) -------------------------------------------
+
+/**
+ * Satu baris agregasi. Kunci dimensinya hanya ada bila dimensi itu diminta di
+ * `group_by` — `group_by=[account]` tidak mengembalikan `department_id`.
+ */
+export interface BudgetAnalysisRow {
+  account_id?: number | null
+  account_code?: string | null
+  account_name?: string | null
+  department_id?: number | null
+  department_name?: string | null
+  project_id?: number | null
+  project_name?: string | null
+  /** null = baris tahunan yang belum dialokasikan ke bulan mana pun. */
+  period_month?: string | null
+  direction: BudgetDirection
+  budget_amount: string
+  actual_amount: string
+  variance: string
+  /** null saat anggaran 0 — jangan tampilkan 0%, itu menyesatkan. */
+  variance_pct: number | null
+  utilization_pct: number | null
+  state: BudgetState
+}
+
+export interface BudgetAnalysisMeta {
+  group_by: BudgetGroupBy[]
+  mode: string
+  allocation: string
+  version: string
+  date_from: string
+  date_to: string
+  /** Actual dipotong rentang sementara anggaran tetap penuh — beri catatan di UI. */
+  is_partial_period: boolean
+  submission_ids: number[]
+}
+
+export interface BudgetAnalysis {
+  period: {
+    budget_period_id: number
+    name: string
+    fiscal_year: number
+    period_from: string
+    period_to: string
+  }
+  rows: BudgetAnalysisRow[]
+  totals: {
+    budget_amount: string
+    actual_amount: string
+    variance: string
+    utilization_pct: number | null
+  }
+  meta: BudgetAnalysisMeta
+}
+
+export interface BudgetAnalysisParams {
+  budget_period_id: number
+  group_by?: BudgetGroupBy[]
+  mode?: 'summary' | 'detail' | 'variance'
+  allocation?: 'annual_row' | 'even'
+  version?: string
+  department_id?: number
+  project_id?: number
+  account_id?: number
+  account_type?: string
+  direction?: 'revenue' | 'expense'
+  date_from?: string
+  date_to?: string
+}
+
+export interface BudgetVersion {
+  id: number
+  version_no: number
+  parent_submission_id: number | null
+  status: BudgetSubmissionStatus
+  is_active: boolean
+  revision_number: number
+  revision_reason: string | null
+  department_id: number | null
+  department_name: string | null
+  created_by: number | null
+  created_at: string | null
+  approved_at: string | null
+  total_amount: string
+}
+
+export interface ProjectFinancialBlock {
+  revenue: string
+  cost: string
+  profit: string
+  /** null bila revenue 0 — margin tidak terdefinisi, bukan 0%. */
+  margin_pct: number | null
+}
+
+export interface ProjectFinancialSummary {
+  project: { id: number; code: string; name: string; status: string; is_active: boolean }
+  period: BudgetAnalysis['period']
+  budget: ProjectFinancialBlock
+  actual: ProjectFinancialBlock
+  variance: { revenue: string; cost: string; profit: string }
+  cost_utilization_pct: number | null
+  revenue_rows: BudgetAnalysisRow[]
+  cost_rows: BudgetAnalysisRow[]
+  meta: BudgetAnalysisMeta & { limitation: string }
+}
+
+export interface CashBudgetSection {
+  section: string
+  budgeted_inflow: string
+  budgeted_outflow: string
+  budgeted_net: string
+  actual_inflow: string
+  actual_outflow: string
+  actual_net: string
+}
+
+export interface CashBudget {
+  period: BudgetAnalysis['period']
+  beginning_cash: string
+  beginning_cash_source: 'override' | 'ledger'
+  budgeted: { inflow: string; outflow: string; net: string; ending_cash: string }
+  actual: { inflow: string; outflow: string; net: string; ending_cash: string }
+  sections: CashBudgetSection[]
+  inflow_rows: BudgetAnalysisRow[]
+  outflow_rows: BudgetAnalysisRow[]
+  /** Asumsi akrual — WAJIB ditampilkan, ini bukan proyeksi kas berbasis termin. */
+  meta: BudgetAnalysisMeta & { assumption: string }
 }

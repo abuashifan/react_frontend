@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
+import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
@@ -170,6 +171,41 @@ function SalesReceiptFormPageContent() {
     }])
   }
 
+  const lineColumns: LineItemColumn<ReceiptLine>[] = [
+    {
+      id: 'invoice',
+      header: 'Invoice',
+      width: 180,
+      render: ({ item }) => <span className="text-[12px] font-medium text-[#5c9ead]">{item.invoice_number}</span>,
+    },
+    {
+      id: 'balance_due',
+      header: 'Sisa Tagihan',
+      width: 140,
+      align: 'right',
+      render: ({ item }) => <span className="text-[12px] tabular-nums">{formatCurrency(item.balance_due)}</span>,
+    },
+    {
+      id: 'amount',
+      header: 'Jumlah Bayar',
+      width: 140,
+      align: 'right',
+      render: ({ item, isReadOnly, onUpdate }) =>
+        isReadOnly ? (
+          <span className="text-[12px] tabular-nums">{formatCurrency(item.amount)}</span>
+        ) : (
+          <Input
+            type="number"
+            value={item.amount}
+            onChange={(e) => onUpdate('amount', Number(e.target.value))}
+            min={0}
+            max={item.balance_due}
+            className="h-8 text-right text-[12px] tabular-nums"
+          />
+        ),
+    },
+  ]
+
   if (!isCreate && isLoading) {
     return (
       <FormLayout title="Penerimaan" breadcrumb={[{ label: 'Sales' }, { label: 'Penerimaan', path: '/sales/receipts' }, { label: 'Memuat...' }]}>
@@ -248,79 +284,36 @@ function SalesReceiptFormPageContent() {
               <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Invoice yang Dibayar</p>
             </div>
 
-            <div className="overflow-hidden rounded-lg border border-[#d9e2e5] bg-white">
-              <table className="min-w-full border-collapse text-[13px]">
-                <thead>
-                  <tr className="bg-[#eeeeee]">
-                    <th className="px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b]">Invoice</th>
-                    <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">Sisa Tagihan</th>
-                    <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">Jumlah Bayar</th>
-                    {isEditable && <th className="w-8 px-2 py-2" />}
-                  </tr>
-                </thead>
-                <tbody>
-                  {lines.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-3 py-8 text-center text-[13px] text-[#94a3b8]">
-                        {customerId ? 'Pilih invoice untuk dibayar' : 'Pilih customer terlebih dahulu'}
-                      </td>
-                    </tr>
-                  ) : (
-                    lines.map((line, i) => (
-                      <tr key={line.sales_invoice_id} className="border-b border-[#f1f5f9] last:border-b-0">
-                        <td className="px-3 py-2 font-medium text-[#5c9ead]">{line.invoice_number}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(line.balance_due)}</td>
-                        <td className="px-3 py-2 text-right">
-                          {isEditable ? (
-                            <Input
-                              type="number"
-                              value={line.amount}
-                              onChange={(e) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, amount: Number(e.target.value) } : l))}
-                              min={0}
-                              max={line.balance_due}
-                              className="h-7 w-32 text-right tabular-nums text-[12px]"
-                            />
-                          ) : (
-                            <span className="tabular-nums">{formatCurrency(line.amount)}</span>
-                          )}
-                        </td>
-                        {isEditable && (
-                          <td className="px-2 py-2 text-center">
-                            <button
-                              type="button"
-                              onClick={() => setLines((prev) => prev.filter((_, idx) => idx !== i))}
-                              className="text-[#94a3b8] hover:text-[#ef4444] text-[11px]"
-                            >
-                              ✕
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+            {/* Baris ditambahkan dari chip "Invoice terbuka" di bawah tabel (barisnya
+                datang sudah terisi), jadi tombol "+ Tambah Item" bawaan tidak dipakai. */}
+            <LineItemsTable<ReceiptLine>
+              items={lines}
+              columns={lineColumns}
+              onRemove={(index) => setLines((prev) => prev.filter((_, idx) => idx !== index))}
+              onUpdate={(index, field, value) => setLines((prev) => prev.map((l, idx) => (idx === index ? { ...l, [field]: value } : l)))}
+              isReadOnly={!isEditable}
+              emptyLabel={customerId ? 'Pilih invoice untuk dibayar' : 'Pilih customer terlebih dahulu'}
+            />
 
-              {isEditable && openInvoices.length > 0 && (
-                <div className="border-t border-[#d9e2e5] p-2">
-                  <p className="mb-1.5 text-[11px] text-[#64748b]">Invoice terbuka:</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {openInvoices
-                      .filter((inv) => !lines.find((l) => l.sales_invoice_id === inv.id))
-                      .map((inv) => (
-                        <button
-                          key={inv.id}
-                          type="button"
-                          onClick={() => addInvoiceLine(inv.id)}
-                          className="rounded border border-[#d9e2e5] px-2 py-1 text-[11px] text-[#326273] hover:border-[#5c9ead] hover:bg-[#f8fbfc]"
-                        >
-                          {inv.number} ({formatCurrency(inv.balance_due)})
-                        </button>
-                      ))}
-                  </div>
+            {isEditable && openInvoices.length > 0 && (
+              <div className="mt-2 rounded-lg border border-[#d9e2e5] bg-white p-2">
+                <p className="mb-1.5 text-[11px] text-[#64748b]">Invoice terbuka:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {openInvoices
+                    .filter((inv) => !lines.find((l) => l.sales_invoice_id === inv.id))
+                    .map((inv) => (
+                      <button
+                        key={inv.id}
+                        type="button"
+                        onClick={() => addInvoiceLine(inv.id)}
+                        className="rounded border border-[#d9e2e5] px-2 py-1 text-[11px] text-[#326273] hover:border-[#5c9ead] hover:bg-[#f8fbfc]"
+                      >
+                        {inv.number} ({formatCurrency(inv.balance_due)})
+                      </button>
+                    ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* `amount` tidak punya input sendiri — nilainya dihitung dari baris invoice,
                 jadi error-nya ditandai di baris total ini supaya tetap terlihat. */}
