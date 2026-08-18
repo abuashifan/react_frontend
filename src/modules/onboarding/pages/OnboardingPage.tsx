@@ -9,7 +9,7 @@ import { Step5OpeningBalance } from '../components/steps/Step5OpeningBalance'
 import { Step6Complete } from '../components/steps/Step6Complete'
 import type { CompanyInfoValues } from '../schemas/companyInfoSchema'
 import type { QuickAddItem } from '../components/MasterDataQuickAdd'
-import { COA_TEMPLATES, WIZARD_STATE_KEY } from '../constants'
+import { WIZARD_STATE_KEY } from '../constants'
 
 interface WizardState {
   currentStep: number
@@ -19,6 +19,7 @@ interface WizardState {
   companyInfo: CompanyInfoValues | null
   selectedTemplate: string | null
   templateLabel: string | null
+  templateAccountCount: number
   mappingCompleted: boolean
   masterData: {
     warehouses: QuickAddItem[]
@@ -49,6 +50,7 @@ const INITIAL_STATE: WizardState = {
   companyInfo: null,
   selectedTemplate: null,
   templateLabel: null,
+  templateAccountCount: 0,
   mappingCompleted: false,
   masterData: { warehouses: [], units: [], paymentTerms: [] },
   openingBalanceSkipped: false,
@@ -116,10 +118,8 @@ export function OnboardingPage() {
     status: getStepStatus(s.number),
   }))
 
-  const selectedTemplateDef = COA_TEMPLATES.find((t) => t.id === state.selectedTemplate)
-
   return (
-    <div className="min-h-dvh bg-[#EFEFED] flex flex-col">
+    <div className="h-dvh bg-[#EFEFED] flex flex-col">
       {/* Wizard header */}
       <header className="h-[52px] bg-[#326273] flex items-center px-6 shrink-0">
         <span className="text-white font-semibold text-[15px]">🌊 Seaside Escape ERP — Setup Perusahaan Baru</span>
@@ -168,11 +168,12 @@ export function OnboardingPage() {
               <Step2TemplateCOA
                 currentTemplate={state.selectedTemplate}
                 mappingCompleted={state.mappingCompleted}
-                onComplete={(templateId, templateLabel) => {
+                onComplete={(templateId, templateLabel, accountCount) => {
                   setState((prev) => ({
                     ...prev,
                     selectedTemplate: templateId,
                     templateLabel,
+                    templateAccountCount: accountCount,
                     // Reset mapping if template changes
                     mappingCompleted: templateId === prev.selectedTemplate ? prev.mappingCompleted : false,
                   }))
@@ -216,7 +217,7 @@ export function OnboardingPage() {
               <Step6Complete
                 summary={{
                   templateLabel: state.templateLabel,
-                  accountCount: selectedTemplateDef?.accountCount ?? 0,
+                  accountCount: state.templateAccountCount,
                   warehouseCount: state.masterData.warehouses.length,
                   unitCount: state.masterData.units.length,
                   paymentTermCount: state.masterData.paymentTerms.length,

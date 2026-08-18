@@ -215,6 +215,39 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 ### 6C. Build Status
 
 ```
+Terakhir dicek  : 2026-08-18 (Setup wizard — Template COA apply + Account Mapping picker/sticky nav)
+npm run build   : ✅ 0 error
+npm run lint    : ✅ 0 error, 0 warning
+Backend test    : ✅ php artisan test --filter=CoaTemplateApply (7 passed), --filter=Setup
+                    (14 passed), --filter=AccountMapping (29 passed) + pint --test clean
+Wizard COA/mapping: - Backend: baru `CoaTemplateService` + `config/coa_templates.php` (5 template
+                    gas_agent/trading/service/manufacture/blank, kode akun selaras
+                    `default_account_codes` di account_mappings.php) + endpoint
+                    `GET /setup/coa-templates` & `POST /setup/coa-templates/apply`
+                    (bulk-create transaksional, tag `is_system_default`+`metadata.template_id`,
+                    tolak re-apply kalau akun lama sudah dipakai jurnal/saldo awal, lalu panggil
+                    `AccountMappingStorageService::syncDefaultMappingsFromConfig()`)
+                  - Frontend: Step2TemplateCOA fetch template asli (bukan lagi array statis) +
+                    `CoaTemplateModal` baru (preview full list DataTable in-memory + mode edit
+                    LineItemsTable, ganti accordion lama). Step3AccountMapping dapat tombol cari
+                    per field yang buka `AccountPickerDialog` (diperluas dengan prop
+                    `multiple`/`accountType` untuk mode single-select) selain SearchableSelect
+                    yang sudah ada
+                  - Root cause tombol "Lanjutkan" ke-scroll: `OnboardingPage` pakai `min-h-dvh`
+                    sehingga `<main overflow-y-auto>` tidak pernah jadi scroll container
+                    sungguhan (window yang scroll, bukan main) — diganti `h-dvh`; nav bar Step 2
+                    & Step 3 dibuat `sticky bottom-0` terhadap `<main>`
+                  - Fix bug turunan: field mapping yang diisi lewat AccountPickerDialog sempat
+                    menampilkan fallback "#id" karena SearchableSelect tidak tahu label pilihan
+                    eksternal — ditambahkan `overrideOptions` state di Step3AccountMapping
+Playwright      : ✅ Chromium headless 1280×900, dev server lokal (vite + php artisan serve),
+                    login admin@example.com → company baru (AUDIT-Wizard-Check-*) → wizard step
+                    1-4: pilih template (42 akun asli tampil di modal, bukan ~7 baris lama),
+                    edit+simpan draft, Lanjutkan → POST coa-templates/apply 200, Account Mapping
+                    terisi otomatis (Kas/Bank/Piutang/dst sesuai kode template), tombol cari
+                    dialog pilih akun & label terisi benar, scroll konten panjang → tombol
+                    Lanjutkan tetap terlihat (sticky, boundingBox dalam viewport)
+
 Terakhir dicek  : 2026-08-10 (Setup awal — gate menu Saldo Awal & wizard)
 npm run build   : ✅ 0 error
 npm run lint    : ✅ 0 error, 0 warning

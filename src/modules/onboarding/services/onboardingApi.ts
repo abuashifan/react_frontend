@@ -1,7 +1,7 @@
 import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type { SelectOption } from '@/types/common.types'
-import type { SetupStatus } from '../types/setup.types'
+import type { CoaTemplateAccountInput, CoaTemplateDef, SetupStatus } from '../types/setup.types'
 
 interface AccountSearchResult {
   id: number
@@ -18,6 +18,7 @@ export interface OnboardingAccountMapping {
   is_required: boolean
   account_code: string | null
   account_name: string | null
+  account_types: string[]
 }
 
 /**
@@ -36,6 +37,9 @@ export const setupApi = {
   getOpeningBalancePreview: () => http.get<unknown, ApiResponse<Record<string, unknown>>>('/setup/opening-balance/preview'),
   finalize: () => http.post<unknown, ApiResponse<Record<string, unknown>>>('/setup/finalize'),
   reopen: (reason: string) => http.post<unknown, ApiResponse<Record<string, unknown>>>('/setup/reopen', { reason }),
+  listCoaTemplates: () => http.get<unknown, ApiResponse<CoaTemplateDef[]>>('/setup/coa-templates'),
+  applyCoaTemplate: (payload: { template_id: string; accounts: CoaTemplateAccountInput[] }) =>
+    http.post<unknown, ApiResponse<unknown>>('/setup/coa-templates/apply', payload),
 }
 
 export const onboardingApi = {

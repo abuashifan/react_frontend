@@ -62,3 +62,23 @@ export interface SetupStatus {
   steps: SetupStep[]
   gate: SetupGate
 }
+
+/** Kontrak `/api/setup/coa-templates` -- lihat CoaTemplateService::templates(). */
+export type CoaAccountType = 'asset' | 'liability' | 'equity' | 'revenue' | 'expense'
+
+export interface CoaTemplateAccountInput {
+  code: string
+  name: string
+  type: CoaAccountType
+  parent_code: string | null
+  is_cash_bank?: boolean
+  description?: string | null
+}
+
+export interface CoaTemplateDef {
+  id: string
+  label: string
+  description: string
+  account_count: number
+  accounts: CoaTemplateAccountInput[]
+}

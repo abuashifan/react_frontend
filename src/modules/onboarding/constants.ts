@@ -76,13 +76,17 @@ export interface CoaTemplate {
   label: string
   description: string
   Icon: LucideIcon
-  accountCount: number
 }
 
+/**
+ * Metadata presentasi (ikon) per template -- data akun asli (termasuk jumlah
+ * akun) datang dari `setupApi.listCoaTemplates()`. Dipetakan by `id` supaya
+ * ikon tidak perlu dikirim backend.
+ */
 export const COA_TEMPLATES: CoaTemplate[] = [
-  { id: 'gas_agent', label: 'Agen Gas', description: 'COA standar untuk bisnis distribusi gas LPG', Icon: Flame, accountCount: 45 },
-  { id: 'trading', label: 'Perdagangan Umum', description: 'COA standar untuk bisnis dagang barang', Icon: ShoppingCart, accountCount: 52 },
-  { id: 'service', label: 'Jasa', description: 'COA standar untuk bisnis jasa dan konsultan', Icon: Briefcase, accountCount: 38 },
-  { id: 'manufacture', label: 'Manufaktur', description: 'COA standar untuk bisnis produksi', Icon: Factory, accountCount: 68 },
-  { id: 'blank', label: 'Kosong', description: 'Mulai dari nol, buat COA sendiri', Icon: FileText, accountCount: 0 },
+  { id: 'gas_agent', label: 'Agen Gas', description: 'COA standar untuk bisnis distribusi gas LPG', Icon: Flame },
+  { id: 'trading', label: 'Perdagangan Umum', description: 'COA standar untuk bisnis dagang barang', Icon: ShoppingCart },
+  { id: 'service', label: 'Jasa', description: 'COA standar untuk bisnis jasa dan konsultan', Icon: Briefcase },
+  { id: 'manufacture', label: 'Manufaktur', description: 'COA standar untuk bisnis produksi', Icon: Factory },
+  { id: 'blank', label: 'Kosong', description: 'Mulai dari nol, buat COA sendiri', Icon: FileText },
 ]

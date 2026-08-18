@@ -6,14 +6,18 @@ import { Input } from '@/components/ui/input'
 import { DataTable } from '@/components/shared/table/DataTable'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import { coaApi } from '../services/coaApi'
-import type { Coa } from '../types/coa.types'
+import type { Coa, CoaType } from '../types/coa.types'
 
 interface AccountPickerDialogProps {
   open: boolean
   onClose: () => void
-  /** Dipanggil saat Simpan, berisi akun terpilih sesuai urutan pemilihan. */
+  /** Dipanggil saat Simpan (mode multi) atau langsung saat baris diklik (mode single), berisi akun terpilih. */
   onConfirm: (accounts: Coa[]) => void
   title?: string
+  /** Default `true`. `false` = klik baris langsung memilih & menutup dialog, tanpa checkbox/Simpan -- dipakai selektor yang hanya butuh satu akun (mis. Account Mapping). */
+  multiple?: boolean
+  /** Filter opsional tipe akun (mis. mapping yang cuma mengizinkan `asset`). */
+  accountType?: CoaType
 }
 
 const PAGE_SIZE = 25
@@ -36,6 +40,8 @@ export function AccountPickerDialog({
   onClose,
   onConfirm,
   title = 'Data Akun',
+  multiple = true,
+  accountType,
 }: AccountPickerDialogProps) {
   const [codeInput, setCodeInput] = useState('')
   const [nameInput, setNameInput] = useState('')
@@ -47,13 +53,14 @@ export function AccountPickerDialog({
   const [selected, setSelected] = useState<Coa[]>([])
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['master-data', 'chart-of-accounts', 'picker', applied, page],
+    queryKey: ['master-data', 'chart-of-accounts', 'picker', applied, page, accountType],
     queryFn: () =>
       coaApi.list({
         page: page + 1,
         per_page: PAGE_SIZE,
         account_code: applied.code || undefined,
         account_name: applied.name || undefined,
+        account_type: accountType,
         is_active: true,
         postable_only: true,
       }),
@@ -91,6 +98,11 @@ export function AccountPickerDialog({
 
   const handleConfirm = () => {
     onConfirm(selected)
+    handleClose()
+  }
+
+  const handlePick = (account: Coa) => {
+    onConfirm([account])
     handleClose()
   }
 
@@ -169,8 +181,9 @@ export function AccountPickerDialog({
               isFetching={isFetching}
               pagination={{ pageIndex: page, pageSize: PAGE_SIZE }}
               onPaginationChange={(next) => setPage(next.pageIndex)}
-              selectedRows={selectedOnPage}
-              onRowSelect={handleRowSelect}
+              {...(multiple
+                ? { selectedRows: selectedOnPage, onRowSelect: handleRowSelect }
+                : { onRowClick: handlePick })}
               emptyTitle="Akun tidak ditemukan"
               emptyDescription="Ubah filter No Akun atau Nama Akun."
             />
@@ -179,20 +192,24 @@ export function AccountPickerDialog({
 
         <div className="flex flex-shrink-0 items-center justify-between gap-3 border-t border-[#d9e2e5] px-4 py-2.5">
           <span className="text-[12px] text-[#64748b]">
-            {selected.length > 0 ? `${selected.length} akun dipilih` : 'Belum ada akun dipilih'}
+            {multiple
+              ? (selected.length > 0 ? `${selected.length} akun dipilih` : 'Belum ada akun dipilih')
+              : 'Klik akun untuk memilih'}
           </span>
           <div className="flex items-center gap-2">
             <Button type="button" variant="outline" onClick={handleClose} className="h-8 px-4 text-[13px]">
               Batal
             </Button>
-            <Button
-              type="button"
-              onClick={handleConfirm}
-              disabled={selected.length === 0}
-              className="h-8 bg-[#5c9ead] px-5 text-[13px] hover:bg-[#4a8a9b]"
-            >
-              Simpan
-            </Button>
+            {multiple && (
+              <Button
+                type="button"
+                onClick={handleConfirm}
+                disabled={selected.length === 0}
+                className="h-8 bg-[#5c9ead] px-5 text-[13px] hover:bg-[#4a8a9b]"
+              >
+                Simpan
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

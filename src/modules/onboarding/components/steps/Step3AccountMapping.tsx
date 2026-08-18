@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, AlertTriangle } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { AccountPickerDialog } from '@/modules/master-data/components/AccountPickerDialog'
+import type { Coa, CoaType } from '@/modules/master-data/types/coa.types'
 import { onboardingApi } from '../../services/onboardingApi'
 import { useToast } from '@/hooks/useToast'
 import type { SelectOption } from '@/types/common.types'
@@ -43,7 +45,12 @@ export function Step3AccountMapping({ onComplete, onBack }: Props) {
     queryFn: () => onboardingApi.listAccountMappings(),
   })
   const [overrides, setOverrides] = useState<Record<string, number | null>>({})
+  // Label akun yang dipilih lewat AccountPickerDialog -- SearchableSelect hanya tahu label dari
+  // `selectedOptions` (data server) atau pilihannya sendiri; tanpa ini field akan menampilkan
+  // fallback "#id" karena dipilih dari luar komponennya.
+  const [overrideOptions, setOverrideOptions] = useState<Record<string, SelectOption<number>>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [pickerKey, setPickerKey] = useState<string | null>(null)
 
   const mappings = data ?? []
   const valueFor = (key: string, original: number | null): number | null =>
@@ -55,6 +62,16 @@ export function Step3AccountMapping({ onComplete, onBack }: Props) {
 
   const handleSearch = (query: string): Promise<SelectOption<number>[]> =>
     onboardingApi.searchAccounts(query)
+
+  const handlePicked = (key: string, accounts: Coa[]) => {
+    const account = accounts[0]
+    if (!account) return
+    setOverrides((prev) => ({ ...prev, [key]: account.id }))
+    setOverrideOptions((prev) => ({
+      ...prev,
+      [key]: { value: account.id, label: account.account_name, sublabel: account.account_code },
+    }))
+  }
 
   const handleContinue = async () => {
     setIsSubmitting(true)
@@ -78,6 +95,10 @@ export function Step3AccountMapping({ onComplete, onBack }: Props) {
       setIsSubmitting(false)
     }
   }
+
+  const pickerMapping = mappings.find((m) => m.mapping_key === pickerKey)
+  const pickerAccountType: CoaType | undefined =
+    pickerMapping?.account_types.length === 1 ? (pickerMapping.account_types[0] as CoaType) : undefined
 
   if (isLoading) {
     return (
@@ -136,8 +157,10 @@ export function Step3AccountMapping({ onComplete, onBack }: Props) {
               .filter((m) => m.module === mod)
               .map((m) => {
                 const current = valueFor(m.mapping_key, m.account_id)
-                const presetOption: SelectOption<number>[] =
-                  m.account_id !== null && m.account_name !== null
+                const overrideOption = overrideOptions[m.mapping_key]
+                const presetOption: SelectOption<number>[] = overrideOption
+                  ? [overrideOption]
+                  : m.account_id !== null && m.account_name !== null
                     ? [{ value: m.account_id, label: m.account_name, sublabel: m.account_code ?? undefined }]
                     : []
                 return (
@@ -149,17 +172,30 @@ export function Step3AccountMapping({ onComplete, onBack }: Props) {
                       {m.label ?? m.mapping_key}{' '}
                       {m.is_required && <span className="text-red-500">*</span>}
                     </label>
-                    <SearchableSelect
-                      triggerId={`onboarding-account-mapping-${m.mapping_key}`}
-                      triggerAriaLabel={m.label ?? m.mapping_key}
-                      value={current}
-                      selectedOptions={presetOption}
-                      onChange={(val) =>
-                        setOverrides((prev) => ({ ...prev, [m.mapping_key]: val }))
-                      }
-                      onSearch={handleSearch}
-                      placeholder="Cari akun..."
-                    />
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex-1">
+                        <SearchableSelect
+                          triggerId={`onboarding-account-mapping-${m.mapping_key}`}
+                          triggerAriaLabel={m.label ?? m.mapping_key}
+                          value={current}
+                          selectedOptions={presetOption}
+                          onChange={(val) =>
+                            setOverrides((prev) => ({ ...prev, [m.mapping_key]: val }))
+                          }
+                          onSearch={handleSearch}
+                          placeholder="Cari akun..."
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPickerKey(m.mapping_key)}
+                        aria-label={`Cari akun untuk ${m.label ?? m.mapping_key} lewat dialog`}
+                        title="Cari akun lewat dialog"
+                        className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-md border border-[#d9e2e5] text-[#64748b] transition-colors hover:border-[#5c9ead] hover:text-[#5c9ead] lg:h-9 lg:w-9"
+                      >
+                        <Search className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                 )
               })}
@@ -167,7 +203,7 @@ export function Step3AccountMapping({ onComplete, onBack }: Props) {
         </div>
       ))}
 
-      <div className="flex items-center justify-between pt-2">
+      <div className="sticky bottom-0 -mx-6 mt-2 flex items-center justify-between border-t border-[#d9e2e5] bg-white px-6 py-3 lg:-mx-8 lg:px-8">
         <Button type="button" variant="outline" onClick={onBack}>← Kembali</Button>
         <Button
           type="button"
@@ -178,6 +214,18 @@ export function Step3AccountMapping({ onComplete, onBack }: Props) {
           {isSubmitting ? 'Menyimpan...' : 'Lanjutkan →'}
         </Button>
       </div>
+
+      <AccountPickerDialog
+        open={pickerKey !== null}
+        onClose={() => setPickerKey(null)}
+        multiple={false}
+        accountType={pickerAccountType}
+        title={`Cari Akun — ${pickerMapping?.label ?? pickerKey ?? ''}`}
+        onConfirm={(accounts) => {
+          if (pickerKey) handlePicked(pickerKey, accounts)
+          setPickerKey(null)
+        }}
+      />
     </div>
   )
 }

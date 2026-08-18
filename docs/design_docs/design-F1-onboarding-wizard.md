@@ -97,6 +97,14 @@ padding       : 32px
 overflow-y    : auto
 ```
 
+> **Root wrapper wajib `h-dvh`, bukan `min-h-dvh`** (fix 2026-08-18): dengan `min-h-dvh` pada
+> `<div>` terluar `OnboardingPage`, tinggi wrapper flex bisa tumbuh melebihi viewport mengikuti
+> konten, sehingga `<main class="overflow-y-auto">` tidak pernah benar-benar jadi scroll
+> container -- yang scroll malah window/document, dan elemen `sticky` di dalamnya tidak pernah
+> "nempel" karena tidak ada scroll container internal untuk dijadikan acuan. `h-dvh` (tinggi
+> pasti, bukan minimum) memaksa `<main>` benar-benar terkurung tingginya sehingga
+> `overflow-y-auto` dan `position: sticky` di dalamnya berfungsi seperti seharusnya.
+
 ---
 
 ## Navigation Bar (Bawah)
@@ -119,6 +127,16 @@ display       : flex items-center justify-between
   loading     : saat menyimpan data step
 ```
 
+> **Status implementasi (2026-08-18):** bar ini belum jadi satu komponen bersama yang dirender
+> `OnboardingPage` di luar `<main>` seperti digambarkan di atas. Step **Template COA** dan
+> **Account Mapping** (dua step yang dilaporkan tombolnya "hilang" saat konten panjang) memakai
+> `sticky bottom-0` pada baris tombol mereka sendiri, nempel ke scroll container `<main>` — secara
+> visual hasilnya sama (bar selalu terlihat di bawah tanpa perlu discroll), tanpa refactor state
+> lintas step. Step lain (`Step1CompanyInfo`, `StepModuleSelection`, `Step4MasterData`,
+> `Step5OpeningBalance`) masih memakai tombol inline biasa (tidak sticky) karena kontennya pendek
+> dan belum ada laporan masalah serupa — pola sticky yang sama tinggal diterapkan kalau suatu saat
+> dibutuhkan.
+
 ---
 
 ## Step 1 — Informasi Perusahaan
@@ -139,14 +157,14 @@ Validasi sebelum Lanjutkan:
 ## Step 2 — Pilih Template COA
 
 ```
-Grid card 2 kolom:
+Grid card 2-3 kolom (jumlah akun diambil dari GET /setup/coa-templates, bukan hardcode):
   ┌──────────────┐  ┌──────────────┐
   │ 🔥 Agen Gas  │  │ 🛒 Dagang    │
-  │ 45 akun      │  │ 52 akun      │
+  │ 42 akun      │  │ 41 akun      │
   └──────────────┘  └──────────────┘
   ┌──────────────┐  ┌──────────────┐
   │ 💼 Jasa      │  │ 🏭 Manufaktur│
-  │ 38 akun      │  │ 68 akun      │
+  │ 31 akun      │  │ 43 akun      │
   └──────────────┘  └──────────────┘
   ┌──────────────┐
   │ 📄 Kosong    │
@@ -162,15 +180,30 @@ Card specs:
   icon        : 32px, bg #EFF9FB, border-radius 8px, icon 18px color #5c9ead
   nama        : 14px, font-weight 600, color #24323a, margin-top 10px
   jumlah akun : 12px, color #64748b
+  badge "Kustom" (amber #92400E/#FEF3C7) : muncul kalau template ini sudah diedit user
 
-Preview tree COA:
-  Klik card → expand panel accordion di bawah grid
-  Tampilkan tree 2 level (parent + children)
-  font 12px | indent 16px per level | max-height 200px, overflow scroll
+Preview & edit — floating modal (`CoaTemplateModal`), BUKAN accordion inline:
+  Klik card mana pun (terpilih atau belum) → buka Dialog
+  DialogContent: max-h-[calc(100dvh-48px)], w-[calc(100vw-32px)], max-w-720px
+  Mode preview (default):
+    DataTable in-memory (data statis template, pagination client-side 25/halaman)
+    Kolom: Kode (indent 16px per level dari parent_code) | Nama Akun | Tipe
+    Footer: "<N> akun" kiri, [Tutup] [Edit] kanan
+  Mode edit (tombol Edit):
+    LineItemsTable: Kode | Nama Akun | Tipe (Select) | Induk (Select, dibatasi ke kode
+    yang sudah ada di baris sebelumnya) | Kas/Bank (Checkbox, hanya untuk tipe asset)
+    Tombol "+ Tambah Akun" (LineItemsTable bawaan), hapus per baris
+    Footer: [Batal] [Simpan] -- Simpan commit draft ke state Step 2, balik ke mode preview
 
-Warning ganti template (jika step 3 sudah diisi):
-  AlertDialog dengan pesan: "Mengganti template akan mereset Account Mapping."
+Warning ganti template (kalau sudah pernah apply):
+  AlertDialog: "Mengganti template COA akan mengganti ulang akun yang sudah dibuat dari
+  template sebelumnya dan mereset Account Mapping yang sudah dikonfigurasi."
   [Batal] [Ya, Ganti Template]
+
+Lanjutkan:
+  POST /setup/coa-templates/apply { template_id, accounts } -- accounts = draft hasil edit
+  kalau ada, kalau tidak accounts asli template. Backend membuat chart_of_accounts sungguhan
+  dan mensinkronkan Account Mapping otomatis sebelum lanjut ke Step 3.
 ```
 
 ---
@@ -178,13 +211,18 @@ Warning ganti template (jika step 3 sudah diisi):
 ## Step 3 — Account Mapping
 
 ```
-List mapping: label → SearchableSelect COA
-Pre-filled dari template yang dipilih
-User bisa ubah
+List mapping: label → SearchableSelect COA + tombol ikon cari (Search, 34px/9-lg persegi,
+  border #d9e2e5, hover border+text #5c9ead) di sebelah kanannya
+Pre-filled otomatis dari akun yang dibuat Step 2 (kode akun template cocok dengan
+  default_account_codes di account_mappings.php backend)
+User bisa ubah lewat SearchableSelect (ketik cepat) ATAU tombol cari (buka AccountPickerDialog
+  -- filter No Akun/Nama Akun terpisah + tabel berpaginasi, mode single-select: klik baris
+  langsung pilih & tutup, accountType difilter otomatis kalau mapping cuma izinkan 1 tipe akun)
 
 Layout per row:
   Label mapping : 14px, color #24323a, min-width 200px
   SearchableSelect: flex-1
+  Tombol cari   : shrink-0, di sebelah kanan SearchableSelect
 
 Validasi: semua mapping required harus terisi
 ```
