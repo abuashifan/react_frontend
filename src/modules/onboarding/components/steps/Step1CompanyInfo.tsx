@@ -57,8 +57,16 @@ export function Step1CompanyInfo({ defaultValues, onComplete }: Props) {
       // Catatan: backend belum mengekspos update profil (nama/NPWP/alamat) & fiscal_year_start
       // lewat setup wizard; field tersebut hanya dipakai untuk ringkasan wizard.
       await companySettingsApi.updateAccounting({ base_currency: values.currency })
-      // Tandai progres step di backend (best-effort).
-      try { await setupApi.validateStep('company_profile') } catch { /* progres non-blocking */ }
+      // Tandai progres step di backend (best-effort). `opening_date` dititipkan di sini
+      // karena tidak ada step lain di wizard yang mengirimnya sama sekali -- tanpa ini
+      // validasi `accounting_settings` (OPENING_DATE_REQUIRED) akan selalu gagal saat
+      // finalize walau semua step lain valid. Default ke hari ini; saldo awal per akun
+      // tetap diinput lewat modul Saldo Awal terpisah dengan tanggal batch-nya sendiri.
+      try {
+        await setupApi.validateStep('company_profile', {
+          opening_date: new Date().toISOString().slice(0, 10),
+        })
+      } catch { /* progres non-blocking */ }
       onComplete(values)
     } catch (saveError) {
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan informasi perusahaan. Coba lagi.'))

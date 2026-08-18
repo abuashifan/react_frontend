@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { ExternalLink } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { formatCurrency, cn } from '@/lib/utils'
 import { useOBStatus } from '@/modules/opening-balance/hooks/useOpeningBalance'
 import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
+import { setupApi } from '../../services/onboardingApi'
 
 interface Props {
   onComplete: (skipped: boolean) => void
@@ -21,7 +23,29 @@ export function Step5OpeningBalance({ onComplete, onBack }: Props) {
   const status = data?.data
   const batch = status?.batch ?? null
   const hasBatch = !!batch && status?.status !== 'not_started'
-  const isPosted = batch?.status === 'posted' || batch?.status === 'locked'
+  const [isContinuing, setIsContinuing] = useState(false)
+
+  /**
+   * Backend mewajibkan batch saldo awal saat finalize kecuali step ini secara
+   * eksplisit ditandai "skip" (lihat SetupWizardService::openingBalanceSkipped()
+   * -- pola yang sama dengan opening_fixed_assets_confirmed_none). Tanpa
+   * memberi tahu backend, "Lewati, isi nanti" cuma mengubah tampilan lokal dan
+   * finalize akan selalu gagal dengan pesan generik "Periksa kembali isian
+   * yang ditandai" di halaman Selesai, padahal halaman itu tidak punya field
+   * apa pun untuk ditandai.
+   */
+  const handleContinue = async (skip: boolean) => {
+    const effectiveSkip = skip || !hasBatch
+    setIsContinuing(true)
+    try {
+      await setupApi.validateStep('opening_balance_preview', { confirm_opening_balance_skipped: effectiveSkip })
+    } catch {
+      /* progres non-blocking, sama seperti step lain */
+    } finally {
+      setIsContinuing(false)
+    }
+    onComplete(effectiveSkip)
+  }
 
   /**
    * Navigasi dilakukan di tab yang sama, bukan `window.open`. Dua alasan:
@@ -50,8 +74,9 @@ export function Step5OpeningBalance({ onComplete, onBack }: Props) {
         <h3 className="text-[14px] font-semibold text-[#24323a]">Saldo Awal Akun</h3>
         <button
           type="button"
-          onClick={() => onComplete(true)}
-          className="text-[13px] text-[#5c9ead] transition-colors hover:text-[#326273]"
+          onClick={() => void handleContinue(true)}
+          disabled={isContinuing}
+          className="text-[13px] text-[#5c9ead] transition-colors hover:text-[#326273] disabled:opacity-60"
         >
           Lewati, isi nanti →
         </button>
@@ -92,7 +117,12 @@ export function Step5OpeningBalance({ onComplete, onBack }: Props) {
 
       <div className="flex items-center justify-between">
         <Button type="button" variant="outline" onClick={onBack}>← Kembali</Button>
-        <Button type="button" onClick={() => onComplete(!isPosted)} className="bg-[#e39774] px-6 hover:bg-[#d4845e]">
+        <Button
+          type="button"
+          onClick={() => void handleContinue(false)}
+          disabled={isContinuing}
+          className="bg-[#e39774] px-6 hover:bg-[#d4845e]"
+        >
           Lanjutkan →
         </Button>
       </div>

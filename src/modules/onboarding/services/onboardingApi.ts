@@ -31,7 +31,7 @@ export const setupApi = {
   getSteps: () => http.get<unknown, ApiResponse<SetupStatus>>('/setup/steps'),
   updateCurrentStep: (step: string, openingDate?: string) =>
     http.patch<unknown, ApiResponse<Record<string, unknown>>>('/setup/current-step', { current_step: step, opening_date: openingDate }),
-  validateStep: (step: string, data?: { opening_date?: string; confirm_no_opening_fixed_assets?: boolean }) =>
+  validateStep: (step: string, data?: { opening_date?: string; confirm_no_opening_fixed_assets?: boolean; confirm_opening_balance_skipped?: boolean }) =>
     http.post<unknown, ApiResponse<Record<string, unknown>>>('/setup/validate-step', { step, ...data }),
   validateAll: () => http.post<unknown, ApiResponse<{ valid: boolean; results: Record<string, unknown> }>>('/setup/validate-all'),
   getOpeningBalancePreview: () => http.get<unknown, ApiResponse<Record<string, unknown>>>('/setup/opening-balance/preview'),
@@ -60,13 +60,4 @@ export const onboardingApi = {
 
   updateAccountMapping: (key: string, accountId: number) =>
     http.patch<unknown, ApiResponse<void>>(`/master-data/account-mappings/${key}`, { account_id: accountId }),
-
-  createWarehouse: (data: { name: string; address?: string }) =>
-    http.post<unknown, ApiResponse<{ id: number; name: string }>>('/master-data/warehouses', data),
-
-  createUnit: (data: { name: string; code: string }) =>
-    http.post<unknown, ApiResponse<{ id: number; name: string }>>('/master-data/units', data),
-
-  createPaymentTerm: (data: { name: string; days: number }) =>
-    http.post<unknown, ApiResponse<{ id: number; name: string }>>('/master-data/payment-terms', data),
 }
