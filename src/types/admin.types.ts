@@ -127,3 +127,34 @@ export interface UpdateClientPayload extends ClientProfileFields {
   email?: string
   status?: string
 }
+
+/** Owner yang jatah kuotanya terpakai oleh sebuah perusahaan. */
+export interface DeletedCompanyOwner {
+  id: number
+  name: string
+  email: string
+  quota_used: number
+  quota_limit: number
+  quota_available: boolean
+}
+
+/** Alasan sebuah perusahaan belum bisa dipulihkan. */
+export interface RestoreBlocker {
+  code: string
+  message: string
+}
+
+export interface DeletedCompany {
+  id: number
+  name: string
+  code: string | null
+  slug: string | null
+  deleted_at: string | null
+  /** Batas akhir pemulihan — lewat ini dihapus permanen oleh sweep harian. */
+  purge_after: string | null
+  days_remaining: number | null
+  is_expired: boolean
+  owners: DeletedCompanyOwner[]
+  can_restore: boolean
+  restore_blocker: RestoreBlocker | null
+}

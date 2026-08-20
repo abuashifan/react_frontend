@@ -6,6 +6,7 @@ import { PlatformAdminGuard } from '@/router/guards'
 const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'))
 const AdminClientsPage = lazy(() => import('./pages/AdminClientsPage'))
 const AdminClientFormPage = lazy(() => import('./pages/AdminClientFormPage'))
+const AdminDeletedCompaniesPage = lazy(() => import('./pages/AdminDeletedCompaniesPage'))
 
 export const adminRoutes: RouteObject[] = [
   { path: '/admin/login', element: <AdminLoginPage /> },
@@ -31,6 +32,14 @@ export const adminRoutes: RouteObject[] = [
     element: (
       <PlatformAdminGuard>
         <AdminClientFormPage />
+      </PlatformAdminGuard>
+    ),
+  },
+  {
+    path: '/admin/companies/deleted',
+    element: (
+      <PlatformAdminGuard>
+        <AdminDeletedCompaniesPage />
       </PlatformAdminGuard>
     ),
   },

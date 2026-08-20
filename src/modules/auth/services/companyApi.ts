@@ -94,4 +94,14 @@ export const companyApi = {
       },
     }
   },
+
+  /**
+   * Hapus perusahaan. `confirmName` harus persis sama dengan nama perusahaan —
+   * backend menolak kalau tidak cocok, jadi validasi di sini hanya jaga-jaga UX.
+   */
+  async remove(companyId: number, confirmName: string): Promise<ApiResponse<null>> {
+    return http.delete<unknown, ApiResponse<null>>(`/companies/${companyId}`, {
+      data: { confirm_name: confirmName },
+    })
+  },
 }

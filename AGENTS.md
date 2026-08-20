@@ -215,6 +215,43 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 ### 6C. Build Status
 
 ```
+Terakhir dicek  : 2026-08-20 (Hapus & pulihkan perusahaan — picker client + area super admin)
+npm run build   : ✅ 0 error
+npm run lint    : ✅ 0 error, 0 warning
+Backend test    : ✅ php artisan test (1464 tests, 5 skipped) + pint --test clean
+Hapus perusahaan: - Client: menu "⋮" per kartu di CompanyPickerPage (owner saja) →
+                    DeleteCompanyDialog ketik-ulang-nama → DELETE /companies/{id}
+                  - Penghapusan HANYA menyentuh `companies.deleted_at`. Soft delete sudah
+                    menutup semua pintu: EnsureCompanyAccess (Company::find → 404), daftar
+                    picker, dan CompanyQuotaService::usedCount() (slot kuota otomatis bebas)
+                  - Versi pertama sempat menimpa `company_users.status`='removed' dan
+                    `tenant_databases.status`='deleted'. Dibuang karena merusak pemulihan:
+                    status staf yang sengaja dinonaktifkan ikut tertimpa dan tidak bisa
+                    dikembalikan. Migration `repair_legacy_company_deletion_state` memperbaiki
+                    baris yang terlanjur tertimpa
+                  - `select()` kini memakai Rule::exists()->whereNull('deleted_at') — tanpa itu
+                    perusahaan terhapus lolos validasi lalu gagal sebagai 404 findOrFail
+Pulihkan (admin): - Hanya super admin: /admin/companies/deleted (platform.admin), client tidak
+                    punya jalur pemulihan sama sekali
+                  - Masa pemulihan 30 hari (config/companies.php) → lewat itu
+                    `companies:sweep-deleted` (cron harian, ada --dry-run/--days) menghapus
+                    permanen: forceDelete + file SQLite tenant + cascade tabel pusat
+                  - Restore diblokir bila kuota owner penuh (COMPANY_RESTORE_QUOTA_EXCEEDED)
+                    atau masa pemulihan lewat (COMPANY_RESTORE_WINDOW_EXPIRED); daftar admin
+                    menandainya sebelum tombol ditekan, bukan hanya menolak setelahnya
+                  - Purge lebih awal dari halaman admin = jalan keluar membebaskan slot kuota
+                  - Restore hanya menghapus `deleted_at`, jadi status user/produk/transaksi
+                    kembali persis seperti sebelum dihapus (diuji eksplisit)
+                  - CompanyDeletion/Restore/PurgeService ditaruh di `app/Shared/Company/`,
+                    bukan Modules/Companies: dipakai modul Companies DAN Admin, dan hanya
+                    menyentuh model Shared. Menaruhnya di Modules melanggar ModuleBoundariesTest
+                    (preseden sama: Shared/Subscription/CompanyQuotaService)
+Playwright      : ✅ Chromium headless 1280×900, dev server lokal (vite + php artisan serve):
+                    /admin/companies/deleted merender 3 perusahaan terhapus dengan owner,
+                    kuota 2/5, badge "30 hari lagi", tombol Pulihkan + Hapus Permanen;
+                    dialog purge terbuka dengan tombol konfirmasi disabled sebelum nama
+                    diketik; 0 console error
+
 Terakhir dicek  : 2026-08-18 (Setup wizard — Template COA apply + Account Mapping picker/sticky nav)
 npm run build   : ✅ 0 error
 npm run lint    : ✅ 0 error, 0 warning

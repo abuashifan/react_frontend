@@ -8,6 +8,7 @@ import type {
   ClientUser,
   ClientUserListParams,
   CreateClientPayload,
+  DeletedCompany,
   UpdateClientPayload,
 } from '@/types/admin.types'
 
@@ -104,5 +105,32 @@ export const adminApi = {
 
   async clientStorage(id: number): Promise<ApiResponse<ClientCompanyStorage[]>> {
     return adminHttp.get<unknown, ApiResponse<ClientCompanyStorage[]>>(`/admin/clients/${id}/storage`)
+  },
+
+  /** Perusahaan terhapus yang masih dalam masa pemulihan. */
+  async deletedCompanies(): Promise<
+    ApiResponse<DeletedCompany[]> & { retentionDays: number }
+  > {
+    const response = await adminHttp.get<unknown, ApiResponse<DeletedCompany[]>>(
+      '/admin/companies/deleted',
+    )
+
+    // `retention_days` dikirim di meta supaya `data` tetap berupa array murni.
+    const retentionDays = response.meta?.retention_days
+    return {
+      ...response,
+      retentionDays: typeof retentionDays === 'number' ? retentionDays : 30,
+    }
+  },
+
+  async restoreCompany(id: number): Promise<ApiResponse<DeletedCompany>> {
+    return adminHttp.post<unknown, ApiResponse<DeletedCompany>>(`/admin/companies/${id}/restore`)
+  },
+
+  /** Hapus permanen — tidak bisa dibatalkan. Nama harus diketik ulang persis. */
+  async purgeCompany(id: number, confirmName: string): Promise<ApiResponse<null>> {
+    return adminHttp.delete<unknown, ApiResponse<null>>(`/admin/companies/${id}/purge`, {
+      data: { confirm_name: confirmName },
+    })
   },
 }

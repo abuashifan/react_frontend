@@ -351,9 +351,11 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____SubscriptionCycleSection.tsx
 | | | |____hooks/
 | | | | |____useClientUsers.ts
+| | | | |____useDeletedCompanies.ts
 | | | |____pages/
 | | | | |____AdminClientFormPage.tsx
 | | | | |____AdminClientsPage.tsx
+| | | | |____AdminDeletedCompaniesPage.tsx
 | | | | |____AdminLoginPage.tsx
 | | | |____routes.tsx
 | | | |____schemas/
@@ -387,6 +389,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____auth/
 | | | |____components/
 | | | | |____CreateCompanyDialog.tsx
+| | | | |____DeleteCompanyDialog.tsx
 | | | |____pages/
 | | | | |____CompanyPickerPage.tsx
 | | | | |____LoginPage.tsx

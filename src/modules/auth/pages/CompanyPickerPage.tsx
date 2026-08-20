@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Building2, LogOut, Plus } from 'lucide-react'
+import { Building2, LogOut, MoreVertical, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useCompanyStore } from '@/stores/useCompanyStore'
 import { useToast } from '@/hooks/useToast'
@@ -10,6 +16,7 @@ import { closeDatabase, getUnsavedForms, logoutFromApp } from '@/lib/companySess
 import { authApi } from '../services/authApi'
 import { companyApi } from '../services/companyApi'
 import { CreateCompanyDialog } from '../components/CreateCompanyDialog'
+import { DeleteCompanyDialog } from '../components/DeleteCompanyDialog'
 import { cn } from '@/lib/utils'
 import { APP_NAME } from '@/lib/constants'
 import type { Company, CompanyQuota } from '@/types/auth.types'
@@ -38,35 +45,72 @@ function sortByLastAccessed(companies: Company[]): Company[] {
 interface CompanyCardProps {
   company: Company
   onClick: () => void
+  onDeleteClick: () => void
   isLoading: boolean
 }
 
-function CompanyCard({ company, onClick, isLoading }: CompanyCardProps) {
+function CompanyCard({ company, onClick, onDeleteClick, isLoading }: CompanyCardProps) {
+  const canDelete = company.user_role === 'owner'
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={isLoading}
-      className={cn(
-        'bg-white border border-[#d9e2e5] rounded-lg p-5 [@media(max-height:620px)]:p-3',
-        'cursor-pointer transition-all duration-150 text-left w-full',
-        'hover:border-[#5c9ead] hover:shadow-md',
-        'flex flex-col items-center text-center gap-3 [@media(max-height:620px)]:gap-2',
-        'disabled:opacity-60 disabled:cursor-not-allowed',
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={isLoading}
+        className={cn(
+          'bg-white border border-[#d9e2e5] rounded-lg p-5 [@media(max-height:620px)]:p-3',
+          'cursor-pointer transition-all duration-150 text-left w-full',
+          'hover:border-[#5c9ead] hover:shadow-md',
+          'flex flex-col items-center text-center gap-3 [@media(max-height:620px)]:gap-2',
+          'disabled:opacity-60 disabled:cursor-not-allowed',
+        )}
+      >
+        <div className="w-12 h-12 [@media(max-height:620px)]:w-9 [@media(max-height:620px)]:h-9 rounded-lg bg-[#EFF9FB] flex items-center justify-center">
+          <Building2 className="w-6 h-6 [@media(max-height:620px)]:w-5 [@media(max-height:620px)]:h-5 text-[#5c9ead]" />
+        </div>
+        <div>
+          <p className="font-semibold text-[#24323a] text-sm leading-snug">{company.name}</p>
+          <p className="text-[11px] text-[#64748b] mt-1">
+            {company.last_accessed_at
+              ? `Terakhir diakses ${formatTimeAgo(company.last_accessed_at)}`
+              : 'Belum pernah diakses'}
+          </p>
+        </div>
+      </button>
+
+      {canDelete && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              disabled={isLoading}
+              aria-label={`Menu ${company.name}`}
+              className={cn(
+                'absolute top-2 right-2 z-10 w-6 h-6 rounded-md flex items-center justify-center',
+                'text-[#94a3b8] hover:bg-[#f1f5f9] hover:text-[#64748b]',
+                'outline-none focus-visible:ring-2 focus-visible:ring-[#5c9ead]/50',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+              )}
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="z-[70] w-[180px] border border-[#d9e2e5] shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
+          >
+            <DropdownMenuItem
+              onClick={onDeleteClick}
+              className="text-[13px] gap-2 py-[7px] px-3 text-red-700 focus:text-red-700 hover:bg-[#f8fbfc]"
+            >
+              <Trash2 className="w-4 h-4" />
+              Hapus Perusahaan
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
-    >
-      <div className="w-12 h-12 [@media(max-height:620px)]:w-9 [@media(max-height:620px)]:h-9 rounded-lg bg-[#EFF9FB] flex items-center justify-center">
-        <Building2 className="w-6 h-6 [@media(max-height:620px)]:w-5 [@media(max-height:620px)]:h-5 text-[#5c9ead]" />
-      </div>
-      <div>
-        <p className="font-semibold text-[#24323a] text-sm leading-snug">{company.name}</p>
-        <p className="text-[11px] text-[#64748b] mt-1">
-          {company.last_accessed_at
-            ? `Terakhir diakses ${formatTimeAgo(company.last_accessed_at)}`
-            : 'Belum pernah diakses'}
-        </p>
-      </div>
-    </button>
+    </div>
   )
 }
 
@@ -120,6 +164,7 @@ export function CompanyPickerPage() {
   const queryClient = useQueryClient()
   const [loadingId, setLoadingId] = useState<number | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
+  const [deletingCompany, setDeletingCompany] = useState<Company | null>(null)
 
   /**
    * Daftar perusahaan sekaligus kuotanya. `companies` di store diisi saat login
@@ -213,6 +258,25 @@ export function CompanyPickerPage() {
     navigate('/login', { replace: true })
   }
 
+  /**
+   * Perusahaan yang baru dihapus dibuang dari store dan cache query. Kalau
+   * itu perusahaan yang sedang terbuka (dicapai lewat URL langsung, lihat
+   * catatan di `handleSelectCompany`), database-nya ditutup juga supaya
+   * tidak ada state basi yang menunjuk ke perusahaan yang sudah tidak ada.
+   */
+  function handleCompanyDeleted(companyId: number) {
+    setDeletingCompany(null)
+    toast.success('Perusahaan berhasil dihapus.')
+
+    if (activeCompanyId === companyId) {
+      closeDatabase()
+    }
+
+    const remaining = (companiesQuery.data?.data ?? companies).filter((c) => c.id !== companyId)
+    setCompanies(remaining)
+    queryClient.invalidateQueries({ queryKey: ['companies', 'picker'] })
+  }
+
   return (
     <div className="min-h-dvh bg-[#EFEFED] flex flex-col">
       <header className="bg-[#326273] px-6 py-4 [@media(max-height:620px)]:py-2 flex items-center gap-3 flex-shrink-0">
@@ -239,6 +303,7 @@ export function CompanyPickerPage() {
                 key={company.id}
                 company={company}
                 onClick={() => handleSelectCompany(company)}
+                onDeleteClick={() => setDeletingCompany(company)}
                 isLoading={loadingId !== null}
               />
             ))}
@@ -266,6 +331,12 @@ export function CompanyPickerPage() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={handleCompanyCreated}
+      />
+
+      <DeleteCompanyDialog
+        company={deletingCompany}
+        onClose={() => setDeletingCompany(null)}
+        onDeleted={handleCompanyDeleted}
       />
     </div>
   )

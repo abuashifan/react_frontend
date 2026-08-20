@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Plus, ShieldCheck } from 'lucide-react'
+import { LogOut, Plus, ShieldCheck, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DataTable } from '@/components/shared/table/DataTable'
@@ -234,6 +234,14 @@ export default function AdminClientsPage() {
           <span className="text-white font-semibold text-sm">Admin {APP_NAME}</span>
         </div>
         <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/admin/companies/deleted')}
+            className="gap-2 h-8 text-[12px] bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Perusahaan Terhapus
+          </Button>
           <span className="text-white/80 text-[12px]">{admin?.email}</span>
           <Button
             variant="outline"
