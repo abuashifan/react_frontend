@@ -1,4 +1,17 @@
 import { useState } from 'react'
+import { X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { useCompanySession } from '@/hooks/useCompanySession'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { WizardSidebar, type WizardStep, type StepStatus } from '../components/WizardSidebar'
 import { Step1CompanyInfo } from '../components/steps/Step1CompanyInfo'
 import { StepModuleSelection } from '../components/steps/StepModuleSelection'
@@ -12,6 +25,13 @@ import type { QuickAddItem } from '../components/MasterDataQuickAdd'
 import { WIZARD_STATE_KEY } from '../constants'
 
 interface WizardState {
+  /**
+   * Pemilik state ini. Sejak wizard bisa ditinggalkan lewat tombol Batalkan,
+   * satu kunci sessionStorage dipakai bergantian oleh beberapa perusahaan —
+   * tanpa penanda ini, membuka perusahaan lain yang juga belum selesai setup
+   * akan memuat langkah dan ringkasan milik perusahaan sebelumnya.
+   */
+  companyId: number | null
   currentStep: number
   visitedSteps: number[]
   completedSteps: number[]
@@ -44,6 +64,7 @@ const STEP_TITLES = [
 ]
 
 const INITIAL_STATE: WizardState = {
+  companyId: null,
   currentStep: 1,
   visitedSteps: [1],
   completedSteps: [],
@@ -62,18 +83,29 @@ const INITIAL_STATE: WizardState = {
  * dari langkah 1 saat ia kembali. Backend tetap pemegang status resmi setup —
  * ini murni kenyamanan navigasi, sesuai batasan di setup-wizard plan.
  */
-function readPersistedState(): WizardState {
+function readPersistedState(activeCompanyId: number | null): WizardState {
+  const fresh = { ...INITIAL_STATE, companyId: activeCompanyId }
+
   try {
     const raw = sessionStorage.getItem(WIZARD_STATE_KEY)
-    if (!raw) return INITIAL_STATE
-    return { ...INITIAL_STATE, ...(JSON.parse(raw) as Partial<WizardState>) }
+    if (!raw) return fresh
+
+    const saved = JSON.parse(raw) as Partial<WizardState>
+
+    // State milik perusahaan lain diabaikan, bukan dipakai ulang.
+    if (saved.companyId !== activeCompanyId) return fresh
+
+    return { ...INITIAL_STATE, ...saved, companyId: activeCompanyId }
   } catch {
-    return INITIAL_STATE
+    return fresh
   }
 }
 
 export function OnboardingPage() {
-  const [state, setStateRaw] = useState<WizardState>(readPersistedState)
+  const activeCompanyId = useAuthStore((s) => s.activeCompanyId)
+  const { isBusy, requestCloseDatabase } = useCompanySession()
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const [state, setStateRaw] = useState<WizardState>(() => readPersistedState(activeCompanyId))
 
   const setState: typeof setStateRaw = (update) => {
     setStateRaw((prev) => {
@@ -121,8 +153,24 @@ export function OnboardingPage() {
   return (
     <div className="h-dvh bg-[#EFEFED] flex flex-col">
       {/* Wizard header */}
-      <header className="h-[52px] bg-[#326273] flex items-center px-6 shrink-0">
-        <span className="text-white font-semibold text-[15px]">🌊 Seaside Escape ERP — Setup Perusahaan Baru</span>
+      <header className="h-[52px] bg-[#326273] flex items-center justify-between gap-4 px-6 shrink-0">
+        <span className="text-white font-semibold text-[15px] truncate">
+          🌊 Seaside Escape ERP — Setup Perusahaan Baru
+        </span>
+        {/*
+          Satu-satunya jalan keluar dari wizard selain menyelesaikannya. Tanpa
+          ini user yang terlanjur masuk ke perusahaan yang salah terkunci di
+          sini — tidak ada Topbar, jadi tidak ada menu "Tutup Database".
+        */}
+        <Button
+          variant="outline"
+          onClick={() => setCancelOpen(true)}
+          disabled={isBusy}
+          className="gap-2 h-8 shrink-0 text-[12px] bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white"
+        >
+          <X className="w-3.5 h-3.5" />
+          Batalkan
+        </Button>
       </header>
 
       {/* Wizard body */}
@@ -229,6 +277,43 @@ export function OnboardingPage() {
           </div>
         </main>
       </div>
+
+      <AlertDialog open={cancelOpen}>
+        <AlertDialogContent className="max-h-[calc(100dvh-48px)] max-w-[420px] overflow-y-auto rounded-xl p-6">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[16px] font-semibold text-[#24323a]">
+              Batalkan setup dan pilih perusahaan lain?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="pt-1 text-left">
+              <span className="block text-[14px] text-[#64748b]">
+                Langkah yang sudah Anda simpan tetap tersimpan — setup bisa dilanjutkan lagi
+                kapan saja dari langkah terakhir.
+              </span>
+              <span className="mt-1 block text-[13px] text-[#94a3b8]">
+                Isian pada langkah ini yang belum disimpan akan hilang.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter className="mt-1 gap-2 sm:space-x-0">
+            <AlertDialogCancel
+              disabled={isBusy}
+              onClick={() => setCancelOpen(false)}
+              className="h-8 border-[#d9e2e5] text-[13px] text-[#64748b] hover:bg-[#f8fbfc]"
+            >
+              Lanjutkan Setup
+            </AlertDialogCancel>
+            <Button
+              type="button"
+              onClick={requestCloseDatabase}
+              disabled={isBusy}
+              className="h-8 bg-[#326273] px-4 text-[13px] text-white hover:bg-[#264d5b]"
+            >
+              Ya, Pilih Perusahaan
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -246,11 +246,24 @@ Pulihkan (admin): - Hanya super admin: /admin/companies/deleted (platform.admin)
                     bukan Modules/Companies: dipakai modul Companies DAN Admin, dan hanya
                     menyentuh model Shared. Menaruhnya di Modules melanggar ModuleBoundariesTest
                     (preseden sama: Shared/Subscription/CompanyQuotaService)
+Batal wizard    : - OnboardingPage dapat tombol "Batalkan" di header → dialog konfirmasi →
+                    `useCompanySession().requestCloseDatabase()` (tutup database +
+                    /select-company). Sebelumnya wizard TIDAK punya jalan keluar sama sekali:
+                    tidak ada Topbar di sana, jadi user yang salah masuk perusahaan terkunci
+                  - `WizardState` kini menyimpan `companyId`. Wajib: satu kunci sessionStorage
+                    (`seaside-onboarding-wizard`) dipakai bergantian sejak wizard bisa
+                    ditinggalkan — tanpa penanda ini, membuka perusahaan lain yang juga belum
+                    selesai setup memuat langkah + ringkasan milik perusahaan sebelumnya
 Playwright      : ✅ Chromium headless 1280×900, dev server lokal (vite + php artisan serve):
                     /admin/companies/deleted merender 3 perusahaan terhapus dengan owner,
                     kuota 2/5, badge "30 hari lagi", tombol Pulihkan + Hapus Permanen;
                     dialog purge terbuka dengan tombol konfirmasi disabled sebelum nama
                     diketik; 0 console error
+                  ✅ Alur batal wizard end-to-end (memory router, semua lewat klik): login →
+                    Tambah Perusahaan (AUDIT-Cancel-Wizard-*) → mendarat di wizard langkah 1 →
+                    Batalkan → dialog → "Lanjutkan Setup" tetap di wizard → Batalkan → "Ya,
+                    Pilih Perusahaan" → mendarat di "Pilih Perusahaan"; 0 console error.
+                    Perusahaan uji dipurge setelahnya
 
 Terakhir dicek  : 2026-08-18 (Setup wizard — Template COA apply + Account Mapping picker/sticky nav)
 npm run build   : ✅ 0 error
