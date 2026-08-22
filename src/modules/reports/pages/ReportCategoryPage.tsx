@@ -10,7 +10,7 @@ export default function ReportCategoryPage() {
 
   if (!domain) {
     return (
-      <WorkspaceLayout title="Laporan" breadcrumb={[{ label: 'Laporan' }]}>
+      <WorkspaceLayout hideHeader>
         <p className="text-[13px] text-[#64748b]">Kategori tidak ditemukan.</p>
       </WorkspaceLayout>
     )
@@ -18,10 +18,7 @@ export default function ReportCategoryPage() {
 
   return (
     <PermissionGuard permission="reports.view">
-      <WorkspaceLayout
-        title={domain.label}
-        breadcrumb={[{ label: 'Laporan' }, { label: domain.label }]}
-      >
+      <WorkspaceLayout hideHeader>
         <ReportDomainPanel domainId={domain.categoryPath} />
       </WorkspaceLayout>
     </PermissionGuard>

@@ -1,0 +1,280 @@
+import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
+import { ReportParameterModal } from '../components/ReportParameterModal'
+import { ReportCompactBar } from '../components/ReportCompactBar'
+import { ReportError } from '../components/ReportError'
+import { TablePagination } from '@/components/shared/table/TablePagination'
+import type { PaginationState } from '@/components/shared/table/TablePagination'
+import { Button } from '@/components/ui/button'
+import { reportsApi } from '../services/reportsApi'
+import { formatCurrency, formatDate } from '@/lib/utils'
+import { exportCsv } from '@/lib/exportCsv'
+import { useReportParams } from '../hooks/useReportParams'
+import { useRecordTab } from '@/hooks/useRecordTab'
+import type { ProductHistoryDocumentType } from '../types/reports.types'
+
+const today = new Date().toISOString().slice(0, 10)
+const firstDayOfMonth = today.slice(0, 7) + '-01'
+
+const DOCUMENT_LABELS: Record<ProductHistoryDocumentType, string> = {
+  vendor_bill: 'Beli',
+  purchase_return: 'Retur Beli',
+  sales_invoice: 'Jual',
+  sales_return: 'Retur Jual',
+  stock_adjustment: 'Penyesuaian',
+  stock_opname: 'Opname',
+  stock_transfer: 'Transfer',
+  opening_balance: 'Saldo Awal',
+  stock_movement: 'Pergerakan',
+}
+
+const DOCUMENT_CLASSES: Record<ProductHistoryDocumentType, string> = {
+  vendor_bill: 'bg-blue-100 text-blue-700',
+  purchase_return: 'bg-blue-50 text-blue-600',
+  sales_invoice: 'bg-green-100 text-green-700',
+  sales_return: 'bg-green-50 text-green-600',
+  stock_adjustment: 'bg-amber-100 text-amber-700',
+  stock_opname: 'bg-amber-100 text-amber-700',
+  stock_transfer: 'bg-slate-100 text-slate-700',
+  opening_balance: 'bg-violet-100 text-violet-700',
+  stock_movement: 'bg-slate-100 text-slate-600',
+}
+
+/**
+ * Rute dokumen per jenis, untuk membuka dokumen sumber dari laporan.
+ *
+ * `stock_movement` sengaja TIDAK dipetakan — dan itu bukan kelalaian: jenis itu
+ * hanya dipakai untuk pergerakan yang tidak punya dokumen sumber (mis. saldo
+ * awal hasil impor), sehingga `document_id`-nya adalah id pergerakan yang
+ * memang tidak punya halaman. Sisanya membawa id dokumen sumbernya.
+ */
+const DOCUMENT_ROUTES: Partial<Record<ProductHistoryDocumentType, string>> = {
+  sales_invoice: '/sales/invoices',
+  sales_return: '/sales/returns',
+  vendor_bill: '/purchase/bills',
+  purchase_return: '/purchase/returns',
+  stock_adjustment: '/inventory/adjustments',
+  stock_opname: '/inventory/opnames',
+  stock_transfer: '/inventory/movements',
+}
+
+const formatQty = (value: number) =>
+  value.toLocaleString('id-ID', { maximumFractionDigits: 4 })
+
+export default function ProductHistoryReportPage() {
+  const { params, setParams, activeParams, setActiveParams, showFilter, setShowFilter } =
+    useReportParams({ start_date: firstDayOfMonth, end_date: today })
+  const { openRecordTab } = useRecordTab()
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
+
+  // Backend mewajibkan `product_id`; tanpa itu requestnya pasti 422, jadi
+  // query-nya ditahan sampai produk dipilih.
+  const hasProduct = !!activeParams?.product_id
+
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['reports', 'product-history', activeParams],
+    queryFn: () => reportsApi.productHistory(activeParams!),
+    enabled: hasProduct,
+  })
+
+  const report = data?.data
+  const allRows = useMemo(() => report?.rows ?? [], [report])
+
+  // Nama produk diambil dari respons laporan, bukan diingat di klien: dengan
+  // begitu ia tetap benar setelah halaman dimuat ulang atau laporan dibuka
+  // dari daftar tersimpan, di mana yang tersimpan hanya `product_id`.
+  // Hanya nama produknya; kodenya sengaja tidak ikut. Di picker, kode tetap
+  // muncul sebagai sublabel — bentuk yang sama dengan hasil `produkApi.search`,
+  // supaya pilihan tersimpan dan hasil pencarian terbaca seragam.
+  const product = report?.product ?? null
+  const productLabel = product?.product_name
+  const productOption = product
+    ? { value: product.id, label: product.product_name, sublabel: product.product_code || undefined }
+    : null
+
+  const pagedRows = useMemo(() => {
+    const start = pagination.pageIndex * pagination.pageSize
+    return allRows.slice(start, start + pagination.pageSize)
+  }, [allRows, pagination])
+
+  const handleSubmit = () => {
+    setActiveParams({ ...params })
+    setShowFilter(false)
+    setPagination((p) => ({ ...p, pageIndex: 0 }))
+  }
+
+  return (
+    <WorkspaceLayout
+      hideHeader
+      toolbar={
+        <ReportCompactBar
+          params={activeParams ?? params}
+          onOpenModal={() => setShowFilter(true)}
+          mode="range"
+          title={productLabel}
+        />
+      }
+    >
+      <div className="space-y-4">
+        {showFilter && (
+          <ReportParameterModal
+            open={showFilter}
+            onClose={() => setShowFilter(false)}
+            params={params}
+            onChange={(p) => setParams((prev) => ({ ...prev, ...p }))}
+            onSubmit={handleSubmit}
+            mode="range"
+            contextFilters={{ product: true }}
+            contextOptions={{ product: productOption }}
+            isLoading={isLoading}
+          />
+        )}
+
+        {/* Tanpa produk, tabel kosong akan terbaca sebagai "tidak ada
+            transaksi" -- padahal laporannya belum pernah dijalankan. */}
+        {!hasProduct && (
+          <div className="rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-10 text-center text-[13px] text-[#64748b]">
+            Pilih produk lebih dulu lewat filter untuk melihat riwayat transaksinya.
+          </div>
+        )}
+
+        {hasProduct && isLoading && (
+          <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">
+            Memuat laporan...
+          </div>
+        )}
+        {hasProduct && isError && <ReportError onRetry={() => refetch()} />}
+
+        {hasProduct && !isLoading && !isError && report && (
+          <>
+            {allRows.length > 0 && (
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-[12px]"
+                  onClick={() =>
+                    exportCsv(
+                      `riwayat-produk-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
+                      ['Tanggal', 'Dokumen', 'Jenis', 'Pelanggan/Supplier', 'Qty', 'Harga', 'Total'],
+                      allRows.map((r) => [
+                        r.date,
+                        r.document_number,
+                        DOCUMENT_LABELS[r.document_type],
+                        r.contact_name ?? '',
+                        r.quantity,
+                        r.unit_price,
+                        r.line_total,
+                      ]),
+                    )
+                  }
+                >
+                  Export CSV
+                </Button>
+              </div>
+            )}
+
+            {allRows.length > 0 && (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                {[
+                  { label: 'Total Dibeli', qty: report.totals.purchased_qty, value: report.totals.purchased_value },
+                  { label: 'Rata-rata Beli', qty: null, value: report.totals.avg_buy_price },
+                  { label: 'Total Dijual', qty: report.totals.sold_qty, value: report.totals.sold_value },
+                  { label: 'Rata-rata Jual', qty: null, value: report.totals.avg_sell_price },
+                  // Kuantitas saja: penyesuaian dinilai dengan HPP, bukan harga
+                  // transaksi, jadi menampilkan nilainya di sebelah nilai jual
+                  // akan mengundang perbandingan yang keliru.
+                  { label: 'Penyesuaian', qty: report.totals.adjusted_qty, value: null },
+                ].map((card) => (
+                  <div key={card.label} className="rounded-lg border border-[#e2e8f0] bg-white px-4 py-3">
+                    <p className="text-[11px] text-[#64748b]">{card.label}</p>
+                    {card.value !== null && (
+                      <p className="text-[13px] font-semibold tabular-nums text-[#1e293b]">
+                        {formatCurrency(card.value)}
+                      </p>
+                    )}
+                    {card.qty !== null && (
+                      <p
+                        className={`tabular-nums ${card.value === null ? 'text-[13px] font-semibold text-[#1e293b]' : 'text-[11px] text-[#64748b]'}`}
+                      >
+                        {formatQty(card.qty)} unit
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="overflow-auto rounded-lg border border-[#e2e8f0]">
+              <table className="w-full text-[12px]">
+                <thead className="bg-[#f8fafc]">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Dokumen</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jenis</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pelanggan / Supplier</th>
+                    <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Qty</th>
+                    <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Harga</th>
+                    <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#f1f5f9]">
+                  {pagedRows.map((row) => (
+                    <tr key={`${row.document_type}-${row.document_number}-${row.date}`} className="hover:bg-[#f8fafc]">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-[#64748b]">{formatDate(row.date)}</td>
+                      <td className="px-3 py-1.5 font-medium">
+                        {DOCUMENT_ROUTES[row.document_type] ? (
+                          <button
+                            type="button"
+                            className="text-[#5c9ead] hover:underline"
+                            onClick={() =>
+                              openRecordTab({
+                                label: row.document_number,
+                                path: `${DOCUMENT_ROUTES[row.document_type]}/${row.document_id}`,
+                              })
+                            }
+                          >
+                            {row.document_number}
+                          </button>
+                        ) : (
+                          <span className="text-[#334155]">{row.document_number}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <span className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium ${DOCUMENT_CLASSES[row.document_type]}`}>
+                          {DOCUMENT_LABELS[row.document_type]}
+                        </span>
+                      </td>
+                      <td className="px-3 py-1.5 text-[#334155]">{row.contact_name ?? '—'}</td>
+                      <td className={`px-3 py-1.5 text-right tabular-nums ${row.quantity < 0 ? 'text-red-600' : 'text-[#1e293b]'}`}>
+                        {formatQty(row.quantity)}
+                      </td>
+                      <td className="px-3 py-1.5 text-right tabular-nums text-[#64748b]">{formatCurrency(row.unit_price)}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-[#1e293b]">{formatCurrency(row.line_total)}</td>
+                    </tr>
+                  ))}
+                  {allRows.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-[#94a3b8]">
+                        Produk ini tidak punya transaksi penjualan atau pembelian pada periode tersebut.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+              {allRows.length > 0 && (
+                <TablePagination
+                  pagination={pagination}
+                  totalRows={allRows.length}
+                  onChange={setPagination}
+                  isFetching={isLoading}
+                />
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </WorkspaceLayout>
+  )
+}

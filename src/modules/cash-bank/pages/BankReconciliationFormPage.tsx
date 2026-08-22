@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { RefreshCw } from 'lucide-react'
@@ -12,17 +12,32 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { coaApi } from '@/modules/master-data/services/coaApi'
-import { formatCurrency, formatDate, toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, formatCurrency, formatDate, toDateInputValue } from '@/lib/utils'
 import { useBankReconciliation, useBankReconciliationMutations } from '../hooks/useCashBankList'
 import { bankReconciliationSchema, type BankReconciliationFormValues } from '../schemas/cashBankSchemas'
+import { bankReconciliationApi } from '../services/cashBankApi'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import type { BankReconciliationLine } from '../types/cashBank.types'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 export default function BankReconciliationFormPage() {
-  const navigate = useNavigate()
+  const { id } = useParams()
+  // `/cash-bank/bank-reconciliations/create` dan `/cash-bank/bank-reconciliations/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <BankReconciliationFormPageContent key={id ?? 'create'} />
+}
+
+function BankReconciliationFormPageContent() {
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -32,7 +47,7 @@ export default function BankReconciliationFormPage() {
   const { create, update, refreshLines, markLines } = useBankReconciliationMutations()
   const [selectedLineIds, setSelectedLineIds] = useState<Set<number>>(new Set())
   const [clearedDate, setClearedDate] = useState(new Date().toISOString().slice(0, 10))
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<BankReconciliationFormValues>({ resolver: zodResolver(bankReconciliationSchema), defaultValues: { statement_start_date: new Date().toISOString().slice(0, 10), statement_end_date: new Date().toISOString().slice(0, 10) } })
+  const { register, handleSubmit, control, getValues, setValue, watch, reset, setError, formState: { errors, isSubmitting } } = useForm<BankReconciliationFormValues>({ resolver: zodResolver(bankReconciliationSchema), defaultValues: { statement_start_date: new Date().toISOString().slice(0, 10), statement_end_date: new Date().toISOString().slice(0, 10) } })
   const status = (reconciliation?.status ?? 'draft') as DocumentStatus
   // Rekonsiliasi bank selalu berstatus draft di backend (tidak ada finalize/void).
   const isDraft = isCreate || reconciliation?.status === 'draft'
@@ -44,31 +59,53 @@ export default function BankReconciliationFormPage() {
     }
   }, [reconciliation, reset])
 
-  const handleSave = handleSubmit(async (values) => {
-    try {
-      if (isCreate) {
-        const res = await create.mutateAsync(values)
-        toast.success('Rekonsiliasi bank berhasil dibuat.')
-        navigate(`/cash-bank/bank-reconciliations/${res.data.id}`)
-      } else {
-        await update.mutateAsync({ id: Number(id), payload: values })
-        toast.success('Rekonsiliasi bank berhasil diperbarui.')
-      }
-    } catch { toast.error('Gagal menyimpan rekonsiliasi bank.') }
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<BankReconciliationFormValues>({
+    draftKey: `cash-bank.bank-reconciliation.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+  })
+
+  const { saveAndClose, navProps } = useRecordFormNavigation<BankReconciliationFormValues>({
+    id,
+    basePath: '/cash-bank/bank-reconciliations',
+    createLabel: 'Rekonsiliasi Baru',
+    sequenceQueryKey: ['cash-bank', 'reconciliations', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await bankReconciliationApi.adjacent(recordId)).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      if (creating) await create.mutateAsync(values)
+      else await update.mutateAsync({ id: Number(id), payload: values })
+    },
+    onSaved: () => formDraft.clearDraft(),
+    successMessage: (creating) => (creating ? 'Rekonsiliasi bank berhasil dibuat.' : 'Rekonsiliasi bank berhasil diperbarui.'),
+    onError: (saveError) => {
+      // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
+      // bukan hanya toast generik "Gagal menyimpan".
+      applyApiValidationErrors(saveError, setError)
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan rekonsiliasi bank.'))
+    },
+    canSave: isEditable,
   })
 
   const handleRefresh = async () => {
     try { await refreshLines.mutateAsync(Number(id)); toast.success('Transaksi berhasil dimuat ulang.') }
-    catch { toast.error('Gagal memuat transaksi.') }
+    catch (refreshError) { toast.error(getApiErrorMessage(refreshError, 'Gagal memuat transaksi.')) }
   }
 
   const handleMark = async (cleared: boolean) => {
     if (selectedLineIds.size === 0) { toast.error('Pilih minimal satu transaksi.'); return }
     try {
       await markLines.mutateAsync({ id: Number(id), lineIds: Array.from(selectedLineIds), cleared, clearedDate: cleared ? clearedDate : undefined })
+      formDraft.clearDraft()
       toast.success(cleared ? 'Ditandai cleared.' : 'Ditandai uncleared.')
       setSelectedLineIds(new Set())
-    } catch { toast.error('Gagal menandai transaksi.') }
+    } catch (markError) { toast.error(getApiErrorMessage(markError, 'Gagal menandai transaksi.')) }
   }
 
   const toggleLine = (lineId: number) => {
@@ -84,8 +121,8 @@ export default function BankReconciliationFormPage() {
   const clearedTotal = clearedLines.reduce((sum, l) => sum + (l.direction === 'in' ? l.amount : -l.amount), 0)
 
   const actions: DocumentActionButton[] = []
-  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan', variant: 'primary', onClick: () => void handleSave(), isLoading: isSubmitting })
-  if (!isCreate && isDraft && can('cash_bank.edit')) actions.push({ id: 'update', label: 'Simpan Perubahan', variant: 'primary', onClick: () => void handleSave(), isLoading: isSubmitting || update.isPending })
+  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'primary', onClick: saveAndClose, isLoading: isSubmitting })
+  if (!isCreate && isDraft && can('cash_bank.edit')) actions.push({ id: 'update', label: 'Simpan & Tutup', variant: 'primary', onClick: saveAndClose, isLoading: isSubmitting || update.isPending })
 
   if (!isCreate && isLoading) return <FormLayout title="Rekonsiliasi Bank" breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Rekonsiliasi Bank', path: '/cash-bank/bank-reconciliations' }, { label: 'Memuat...' }]}><div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat...</div></FormLayout>
 
@@ -93,14 +130,19 @@ export default function BankReconciliationFormPage() {
     <>
       <FormLayout title={isCreate ? 'Buat Rekonsiliasi Bank' : 'Rekonsiliasi Bank'} documentNumber={reconciliation?.number} status={status} readOnly={!isEditable}
         breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Rekonsiliasi Bank', path: '/cash-bank/bank-reconciliations' }, { label: isCreate ? 'Buat' : (reconciliation?.number ?? '') }]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={reconciliation?.number} actions={actions} />}>
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={reconciliation?.number} actions={actions} />
+          </>
+        }>
         <div className="space-y-4">
           <FormSection title="Header">
             <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Bank <span className="text-red-500">*</span></Label><SearchableSelect value={watch('cash_bank_account_id') ?? null} onChange={(v) => setValue('cash_bank_account_id', v as number)} onSearch={coaApi.search} placeholder="Pilih akun bank..." disabled={!isEditable} error={errors.cash_bank_account_id?.message} selectedOptions={reconciliation?.cash_bank_account ? [{ value: reconciliation.cash_bank_account.id, label: reconciliation.cash_bank_account.name }] : []} /></div>
-            <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal Mulai <span className="text-red-500">*</span></Label><Input {...register('statement_start_date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />{errors.statement_start_date && <p className="text-[11px] text-red-500">{errors.statement_start_date.message}</p>}</div>
-            <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal Akhir <span className="text-red-500">*</span></Label><Input {...register('statement_end_date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />{errors.statement_end_date && <p className="text-[11px] text-red-500">{errors.statement_end_date.message}</p>}</div>
-            <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Saldo Akhir Rekening Koran <span className="text-red-500">*</span></Label><Input {...register('statement_ending_balance', { valueAsNumber: true })} type="number" disabled={!isEditable} className="h-9 text-[13px] text-right tabular-nums" />{errors.statement_ending_balance && <p className="text-[11px] text-red-500">{errors.statement_ending_balance.message}</p>}</div>
-            <div className="flex flex-col gap-1 md:col-span-2"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label><Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} /></div>
+            <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal Mulai <span className="text-red-500">*</span></Label><Input {...register('statement_start_date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.statement_start_date))} /><FieldError message={errors.statement_start_date?.message} /></div>
+            <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal Akhir <span className="text-red-500">*</span></Label><Input {...register('statement_end_date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.statement_end_date))} /><FieldError message={errors.statement_end_date?.message} /></div>
+            <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Saldo Akhir Rekening Koran <span className="text-red-500">*</span></Label><Input {...register('statement_ending_balance', { valueAsNumber: true })} type="number" disabled={!isEditable} className={cn('h-9 text-[13px] text-right tabular-nums', fieldErrorClass(errors.statement_ending_balance))} /><FieldError message={errors.statement_ending_balance?.message} /></div>
+            <div className="flex flex-col gap-1 md:col-span-2"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label><Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} /><FieldError message={errors.notes?.message} /></div>
           </FormSection>
 
           {!isCreate && (

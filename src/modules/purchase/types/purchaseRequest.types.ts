@@ -60,7 +60,8 @@ export interface PurchaseRequestListParams {
   page: number
   per_page: number
   search?: string
-  status?: PurchaseRequestStatus
+  /** Satu status, atau beberapa dipisah koma (mis. "draft,posted"). */
+  status?: string
   department_id?: number
   date_from?: string
   date_to?: string

@@ -1,8 +1,9 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { useCompanyStore } from '@/stores/useCompanyStore'
+import { useAdminAuthStore } from '@/stores/useAdminAuthStore'
 import { AppShell } from '@/components/shared/layout/AppShell'
 import { hasPermission } from '@/hooks/usePermission'
+import { useSetupGate } from '@/modules/onboarding/hooks/useSetupStatus'
 
 interface ProtectedRouteProps {
   permission?: string
@@ -18,8 +19,12 @@ export function ProtectedRoute({
   children,
 }: ProtectedRouteProps) {
   const { token, permissions, activeCompanyId } = useAuthStore()
-  const activeCompany = useCompanyStore((s) => s.activeCompany)
   const location = useLocation()
+  // Status setup dibaca dari backend (`/setup/status`), bukan dari flag di
+  // company settings: flag itu tidak pernah dikirim backend sehingga gate-nya
+  // tidak pernah aktif. Lihat useSetupGate untuk perilaku saat status belum
+  // diketahui.
+  const setupGate = useSetupGate()
 
   if (!token) {
     return <Navigate to="/login" state={{ from: location }} replace />
@@ -29,7 +34,7 @@ export function ProtectedRoute({
     return <Navigate to="/select-company" replace />
   }
 
-  if (requireOnboarding && activeCompany && activeCompany.settings.onboarding_completed === false) {
+  if (requireOnboarding && setupGate.initial_setup_available) {
     return <Navigate to="/onboarding" replace />
   }
 
@@ -47,6 +52,23 @@ export function CompanySelectionGuard({ children }: { children: React.ReactNode 
 
   if (!token) {
     return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  return <>{children}</>
+}
+
+/**
+ * Penjaga area admin aplikasi.
+ *
+ * Memakai sesi admin yang terpisah dari sesi client — token client tidak
+ * membuka halaman ini, dan sebaliknya. Penjaga sebenarnya tetap di backend
+ * (`platform.admin`); yang di sini hanya menghindarkan layar kosong.
+ */
+export function PlatformAdminGuard({ children }: { children: React.ReactNode }) {
+  const { token, admin } = useAdminAuthStore()
+
+  if (!token || !admin) {
+    return <Navigate to="/admin/login" replace />
   }
 
   return <>{children}</>

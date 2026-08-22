@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
@@ -11,21 +11,22 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
-import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
 import { formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { useGoodsReceiptList, useGoodsReceiptMutations } from '../hooks/useGoodsReceiptList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { GoodsReceipt, GoodsReceiptStatus } from '../types/goodsReceipt.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: GoodsReceiptStatus[] = ['draft', 'received', 'partially_billed', 'void', 'cancelled']
-const FILTER_HINT = 'Filter multi-select dan tanggal berlaku pada data halaman yang sedang dimuat.'
-
 export default function GoodsReceiptListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
+  const [search, setSearch] = useState('')
+  const [prevFilters, setPrevFilters] = useState('')
   const [filterStatuses, setFilterStatuses] = useState<GoodsReceiptStatus[]>([])
   const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [filterVendor, setFilterVendor] = useState<number | null>(null)
@@ -34,22 +35,26 @@ export default function GoodsReceiptListPage() {
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
   const { void: voidGoodsReceipt } = useGoodsReceiptMutations()
 
+  // Semua filter kini dikirim ke server, jadi perubahannya harus
+  // mengembalikan halaman ke 1 -- kalau tidak, memfilter dari halaman jauh
+  // akan mendarat di daftar kosong.
+  const filterKey = `${search}|${filterStatuses.join(',')}|${dateRange.from}|${dateRange.to}|${String(filterVendor)}`
+  if (filterKey !== prevFilters) {
+    setPrevFilters(filterKey)
+    setPage(0)
+  }
+
   const { data, isLoading, isFetching } = useGoodsReceiptList({
     page: page + 1,
     per_page: 25,
+    search: search || undefined,
     vendor_id: filterVendor ?? undefined,
+    status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
+    date_from: dateRange.from || undefined,
+    date_to: dateRange.to || undefined,
   })
 
-  const rows = data?.data ?? []
-  const visibleRows = useMemo(
-    () =>
-      rows.filter((goodsReceipt) => {
-        const matchesStatus = filterStatuses.length === 0 || filterStatuses.includes(goodsReceipt.status)
-        const matchesDate = isDateInRange(goodsReceipt.date, dateRange.from, dateRange.to)
-        return matchesStatus && matchesDate
-      }),
-    [rows, filterStatuses, dateRange.from, dateRange.to],
-  )
+  const rows = useMemo(() => data?.data ?? [], [data])
 
   const activeFilters = [filterStatuses.length > 0, dateRange.from, dateRange.to, filterVendor].filter(Boolean).length
 
@@ -66,7 +71,7 @@ export default function GoodsReceiptListPage() {
       variant: 'destructive',
       permission: 'purchase.goods-receipts.void',
       onClick: (ids) => {
-        const eligible = visibleRows.filter((goodsReceipt) => ids.includes(String(goodsReceipt.id)) && goodsReceipt.status !== 'void')
+        const eligible = rows.filter((goodsReceipt) => ids.includes(String(goodsReceipt.id)) && goodsReceipt.status !== 'void')
         if (eligible.length === 0) {
           toast.warning('Dokumen yang dipilih tidak bisa di-void.')
           return
@@ -78,7 +83,7 @@ export default function GoodsReceiptListPage() {
   ]
 
   const handleBulkVoid = async (reason: string) => {
-    const selectedGoodsReceipts = visibleRows.filter((goodsReceipt) => bulkVoidIds.includes(String(goodsReceipt.id)))
+    const selectedGoodsReceipts = rows.filter((goodsReceipt) => bulkVoidIds.includes(String(goodsReceipt.id)))
     if (selectedGoodsReceipts.length === 0) {
       toast.warning('Tidak ada penerimaan barang valid untuk di-void.')
       setBulkVoidOpen(false)
@@ -90,16 +95,17 @@ export default function GoodsReceiptListPage() {
       const results = await Promise.allSettled(selectedGoodsReceipts.map((goodsReceipt) => voidGoodsReceipt.mutateAsync({ id: Number(goodsReceipt.id), reason })))
       const successCount = results.filter((result) => result.status === 'fulfilled').length
       const failureCount = results.length - successCount
+      const failureDetail = getBulkFailureDetail(results)
 
       if (failureCount === 0) {
         toast.success(`${successCount} penerimaan barang berhasil di-void.`)
       } else if (successCount === 0) {
-        toast.error(`Gagal void ${failureCount} penerimaan barang.`)
+        toast.error(`Gagal void ${failureCount} penerimaan barang.${failureDetail ? ` ${failureDetail}` : ''}`)
       } else {
-        toast.warning(`${successCount} penerimaan barang berhasil di-void, ${failureCount} gagal.`)
+        toast.warning(`${successCount} penerimaan barang berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
       }
-    } catch {
-      toast.error('Gagal memproses bulk void.')
+    } catch (bulkError) {
+      toast.error(getApiErrorMessage(bulkError, 'Gagal memproses bulk void.'))
     } finally {
       setBulkVoidOpen(false)
       setBulkVoidIds([])
@@ -114,7 +120,7 @@ export default function GoodsReceiptListPage() {
       size: 140,
       meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => (
-        <button type="button" onClick={() => navigate(`/purchase/goods-receipts/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">
+        <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/purchase/goods-receipts/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.number}
         </button>
       ),
@@ -135,8 +141,15 @@ export default function GoodsReceiptListPage() {
         setFilterVendor(null)
         resetSelection()
       }}
-      hint={FILTER_HINT}
     >
+      <div className="border-b border-[#f1f5f9] px-4 py-3">
+        <ListSearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Cari nomor GR, vendor..."
+          className="w-full max-w-none"
+        />
+      </div>
       <MultiCheckboxFilter
         title="Status"
         options={STATUSES.map((status) => ({ value: status, label: status.replace('_', ' ') }))}
@@ -153,7 +166,6 @@ export default function GoodsReceiptListPage() {
           setDateRange(next)
           resetSelection()
         }}
-        note="Berlaku pada data halaman yang sedang dimuat."
       />
       <FilterSection title="Vendor">
         <SearchableSelect
@@ -177,14 +189,14 @@ export default function GoodsReceiptListPage() {
         sidebar={sidebar}
         action={
           <PermissionGuard permission="purchase.goods-receipts.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/purchase/goods-receipts/create')}>
+            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Penerimaan Baru', path: '/purchase/goods-receipts/create' })}>
               <Plus className="mr-1 h-3.5 w-3.5" /> Buat GR
             </Button>
           </PermissionGuard>
         }
       >
         <DataTable
-          data={visibleRows}
+          data={rows}
           columns={columns}
           totalRows={data?.meta.total ?? 0}
           isLoading={isLoading}
@@ -212,7 +224,7 @@ export default function GoodsReceiptListPage() {
         onConfirm={(reason) => void handleBulkVoid(reason)}
         documentNumber={
           bulkVoidIds.length === 1
-            ? (visibleRows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
+            ? (rows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
             : `${bulkVoidIds.length} dokumen terpilih`
         }
         isLoading={voidGoodsReceipt.isPending}

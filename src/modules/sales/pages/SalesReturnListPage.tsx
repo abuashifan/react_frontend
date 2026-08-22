@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
@@ -11,19 +11,18 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
-import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { useSalesReturnList, useSalesReturnMutations } from '../hooks/useSalesReturnList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { SalesReturn, SalesReturnStatus } from '../types/salesReturn.types'
 
 const STATUSES: SalesReturnStatus[] = ['draft', 'approved', 'posted', 'void']
-const FILTER_HINT = 'Filter multi-select dan tanggal berlaku pada data halaman yang sedang dimuat.'
-
 export default function SalesReturnListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
   const [filterStatuses, setFilterStatuses] = useState<SalesReturnStatus[]>([])
@@ -32,24 +31,29 @@ export default function SalesReturnListPage() {
   const [selectedRows, setSelectedRows] = useState<string[]>([])
   const [bulkVoidIds, setBulkVoidIds] = useState<string[]>([])
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [prevFilters, setPrevFilters] = useState('')
+  // Semua filter kini dikirim ke server, jadi perubahannya harus
+  // mengembalikan halaman ke 1 -- kalau tidak, memfilter dari halaman jauh
+  // akan mendarat di daftar kosong.
+  const filterKey = `${search}|${filterStatuses.join(',')}|${dateRange.from}|${dateRange.to}|${String(filterCustomer)}`
+  if (filterKey !== prevFilters) {
+    setPrevFilters(filterKey)
+    setPage(0)
+  }
   const { void: voidReturn } = useSalesReturnMutations()
 
   const { data, isLoading, isFetching } = useSalesReturnList({
     page: page + 1,
     per_page: 25,
+    search: search || undefined,
     customer_id: filterCustomer ?? undefined,
+    status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
+    date_from: dateRange.from || undefined,
+    date_to: dateRange.to || undefined,
   })
 
-  const rows = data?.data ?? []
-  const visibleRows = useMemo(
-    () =>
-      rows.filter((salesReturn) => {
-        const matchesStatus = filterStatuses.length === 0 || filterStatuses.includes(salesReturn.status)
-        const matchesDate = isDateInRange(salesReturn.date, dateRange.from, dateRange.to)
-        return matchesStatus && matchesDate
-      }),
-    [rows, filterStatuses, dateRange.from, dateRange.to],
-  )
+  const rows = useMemo(() => data?.data ?? [], [data])
 
   const activeFilters = [filterStatuses.length > 0, dateRange.from, dateRange.to, filterCustomer].filter(Boolean).length
 
@@ -66,7 +70,7 @@ export default function SalesReturnListPage() {
       variant: 'destructive',
       permission: 'sales.returns.void',
       onClick: (ids) => {
-        const eligible = visibleRows.filter((salesReturn) => ids.includes(String(salesReturn.id)) && salesReturn.status !== 'void')
+        const eligible = rows.filter((salesReturn) => ids.includes(String(salesReturn.id)) && salesReturn.status !== 'void')
         if (eligible.length === 0) {
           toast.warning('Dokumen yang dipilih tidak bisa di-void.')
           return
@@ -78,7 +82,7 @@ export default function SalesReturnListPage() {
   ]
 
   const handleBulkVoid = async (reason: string) => {
-    const selectedReturns = visibleRows.filter((salesReturn) => bulkVoidIds.includes(String(salesReturn.id)))
+    const selectedReturns = rows.filter((salesReturn) => bulkVoidIds.includes(String(salesReturn.id)))
     if (selectedReturns.length === 0) {
       toast.warning('Tidak ada retur penjualan valid untuk di-void.')
       setBulkVoidOpen(false)
@@ -90,16 +94,17 @@ export default function SalesReturnListPage() {
       const results = await Promise.allSettled(selectedReturns.map((salesReturn) => voidReturn.mutateAsync({ id: Number(salesReturn.id), reason })))
       const successCount = results.filter((result) => result.status === 'fulfilled').length
       const failureCount = results.length - successCount
+      const failureDetail = getBulkFailureDetail(results)
 
       if (failureCount === 0) {
         toast.success(`${successCount} retur penjualan berhasil di-void.`)
       } else if (successCount === 0) {
-        toast.error(`Gagal void ${failureCount} retur penjualan.`)
+        toast.error(`Gagal void ${failureCount} retur penjualan.${failureDetail ? ` ${failureDetail}` : ''}`)
       } else {
-        toast.warning(`${successCount} retur penjualan berhasil di-void, ${failureCount} gagal.`)
+        toast.warning(`${successCount} retur penjualan berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
       }
-    } catch {
-      toast.error('Gagal memproses bulk void.')
+    } catch (bulkError) {
+      toast.error(getApiErrorMessage(bulkError, 'Gagal memproses bulk void.'))
     } finally {
       setBulkVoidOpen(false)
       setBulkVoidIds([])
@@ -114,7 +119,7 @@ export default function SalesReturnListPage() {
       size: 140,
       meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => (
-        <button type="button" onClick={() => navigate(`/sales/returns/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">
+        <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/sales/returns/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.number}
         </button>
       ),
@@ -151,8 +156,15 @@ export default function SalesReturnListPage() {
         setFilterCustomer(null)
         resetSelection()
       }}
-      hint={FILTER_HINT}
     >
+      <div className="border-b border-[#f1f5f9] px-4 py-3">
+        <ListSearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Cari nomor retur, customer..."
+          className="w-full max-w-none"
+        />
+      </div>
       <MultiCheckboxFilter
         title="Status"
         options={STATUSES.map((status) => ({ value: status, label: status }))}
@@ -169,7 +181,6 @@ export default function SalesReturnListPage() {
           setDateRange(next)
           resetSelection()
         }}
-        note="Berlaku pada data halaman yang sedang dimuat."
       />
       <FilterSection title="Customer">
         <SearchableSelect
@@ -193,14 +204,14 @@ export default function SalesReturnListPage() {
         sidebar={sidebar}
         action={
           <PermissionGuard permission="sales.returns.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/sales/returns/create')}>
+            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Retur Baru', path: '/sales/returns/create' })}>
               <Plus className="mr-1 h-3.5 w-3.5" /> Buat Retur
             </Button>
           </PermissionGuard>
         }
       >
         <DataTable
-          data={visibleRows}
+          data={rows}
           columns={columns}
           totalRows={data?.meta.total ?? 0}
           isLoading={isLoading}
@@ -228,7 +239,7 @@ export default function SalesReturnListPage() {
         onConfirm={(reason) => void handleBulkVoid(reason)}
         documentNumber={
           bulkVoidIds.length === 1
-            ? (visibleRows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
+            ? (rows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
             : `${bulkVoidIds.length} dokumen terpilih`
         }
         isLoading={voidReturn.isPending}

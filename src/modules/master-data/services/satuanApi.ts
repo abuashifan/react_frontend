@@ -4,7 +4,7 @@ import type { SelectOption } from '@/types/common.types'
 import type { Satuan, CreateSatuanPayload, UpdateSatuanPayload } from '../types/satuan.types'
 
 export const satuanApi = {
-  list: (params?: { search?: string }) =>
+  list: (params?: { search?: string; is_active?: boolean; page?: number; per_page?: number }) =>
     http.get<unknown, PaginatedResponse<Satuan>>('/master-data/units', { params }),
 
   create: (payload: CreateSatuanPayload) =>

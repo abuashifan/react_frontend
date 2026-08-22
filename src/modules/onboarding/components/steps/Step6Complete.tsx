@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { CheckCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { setupApi } from '../../services/onboardingApi'
-import { useCompanyStore } from '@/stores/useCompanyStore'
+import { SETUP_STATUS_KEY } from '../../hooks/useSetupStatus'
+import { WIZARD_STATE_KEY } from '../../constants'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage } from '@/lib/apiError'
 
 interface WizardSummary {
   templateLabel: string | null
@@ -22,8 +25,7 @@ interface Props {
 
 export function Step6Complete({ summary, onBack }: Props) {
   const navigate = useNavigate()
-  const setSettings = useCompanyStore((s) => s.setSettings)
-  const activeCompany = useCompanyStore((s) => s.activeCompany)
+  const queryClient = useQueryClient()
   const { toast } = useToast()
   const [isFinishing, setIsFinishing] = useState(false)
 
@@ -32,14 +34,15 @@ export function Step6Complete({ summary, onBack }: Props) {
     try {
       // `finalize` melakukan validateAll secara internal; lempar 422 jika setup belum valid.
       await setupApi.finalize()
-      // Update local store so the guard doesn't redirect back to /onboarding
-      if (activeCompany) {
-        setSettings({ ...activeCompany.settings, onboarding_completed: true })
-      }
+      // Backend kini berstatus finalized. Segarkan status setup supaya guard
+      // tidak memantulkan balik ke /onboarding dan menu setup-only hilang.
+      await queryClient.invalidateQueries({ queryKey: SETUP_STATUS_KEY })
+      // Wizard selesai — posisi langkah tidak perlu dipulihkan lagi.
+      try { sessionStorage.removeItem(WIZARD_STATE_KEY) } catch { /* diabaikan */ }
       toast.success('Setup perusahaan selesai! Selamat datang di Seaside Escape ERP.')
       navigate('/')
-    } catch {
-      toast.error('Setup belum dapat diselesaikan. Pastikan semua langkah wajib sudah valid.')
+    } catch (finishError) {
+      toast.error(getApiErrorMessage(finishError, 'Setup belum dapat diselesaikan. Pastikan semua langkah wajib sudah valid.'))
       setIsFinishing(false)
     }
   }

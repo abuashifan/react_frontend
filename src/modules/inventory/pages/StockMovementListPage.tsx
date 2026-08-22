@@ -1,13 +1,12 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2, RefreshCw } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
@@ -16,10 +15,12 @@ import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilt
 import { EmptyState } from '@/components/shared/feedback/EmptyState'
 import { formatNumber, formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { useStockMovementList, useStockMovementMutations } from '../hooks/useStockMovementList'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { StockMovement, StockMovementStatus, StockMovementType } from '../types/stockMovement.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: StockMovementStatus[] = ['draft', 'posted', 'void']
 const MOVEMENT_TYPES: { value: StockMovementType; label: string }[] = [
@@ -53,7 +54,7 @@ function getMovementTypeLabel(type: string): string {
 }
 
 export default function StockMovementListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
   const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
@@ -72,8 +73,8 @@ export default function StockMovementListPage() {
     per_page: perPage,
     search: search || undefined,
     warehouse_id: filterWarehouse ?? undefined,
-    status: filterStatuses.length > 0 ? filterStatuses.join(',') as StockMovementStatus : undefined,
-    movement_type: filterTypes.length > 0 ? filterTypes.join(',') as StockMovementType : undefined,
+    status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
+    movement_type: filterTypes.length > 0 ? filterTypes.join(',') : undefined,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
   })
@@ -119,16 +120,17 @@ export default function StockMovementListPage() {
       const results = await Promise.allSettled(selectedMovements.map((movement) => voidMovement.mutateAsync({ id: Number(movement.id), reason })))
       const successCount = results.filter((result) => result.status === 'fulfilled').length
       const failureCount = results.length - successCount
+      const failureDetail = getBulkFailureDetail(results)
 
       if (failureCount === 0) {
         toast.success(`${successCount} mutasi stok berhasil di-void.`)
       } else if (successCount === 0) {
-        toast.error(`Gagal void ${failureCount} mutasi stok.`)
+        toast.error(`Gagal void ${failureCount} mutasi stok.${failureDetail ? ` ${failureDetail}` : ''}`)
       } else {
-        toast.warning(`${successCount} mutasi stok berhasil di-void, ${failureCount} gagal.`)
+        toast.warning(`${successCount} mutasi stok berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
       }
-    } catch {
-      toast.error('Gagal memproses bulk void.')
+    } catch (bulkError) {
+      toast.error(getApiErrorMessage(bulkError, 'Gagal memproses bulk void.'))
     } finally {
       setBulkVoidOpen(false)
       setBulkVoidIds([])
@@ -143,7 +145,7 @@ export default function StockMovementListPage() {
       size: 140,
       meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => (
-        <button type="button" onClick={() => navigate(`/inventory/movements/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">
+        <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/inventory/movements/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.number}
         </button>
       ),
@@ -186,14 +188,14 @@ export default function StockMovementListPage() {
         resetSelection()
       }}
     >
-      <FilterSection title="Cari">
-        <Input
+      <div className="border-b border-[#f1f5f9] px-4 py-3">
+        <ListSearchBar
           value={search}
-          onChange={(e) => { setSearch(e.target.value); resetSelection() }}
+          onChange={(v) => { setSearch(v); resetSelection() }}
           placeholder="Nomor, sumber..."
-          className="h-8 text-[12px]"
+          className="w-full max-w-none"
         />
-      </FilterSection>
+      </div>
       <FilterSection title="Gudang">
         <SearchableSelect
           value={filterWarehouse}
@@ -253,7 +255,7 @@ export default function StockMovementListPage() {
         sidebar={sidebar}
         action={
           <PermissionGuard permission="inventory.movements.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/inventory/movements/create')}>
+            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Mutasi Baru', path: '/inventory/movements/create' })}>
               <Plus className="mr-1 h-3.5 w-3.5" /> Buat Mutasi
             </Button>
           </PermissionGuard>

@@ -21,6 +21,12 @@ interface DocumentActionBarProps {
   documentStatus: DocumentStatus
   documentNumber?: string
   actions: DocumentActionButton[]
+  /**
+   * 'bottom' (default) renders the classic fixed bottom bar with document number/status on the
+   * left. 'header' renders just the action buttons, for use in FormLayout's `headerActions` slot
+   * (the document number/status are already shown in the header via FormLayout's own props).
+   */
+  placement?: 'bottom' | 'header'
 }
 
 function buttonClass(variant: DocumentActionButton['variant']) {
@@ -36,13 +42,31 @@ function buttonClass(variant: DocumentActionButton['variant']) {
   return 'border border-[#d9e2e5] bg-white text-[#64748b] hover:bg-[#f8fbfc]'
 }
 
-/** Fixed bottom document action bar with permission-aware buttons. */
-export function DocumentActionBar({ documentStatus, documentNumber, actions }: DocumentActionBarProps) {
+/** Document action bar with permission-aware buttons. Renders as a fixed bottom bar or inline header actions. */
+export function DocumentActionBar({ documentStatus, documentNumber, actions, placement = 'bottom' }: DocumentActionBarProps) {
   const { can } = usePermission()
   const visibleActions = actions.filter((action) => !action.permission || can(action.permission))
   const hasLoading = visibleActions.some((action) => action.isLoading)
 
   if (visibleActions.length === 0) return null
+
+  const buttons = visibleActions.map((action) => (
+    <Button
+      key={action.id}
+      type="button"
+      title={action.tooltip}
+      onClick={action.onClick}
+      disabled={action.disabled || (hasLoading && !action.isLoading)}
+      className={cn('h-8 rounded-md px-4 text-[13px] font-medium', buttonClass(action.variant))}
+    >
+      {action.isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+      {action.isLoading ? 'Memproses...' : action.label}
+    </Button>
+  ))
+
+  if (placement === 'header') {
+    return <>{buttons}</>
+  }
 
   return (
     <FixedBottomBar
@@ -54,19 +78,7 @@ export function DocumentActionBar({ documentStatus, documentNumber, actions }: D
         </>
       }
     >
-      {visibleActions.map((action) => (
-        <Button
-          key={action.id}
-          type="button"
-          title={action.tooltip}
-          onClick={action.onClick}
-          disabled={action.disabled || (hasLoading && !action.isLoading)}
-          className={cn('h-8 rounded-md px-4 text-[13px] font-medium', buttonClass(action.variant))}
-        >
-          {action.isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-          {action.isLoading ? 'Memproses...' : action.label}
-        </Button>
-      ))}
+      {buttons}
     </FixedBottomBar>
   )
 }

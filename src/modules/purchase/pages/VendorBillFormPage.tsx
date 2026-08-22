@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
@@ -28,11 +29,15 @@ import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { fixedAssetCategoryApi } from '@/modules/fixed-assets/services/fixedAssetCategoryApi'
 import { vendorBillSchema, validateVendorBillLines, type VendorBillFormValues, type VendorBillLineErrors } from '../schemas/vendorBillSchema'
+import { vendorBillApi } from '../services/vendorBillApi'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation, FormValidationAbort } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
-import { toDateInputValue, formatCurrency } from '@/lib/utils'
+import { cn, fieldErrorClass, toDateInputValue, formatCurrency } from '@/lib/utils'
 import type { VendorBillLineClassification } from '../types/vendorBill.types'
-import { applyApiValidationErrors, getApiErrorMessage, isApiNotFound } from '@/lib/apiError'
+import { applyApiValidationErrors, getApiErrorMessage, isApiNotFound, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { NotFoundPage, ServerErrorPage } from '@/modules/errors/ErrorPage'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 interface EditableLine {
   product_id: number | null
@@ -54,7 +59,18 @@ function lineBase(l: EditableLine) {
 }
 
 export default function VendorBillFormPage() {
-  const navigate = useNavigate()
+  const { id } = useParams()
+  // `/purchase/bills/create` dan `/purchase/bills/:id` merender komponen yang sama, dan
+  // React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya param
+  // yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang sebelumnya
+  // dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru setiap kali id
+  // record (atau mode create) berubah. Source picker (PO/GR) di dalam mode create adalah
+  // state lokal non-URL, jadi tidak perlu ikut menjadi bagian key ini.
+  return <VendorBillFormPageContent key={id ?? 'create'} />
+}
+
+function VendorBillFormPageContent() {
+  const { closeRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -78,13 +94,13 @@ export default function VendorBillFormPage() {
   const handleConvertFromSource = async () => {
     if (!sourceId) return
     try {
-      const res = sourceMode === 'purchase_order'
-        ? await createFromPurchaseOrder.mutateAsync(sourceId)
-        : await createFromGoodsReceipt.mutateAsync(sourceId)
+      if (sourceMode === 'purchase_order') await createFromPurchaseOrder.mutateAsync(sourceId)
+      else await createFromGoodsReceipt.mutateAsync(sourceId)
+      formDraft.clearDraft()
       toast.success('Tagihan dibuat dari dokumen sumber.')
-      navigate(`/purchase/bills/${res.data.id}`)
-    } catch {
-      toast.error('Gagal membuat tagihan dari dokumen sumber.')
+      closeRecordTab('/purchase/bills/create', '/purchase/bills')
+    } catch (convertError) {
+      toast.error(getApiErrorMessage(convertError, 'Gagal membuat tagihan dari dokumen sumber.'))
     }
   }
   const isConverting = createFromPurchaseOrder.isPending || createFromGoodsReceipt.isPending
@@ -99,6 +115,10 @@ export default function VendorBillFormPage() {
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
   const [lineErrors, setLineErrors] = useState<VendorBillLineErrors>({})
+  // Terpisah dari `lineErrors` di atas: yang itu hasil validasi sisi klien dan
+  // dirender per-sel, sedangkan ini error baris dari backend (lines.0.quantity)
+  // yang ditandai oleh LineItemsTable.
+  const [apiLineErrors, setApiLineErrors] = useState<LineItemErrorMap>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
   const [confirmAction, setConfirmAction] = useState<'approve' | 'post' | null>(null)
 
@@ -182,37 +202,47 @@ export default function VendorBillFormPage() {
       setLines([{ ...DEFAULT_LINE }])
     }
     formDraft.discardDraft()
+    formDraft.clearDraft()
     toast.success('Draft lokal dibuang.')
   }
 
-  const handleSave = handleSubmit(async (values) => {
-    if (lines.length === 0) {
-      toast.error('Tambahkan minimal satu item.')
-      return
-    }
-    const lineValidation = validateVendorBillLines(lines)
-    if (Object.keys(lineValidation).length > 0) {
-      setLineErrors(lineValidation)
-      toast.error('Periksa item: ada baris yang belum valid.')
-      return
-    }
-    setLineErrors({})
-    const payload = toVendorBillPayload(values, lines)
-    try {
-      if (isCreate) {
-        const res = await create.mutateAsync(payload)
-        formDraft.clearDraft()
-        toast.success('Tagihan vendor berhasil dibuat.')
-        navigate(`/purchase/bills/${res.data.id}`)
-      } else {
-        await update.mutateAsync({ id: Number(id), payload })
-        formDraft.clearDraft()
-        toast.success('Tagihan vendor berhasil diperbarui.')
+  const { saveAndClose, navProps } = useRecordFormNavigation<VendorBillFormValues>({
+    id,
+    basePath: '/purchase/bills',
+    createLabel: 'Tagihan Vendor Baru',
+    sequenceQueryKey: ['purchase', 'bills', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await vendorBillApi.adjacent(recordId)).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      // Validasi baris milik form ini jalan sebelum request; melemparnya sebagai
+      // FormValidationAbort menghentikan simpan sekaligus navigasi.
+      if (lines.length === 0) {
+        toast.error('Tambahkan minimal satu item.')
+        throw new FormValidationAbort()
       }
-    } catch (saveError) {
+      const lineValidation = validateVendorBillLines(lines)
+      if (Object.keys(lineValidation).length > 0) {
+        setLineErrors(lineValidation)
+        toast.error('Periksa item: ada baris yang belum valid.')
+        throw new FormValidationAbort()
+      }
+      setLineErrors({})
+
+      const payload = toVendorBillPayload(values, lines)
+      if (creating) await create.mutateAsync(payload)
+      else await update.mutateAsync({ id: Number(id), payload })
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setApiLineErrors({})
+    },
+    successMessage: (creating) => (creating ? 'Tagihan vendor berhasil dibuat.' : 'Tagihan vendor berhasil diperbarui.'),
+    onError: (saveError) => {
+      setApiLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { bill_date: 'date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan tagihan vendor.'))
-    }
+    },
+    canSave: isEditable,
   })
 
   const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); formDraft.clearDraft(); toast.success('Bill di-approve.') } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve bill.')) } finally { setConfirmAction(null) } }
@@ -232,7 +262,7 @@ export default function VendorBillFormPage() {
   const canSaveBill = isCreate ? can('purchase.bills.create') : can('purchase.bills.edit')
 
   if (isEditable && canSaveBill) {
-    actions.push({ id: 'save', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (isEditable && formDraft.isRestored) {
     actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: handleDiscardDraft })
@@ -344,7 +374,12 @@ export default function VendorBillFormPage() {
         status={status}
         readOnly={!isEditable}
         breadcrumb={[{ label: 'Pembelian' }, { label: 'Tagihan', path: '/purchase/bills' }, { label: isCreate ? 'Buat Bill' : (bill?.number ?? '') }]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={bill?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={bill?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           {hasPaidDependences && (
@@ -427,22 +462,22 @@ export default function VendorBillFormPage() {
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="date" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
-              <Input {...register('date')} id="date" type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+              <Input {...register('date')} id="date" type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+              <FieldError message={errors.date?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="due_date" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jatuh Tempo</Label>
-              <Input {...register('due_date')} id="due_date" type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.due_date && <p className="text-[11px] text-red-500">{errors.due_date.message}</p>}
+              <Input {...register('due_date')} id="due_date" type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.due_date))} />
+              <FieldError message={errors.due_date?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Syarat Pembayaran</Label>
-              <SearchableSelect value={paymentTermId ?? null} onChange={(v) => setValue('payment_term_id', v)} onSearch={paymentTermsApi.search} placeholder="Pilih syarat pembayaran..." disabled={!isEditable} selectedOptions={bill?.payment_term ? [{ value: bill.payment_term.id, label: bill.payment_term.name }] : []} />
+              <SearchableSelect value={paymentTermId ?? null} onChange={(v) => setValue('payment_term_id', v)} onSearch={paymentTermsApi.search} placeholder="Pilih syarat pembayaran..." disabled={!isEditable} error={errors.payment_term_id?.message} selectedOptions={bill?.payment_term ? [{ value: bill.payment_term.id, label: bill.payment_term.name }] : []} />
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="applied_vendor_deposit_amount" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Deposit Vendor Terpakai</Label>
-              <Input {...register('applied_vendor_deposit_amount', { valueAsNumber: true })} id="applied_vendor_deposit_amount" type="number" min={0} disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.applied_vendor_deposit_amount && <p className="text-[11px] text-red-500">{errors.applied_vendor_deposit_amount.message}</p>}
+              <Input {...register('applied_vendor_deposit_amount', { valueAsNumber: true })} id="applied_vendor_deposit_amount" type="number" min={0} disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.applied_vendor_deposit_amount))} />
+              <FieldError message={errors.applied_vendor_deposit_amount?.message} />
             </div>
             {(bill?.purchase_order_number || bill?.goods_receipt_number) && (
               <div className="flex flex-col gap-1">
@@ -452,7 +487,8 @@ export default function VendorBillFormPage() {
             )}
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label htmlFor="notes" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} id="notes" disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} id="notes" disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
             <div className="md:col-span-2 rounded-md border border-[#e2e8f0] bg-[#f8fafc] p-3 text-[12px] text-[#334155]">
               <div className="flex items-center justify-between gap-3">
@@ -489,6 +525,7 @@ export default function VendorBillFormPage() {
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Item</p>
             <LineItemsTable
+          errors={apiLineErrors}
               items={lines} columns={columns}
               onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
               onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}

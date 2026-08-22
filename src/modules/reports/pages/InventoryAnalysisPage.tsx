@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { ReportFilterParameter } from '../components/ReportFilterParameter'
+import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
-import type { ReportParams } from '../types/reports.types'
+import { useReportParams } from '../hooks/useReportParams'
 
 const today = new Date().toISOString().slice(0, 10)
 
@@ -15,9 +15,7 @@ const TAB_LABELS: Record<AnalysisTab, string> = { valuation: 'Valuasi', low_stoc
 
 export default function InventoryAnalysisPage() {
   const [tab, setTab] = useState<AnalysisTab>('valuation')
-  const [params, setParams] = useState<ReportParams>({ as_of_date: today })
-  const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
-  const [showFilter, setShowFilter] = useState(true)
+  const { params, setParams, activeParams, setActiveParams, showFilter, setShowFilter } = useReportParams({ as_of_date: today })
 
   const { data: valData, isLoading: loadingVal, isError: errVal, refetch: refetchVal } = useQuery({ queryKey: ['reports', 'valuation', activeParams], queryFn: () => reportsApi.valuation(activeParams!), enabled: !!activeParams && tab === 'valuation' })
   const { data: lowData, isLoading: loadingLow, isError: errLow, refetch: refetchLow } = useQuery({ queryKey: ['reports', 'low-stock', activeParams], queryFn: () => reportsApi.lowStock(activeParams!), enabled: !!activeParams && tab === 'low_stock' })
@@ -28,15 +26,17 @@ export default function InventoryAnalysisPage() {
   const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false) }
 
   return (
-    <WorkspaceLayout title="Analisis Inventori" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Analisis Inventori' }]}>
+    <WorkspaceLayout
+      hideHeader
+      toolbar={<ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} mode="as_of_date" />}
+    >
       <div className="space-y-4">
         <div role="tablist" aria-label="Tab Analisis Inventori" className="flex gap-2">
           {(['valuation', 'low_stock', 'negative_stock'] as AnalysisTab[]).map((t) => (
             <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`rounded-full px-3 py-1 text-[12px] font-medium transition-colors ${tab === t ? 'bg-[#5c9ead] text-white' : 'bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]'}`}>{TAB_LABELS[t]}</button>
           ))}
         </div>
-        {showFilter ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} mode="as_of_date" isLoading={isLoading} />
-          : <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} mode="as_of_date" />}
+        {showFilter && <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} mode="as_of_date" isLoading={isLoading} />}
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
         {isError && <ReportError onRetry={() => refetch()} />}
 

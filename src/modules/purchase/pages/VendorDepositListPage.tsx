@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
@@ -11,21 +11,22 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
-import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { useVendorDepositList, useVendorDepositMutations } from '../hooks/useVendorDepositList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { VendorDeposit, VendorDepositStatus } from '../types/vendorDeposit.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: VendorDepositStatus[] = ['draft', 'posted', 'partially_allocated', 'fully_allocated', 'refunded', 'void']
-const FILTER_HINT = 'Filter multi-select dan tanggal berlaku pada data halaman yang sedang dimuat.'
-
 export default function VendorDepositListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
+  const [search, setSearch] = useState('')
+  const [prevFilters, setPrevFilters] = useState('')
   const [filterStatuses, setFilterStatuses] = useState<VendorDepositStatus[]>([])
   const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [filterVendor, setFilterVendor] = useState<number | null>(null)
@@ -34,22 +35,26 @@ export default function VendorDepositListPage() {
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
   const { void: voidDeposit } = useVendorDepositMutations()
 
+  // Semua filter kini dikirim ke server, jadi perubahannya harus
+  // mengembalikan halaman ke 1 -- kalau tidak, memfilter dari halaman jauh
+  // akan mendarat di daftar kosong.
+  const filterKey = `${search}|${filterStatuses.join(',')}|${dateRange.from}|${dateRange.to}|${String(filterVendor)}`
+  if (filterKey !== prevFilters) {
+    setPrevFilters(filterKey)
+    setPage(0)
+  }
+
   const { data, isLoading, isFetching } = useVendorDepositList({
     page: page + 1,
     per_page: 25,
+    search: search || undefined,
     vendor_id: filterVendor ?? undefined,
+    status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
+    date_from: dateRange.from || undefined,
+    date_to: dateRange.to || undefined,
   })
 
-  const rows = data?.data ?? []
-  const visibleRows = useMemo(
-    () =>
-      rows.filter((deposit) => {
-        const matchesStatus = filterStatuses.length === 0 || filterStatuses.includes(deposit.status)
-        const matchesDate = isDateInRange(deposit.date, dateRange.from, dateRange.to)
-        return matchesStatus && matchesDate
-      }),
-    [rows, filterStatuses, dateRange.from, dateRange.to],
-  )
+  const rows = useMemo(() => data?.data ?? [], [data])
 
   const activeFilters = [filterStatuses.length > 0, dateRange.from, dateRange.to, filterVendor].filter(Boolean).length
 
@@ -66,7 +71,7 @@ export default function VendorDepositListPage() {
       variant: 'destructive',
       permission: 'purchase.deposits.void',
       onClick: (ids) => {
-        const eligible = visibleRows.filter((deposit) => ids.includes(String(deposit.id)) && deposit.status !== 'void')
+        const eligible = rows.filter((deposit) => ids.includes(String(deposit.id)) && deposit.status !== 'void')
         if (eligible.length === 0) {
           toast.warning('Dokumen yang dipilih tidak bisa di-void.')
           return
@@ -78,7 +83,7 @@ export default function VendorDepositListPage() {
   ]
 
   const handleBulkVoid = async (reason: string) => {
-    const selectedDeposits = visibleRows.filter((deposit) => bulkVoidIds.includes(String(deposit.id)))
+    const selectedDeposits = rows.filter((deposit) => bulkVoidIds.includes(String(deposit.id)))
     if (selectedDeposits.length === 0) {
       toast.warning('Tidak ada deposit vendor valid untuk di-void.')
       setBulkVoidOpen(false)
@@ -90,16 +95,17 @@ export default function VendorDepositListPage() {
       const results = await Promise.allSettled(selectedDeposits.map((deposit) => voidDeposit.mutateAsync({ id: Number(deposit.id), reason })))
       const successCount = results.filter((result) => result.status === 'fulfilled').length
       const failureCount = results.length - successCount
+      const failureDetail = getBulkFailureDetail(results)
 
       if (failureCount === 0) {
         toast.success(`${successCount} deposit vendor berhasil di-void.`)
       } else if (successCount === 0) {
-        toast.error(`Gagal void ${failureCount} deposit vendor.`)
+        toast.error(`Gagal void ${failureCount} deposit vendor.${failureDetail ? ` ${failureDetail}` : ''}`)
       } else {
-        toast.warning(`${successCount} deposit vendor berhasil di-void, ${failureCount} gagal.`)
+        toast.warning(`${successCount} deposit vendor berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
       }
-    } catch {
-      toast.error('Gagal memproses bulk void.')
+    } catch (bulkError) {
+      toast.error(getApiErrorMessage(bulkError, 'Gagal memproses bulk void.'))
     } finally {
       setBulkVoidOpen(false)
       setBulkVoidIds([])
@@ -114,7 +120,7 @@ export default function VendorDepositListPage() {
       size: 140,
       meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => (
-        <button type="button" onClick={() => navigate(`/purchase/vendor-deposits/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">
+        <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/purchase/vendor-deposits/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.number}
         </button>
       ),
@@ -147,8 +153,15 @@ export default function VendorDepositListPage() {
         setFilterVendor(null)
         resetSelection()
       }}
-      hint={FILTER_HINT}
     >
+      <div className="border-b border-[#f1f5f9] px-4 py-3">
+        <ListSearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Cari nomor deposit, vendor..."
+          className="w-full max-w-none"
+        />
+      </div>
       <MultiCheckboxFilter
         title="Status"
         options={STATUSES.map((status) => ({ value: status, label: status.replace('_', ' ') }))}
@@ -165,7 +178,6 @@ export default function VendorDepositListPage() {
           setDateRange(next)
           resetSelection()
         }}
-        note="Berlaku pada data halaman yang sedang dimuat."
       />
       <FilterSection title="Vendor">
         <SearchableSelect
@@ -189,14 +201,14 @@ export default function VendorDepositListPage() {
         sidebar={sidebar}
         action={
           <PermissionGuard permission="purchase.deposits.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/purchase/vendor-deposits/create')}>
+            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Deposit Baru', path: '/purchase/vendor-deposits/create' })}>
               <Plus className="mr-1 h-3.5 w-3.5" /> Buat Deposit
             </Button>
           </PermissionGuard>
         }
       >
         <DataTable
-          data={visibleRows}
+          data={rows}
           columns={columns}
           totalRows={data?.meta.total ?? 0}
           isLoading={isLoading}
@@ -224,7 +236,7 @@ export default function VendorDepositListPage() {
         onConfirm={(reason) => void handleBulkVoid(reason)}
         documentNumber={
           bulkVoidIds.length === 1
-            ? (visibleRows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
+            ? (rows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
             : `${bulkVoidIds.length} dokumen terpilih`
         }
         isLoading={voidDeposit.isPending}

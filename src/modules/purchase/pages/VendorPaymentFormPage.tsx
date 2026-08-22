@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -10,16 +10,23 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
-import { formatCurrency } from '@/lib/utils'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
+import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useVendorPayment, useVendorOpenBills, useVendorPaymentMutations } from '../hooks/useVendorPaymentList'
 import { toVendorPaymentPayload } from '../services/vendorPaymentAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { vendorPaymentSchema, type VendorPaymentFormValues } from '../schemas/vendorPaymentSchema'
+import { vendorPaymentApi } from '../services/vendorPaymentApi'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import type { VendorPaymentLinePayload } from '../types/vendorPayment.types'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface BillLine {
   vendor_bill_id: number
@@ -29,7 +36,16 @@ interface BillLine {
 }
 
 export default function VendorPaymentFormPage() {
-  const navigate = useNavigate()
+  const { id } = useParams()
+  // `/purchase/payments/create` dan `/purchase/payments/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <VendorPaymentFormPageContent key={id ?? 'create'} />
+}
+
+function VendorPaymentFormPageContent() {
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -41,7 +57,7 @@ export default function VendorPaymentFormPage() {
   const payment = data?.data
   const { create, post, void: voidPayment } = useVendorPaymentMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<VendorPaymentFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<VendorPaymentFormValues>({
     resolver: zodResolver(vendorPaymentSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -77,25 +93,85 @@ export default function VendorPaymentFormPage() {
     }
   }
 
-  const handleSave = handleSubmit(async (values) => {
-    try {
-      const lines: VendorPaymentLinePayload[] = billLines.map((l) => ({ vendor_bill_id: l.vendor_bill_id, amount: l.amount }))
-      const res = await create.mutateAsync({ ...toVendorPaymentPayload(values), lines })
-      toast.success('Pembayaran vendor berhasil dibuat.')
-      navigate(`/purchase/payments/${res.data.id}`)
-    } catch { toast.error('Gagal menyimpan pembayaran vendor.') }
+  const billColumns: LineItemColumn<BillLine>[] = [
+    {
+      id: 'bill_number',
+      header: 'Nomor Bill',
+      width: 180,
+      render: ({ item }) => <span className="text-[12px] font-medium text-[#5c9ead]">{item.bill_number}</span>,
+    },
+    {
+      id: 'balance_due',
+      header: 'Sisa Tagihan',
+      width: 140,
+      align: 'right',
+      render: ({ item }) => <span className="text-[12px] tabular-nums">{formatCurrency(item.balance_due)}</span>,
+    },
+    {
+      id: 'amount',
+      header: 'Dibayar',
+      width: 140,
+      align: 'right',
+      render: ({ item, isReadOnly, onUpdate }) =>
+        isReadOnly ? (
+          <span className="text-[12px] tabular-nums">{formatCurrency(item.amount)}</span>
+        ) : (
+          <Input
+            type="number"
+            min={0}
+            value={item.amount}
+            onChange={(e) => onUpdate('amount', Number(e.target.value))}
+            className="h-8 text-right text-[12px] tabular-nums"
+          />
+        ),
+    },
+  ]
+
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<VendorPaymentFormValues>({
+    draftKey: `purchase.vendor-payment.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
   })
 
-  const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Pembayaran berhasil diposting.') } catch { toast.error('Gagal posting pembayaran.') } }
+  const { saveAndClose, navProps } = useRecordFormNavigation<VendorPaymentFormValues>({
+    id,
+    basePath: '/purchase/payments',
+    createLabel: 'Pembayaran Vendor Baru',
+    sequenceQueryKey: ['purchase', 'payments', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await vendorPaymentApi.adjacent(recordId)).data,
+    handleSubmit,
+    save: async (values) => {
+      const lines: VendorPaymentLinePayload[] = billLines.map((l) => ({ vendor_bill_id: l.vendor_bill_id, amount: l.amount }))
+      await create.mutateAsync({ ...toVendorPaymentPayload(values), lines })
+    },
+    onSaved: () => formDraft.clearDraft(),
+    successMessage: () => 'Pembayaran vendor berhasil dibuat.',
+    onError: (saveError) => {
+      // Backend memakai nama kolom DB (`payment_date`), form memakai `date`.
+      applyApiValidationErrors(saveError, setError, { payment_date: 'date' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan pembayaran vendor.'))
+    },
+    // Pembayaran tersimpan langsung terposting: hanya form create yang bisa disimpan.
+    canSave: isCreate,
+  })
+
+  const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Pembayaran berhasil diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting pembayaran.')) } }
   const handleVoid = async (reason: string) => {
     await voidPayment.mutateAsync({ id: Number(id), reason })
+    formDraft.clearDraft()
     toast.success('Pembayaran berhasil di-void.')
     setVoidOpen(false)
   }
 
   const actions: DocumentActionButton[] = []
   if (isCreate && can('purchase.payments.create')) {
-    actions.push({ id: 'save', label: 'Simpan', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (payment?.status === 'draft' && can('purchase.payments.post')) {
@@ -121,7 +197,12 @@ export default function VendorPaymentFormPage() {
         documentNumber={payment?.number}
         status={status}
         breadcrumb={[{ label: 'Pembelian' }, { label: 'Pembayaran', path: '/purchase/payments' }, { label: isCreate ? 'Buat Pembayaran' : (payment?.number ?? '') }]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={payment?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={payment?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           <FormSection title="Header">
@@ -131,8 +212,8 @@ export default function VendorPaymentFormPage() {
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
-              <Input {...register('date')} type="date" disabled={!isCreate} className="h-9 text-[13px]" />
-              {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+              <Input {...register('date')} type="date" disabled={!isCreate} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+              <FieldError message={errors.date?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Kas/Bank <span className="text-red-500">*</span></Label>
@@ -140,11 +221,13 @@ export default function VendorPaymentFormPage() {
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Total Pembayaran</Label>
-              <Input {...register('amount', { valueAsNumber: true })} type="number" disabled className="h-9 text-[13px] tabular-nums text-right" />
+              <Input {...register('amount', { valueAsNumber: true })} type="number" disabled className={cn('h-9 text-[13px] tabular-nums text-right', fieldErrorClass(errors.amount))} />
+              <FieldError message={errors.amount?.message} />
             </div>
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} disabled={!isCreate} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} disabled={!isCreate} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
           </FormSection>
 
@@ -161,49 +244,27 @@ export default function VendorPaymentFormPage() {
                 />
               )}
             </div>
-            <div className="overflow-auto rounded border border-[#e2e8f0]">
-              <table className="w-full text-[12px]">
-                <thead className="bg-[#f8fafc]">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-semibold text-[#64748b]">Nomor Bill</th>
-                    <th className="px-3 py-2 text-right font-semibold text-[#64748b]">Sisa Tagihan</th>
-                    <th className="px-3 py-2 text-right font-semibold text-[#64748b]">Dibayar</th>
-                    {isCreate && <th className="w-8 px-2 py-2" />}
-                  </tr>
-                </thead>
-                <tbody>
-                  {billLines.length === 0 ? (
-                    <tr><td colSpan={4} className="py-6 text-center text-[#94a3b8]">Belum ada tagihan dipilih</td></tr>
-                  ) : billLines.map((line, i) => (
-                    <tr key={line.vendor_bill_id} className="border-t border-[#f1f5f9]">
-                      <td className="px-3 py-2 font-medium text-[#5c9ead]">{line.bill_number}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(line.balance_due)}</td>
-                      <td className="px-3 py-2 text-right">
-                        <Input
-                          type="number" value={line.amount}
-                          onChange={(e) => setBillLines((prev) => prev.map((l, idx) => idx === i ? { ...l, amount: Number(e.target.value) } : l))}
-                          disabled={!isCreate} className="h-7 w-28 text-[12px] tabular-nums text-right" min={0}
-                        />
-                      </td>
-                      {isCreate && (
-                        <td className="px-2 py-2">
-                          <button type="button" onClick={() => setBillLines((prev) => prev.filter((_, idx) => idx !== i))} className="text-[#94a3b8] hover:text-red-500">×</button>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-                {billLines.length > 0 && (
-                  <tfoot className="border-t border-[#e2e8f0] bg-[#f8fafc]">
-                    <tr>
-                      <td colSpan={2} className="px-3 py-2 font-semibold text-[#64748b]">Total</td>
-                      <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatCurrency(totalAmount)}</td>
-                      {isCreate && <td />}
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
-            </div>
+            {/* Baris ditambahkan lewat `SearchableSelect` "Tambah tagihan..." di atas
+                (bukan baris kosong), jadi tombol "+ Tambah Item" bawaan tabel tidak dipakai. */}
+            <LineItemsTable<BillLine>
+              items={billLines}
+              columns={billColumns}
+              onRemove={(index) => setBillLines((prev) => prev.filter((_, idx) => idx !== index))}
+              onUpdate={(index, field, value) => setBillLines((prev) => prev.map((l, idx) => (idx === index ? { ...l, [field]: value } : l)))}
+              isReadOnly={!isCreate}
+              emptyLabel="Belum ada tagihan dipilih"
+              footer={billLines.length === 0 ? undefined : (_items, cellCount) => (
+                <tr>
+                  <td colSpan={cellCount - 2} className="px-2.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
+                    Total
+                  </td>
+                  <td className="px-2.5 py-2 text-right text-[13px] font-semibold tabular-nums text-[#24323a]">
+                    {formatCurrency(totalAmount)}
+                  </td>
+                  <td />
+                </tr>
+              )}
+            />
           </div>
         </div>
       </FormLayout>

@@ -1,19 +1,34 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { AmountInput } from '@/components/shared/form/AmountInput'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
 import { coaApi } from '@/modules/master-data/services/coaApi'
+import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { proyekApi } from '@/modules/master-data/services/proyekApi'
-import { formatCurrency } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
+import { getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { budgetApi } from '../services/budgetApi'
 import type { BudgetLine, BudgetLineInput } from '../types/budget.types'
 
+/**
+ * Baris kosong = anggaran setahun (dibandingkan dengan realisasi kumulatif);
+ * diisi = anggaran bulan itu saja. Backend mencocokkan string ini dengan bulan
+ * jurnal, jadi salah ketik berarti peringatan over-budget diam-diam tidak
+ * pernah menyala tanpa error apa pun — karena itu divalidasi ketat di sini juga.
+ */
+const PERIOD_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/
+
+const isPeriodInvalid = (period: string) => period !== '' && !PERIOD_PATTERN.test(period)
+
 interface LineState {
-  _key: number
   account_id: number | null
   account_label?: string
+  /** Dimensi baris — default mengikuti departemen pemilik dokumen. */
+  department_id: number | null
+  department_label?: string
   project_id: number | null
   project_label?: string
   period: string
@@ -28,13 +43,14 @@ interface Props {
 }
 
 function linesToState(lines: BudgetLine[]): LineState[] {
-  return lines.map((l, i) => ({
-    _key: i,
+  return lines.map((l) => ({
     account_id: l.account_id,
     account_label: l.account_name ?? undefined,
+    department_id: l.department_id ?? null,
+    department_label: l.department_name ?? undefined,
     project_id: l.project_id ?? null,
     project_label: l.project_name ?? undefined,
-    period: l.period ?? '',
+    period: l.period_month ?? l.period ?? '',
     amount: l.amount,
   }))
 }
@@ -42,9 +58,29 @@ function linesToState(lines: BudgetLine[]): LineState[] {
 export function BudgetLineEditor({ submissionId, lines, readonly = false, onSaveSuccess }: Props) {
   const qc = useQueryClient()
   const [rows, setRows] = useState<LineState[]>(() => linesToState(lines))
-  const [nextKey, setNextKey] = useState(lines.length)
+
+  /**
+   * `useState` di atas hanya berjalan sekali saat mount, sehingga baris yang
+   * ditampilkan bisa tertinggal dari server: setelah "Simpan Baris" backend
+   * mengembalikan bentuk kanonik (mis. `direction` terisi, baris tanpa akun
+   * dibuang), dan tanpa sinkronisasi ini layar tetap menampilkan bentuk lama.
+   *
+   * Yang dibandingkan adalah SIDIK JARI data server, bukan identitas prop.
+   * `invalidateQueries` pada aksi persetujuan membuat objek `lines` baru dengan
+   * isi yang sama persis — menyeed ulang di situ akan membuang baris yang
+   * sedang diketik user tapi belum disimpan. Membandingkan isinya membuat
+   * re-seed hanya terjadi saat baris di server benar-benar berubah.
+   */
+  const serverSignature = useMemo(() => JSON.stringify(linesToState(lines)), [lines])
+  const lastSyncedRef = useRef(serverSignature)
+  useEffect(() => {
+    if (lastSyncedRef.current === serverSignature) return
+    lastSyncedRef.current = serverSignature
+    setRows(linesToState(lines))
+  }, [serverSignature, lines])
 
   const searchCoa = useCallback((q: string) => coaApi.search(q), [])
+  const searchDepartment = useCallback((q: string) => departemenApi.search(q), [])
   const searchProject = useCallback((q: string) => proyekApi.search(q), [])
 
   const saveMut = useMutation({
@@ -53,8 +89,9 @@ export function BudgetLineEditor({ submissionId, lines, readonly = false, onSave
         .filter((r) => r.account_id !== null)
         .map((r) => ({
           account_id: r.account_id as number,
+          department_id: r.department_id ?? null,
           project_id: r.project_id ?? null,
-          period: r.period || null,
+          period_month: r.period || null,
           amount: parseFloat(r.amount) || 0,
         }))
       return budgetApi.updateLines(submissionId, payload)
@@ -65,124 +102,198 @@ export function BudgetLineEditor({ submissionId, lines, readonly = false, onSave
     },
   })
 
-  const addRow = () => {
-    setRows((prev) => [...prev, { _key: nextKey, account_id: null, project_id: null, period: '', amount: '' }])
-    setNextKey((k) => k + 1)
-  }
+  const addRow = () =>
+    setRows((prev) => [...prev, { account_id: null, department_id: null, project_id: null, period: '', amount: '' }])
 
-  const removeRow = (key: number) => setRows((prev) => prev.filter((r) => r._key !== key))
+  const removeRow = (index: number) => setRows((prev) => prev.filter((_, i) => i !== index))
 
-  const update = (key: number, patch: Partial<LineState>) =>
-    setRows((prev) => prev.map((r) => (r._key === key ? { ...r, ...patch } : r)))
+  const updateRow = (index: number, field: string, value: unknown) =>
+    setRows((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)))
 
   const total = rows.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0)
+  const hasInvalidPeriod = rows.some((r) => isPeriodInvalid(r.period))
+
+  /**
+   * Validasi format periode dihitung di sini, bukan di dalam `LineItemsTable` —
+   * komponen itu sudah punya satu jalur tampil error per baris (`errors`), jadi
+   * pesan client-side digabung ke bentuk yang sama dengan pesan 422 backend
+   * alih-alih dirender lewat jalur kedua.
+   *
+   * Indeks error backend mengikuti payload yang dikirim, yang membuang baris
+   * tanpa akun — tanpa dipetakan balik, pesan baris ke-N backend akan menempel
+   * di baris yang salah begitu ada baris kosong di atasnya.
+   */
+  const rowErrors = useMemo<LineItemErrorMap>(() => {
+    const sentRowIndexes = rows.reduce<number[]>((acc, r, i) => {
+      if (r.account_id !== null) acc.push(i)
+      return acc
+    }, [])
+
+    const merged: LineItemErrorMap = {}
+    Object.entries(getApiLineErrors(saveMut.error)).forEach(([payloadIndex, fields]) => {
+      const uiIndex = sentRowIndexes[Number(payloadIndex)]
+      if (uiIndex !== undefined) merged[uiIndex] = { ...fields }
+    })
+
+    rows.forEach((r, i) => {
+      if (isPeriodInvalid(r.period)) {
+        merged[i] = { ...(merged[i] ?? {}), period: 'Format harus YYYY-MM, mis. 2026-01.' }
+      }
+    })
+
+    return merged
+  }, [rows, saveMut.error])
+
+  const columns: LineItemColumn<LineState>[] = [
+    {
+      id: 'account',
+      header: 'Akun',
+      width: 220,
+      render: ({ item, isReadOnly, onUpdate }) =>
+        isReadOnly ? (
+          <span className="text-[12px]">{item.account_label ?? '—'}</span>
+        ) : (
+          <SearchableSelect
+            value={item.account_id}
+            onSearch={searchCoa}
+            onChange={(v, opt) => {
+              onUpdate('account_id', v)
+              onUpdate('account_label', opt?.label)
+            }}
+            placeholder="Pilih akun..."
+            size="sm"
+            selectedOptions={
+              item.account_id && item.account_label
+                ? [{ value: item.account_id, label: item.account_label }]
+                : []
+            }
+          />
+        ),
+    },
+    {
+      id: 'department',
+      header: 'Cost Center',
+      width: 170,
+      render: ({ item, isReadOnly, onUpdate }) =>
+        isReadOnly ? (
+          <span className="text-[12px]">{item.department_label ?? '—'}</span>
+        ) : (
+          <SearchableSelect
+            value={item.department_id}
+            onSearch={searchDepartment}
+            onChange={(v, opt) => {
+              onUpdate('department_id', v)
+              onUpdate('department_label', opt?.label)
+            }}
+            placeholder="Ikut dokumen"
+            size="sm"
+            selectedOptions={
+              item.department_id && item.department_label
+                ? [{ value: item.department_id, label: item.department_label }]
+                : []
+            }
+          />
+        ),
+    },
+    {
+      id: 'project',
+      header: 'Proyek',
+      width: 180,
+      render: ({ item, isReadOnly, onUpdate }) =>
+        isReadOnly ? (
+          <span className="text-[12px]">{item.project_label ?? '—'}</span>
+        ) : (
+          <SearchableSelect
+            value={item.project_id}
+            onSearch={searchProject}
+            onChange={(v, opt) => {
+              onUpdate('project_id', v)
+              onUpdate('project_label', opt?.label)
+            }}
+            placeholder="Semua proyek"
+            size="sm"
+            selectedOptions={
+              item.project_id && item.project_label
+                ? [{ value: item.project_id, label: item.project_label }]
+                : []
+            }
+          />
+        ),
+    },
+    {
+      id: 'period',
+      header: 'Periode (YYYY-MM)',
+      width: 140,
+      render: ({ item, isReadOnly, onUpdate }) =>
+        isReadOnly ? (
+          <span className="text-[12px] tabular-nums">{item.period || '—'}</span>
+        ) : (
+          <Input
+            value={item.period}
+            onChange={(e) => onUpdate('period', e.target.value)}
+            placeholder="2026-01"
+            aria-invalid={isPeriodInvalid(item.period)}
+            className={cn(
+              'h-8 text-[12px] tabular-nums',
+              isPeriodInvalid(item.period) && 'border-red-500 focus-visible:ring-red-500',
+            )}
+          />
+        ),
+    },
+    {
+      id: 'amount',
+      header: 'Nominal',
+      width: 140,
+      align: 'right',
+      render: ({ item, isReadOnly, onUpdate }) =>
+        isReadOnly ? (
+          <span className="text-[12px] tabular-nums">{formatCurrency(parseFloat(item.amount) || 0)}</span>
+        ) : (
+          // `AmountInput` menggantikan `<Input type="number">`: nominal anggaran
+          // umumnya berjuta-juta dan tanpa pemisah ribuan praktis tidak terbaca
+          // di layar tablet. Nilainya tetap disimpan sebagai string karena payload
+          // baris memakai `parseFloat` saat dikirim.
+          <AmountInput
+            value={item.amount}
+            onChange={(v) => onUpdate('amount', String(v))}
+            ariaLabel="Nominal anggaran"
+            className="h-8 text-right text-[12px]"
+          />
+        ),
+    },
+  ]
 
   return (
     <div className="space-y-3">
-      <div className="overflow-auto rounded-lg border border-[#e2e8f0]">
-        <table className="w-full text-[12px]">
-          <thead className="bg-[#f8fafc]">
-            <tr>
-              <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun</th>
-              <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Proyek</th>
-              <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Periode (YYYY-MM)</th>
-              <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Nominal</th>
-              {!readonly && <th className="w-10 px-2 py-2" />}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#f1f5f9]">
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={readonly ? 4 : 5} className="px-3 py-4 text-center text-[12px] text-[#94a3b8]">
-                  Belum ada baris anggaran.
-                </td>
-              </tr>
-            )}
-            {rows.map((row) => (
-              <tr key={row._key} className="hover:bg-[#f8fafc]">
-                <td className="px-2 py-1.5">
-                  {readonly ? (
-                    <span>{row.account_label ?? '—'}</span>
-                  ) : (
-                    <SearchableSelect
-                      value={row.account_id}
-                      onSearch={searchCoa}
-                      onChange={(v, opt) => update(row._key, { account_id: v, account_label: opt?.label })}
-                      placeholder="Pilih akun..."
-                      size="sm"
-                      selectedOptions={row.account_id && row.account_label ? [{ value: row.account_id, label: row.account_label }] : []}
-                    />
-                  )}
-                </td>
-                <td className="px-2 py-1.5">
-                  {readonly ? (
-                    <span>{row.project_label ?? '—'}</span>
-                  ) : (
-                    <SearchableSelect
-                      value={row.project_id}
-                      onSearch={searchProject}
-                      onChange={(v, opt) => update(row._key, { project_id: v, project_label: opt?.label })}
-                      placeholder="Semua proyek"
-                      size="sm"
-                      selectedOptions={row.project_id && row.project_label ? [{ value: row.project_id, label: row.project_label }] : []}
-                    />
-                  )}
-                </td>
-                <td className="px-2 py-1.5">
-                  {readonly ? (
-                    <span>{row.period || '—'}</span>
-                  ) : (
-                    <Input
-                      value={row.period}
-                      onChange={(e) => update(row._key, { period: e.target.value })}
-                      placeholder="2026-01"
-                      className="h-7 text-[12px]"
-                    />
-                  )}
-                </td>
-                <td className="px-2 py-1.5 text-right tabular-nums">
-                  {readonly ? (
-                    <span>{formatCurrency(parseFloat(row.amount) || 0)}</span>
-                  ) : (
-                    <Input
-                      type="number"
-                      value={row.amount}
-                      onChange={(e) => update(row._key, { amount: e.target.value })}
-                      className="h-7 text-right text-[12px] tabular-nums"
-                    />
-                  )}
-                </td>
-                {!readonly && (
-                  <td className="px-2 py-1.5">
-                    <button
-                      type="button"
-                      onClick={() => removeRow(row._key)}
-                      className="text-[#94a3b8] hover:text-red-500"
-                      aria-label="Hapus baris"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-          <tfoot className="border-t-2 border-[#cbd5e1] bg-[#f1f5f9]">
-            <tr>
-              <td colSpan={readonly ? 3 : 3} className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-[#334155]">Total</td>
-              <td className="px-3 py-2 text-right tabular-nums font-bold text-[#1e293b]">{formatCurrency(total)}</td>
-              {!readonly && <td />}
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+      <LineItemsTable<LineState>
+        items={rows}
+        columns={columns}
+        onAdd={addRow}
+        onRemove={removeRow}
+        onUpdate={updateRow}
+        isReadOnly={readonly}
+        addLabel="Tambah Baris"
+        emptyLabel="Belum ada baris anggaran."
+        errors={rowErrors}
+        footer={(_items, cellCount) => (
+          <tr>
+            <td
+              colSpan={cellCount - 2}
+              className="px-2.5 py-2 text-[11px] font-bold uppercase tracking-wide text-[#334155]"
+            >
+              Total
+            </td>
+            <td className="px-2.5 py-2 text-right text-[13px] font-bold tabular-nums text-[#1e293b]">
+              {formatCurrency(total)}
+            </td>
+            <td />
+          </tr>
+        )}
+      />
 
       {!readonly && (
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="text-[12px]" onClick={addRow}>
-            <Plus size={14} className="mr-1" /> Tambah Baris
-          </Button>
-          <Button size="sm" className="text-[12px]" onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
+          <Button size="sm" className="text-[12px]" onClick={() => saveMut.mutate()} disabled={saveMut.isPending || hasInvalidPeriod}>
             {saveMut.isPending ? 'Menyimpan...' : 'Simpan Baris'}
           </Button>
           {saveMut.isSuccess && (

@@ -13,6 +13,12 @@ dist-ssr
 praproductions-docs/
 *.local
 
+# Playwright output (artefak test, bukan source)
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
 # Editor directories and files
 .claude/settings.local.json
 .vscode/*
@@ -24,3 +30,8 @@ praproductions-docs/
 *.njsproj
 *.sln
 *.sw?
+
+# Skrip uji sekali pakai (mis. Playwright ad-hoc) ditulis di root repo karena
+# butuh resolusi modul dari node_modules di sini. Jangan sampai ikut ter-commit.
+*.tmp.mjs
+*.tmp.js

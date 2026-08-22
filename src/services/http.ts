@@ -2,6 +2,7 @@ import axios from 'axios'
 import type { AxiosInstance } from 'axios'
 import type { ApiError } from '@/types/api.types'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { notifyFeatureNotInPlan } from '@/lib/upgradeToast'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -114,10 +115,16 @@ function normalizeApiResponse<T>(payload: T): T {
   } as T
 }
 
+// JANGAN setel Content-Type default. Axios otomatis menyetelnya:
+// - plain object → application/json
+// - FormData   → (dikosongkan, browser mengisi multipart/form-data + boundary)
+// Content-Type: application/json yang dipasang permanen mencegah browser
+// mengisi boundary pada unggahan FormData, sehingga field `file` tidak
+// sampai ke server — user mendapat "Berkas wajib diunggah." walaupun
+// sudah memilih berkas.
 export const http: AxiosInstance = axios.create({
   baseURL: `${import.meta.env.VITE_API_BASE_URL}/api`,
   headers: {
-    'Content-Type': 'application/json',
     Accept: 'application/json',
   },
 })
@@ -132,15 +139,53 @@ http.interceptors.request.use((config) => {
 })
 
 http.interceptors.response.use(
-  (response) => normalizeApiResponse(response.data),
+  (response) => {
+    // Balasan yang tiba SETELAH perusahaan aktif berganti tidak boleh dipakai:
+    // request-nya dikirim dengan `X-Company-ID` lama, jadi isinya milik tenant
+    // lain. `installCompanyScopeReset()` sudah mengosongkan cache saat perusahaan
+    // berganti, tapi request yang sedang terbang bisa mendarat sesudahnya.
+    //
+    // Hanya GET. Mutasi sudah dieksekusi server, jadi menolaknya di klien akan
+    // melaporkan gagal padahal datanya berubah.
+    const requestCompanyId = response.config.headers?.['X-Company-ID']
+    const { activeCompanyId } = useAuthStore.getState()
+    const isGet = (response.config.method ?? 'get').toLowerCase() === 'get'
+
+    if (
+      isGet &&
+      requestCompanyId != null &&
+      activeCompanyId !== null &&
+      String(requestCompanyId) !== String(activeCompanyId)
+    ) {
+      return Promise.reject({
+        success: false,
+        code: 'COMPANY_SWITCHED',
+        message: 'Perusahaan aktif berganti saat data dimuat.',
+      } as ApiError)
+    }
+
+    return normalizeApiResponse(response.data)
+  },
   (error) => {
     const status = error.response?.status
     const headers = error.response?.headers
+    const responseData = error.response?.data ?? {}
+
+    // Laravel mengembalikan 422 tanpa field `code`. Supaya frontend bisa
+    // mengenali error validasi (dan menampilkan "Periksa kembali isian yang
+    // ditandai." alih-alih pesan mentah berbahasa Inggris), beri kode
+    // VALIDATION_ERROR di sini. Kalau backend sudah menyertakan kode eksplisit
+    // (mis. IMPORT_FILE_INVALID lewat ApiException), kode itu tetap dipakai.
+    const explicitCode = typeof responseData.code === 'string' && responseData.code !== '' ? responseData.code : null
+    const code = explicitCode
+      ?? (status === 422 ? 'VALIDATION_ERROR' : null)
+      ?? (status ? `HTTP_${status}` : 'UNKNOWN_ERROR')
+
     const responseError = {
-      ...(error.response?.data ?? {}),
+      ...responseData,
       success: false,
-      code: error.response?.data?.code ?? (status ? `HTTP_${status}` : 'UNKNOWN_ERROR'),
-      message: error.response?.data?.message ?? error.message ?? 'Terjadi kesalahan.',
+      code,
+      message: responseData.message ?? error.message ?? 'Terjadi kesalahan.',
       status,
     } as ApiError
 
@@ -163,6 +208,14 @@ http.interceptors.response.use(
         code: 'NETWORK_ERROR',
         message: 'Tidak dapat terhubung ke server.',
       } as ApiError)
+    }
+
+    // Ditolak paket, bukan izin (skema tier Fase 2) — jaring pengaman global.
+    // Aksi yang digerbangi normalnya sudah tersembunyi lewat PermissionGuard,
+    // jadi ini seharusnya jarang benar-benar terpicu; kalau terpicu, satu
+    // tempat ini yang menampilkan tautan upgrade, bukan tiap halaman sendiri.
+    if (responseError.code === 'FEATURE_NOT_IN_PLAN') {
+      notifyFeatureNotInPlan(responseError)
     }
 
     return Promise.reject(responseError)

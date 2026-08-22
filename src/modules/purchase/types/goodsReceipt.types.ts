@@ -59,7 +59,8 @@ export interface GoodsReceiptListParams {
   page: number
   per_page: number
   search?: string
-  status?: GoodsReceiptStatus
+  /** Satu status, atau beberapa dipisah koma (mis. "draft,posted"). */
+  status?: string
   vendor_id?: number
   warehouse_id?: number
   date_from?: string

@@ -12,12 +12,24 @@ import type { CreatePaymentTermsPayload, UpdatePaymentTermsPayload } from '../ty
 import type { CreateDepartemenPayload, UpdateDepartemenPayload } from '../types/departemen.types'
 import type { CreateProyekPayload, UpdateProyekPayload } from '../types/proyek.types'
 
+/**
+ * Parameter daftar untuk enam master data sederhana. `is_active` dikirim ke
+ * server (backend menerimanya sejak list-query-pushdown Fase 6), bukan
+ * disaring di browser.
+ */
+export interface SimpleListParams {
+  search?: string
+  is_active?: boolean
+  page?: number
+  per_page?: number
+}
+
 // ── KategoriProduk ────────────────────────────────────────────────────────────
 
-export function useKategoriProdukList(search?: string) {
+export function useKategoriProdukList(params?: SimpleListParams) {
   return useQuery({
-    queryKey: ['master-data-kategori-produk', search],
-    queryFn: () => kategoriProdukApi.list({ search }),
+    queryKey: ['master-data-kategori-produk', params],
+    queryFn: () => kategoriProdukApi.list(params),
   })
 }
 
@@ -34,20 +46,24 @@ export function useKategoriProdukMutations() {
       kategoriProdukApi.update(id, payload),
     onSuccess: invalidate,
   })
+  const activate = useMutation({
+    mutationFn: (id: number) => kategoriProdukApi.activate(id),
+    onSuccess: invalidate,
+  })
   const deactivate = useMutation({
     mutationFn: (id: number) => kategoriProdukApi.deactivate(id),
     onSuccess: invalidate,
   })
 
-  return { create, update, deactivate }
+  return { create, update, activate, deactivate }
 }
 
 // ── Satuan ────────────────────────────────────────────────────────────────────
 
-export function useSatuanList(search?: string) {
+export function useSatuanList(params?: SimpleListParams) {
   return useQuery({
-    queryKey: ['master-data-satuan', search],
-    queryFn: () => satuanApi.list({ search }),
+    queryKey: ['master-data-satuan', params],
+    queryFn: () => satuanApi.list(params),
   })
 }
 
@@ -64,20 +80,24 @@ export function useSatuanMutations() {
       satuanApi.update(id, payload),
     onSuccess: invalidate,
   })
+  const activate = useMutation({
+    mutationFn: (id: number) => satuanApi.activate(id),
+    onSuccess: invalidate,
+  })
   const deactivate = useMutation({
     mutationFn: (id: number) => satuanApi.deactivate(id),
     onSuccess: invalidate,
   })
 
-  return { create, update, deactivate }
+  return { create, update, activate, deactivate }
 }
 
 // ── Gudang ────────────────────────────────────────────────────────────────────
 
-export function useGudangList(search?: string) {
+export function useGudangList(params?: SimpleListParams) {
   return useQuery({
-    queryKey: ['master-data-gudang', search],
-    queryFn: () => gudangApi.list({ search }),
+    queryKey: ['master-data-gudang', params],
+    queryFn: () => gudangApi.list(params),
   })
 }
 
@@ -94,20 +114,24 @@ export function useGudangMutations() {
       gudangApi.update(id, payload),
     onSuccess: invalidate,
   })
+  const activate = useMutation({
+    mutationFn: (id: number) => gudangApi.activate(id),
+    onSuccess: invalidate,
+  })
   const deactivate = useMutation({
     mutationFn: (id: number) => gudangApi.deactivate(id),
     onSuccess: invalidate,
   })
 
-  return { create, update, deactivate }
+  return { create, update, activate, deactivate }
 }
 
 // ── PaymentTerms ──────────────────────────────────────────────────────────────
 
-export function usePaymentTermsList(search?: string) {
+export function usePaymentTermsList(params?: SimpleListParams) {
   return useQuery({
-    queryKey: ['master-data-payment-terms', search],
-    queryFn: () => paymentTermsApi.list({ search }),
+    queryKey: ['master-data-payment-terms', params],
+    queryFn: () => paymentTermsApi.list(params),
   })
 }
 
@@ -124,20 +148,24 @@ export function usePaymentTermsMutations() {
       paymentTermsApi.update(id, payload),
     onSuccess: invalidate,
   })
+  const activate = useMutation({
+    mutationFn: (id: number) => paymentTermsApi.activate(id),
+    onSuccess: invalidate,
+  })
   const deactivate = useMutation({
     mutationFn: (id: number) => paymentTermsApi.deactivate(id),
     onSuccess: invalidate,
   })
 
-  return { create, update, deactivate }
+  return { create, update, activate, deactivate }
 }
 
 // ── Departemen ────────────────────────────────────────────────────────────────
 
-export function useDepartemenList(search?: string) {
+export function useDepartemenList(params?: SimpleListParams) {
   return useQuery({
-    queryKey: ['master-data-departemen', search],
-    queryFn: () => departemenApi.list({ search }),
+    queryKey: ['master-data-departemen', params],
+    queryFn: () => departemenApi.list(params),
   })
 }
 
@@ -154,20 +182,32 @@ export function useDepartemenMutations() {
       departemenApi.update(id, payload),
     onSuccess: invalidate,
   })
+  const activate = useMutation({
+    mutationFn: (id: number) => departemenApi.activate(id),
+    onSuccess: invalidate,
+  })
   const deactivate = useMutation({
     mutationFn: (id: number) => departemenApi.deactivate(id),
     onSuccess: invalidate,
   })
 
-  return { create, update, deactivate }
+  return { create, update, activate, deactivate }
 }
 
 // ── Proyek ────────────────────────────────────────────────────────────────────
 
-export function useProyekList(search?: string, status?: string) {
+export function useProyekList(params?: SimpleListParams & { status?: string }) {
   return useQuery({
-    queryKey: ['master-data-proyek', search, status],
-    queryFn: () => proyekApi.list({ search, status }),
+    queryKey: ['master-data-proyek', params],
+    queryFn: () => proyekApi.list(params),
+  })
+}
+
+export function useProyek(id: number | undefined) {
+  return useQuery({
+    queryKey: ['master-data-proyek', 'detail', id],
+    queryFn: () => proyekApi.get(id as number),
+    enabled: !!id,
   })
 }
 
@@ -184,10 +224,14 @@ export function useProyekMutations() {
       proyekApi.update(id, payload),
     onSuccess: invalidate,
   })
+  const activate = useMutation({
+    mutationFn: (id: number) => proyekApi.activate(id),
+    onSuccess: invalidate,
+  })
   const deactivate = useMutation({
     mutationFn: (id: number) => proyekApi.deactivate(id),
     onSuccess: invalidate,
   })
 
-  return { create, update, deactivate }
+  return { create, update, activate, deactivate }
 }

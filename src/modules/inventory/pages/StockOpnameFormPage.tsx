@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -11,18 +11,32 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
-import { formatNumber, formatDate } from '@/lib/utils'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { cn, fieldErrorClass, formatNumber, formatDate } from '@/lib/utils'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { useStockOpname, useStockOpnameMutations } from '../hooks/useStockOpnameList'
 import { stockOpnameSchema, type StockOpnameFormValues } from '../schemas/stockOpnameSchema'
+import { stockOpnameApi } from '../services/stockOpnameApi'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import type { StockOpnameLine } from '../types/stockOpname.types'
 
 export default function StockOpnameFormPage() {
-  const navigate = useNavigate()
+  const { id } = useParams()
+  // `/inventory/opnames/create` dan `/inventory/opnames/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <StockOpnameFormPageContent key={id ?? 'create'} />
+}
+
+function StockOpnameFormPageContent() {
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -32,7 +46,7 @@ export default function StockOpnameFormPage() {
   const opname = data?.data
   const { create, generateLines, updateLine, markCounted, finalize, void: voidOpname } = useStockOpnameMutations()
 
-  const { register, handleSubmit, control, getValues, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<StockOpnameFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, watch, reset, setError, formState: { errors, isSubmitting } } = useForm<StockOpnameFormValues>({
     resolver: zodResolver(stockOpnameSchema),
     defaultValues: { opname_date: new Date().toISOString().slice(0, 10) },
   })
@@ -70,18 +84,32 @@ export default function StockOpnameFormPage() {
     enabled: isCreate,
   })
 
-  const handleCreate = handleSubmit(async (values) => {
-    try {
-      const res = await create.mutateAsync(values)
-      formDraft.clearDraft()
-      toast.success('Opname berhasil dibuat.')
-      navigate(`/inventory/opnames/${res.data.id}`)
-    } catch { toast.error('Gagal membuat opname.') }
+  const { saveAndClose, navProps } = useRecordFormNavigation<StockOpnameFormValues>({
+    id,
+    basePath: '/inventory/opnames',
+    createLabel: 'Opname Baru',
+    sequenceQueryKey: ['inventory', 'stock-opnames', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await stockOpnameApi.adjacent(recordId)).data,
+    handleSubmit,
+    save: async (values) => {
+      await create.mutateAsync(values)
+    },
+    onSaved: () => formDraft.clearDraft(),
+    successMessage: () => 'Opname berhasil dibuat.',
+    onError: (saveError) => {
+      // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
+      // bukan hanya toast generik "Gagal membuat opname".
+      applyApiValidationErrors(saveError, setError)
+      toast.error(getApiErrorMessage(saveError, 'Gagal membuat opname.'))
+    },
+    // Opname yang sudah ada dikelola lewat aksi baris (Generate/Hitung/Finalisasi),
+    // bukan lewat simpan header — jadi hanya form create yang bisa disimpan.
+    canSave: isCreate,
   })
 
   const handleGenerateLines = async () => {
     try { await generateLines.mutateAsync(Number(id)); toast.success('Lines berhasil digenerate.') }
-    catch { toast.error('Gagal generate lines.') }
+    catch (generateError) { toast.error(getApiErrorMessage(generateError, 'Gagal generate lines.')) }
   }
 
   const handleUpdateLine = async (lineId: number) => {
@@ -91,8 +119,9 @@ export default function StockOpnameFormPage() {
     if (isNaN(qty) || qty < 0) { toast.error('Masukkan qty fisik yang valid.'); return }
     try {
       await updateLine.mutateAsync({ id: Number(id), lineId, physical_quantity: qty, reason: input.reason || undefined })
+      formDraft.clearDraft()
       toast.success('Qty fisik tersimpan.')
-    } catch { toast.error('Gagal menyimpan qty fisik.') }
+    } catch (lineError) { toast.error(getApiErrorMessage(lineError, 'Gagal menyimpan qty fisik.')) }
   }
 
   const handleMarkCounted = async () => {
@@ -107,16 +136,17 @@ export default function StockOpnameFormPage() {
       return
     }
     try { await markCounted.mutateAsync(Number(id)); toast.success('Opname ditandai selesai dihitung.') }
-    catch { toast.error('Gagal mark counted.') }
+    catch (markError) { toast.error(getApiErrorMessage(markError, 'Gagal mark counted.')) }
   }
 
   const handleFinalize = async () => {
     try { await finalize.mutateAsync(Number(id)); toast.success('Opname berhasil difinalisasi.') }
-    catch { toast.error('Gagal finalisasi opname.') }
+    catch (finalizeError) { toast.error(getApiErrorMessage(finalizeError, 'Gagal finalisasi opname.')) }
   }
 
   const handleVoid = async (reason: string) => {
     await voidOpname.mutateAsync({ id: Number(id), reason })
+    formDraft.clearDraft()
     toast.success('Opname berhasil di-void.')
     setVoidOpen(false)
   }
@@ -125,7 +155,7 @@ export default function StockOpnameFormPage() {
 
   const actions: DocumentActionButton[] = []
   if (isCreate && can('inventory.opname.create')) {
-    actions.push({ id: 'save', label: 'Buat Opname', variant: 'primary', onClick: () => void handleCreate(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'primary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (isCreate && formDraft.isRestored) {
     actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: () => { reset({ opname_date: new Date().toISOString().slice(0, 10) }); formDraft.discardDraft(); toast.success('Draft lokal dibuang.') } })
@@ -162,14 +192,19 @@ export default function StockOpnameFormPage() {
         documentNumber={opname?.number}
         status={status}
         breadcrumb={[{ label: 'Inventori' }, { label: 'Opname', path: '/inventory/opnames' }, { label: isCreate ? 'Buat Opname' : (opname?.number ?? '') }]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={opname?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={opname?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
               {isCreate
-                ? <><Input {...register('opname_date')} type="date" className="h-9 text-[13px]" />{errors.opname_date && <p className="text-[11px] text-red-500">{errors.opname_date.message}</p>}</>
+                ? <><Input {...register('opname_date')} type="date" className={cn('h-9 text-[13px]', fieldErrorClass(errors.opname_date))} /><FieldError message={errors.opname_date?.message} /></>
                 : <span className="text-[13px] text-[#334155]">{opname ? formatDate(opname.opname_date) : '-'}</span>
               }
             </div>
@@ -183,7 +218,7 @@ export default function StockOpnameFormPage() {
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
               {isCreate
-                ? <Textarea {...register('notes')} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+                ? <><Textarea {...register('notes')} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} /><FieldError message={errors.notes?.message} /></>
                 : <span className="text-[13px] text-[#334155]">{opname?.notes ?? '-'}</span>
               }
             </div>

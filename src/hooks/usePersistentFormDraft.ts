@@ -6,7 +6,10 @@ import {
   type UseFormGetValues,
   type UseFormReset,
 } from 'react-hook-form'
+import { useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { forgetFormDraftPath, rememberFormDraftPath } from '@/lib/formDraftStorage'
+import { useUnsavedFormTracker } from '@/hooks/useUnsavedFormTracker'
 
 interface StoredFormDraft<TFormValues extends FieldValues, TExtra> {
   version: number
@@ -75,9 +78,16 @@ export function usePersistentFormDraft<TFormValues extends FieldValues, TExtra =
   version = 1,
 }: UsePersistentFormDraftOptions<TFormValues, TExtra>): PersistentFormDraftControls {
   const activeCompanyId = useAuthStore((state) => state.activeCompanyId)
+  const { pathname } = useLocation()
   const watchedValues = useWatch({ control }) as TFormValues
   const isRestoringRef = useRef(false)
   const restoredKeyRef = useRef<string | null>(null)
+
+  // Dipasang di sini karena 26 dari 28 halaman form sudah memakai hook ini —
+  // satu titik untuk melaporkan "ada isian belum tersimpan" ke aksi Tutup
+  // Database / Keluar. Dua halaman sisanya memanggil `useUnsavedFormTracker`
+  // langsung.
+  useUnsavedFormTracker({ control, enabled })
 
   const storageKey = useMemo(
     () =>
@@ -97,9 +107,10 @@ export function usePersistentFormDraft<TFormValues extends FieldValues, TExtra =
   const clearDraft = useCallback(() => {
     if (typeof window === 'undefined') return
     window.localStorage.removeItem(storageKey)
+    forgetFormDraftPath(pathname)
     setHasDraft(false)
     setIsRestored(false)
-  }, [storageKey])
+  }, [pathname, storageKey])
 
   const restoreDraft = useCallback(() => {
     if (!enabled) return false
@@ -150,6 +161,8 @@ export function usePersistentFormDraft<TFormValues extends FieldValues, TExtra =
 
       try {
         window.localStorage.setItem(storageKey, JSON.stringify(draft))
+        // Catat pemilik draft supaya bisa dibuang saat tab rute ini ditutup.
+        rememberFormDraftPath(pathname, storageKey)
         setHasDraft(true)
       } catch {
         setHasDraft(false)
@@ -157,7 +170,7 @@ export function usePersistentFormDraft<TFormValues extends FieldValues, TExtra =
     }, debounceMs)
 
     return () => window.clearTimeout(timer)
-  }, [debounceMs, enabled, extra, getValues, storageKey, version, watchedValues])
+  }, [debounceMs, enabled, extra, getValues, pathname, storageKey, version, watchedValues])
 
   return {
     hasDraft,

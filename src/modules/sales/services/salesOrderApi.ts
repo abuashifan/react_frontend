@@ -1,6 +1,6 @@
 import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
-import type { SelectOption } from '@/types/common.types'
+import type { SelectOption, AdjacentRecords } from '@/types/common.types'
 import type {
   SalesOrder,
   SalesOrderListParams,
@@ -23,6 +23,13 @@ export const salesOrderApi = {
     const res = await http.get<unknown, PaginatedResponse<SalesOrder>>('/sales/orders', { params })
     return { ...res, data: res.data.map(toSalesOrder) }
   },
+
+  /**
+   * Tetangga record untuk navigasi Prev/Next di form — hanya id + label.
+   * Label sudah berupa `order_number` dari backend, jadi `toSalesOrder` tidak perlu.
+   */
+  adjacent: (id?: number) =>
+    http.get<unknown, ApiResponse<AdjacentRecords>>('/sales/orders/adjacent', { params: { id } }),
 
   get: async (id: number) => {
     const res = await http.get<unknown, ApiResponse<SalesOrder>>(`/sales/orders/${id}`)

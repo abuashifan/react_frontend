@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -13,6 +13,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
@@ -21,11 +23,15 @@ import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { salesInvoiceSchema, type SalesInvoiceFormValues } from '../schemas/salesInvoiceSchema'
+import { salesInvoiceApi } from '../services/salesInvoiceApi'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
-import { toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
 
 interface EditableLine {
   product_id: number | null
+  product?: { id: number; code: string; name: string } | null
   description: string
   quantity: number
   unit_price: number
@@ -33,7 +39,7 @@ interface EditableLine {
   tax_percent: number
 }
 
-const DEFAULT_LINE: EditableLine = { product_id: null, description: '', quantity: 1, unit_price: 0, discount_percent: 0, tax_percent: 0 }
+const DEFAULT_LINE: EditableLine = { product_id: null, product: null, description: '', quantity: 1, unit_price: 0, discount_percent: 0, tax_percent: 0 }
 
 function lineBase(l: EditableLine) {
   return l.quantity * l.unit_price * (1 - l.discount_percent / 100)
@@ -41,7 +47,18 @@ function lineBase(l: EditableLine) {
 
 
 export default function SalesInvoiceFormPage() {
-  const navigate = useNavigate()
+  const { id } = useParams()
+  // `/sales/invoices/create` dan `/sales/invoices/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah. `usePersistentFormDraft` di bawah
+  // sudah dikunci per `id` lewat draftKey-nya sendiri, jadi mount baru tetap memuat ulang
+  // draft yang tersimpan dengan benar.
+  return <SalesInvoiceFormPageContent key={id ?? 'create'} />
+}
+
+function SalesInvoiceFormPageContent() {
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -51,7 +68,7 @@ export default function SalesInvoiceFormPage() {
   const invoice = data?.data
   const { create, update, approve, post, void: voidInv } = useSalesInvoiceMutations()
 
-  const { control, getValues, register, handleSubmit, setValue, reset, formState: { errors, isSubmitting } } = useForm<SalesInvoiceFormValues>({
+  const { control, getValues, register, handleSubmit, setValue, setError, reset, formState: { errors, isSubmitting } } = useForm<SalesInvoiceFormValues>({
     resolver: zodResolver(salesInvoiceSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -59,6 +76,12 @@ export default function SalesInvoiceFormPage() {
   const paymentTermId = useWatch({ control, name: 'payment_term_id' })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+
+  // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
+
+  // ditolak ikut ditandai, bukan cuma toast.
+
+  const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
 
   const status = (invoice?.status ?? 'draft') as DocumentStatus
@@ -81,6 +104,7 @@ export default function SalesInvoiceFormPage() {
       const timer = window.setTimeout(() => {
         setLines(invoice.lines.map((l) => ({
           product_id: l.product_id,
+          product: l.product,
           description: l.description,
           quantity: l.quantity,
           unit_price: l.unit_price,
@@ -124,22 +148,33 @@ export default function SalesInvoiceFormPage() {
       setLines([{ ...DEFAULT_LINE }])
     }
     formDraft.discardDraft()
+    formDraft.clearDraft()
     toast.success('Draft lokal dibuang.')
   }
 
-  const handleSaveDraft = handleSubmit(async (values) => {
-    try {
-      if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines })
-        formDraft.clearDraft()
-        toast.success('Invoice berhasil dibuat.')
-        navigate(`/sales/invoices/${res.data.id}`)
-      } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
-        formDraft.clearDraft()
-        toast.success('Invoice berhasil diperbarui.')
-      }
-    } catch { toast.error('Gagal menyimpan Invoice.') }
+  const { saveAndClose, navProps } = useRecordFormNavigation<SalesInvoiceFormValues>({
+    id,
+    basePath: '/sales/invoices',
+    createLabel: 'Invoice Baru',
+    sequenceQueryKey: ['sales', 'invoices', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await salesInvoiceApi.adjacent(recordId)).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      if (creating) await create.mutateAsync({ ...values, lines })
+      else await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setLineErrors({})
+    },
+    successMessage: (creating) => (creating ? 'Invoice berhasil dibuat.' : 'Invoice berhasil diperbarui.'),
+    onError: (saveError) => {
+      // Backend memvalidasi tanggal sebagai `invoice_date`, form memakai `date`.
+      setLineErrors(getApiLineErrors(saveError))
+      applyApiValidationErrors(saveError, setError, { invoice_date: 'date' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Invoice.'))
+    },
+    canSave: isEditable,
   })
 
   const handleApprove = async () => {
@@ -147,7 +182,7 @@ export default function SalesInvoiceFormPage() {
       await approve.mutateAsync(Number(id))
       formDraft.clearDraft()
       toast.success('Invoice berhasil di-approve.')
-    } catch { toast.error('Gagal approve invoice.') }
+    } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve invoice.')) }
   }
 
   const handlePost = async () => {
@@ -155,7 +190,7 @@ export default function SalesInvoiceFormPage() {
       await post.mutateAsync(Number(id))
       formDraft.clearDraft()
       toast.success('Invoice berhasil diposting.')
-    } catch { toast.error('Gagal memposting invoice.') }
+    } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal memposting invoice.')) }
   }
 
   const handleVoid = async (reason: string) => {
@@ -167,7 +202,7 @@ export default function SalesInvoiceFormPage() {
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('sales.invoices.create')) {
-    actions.push({ id: 'save_draft', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
+    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (isEditable && formDraft.isRestored) {
     actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: handleDiscardDraft })
@@ -192,11 +227,15 @@ export default function SalesInvoiceFormPage() {
       render: ({ item, isReadOnly, onUpdate }) => (
         <SearchableSelect
           value={item.product_id}
-          onChange={(v) => onUpdate('product_id', v)}
+          onChange={(v, opt) => {
+            onUpdate('product_id', v)
+            onUpdate('product', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null)
+          }}
           onSearch={produkApi.search}
           placeholder="Pilih produk..."
           disabled={isReadOnly}
           size="sm"
+          selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []}
         />
       ),
     },
@@ -266,7 +305,12 @@ export default function SalesInvoiceFormPage() {
           { label: 'Invoice', path: '/sales/invoices' },
           { label: isCreate ? 'Buat Invoice' : (invoice?.number ?? '') },
         ]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={invoice?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={invoice?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           {hasPostedDependences && (
@@ -295,13 +339,14 @@ export default function SalesInvoiceFormPage() {
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Tanggal <span className="text-red-500">*</span>
               </Label>
-              <Input {...register('date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+              <Input {...register('date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+              <FieldError message={errors.date?.message} />
             </div>
 
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jatuh Tempo</Label>
-              <Input {...register('due_date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
+              <Input {...register('due_date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.due_date))} />
+              <FieldError message={errors.due_date?.message} />
             </div>
 
             <div className="flex flex-col gap-1">
@@ -312,6 +357,7 @@ export default function SalesInvoiceFormPage() {
                 onSearch={paymentTermsApi.search}
                 placeholder="Pilih syarat pembayaran..."
                 disabled={!isEditable}
+                error={errors.payment_term_id?.message}
                 selectedOptions={invoice?.payment_term ? [{ value: invoice.payment_term.id, label: invoice.payment_term.name }] : []}
               />
             </div>
@@ -327,13 +373,15 @@ export default function SalesInvoiceFormPage() {
 
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
           </FormSection>
 
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Item</p>
             <LineItemsTable
+          errors={lineErrors}
               items={lines}
               columns={columns}
               onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}

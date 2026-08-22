@@ -256,29 +256,39 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____EmptyState.tsx
 | | | | |____ErrorBoundary.tsx
 | | | | |____SessionWarningDialog.tsx
+| | | | |____UnsavedFormsDialog.tsx
 | | | |____form/
+| | | | |____AmountInput.tsx
+| | | | |____FieldError.tsx
+| | | | |____FormField.tsx
 | | | | |____FormSection.tsx
 | | | | |____FormSummary.tsx
 | | | | |____LineItemsTable.tsx
+| | | | |____RecordNavButtons.tsx
 | | | | |____SearchableSelect.tsx
 | | | |____filter/
 | | | | |____DateRangeFilterSection.tsx
+| | | | |____ListSearchBar.tsx
 | | | | |____MultiCheckboxFilter.tsx
+| | | | |____MultiSelectModalFilter.tsx
 | | | | |____dateRangeUtils.ts
 | | | |____layout/
 | | | | |____AppShell.tsx
 | | | | |____FilterSidebar.tsx
 | | | | |____FixedBottomBar.tsx
 | | | | |____FormLayout.tsx
+| | | | |____FormSaveActions.tsx
 | | | | |____PrimaryTabs.tsx
 | | | | |____RibbonPanel.tsx
 | | | | |____SecondaryTabs.tsx
+| | | | |____SubscriptionWarningBadge.tsx
 | | | | |____Topbar.tsx
 | | | | |____WorkspaceLayout.tsx
 | | | |____table/
 | | | | |____BulkActionBar.tsx
 | | | | |____DataTable.tsx
 | | | | |____TablePagination.tsx
+| | | | |____tableSort.ts
 | | |____ui/
 | | | |____alert-dialog.tsx
 | | | |____alert.tsx
@@ -305,22 +315,56 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____tooltip.tsx
 | |____hooks/
 | | |____use-toast.ts
+| | |____useBulkVoid.ts
+| | |____useCompanySession.ts
 | | |____useCompanySettings.ts
 | | |____useDocumentActions.ts
+| | |____useListSort.ts
+| | |____useOpenPrimaryTab.ts
 | | |____usePermission.ts
 | | |____usePersistentFormDraft.ts
+| | |____useRecordFormNavigation.ts
+| | |____useRecordSequence.ts
+| | |____useRecordTab.ts
 | | |____useSessionTimeout.ts
-| | |____useToast.ts
+| | |____useSubscriptionStatus.ts
+| | |____useTabFormState.ts
+| | |____useToast.tsx
+| | |____useUnsavedFormTracker.ts
 | | |____useViewMode.ts
 | |____index.css
 | |____lib/
 | | |____apiError.ts
+| | |____companyScope.ts
+| | |____companySession.ts
 | | |____constants.ts
 | | |____exportCsv.ts
+| | |____formDraftStorage.ts
+| | |____upgradeToast.tsx
 | | |____utils.ts
 | |____main.tsx
 | |____modules/
+| | |____admin/
+| | | |____components/
+| | | | |____ResetPasswordSection.tsx
+| | | | |____StorageUsageSection.tsx
+| | | | |____SubscriptionCycleSection.tsx
+| | | |____hooks/
+| | | | |____useClientUsers.ts
+| | | | |____useDeletedCompanies.ts
+| | | |____pages/
+| | | | |____AdminClientFormPage.tsx
+| | | | |____AdminClientsPage.tsx
+| | | | |____AdminDeletedCompaniesPage.tsx
+| | | | |____AdminLoginPage.tsx
+| | | |____routes.tsx
+| | | |____schemas/
+| | | | |____clientSchema.ts
+| | | |____services/
+| | | | |____adminApi.ts
 | | |____accounting/
+| | | |____constants/
+| | | | |____journalSourceTypes.ts
 | | | |____hooks/
 | | | | |____useFiscalYear.ts
 | | | | |____useJournalEntryList.ts
@@ -343,10 +387,14 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____fiscalYear.types.ts
 | | | | |____journalEntry.types.ts
 | | |____auth/
+| | | |____components/
+| | | | |____CreateCompanyDialog.tsx
+| | | | |____DeleteCompanyDialog.tsx
 | | | |____pages/
 | | | | |____CompanyPickerPage.tsx
 | | | | |____LoginPage.tsx
 | | | |____schemas/
+| | | | |____companySchema.ts
 | | | | |____loginSchema.ts
 | | | |____services/
 | | | | |____authApi.ts
@@ -357,13 +405,35 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____BudgetConsolidationTable.tsx
 | | | | |____BudgetLineEditor.tsx
 | | | | |____BudgetStatusBadge.tsx
+| | | | |____CashBudgetView.tsx
+| | | | |____ProjectFinancialBlocks.tsx
+| | | | |____ProjectTransactionsTable.tsx
+| | | |____constants/
+| | | | |____analysisPresets.ts
+| | | |____hooks/
+| | | | |____useBudgetAnalysis.ts
+| | | | |____useBudgetSubmissions.ts
+| | | | |____useBudgetVersions.ts
+| | | | |____useCashBudget.ts
+| | | | |____useProjectBudgetForProject.ts
+| | | | |____useProjectFinancials.ts
 | | | |____pages/
+| | | | |____BudgetAnalysisPage.tsx
 | | | | |____BudgetComparisonPage.tsx
+| | | | |____BudgetDashboardPage.tsx
 | | | | |____BudgetPeriodDetailPage.tsx
 | | | | |____BudgetPeriodFormPage.tsx
 | | | | |____BudgetPeriodListPage.tsx
+| | | | |____BudgetSubmissionCreatePage.tsx
+| | | | |____BudgetSubmissionListPage.tsx
 | | | | |____BudgetSubmissionPage.tsx
+| | | | |____BudgetVersionHistoryPage.tsx
+| | | | |____CashBudgetPage.tsx
+| | | | |____ProjectFinancialSummaryPage.tsx
 | | | |____routes.tsx
+| | | |____schemas/
+| | | | |____budgetSchema.ts
+| | | | |____budgetSubmissionSchema.ts
 | | | |____services/
 | | | | |____budgetApi.ts
 | | | |____types/
@@ -429,6 +499,16 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____fixedAssetCategoryApi.ts
 | | | |____types/
 | | | | |____fixedAsset.types.ts
+| | |____imports/
+| | | |____hooks/
+| | | | |____useImports.ts
+| | | |____pages/
+| | | | |____ImportPage.tsx
+| | | |____routes.tsx
+| | | |____services/
+| | | | |____importsApi.ts
+| | | |____types/
+| | | | |____imports.types.ts
 | | |____inventory/
 | | | |____components/
 | | | |____hooks/
@@ -461,6 +541,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____stockMovement.types.ts
 | | | | |____stockOpname.types.ts
 | | |____master-data/
+| | | |____components/
+| | | | |____AccountPickerDialog.tsx
 | | | |____hooks/
 | | | | |____useAccountMappings.ts
 | | | | |____useCoaList.ts
@@ -468,7 +550,6 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____useProdukList.ts
 | | | | |____useSimpleLists.ts
 | | | |____pages/
-| | | | |____AccountMappingPage.tsx
 | | | | |____CoaFormPage.tsx
 | | | | |____CoaListPage.tsx
 | | | | |____DepartemenPage.tsx
@@ -479,6 +560,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____PaymentTermsPage.tsx
 | | | | |____ProdukFormPage.tsx
 | | | | |____ProdukListPage.tsx
+| | | | |____ProjectBudgetTab.tsx
+| | | | |____ProyekFormPage.tsx
 | | | | |____ProyekPage.tsx
 | | | | |____SatuanPage.tsx
 | | | |____routes.tsx
@@ -516,6 +599,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____satuan.types.ts
 | | |____onboarding/
 | | | |____components/
+| | | | |____CoaTemplateModal.tsx
 | | | | |____MasterDataQuickAdd.tsx
 | | | | |____WizardSidebar.tsx
 | | | | |____steps/
@@ -525,13 +609,18 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | | |____Step4MasterData.tsx
 | | | | | |____Step5OpeningBalance.tsx
 | | | | | |____Step6Complete.tsx
+| | | | | |____StepModuleSelection.tsx
 | | | |____constants.ts
+| | | |____hooks/
+| | | | |____useSetupStatus.ts
 | | | |____pages/
 | | | | |____OnboardingPage.tsx
 | | | |____schemas/
 | | | | |____companyInfoSchema.ts
 | | | |____services/
 | | | | |____onboardingApi.ts
+| | | |____types/
+| | | | |____setup.types.ts
 | | |____opening-balance/
 | | | |____hooks/
 | | | | |____useOpeningBalance.ts
@@ -606,18 +695,52 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____components/
 | | | | |____ReportCompactBar.tsx
 | | | | |____ReportDomainPanel.tsx
-| | | | |____ReportFilterParameter.tsx
+| | | | |____ReportParameterModal.tsx
+| | | | |____PeriodSelector.tsx
+| | | | |____SavedReportsPanel.tsx
+| | | | |____SaveReportButton.tsx
+| | | | |____ReportToolButton.tsx
+| | | | |____PageSetupControl.tsx
+| | | | |____ReportPrintToolbar.tsx
+| | | | |____ReportPrintDocument.tsx
+| | | | |____ReportPrintSection.tsx
 | | | |____constants/
 | | | | |____reportCategories.ts
+| | | | |____reportDomainIcons.ts
+| | | | |____reportKeyRoutes.ts
+| | | | |____pageSizes.ts
+| | | |____stores/
+| | | | |____useReportPageSetupStore.ts
+| | | |____hooks/
+| | | | |____useSavedReports.ts
+| | | | |____useInitialReportParams.ts
+| | | | |____useReportParams.ts
+| | | | |____useReportFilterSummary.ts
 | | | |____pages/
 | | | | |____ApAgingReportPage.tsx
+| | | | |____ApOutstandingReportPage.tsx
+| | | | |____ApVendorSummaryPage.tsx
 | | | | |____ArAgingReportPage.tsx
+| | | | |____ArCustomerSummaryPage.tsx
+| | | | |____ArOutstandingReportPage.tsx
 | | | | |____AccountLedgerPage.tsx
 | | | | |____BalanceSheetPage.tsx
 | | | | |____CashFlowPage.tsx
+| | | | |____CashFlowDirectReportPage.tsx
+| | | | |____RetainedEarningsReportPage.tsx
+| | | | |____EquityChangesReportPage.tsx
+| | | | |____ProfitLossMultiPeriodPage.tsx
+| | | | |____BalanceSheetMultiPeriodPage.tsx
+| | | | |____OutputVatReportPage.tsx
+| | | | |____InputVatReportPage.tsx
+| | | | |____EfakturExportPage.tsx
 | | | | |____FinancialSummaryPage.tsx
 | | | | |____GeneralLedgerPage.tsx
+| | | | |____JournalListReportPage.tsx
 | | | | |____InventoryAnalysisPage.tsx
+| | | | |____InventoryAgingReportPage.tsx
+| | | | |____OpnameWorksheetReportPage.tsx
+| | | | |____ProductHistoryReportPage.tsx
 | | | | |____ProfitLossPage.tsx
 | | | | |____ReconciliationPage.tsx
 | | | | |____CashBankStatementPage.tsx
@@ -625,13 +748,23 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____FixedAssetDisposalsReportPage.tsx
 | | | | |____FixedAssetReconciliationReportPage.tsx
 | | | | |____FixedAssetRegisterReportPage.tsx
+| | | | |____SalesByCustomerReportPage.tsx
+| | | | |____SalesByProductReportPage.tsx
+| | | | |____SalesSummaryReportPage.tsx
+| | | | |____PurchaseByProductReportPage.tsx
+| | | | |____PurchaseByVendorReportPage.tsx
+| | | | |____PurchaseSummaryReportPage.tsx
 | | | | |____ReportCategoryPage.tsx
-| | | | |____ReportIndexPage.tsx
+| | | | |____ReportListPage.tsx
+| | | | |____SavedReportsPage.tsx
+| | | | |____legacy/
+| | | | | |____ReportIndexPage.legacy.tsx
 | | | | |____StockReportPage.tsx
 | | | | |____TrialBalancePage.tsx
 | | | |____routes.tsx
 | | | |____services/
 | | | | |____reportsApi.ts
+| | | | |____savedReportsApi.ts
 | | | |____types/
 | | | | |____reports.types.ts
 | | |____sales/
@@ -726,13 +859,19 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____index.tsx
 | | |____moduleConfig.ts
 | | |____placeholders.tsx
+| | |____legacy/
+| | | |____reportsRibbon.legacy.ts
 | |____services/
+| | |____adminHttp.ts
 | | |____http.ts
 | |____stores/
+| | |____useAdminAuthStore.ts
 | | |____useAuthStore.ts
 | | |____useCompanyStore.ts
 | | |____useTabStore.ts
+| | |____useUnsavedFormsStore.ts
 | |____types/
+| | |____admin.types.ts
 | | |____api.types.ts
 | | |____auth.types.ts
 | | |____common.types.ts
@@ -750,3 +889,18 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 - Tree ini mengikuti isi folder frontend saat ini.
 - `dist/` dan `node_modules/` memang ada, tetapi tidak perlu dibuka saat mencari source.
 - Jika ada file baru, update peta ini dulu supaya agent lain bisa baca satu file ini saja.
+
+### Shared baru (sorting daftar, nominal, void massal)
+
+| File | Fungsi | Dipakai bersama |
+|---|---|---|
+| `components/shared/table/tableSort.ts` | Tipe `SortState` + siklus asc→desc→default dan mapping ke `sort_by`/`sort_direction` | `DataTable`, `useListSort` |
+| `hooks/useListSort.ts` | State sorting halaman daftar; hasilnya disebar ke params query | `DataTable.sort` / `onSortChange` |
+| `hooks/useBulkVoid.ts` | Alur void massal: saring dokumen eligible, konfirmasi, `allSettled`, rangkuman toast | `BulkActionBar`, `VoidConfirmDialog` |
+| `components/shared/form/AmountInput.tsx` | Input uang dengan pemisah ribuan id-ID; pengganti `<Input type="number">` untuk nominal | `LineItemsTable`, form transaksi |
+| `components/shared/form/FormField.tsx` | Label + kontrol + slot error dengan kepadatan seragam | Semua form |
+| `modules/master-data/components/AccountPickerDialog.tsx` | Dialog pemilih akun (filter No Akun/Nama Akun, checkbox, multi-pilih) | Form jurnal — memilih N akun mengisi N baris |
+
+Kolom `DataTable` kini punya `sortable` + `sortKey`; `sortKey` wajib memakai nama field
+backend (allowlist `$listSortable` di service Laravel), bukan `id` kolom UI.
+`ListSearchBar` punya prop `hint` untuk menyebutkan kolom apa saja yang dicari server.

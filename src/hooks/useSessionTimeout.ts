@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useCompanyStore } from '@/stores/useCompanyStore'
+import { logoutFromApp } from '@/lib/companySession'
 
 const WARNING_MINUTES = 5
 const WARNING_SECONDS = WARNING_MINUTES * 60
@@ -12,7 +13,7 @@ function getWarningSeconds(timeoutMinutes: number): number {
 
 export function useSessionTimeout() {
   const navigate = useNavigate()
-  const { logout, token } = useAuthStore()
+  const { token } = useAuthStore()
   const { settings } = useCompanyStore()
   const timeoutMinutes = settings?.session_timeout_minutes ?? 30
   const warningSeconds = getWarningSeconds(timeoutMinutes)
@@ -33,15 +34,21 @@ export function useSessionTimeout() {
     if (countdownRef.current) clearInterval(countdownRef.current)
   }, [])
 
+  /**
+   * Logout karena sesi habis. SENGAJA tidak lewat penjaga form belum tersimpan
+   * (`useCompanySession`): sesi yang sudah kedaluwarsa tidak bisa ditahan oleh
+   * state klien. Isian yang belum tersimpan tetap ada sebagai draft di
+   * localStorage — kuncinya per perusahaan — dan muncul lagi setelah login ulang.
+   */
   const doLogout = useCallback(() => {
     if (hasLoggedOutRef.current) return
     hasLoggedOutRef.current = true
     clearAllTimers()
     warningOpenRef.current = false
     setIsWarningOpen(false)
-    logout()
+    void logoutFromApp()
     navigate('/login', { state: { reason: 'session_expired' }, replace: true })
-  }, [clearAllTimers, logout, navigate])
+  }, [clearAllTimers, navigate])
 
   const startCountdown = useCallback(() => {
     if (countdownRef.current) clearInterval(countdownRef.current)

@@ -1,15 +1,26 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Building2, LogOut } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Building2, LogOut, MoreVertical, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useCompanyStore } from '@/stores/useCompanyStore'
 import { useToast } from '@/hooks/useToast'
+import { closeDatabase, getUnsavedForms, logoutFromApp } from '@/lib/companySession'
 import { authApi } from '../services/authApi'
 import { companyApi } from '../services/companyApi'
+import { CreateCompanyDialog } from '../components/CreateCompanyDialog'
+import { DeleteCompanyDialog } from '../components/DeleteCompanyDialog'
 import { cn } from '@/lib/utils'
 import { APP_NAME } from '@/lib/constants'
-import type { Company } from '@/types/auth.types'
+import type { Company, CompanyQuota } from '@/types/auth.types'
+import { getApiErrorMessage } from '@/lib/apiError'
 
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -34,17 +45,97 @@ function sortByLastAccessed(companies: Company[]): Company[] {
 interface CompanyCardProps {
   company: Company
   onClick: () => void
+  onDeleteClick: () => void
   isLoading: boolean
 }
 
-function CompanyCard({ company, onClick, isLoading }: CompanyCardProps) {
+function CompanyCard({ company, onClick, onDeleteClick, isLoading }: CompanyCardProps) {
+  const canDelete = company.user_role === 'owner'
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={isLoading}
+        className={cn(
+          'bg-white border border-[#d9e2e5] rounded-lg p-5 [@media(max-height:620px)]:p-3',
+          'cursor-pointer transition-all duration-150 text-left w-full',
+          'hover:border-[#5c9ead] hover:shadow-md',
+          'flex flex-col items-center text-center gap-3 [@media(max-height:620px)]:gap-2',
+          'disabled:opacity-60 disabled:cursor-not-allowed',
+        )}
+      >
+        <div className="w-12 h-12 [@media(max-height:620px)]:w-9 [@media(max-height:620px)]:h-9 rounded-lg bg-[#EFF9FB] flex items-center justify-center">
+          <Building2 className="w-6 h-6 [@media(max-height:620px)]:w-5 [@media(max-height:620px)]:h-5 text-[#5c9ead]" />
+        </div>
+        <div>
+          <p className="font-semibold text-[#24323a] text-sm leading-snug">{company.name}</p>
+          <p className="text-[11px] text-[#64748b] mt-1">
+            {company.last_accessed_at
+              ? `Terakhir diakses ${formatTimeAgo(company.last_accessed_at)}`
+              : 'Belum pernah diakses'}
+          </p>
+        </div>
+      </button>
+
+      {canDelete && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              disabled={isLoading}
+              aria-label={`Menu ${company.name}`}
+              className={cn(
+                'absolute top-2 right-2 z-10 w-6 h-6 rounded-md flex items-center justify-center',
+                'text-[#94a3b8] hover:bg-[#f1f5f9] hover:text-[#64748b]',
+                'outline-none focus-visible:ring-2 focus-visible:ring-[#5c9ead]/50',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+              )}
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="z-[70] w-[180px] border border-[#d9e2e5] shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
+          >
+            <DropdownMenuItem
+              onClick={onDeleteClick}
+              className="text-[13px] gap-2 py-[7px] px-3 text-red-700 focus:text-red-700 hover:bg-[#f8fbfc]"
+            >
+              <Trash2 className="w-4 h-4" />
+              Hapus Perusahaan
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
+  )
+}
+
+interface AddCompanyCardProps {
+  onClick: () => void
+  disabled: boolean
+  quota: CompanyQuota
+}
+
+function AddCompanyCard({ onClick, disabled, quota }: AddCompanyCardProps) {
+  const blocked = !quota.can_create
+  const planLabel = quota.plan_name ?? 'Paket Anda'
+
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={isLoading}
+      disabled={disabled || blocked}
+      title={
+        blocked
+          ? `${planLabel} mencakup ${quota.limit} perusahaan dan Anda sudah memakai ${quota.used}.`
+          : undefined
+      }
       className={cn(
-        'bg-white border border-[#d9e2e5] rounded-lg p-5 [@media(max-height:620px)]:p-3',
+        'bg-white border border-dashed border-[#d9e2e5] rounded-lg p-5 [@media(max-height:620px)]:p-3',
         'cursor-pointer transition-all duration-150 text-left w-full',
         'hover:border-[#5c9ead] hover:shadow-md',
         'flex flex-col items-center text-center gap-3 [@media(max-height:620px)]:gap-2',
@@ -52,14 +143,12 @@ function CompanyCard({ company, onClick, isLoading }: CompanyCardProps) {
       )}
     >
       <div className="w-12 h-12 [@media(max-height:620px)]:w-9 [@media(max-height:620px)]:h-9 rounded-lg bg-[#EFF9FB] flex items-center justify-center">
-        <Building2 className="w-6 h-6 [@media(max-height:620px)]:w-5 [@media(max-height:620px)]:h-5 text-[#5c9ead]" />
+        <Plus className="w-6 h-6 [@media(max-height:620px)]:w-5 [@media(max-height:620px)]:h-5 text-[#5c9ead]" />
       </div>
       <div>
-        <p className="font-semibold text-[#24323a] text-sm leading-snug">{company.name}</p>
+        <p className="font-semibold text-[#24323a] text-sm leading-snug">Tambah Perusahaan</p>
         <p className="text-[11px] text-[#64748b] mt-1">
-          {company.last_accessed_at
-            ? `Terakhir diakses ${formatTimeAgo(company.last_accessed_at)}`
-            : 'Belum pernah diakses'}
+          {blocked ? `Kuota ${quota.used}/${quota.limit} terpakai` : 'Buat perusahaan baru'}
         </p>
       </div>
     </button>
@@ -68,14 +157,65 @@ function CompanyCard({ company, onClick, isLoading }: CompanyCardProps) {
 
 export function CompanyPickerPage() {
   const navigate = useNavigate()
-  const { user, companies, setActiveCompany, setPermissions, logout } = useAuthStore()
+  const { user, companies, activeCompanyId, setActiveCompany, setCompanies, setPermissions } =
+    useAuthStore()
   const { setActiveCompany: setCompanyStore } = useCompanyStore()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
   const [loadingId, setLoadingId] = useState<number | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [deletingCompany, setDeletingCompany] = useState<Company | null>(null)
 
-  const sorted = sortByLastAccessed(companies)
+  /**
+   * Daftar perusahaan sekaligus kuotanya. `companies` di store diisi saat login
+   * dan bisa basi; query ini menyegarkannya sekaligus memberi tahu apakah user
+   * masih boleh menambah perusahaan. Backend tetap gerbang sebenarnya —
+   * ini hanya supaya tombolnya tidak menjanjikan yang tidak bisa ditepati.
+   */
+  const companiesQuery = useQuery({
+    queryKey: ['companies', 'picker'],
+    queryFn: companyApi.list,
+    staleTime: 30_000,
+  })
 
+  const quota = companiesQuery.data?.quota ?? {
+    used: 0,
+    limit: 0,
+    can_create: true,
+    plan_code: null,
+    plan_name: null,
+  }
+
+  const sorted = sortByLastAccessed(companiesQuery.data?.data ?? companies)
+
+  // Store dijaga tetap sinkron karena pengalih perusahaan di dalam aplikasi
+  // membacanya dari sana, bukan dari query ini.
+  const fetchedCompanies = companiesQuery.data?.data
+  useEffect(() => {
+    if (fetchedCompanies) setCompanies(fetchedCompanies)
+  }, [fetchedCompanies, setCompanies])
+
+  /**
+   * Buka database sebuah perusahaan.
+   *
+   * Normalnya halaman ini hanya dicapai saat tidak ada database terbuka — menu
+   * "Tutup Database" menutupnya lebih dulu. Tapi rutenya tetap bisa dibuka lewat
+   * URL langsung sementara sebuah perusahaan masih terbuka, jadi perusahaan lama
+   * ditutup di sini juga: penjaga form belum tersimpan berlaku sama, dan
+   * `closeDatabase()` yang membersihkan cache serta tab.
+   */
   async function handleSelectCompany(company: Company) {
+    if (activeCompanyId !== null && activeCompanyId !== company.id) {
+      const unsaved = getUnsavedForms()
+      if (unsaved.length > 0) {
+        toast.error(
+          `Simpan atau tutup dulu ${unsaved.length} form yang belum tersimpan sebelum berpindah perusahaan.`,
+        )
+        return
+      }
+      closeDatabase()
+    }
+
     setLoadingId(company.id)
     try {
       const selectResponse = await companyApi.select(company.id)
@@ -88,20 +228,53 @@ export function CompanyPickerPage() {
       setPermissions(permissionsResponse.data.permissions)
 
       navigate('/', { replace: true })
-    } catch {
-      toast.error('Gagal memilih perusahaan. Coba lagi.')
+    } catch (selectError) {
+      toast.error(getApiErrorMessage(selectError, 'Gagal memilih perusahaan. Coba lagi.'))
       setLoadingId(null)
     }
   }
 
-  async function handleLogout() {
+  /**
+   * Perusahaan baru langsung dibuka, sama seperti user mengkliknya sendiri.
+   * Daftar perusahaan disegarkan lebih dulu karena `companies` di store hanya
+   * diisi saat login — tanpa itu kartu perusahaan baru hilang begitu user
+   * kembali ke halaman ini.
+   */
+  async function handleCompanyCreated(company: Company) {
     try {
-      await authApi.logout()
+      const listResponse = await companyApi.list()
+      setCompanies(listResponse.data)
+      queryClient.setQueryData(['companies', 'picker'], listResponse)
     } catch {
-      // Ignore network errors on logout
+      // Daftar gagal disegarkan bukan alasan menahan user: perusahaan sudah
+      // terbentuk dan tetap bisa dibuka di bawah.
     }
-    logout()
+
+    await handleSelectCompany(company)
+  }
+
+  async function handleLogout() {
+    await logoutFromApp()
     navigate('/login', { replace: true })
+  }
+
+  /**
+   * Perusahaan yang baru dihapus dibuang dari store dan cache query. Kalau
+   * itu perusahaan yang sedang terbuka (dicapai lewat URL langsung, lihat
+   * catatan di `handleSelectCompany`), database-nya ditutup juga supaya
+   * tidak ada state basi yang menunjuk ke perusahaan yang sudah tidak ada.
+   */
+  function handleCompanyDeleted(companyId: number) {
+    setDeletingCompany(null)
+    toast.success('Perusahaan berhasil dihapus.')
+
+    if (activeCompanyId === companyId) {
+      closeDatabase()
+    }
+
+    const remaining = (companiesQuery.data?.data ?? companies).filter((c) => c.id !== companyId)
+    setCompanies(remaining)
+    queryClient.invalidateQueries({ queryKey: ['companies', 'picker'] })
   }
 
   return (
@@ -130,9 +303,15 @@ export function CompanyPickerPage() {
                 key={company.id}
                 company={company}
                 onClick={() => handleSelectCompany(company)}
+                onDeleteClick={() => setDeletingCompany(company)}
                 isLoading={loadingId !== null}
               />
             ))}
+            <AddCompanyCard
+              onClick={() => setCreateOpen(true)}
+              disabled={loadingId !== null}
+              quota={quota}
+            />
           </div>
 
           <div className="flex justify-center">
@@ -147,6 +326,18 @@ export function CompanyPickerPage() {
           </div>
         </div>
       </div>
+
+      <CreateCompanyDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={handleCompanyCreated}
+      />
+
+      <DeleteCompanyDialog
+        company={deletingCompany}
+        onClose={() => setDeletingCompany(null)}
+        onDeleted={handleCompanyDeleted}
+      />
     </div>
   )
 }

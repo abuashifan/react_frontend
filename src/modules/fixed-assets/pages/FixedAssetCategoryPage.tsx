@@ -7,11 +7,14 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/useToast'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { cn, fieldErrorClass } from '@/lib/utils'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { fixedAssetCategorySchema, type FixedAssetCategoryFormValues } from '../schemas/fixedAssetSchema'
 import { useFixedAssetCategories, useFixedAssetCategoryMutations } from '../hooks/useFixedAssetCategories'
@@ -122,7 +125,7 @@ export default function FixedAssetCategoryPage() {
   const { data, isLoading, isFetching } = useFixedAssetCategories()
   const mutations = useFixedAssetCategoryMutations()
 
-  const { control, register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FixedAssetCategoryFormValues>({
+  const { control, register, handleSubmit, reset, setError, formState: { errors, isSubmitting } } = useForm<FixedAssetCategoryFormValues>({
     resolver: zodResolver(fixedAssetCategorySchema) as unknown as Resolver<FixedAssetCategoryFormValues>,
     defaultValues: defaultValues(),
   })
@@ -162,8 +165,11 @@ export default function FixedAssetCategoryPage() {
         toast.success('Kategori aktiva berhasil dibuat.')
       }
       setDialogOpen(false)
-    } catch {
-      toast.error('Gagal menyimpan kategori aktiva.')
+    } catch (saveError) {
+      // Tandai field penyebab dari backend (mis. kode kategori duplikat) supaya
+      // user tahu isian mana yang salah, bukan hanya toast generik.
+      applyApiValidationErrors(saveError, setError)
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan kategori aktiva.'))
     }
   }
 
@@ -255,33 +261,35 @@ export default function FixedAssetCategoryPage() {
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="flex flex-col gap-1">
                 <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kode <span className="text-red-500">*</span></Label>
-                <Input {...register('code')} className="h-9 text-[13px]" />
-                {errors.code && <p className="text-[11px] text-red-500">{errors.code.message}</p>}
+                <Input {...register('code')} className={cn('h-9 text-[13px]', fieldErrorClass(errors.code))} />
+                <FieldError message={errors.code?.message} />
               </div>
               <div className="flex flex-col gap-1">
                 <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Nama <span className="text-red-500">*</span></Label>
-                <Input {...register('name')} className="h-9 text-[13px]" />
-                {errors.name && <p className="text-[11px] text-red-500">{errors.name.message}</p>}
+                <Input {...register('name')} className={cn('h-9 text-[13px]', fieldErrorClass(errors.name))} />
+                <FieldError message={errors.name?.message} />
               </div>
               <div className="flex flex-col gap-1">
                 <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kelas</Label>
-                <select {...register('asset_class')} className="h-9 rounded-md border border-[#d9e2e5] bg-white px-2 text-[13px]">
+                <select {...register('asset_class')} className={cn('h-9 rounded-md border border-[#d9e2e5] bg-white px-2 text-[13px]', fieldErrorClass(errors.asset_class))}>
                   <option value="tangible">Tangible</option>
                   <option value="intangible">Intangible</option>
                 </select>
+                <FieldError message={errors.asset_class?.message} />
               </div>
               <div className="flex flex-col gap-1">
                 <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tipe Depresiasi</Label>
-                <select {...register('depreciation_type')} className="h-9 rounded-md border border-[#d9e2e5] bg-white px-2 text-[13px]">
+                <select {...register('depreciation_type')} className={cn('h-9 rounded-md border border-[#d9e2e5] bg-white px-2 text-[13px]', fieldErrorClass(errors.depreciation_type))}>
                   <option value="depreciation">Depresiasi</option>
                   <option value="amortization">Amortisasi</option>
                   <option value="none">Tidak Ada</option>
                   <option value="impairment_only">Impairment Only</option>
                 </select>
+                <FieldError message={errors.depreciation_type?.message} />
               </div>
               <div className="flex flex-col gap-1">
                 <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Umur Default</Label>
-                <select {...register('default_useful_life_years')} className="h-9 rounded-md border border-[#d9e2e5] bg-white px-2 text-[13px] tabular-nums">
+                <select {...register('default_useful_life_years')} className={cn('h-9 rounded-md border border-[#d9e2e5] bg-white px-2 text-[13px] tabular-nums', fieldErrorClass(errors.default_useful_life_years))}>
                   <option value="">-</option>
                   <option value="4">4 tahun</option>
                   <option value="8">8 tahun</option>
@@ -289,6 +297,7 @@ export default function FixedAssetCategoryPage() {
                   <option value="16">16 tahun</option>
                   <option value="20">20 tahun</option>
                 </select>
+                <FieldError message={errors.default_useful_life_years?.message} />
               </div>
               <div className="flex items-end gap-2">
                 <Controller
@@ -318,6 +327,7 @@ export default function FixedAssetCategoryPage() {
                         onChange={field.onChange}
                         onSearch={searchAccountsByType(ACCOUNT_SEARCHERS[name])}
                         placeholder="Pilih akun..."
+                        error={errors[name]?.message}
                         selectedOptions={getSelectedAccountOptions(getAccountRelation(editingItem, name))}
                       />
                     </div>

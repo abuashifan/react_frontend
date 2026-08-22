@@ -1,3 +1,5 @@
+import type { SortDirection } from '@/types/common.types'
+
 export type JournalEntryStatus = 'draft' | 'approved' | 'posted' | 'void'
 
 export interface JournalEntryLine {
@@ -26,6 +28,11 @@ export interface JournalEntry {
   lines: JournalEntryLine[]
   total_debit?: number
   total_credit?: number
+  /**
+   * Nama pembuat jurnal, dilampirkan backend dari database pusat (`users`).
+   * `null` bila jurnal dibuat proses sistem atau user-nya sudah dihapus.
+   */
+  created_by_name?: string | null
   created_at: string
   updated_at: string
 }
@@ -36,16 +43,48 @@ export interface BudgetWarning {
   actual_amount: number
   new_total: number
   overage: number
+  /**
+   * Opsional supaya respons dari backend versi lama tetap bertipe benar.
+   *
+   * Untuk `direction: 'revenue'`, melampaui anggaran berarti **target
+   * terlampaui** — `state` akan `under_budget` dan UI harus menghijaukannya,
+   * bukan memerahkannya.
+   */
+  state?: BudgetWarningState
+  direction?: 'revenue' | 'expense'
+  /** Anggaran mana yang tersentuh, mis. `department:7|project:all|period:annual`. */
+  matched_scope?: string
 }
+
+export type BudgetWarningState =
+  | 'on_budget'
+  | 'under_budget'
+  | 'over_budget'
+  | 'no_budget'
+  | 'no_actual'
 
 export interface JournalEntryListParams {
   page: number
   per_page: number
   search?: string
-  status?: JournalEntryStatus
+  /** Satu status, atau beberapa dipisah koma (mis. "draft,posted"). */
+  status?: string
   date_from?: string
   date_to?: string
+  /**
+   * Jenis jurnal (`source_type`): satu nilai, atau beberapa dipisah koma
+   * (mis. "fixed_asset_depreciation,manual_journal"). Nilai yang dikenal ada
+   * di `constants/journalSourceTypes.ts`.
+   */
+  source_type?: string
   is_system_generated?: boolean
+  /**
+   * Kolom pengurutan server-side. Nilai yang didukung backend:
+   * `journal_number`, `journal_date`, `status`, `created_at`, `total_debit`,
+   * `total_credit`. Nilai di luar daftar itu diabaikan backend.
+   */
+  sort_by?: string
+  sort_direction?: SortDirection
 }
 
 export interface JournalEntryLinePayload {

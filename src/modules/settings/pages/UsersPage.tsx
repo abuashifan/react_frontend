@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from '@/hooks/useToast'
 import { ConfirmDialog } from '@/components/shared/document/ConfirmDialog'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
+import { getApiErrorMessage } from '@/lib/apiError'
 import { formatDate, cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useCompanyUsers, useCompanyUserMutations, useAccessRoles } from '../hooks/useAccessManagement'
@@ -61,14 +62,14 @@ export default function UsersPage() {
       await updateRole.mutateAsync({ id: roleDialogUser.id, payload: { role_id: selectedRoleId } })
       toast.success('Peran pengguna diperbarui.')
       setRoleDialogUser(null)
-    } catch { toast.error('Gagal memperbarui peran.') }
+    } catch (roleError) { toast.error(getApiErrorMessage(roleError, 'Gagal memperbarui peran.')) }
   }
 
   const handleToggle = async (u: CompanyUser) => {
     try {
       if (u.status === 'active') { await deactivate.mutateAsync(u.id); toast.success('Pengguna dinonaktifkan.') }
       else { await reactivate.mutateAsync(u.id); toast.success('Pengguna diaktifkan.') }
-    } catch { toast.error('Gagal mengubah status pengguna.') }
+    } catch (statusError) { toast.error(getApiErrorMessage(statusError, 'Gagal mengubah status pengguna.')) }
   }
 
   const columns: ColumnDef<CompanyUser>[] = [
@@ -185,8 +186,8 @@ export default function UsersPage() {
                 await remove.mutateAsync(user.id)
                 toast.success('Pengguna dihapus dari perusahaan.')
               }
-            } catch {
-              toast.error(action === 'deactivate' ? 'Gagal menonaktifkan pengguna.' : 'Gagal menghapus pengguna.')
+            } catch (actionError) {
+              toast.error(getApiErrorMessage(actionError, action === 'deactivate' ? 'Gagal menonaktifkan pengguna.' : 'Gagal menghapus pengguna.'))
             }
           })()
         }}

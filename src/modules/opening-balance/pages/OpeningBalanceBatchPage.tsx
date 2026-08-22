@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Trash2 } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
@@ -15,6 +15,7 @@ import { openingBalanceApi } from '../services/openingBalanceApi'
 import { formatCurrency, cn } from '@/lib/utils'
 import { useOBBatch, useOBMutations } from '../hooks/useOpeningBalance'
 import type { OBBatchStatus, OBPreview } from '../types/openingBalance.types'
+import { getApiErrorMessage } from '@/lib/apiError'
 
 const STATUS_BADGE: Record<OBBatchStatus, { label: string; className: string }> = {
   draft: { label: 'Draft', className: 'bg-[#FEF3C7] text-[#92400E] hover:bg-[#FEF3C7]' },
@@ -87,11 +88,84 @@ export default function OpeningBalanceBatchPage() {
 
   const removeLine = (idx: number) => setLines((prev) => prev.filter((_, i) => i !== idx))
 
+  const lineColumns: LineItemColumn<EditableLine>[] = [
+    {
+      id: 'account_code',
+      header: 'Kode',
+      width: 90,
+      render: ({ item }) => (
+        <span className="text-[12px] font-medium text-[#5c9ead]">{item.account_code ?? '-'}</span>
+      ),
+    },
+    {
+      id: 'account_name',
+      header: 'Nama Akun',
+      width: 200,
+      render: ({ item }) => (
+        <span className="text-[12px] text-[#334155]">{item.account_name ?? `Akun #${item.account_id}`}</span>
+      ),
+    },
+    {
+      id: 'debit',
+      header: 'Debit',
+      width: 130,
+      align: 'right',
+      render: ({ item, isReadOnly, onUpdate }) =>
+        isReadOnly ? (
+          <span className="text-[12px] tabular-nums">{formatCurrency(item.debit)}</span>
+        ) : (
+          <Input
+            type="number"
+            min={0}
+            value={item.debit || ''}
+            onChange={(e) => onUpdate('debit', e.target.value)}
+            className="h-8 text-right text-[12px] tabular-nums"
+            placeholder="0"
+          />
+        ),
+    },
+    {
+      id: 'credit',
+      header: 'Kredit',
+      width: 130,
+      align: 'right',
+      render: ({ item, isReadOnly, onUpdate }) =>
+        isReadOnly ? (
+          <span className="text-[12px] tabular-nums">{formatCurrency(item.credit)}</span>
+        ) : (
+          <Input
+            type="number"
+            min={0}
+            value={item.credit || ''}
+            onChange={(e) => onUpdate('credit', e.target.value)}
+            className="h-8 text-right text-[12px] tabular-nums"
+            placeholder="0"
+          />
+        ),
+    },
+    {
+      id: 'description',
+      header: 'Keterangan',
+      width: 200,
+      render: ({ item, isReadOnly, onUpdate }) =>
+        isReadOnly ? (
+          <span className="text-[12px] text-[#64748b]">{item.description || '-'}</span>
+        ) : (
+          <Input
+            value={item.description}
+            onChange={(e) => onUpdate('description', e.target.value)}
+            className="h-8 text-[12px]"
+            placeholder="Keterangan..."
+          />
+        ),
+    },
+  ]
+
   const handleSaveLines = async () => {
     try {
       await replaceLines.mutateAsync({ batchId: id, lines: lines.map((l) => ({ account_id: l.account_id, debit: l.debit || undefined, credit: l.credit || undefined, description: l.description || undefined })) })
       toast.success('Baris saldo awal disimpan.')
-    } catch { toast.error('Gagal menyimpan baris.') }
+    } catch (saveError) { toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan baris.')) }
   }
 
   const handleValidate = async () => {
@@ -153,54 +227,43 @@ export default function OpeningBalanceBatchPage() {
           </div>
         )}
 
-        <div className="overflow-auto rounded-lg border border-[#e2e8f0]">
-          <table className="w-full text-[12px]">
-            <thead className="bg-[#f8fafc]">
+        {/* Baris ditambahkan lewat `SearchableSelect` di atas (bukan baris kosong),
+            jadi tombol "+ Tambah Item" bawaan tabel sengaja tidak dipakai. */}
+        <LineItemsTable<EditableLine>
+          items={lines}
+          columns={lineColumns}
+          onRemove={removeLine}
+          onUpdate={(index, field, value) => updateLine(index, field as keyof EditableLine, value as string | number)}
+          isReadOnly={!isDraft}
+          emptyLabel={isDraft ? 'Belum ada baris. Tambahkan akun di atas.' : 'Belum ada baris.'}
+          footer={(_items, cellCount) => (
+            <>
               <tr>
-                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kode</th>
-                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Nama Akun</th>
-                <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Debit</th>
-                <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kredit</th>
-                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Keterangan</th>
-                {isDraft && <th className="w-10 px-3 py-2" />}
+                <td colSpan={cellCount - 4} className="px-2.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
+                  Total
+                </td>
+                <td className="px-2.5 py-2 text-right text-[12px] font-medium tabular-nums text-[#334155]">{formatCurrency(totalDebit)}</td>
+                <td className="px-2.5 py-2 text-right text-[12px] font-medium tabular-nums text-[#334155]">{formatCurrency(totalCredit)}</td>
+                <td colSpan={2} />
               </tr>
-            </thead>
-            <tbody className="divide-y divide-[#f1f5f9]">
-              {lines.map((line, idx) => (
-                <tr key={`${line.account_id}-${idx}`} className="hover:bg-[#f8fafc]">
-                  <td className="px-3 py-2 font-medium text-[#5c9ead]">{line.account_code ?? '-'}</td>
-                  <td className="px-3 py-2 text-[#334155]">{line.account_name ?? `Akun #${line.account_id}`}</td>
-                  <td className="px-3 py-1.5 text-right">
-                    {isDraft ? <Input type="number" min={0} value={line.debit || ''} onChange={(e) => updateLine(idx, 'debit', e.target.value)} className="h-8 text-right text-[12px] tabular-nums" placeholder="0" /> : <span className="tabular-nums">{formatCurrency(line.debit)}</span>}
-                  </td>
-                  <td className="px-3 py-1.5 text-right">
-                    {isDraft ? <Input type="number" min={0} value={line.credit || ''} onChange={(e) => updateLine(idx, 'credit', e.target.value)} className="h-8 text-right text-[12px] tabular-nums" placeholder="0" /> : <span className="tabular-nums">{formatCurrency(line.credit)}</span>}
-                  </td>
-                  <td className="px-3 py-1.5">
-                    {isDraft ? <Input value={line.description} onChange={(e) => updateLine(idx, 'description', e.target.value)} className="h-8 text-[12px]" placeholder="Keterangan..." /> : <span className="text-[#64748b]">{line.description || '-'}</span>}
-                  </td>
-                  {isDraft && (
-                    <td className="px-3 py-1.5 text-center">
-                      <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-red-500" onClick={() => removeLine(idx)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                    </td>
+              <tr className="border-t border-[#e2e8f0]">
+                <td colSpan={cellCount - 4} className="px-2.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#334155]">
+                  Selisih
+                </td>
+                <td
+                  colSpan={2}
+                  className={cn(
+                    'px-2.5 py-2 text-right text-[12px] font-semibold tabular-nums',
+                    Math.abs(difference) < 0.01 ? 'text-green-700' : 'text-red-600',
                   )}
-                </tr>
-              ))}
-              {lines.length === 0 && (
-                <tr><td colSpan={isDraft ? 6 : 5} className="py-8 text-center text-[#94a3b8]">Belum ada baris. {isDraft ? 'Tambahkan akun di atas.' : ''}</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Totals */}
-        <div className="flex justify-end">
-          <div className="min-w-72 space-y-1 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3 text-[12px]">
-            <div className="flex justify-between"><span className="text-[#64748b]">Total Debit</span><span className="tabular-nums font-medium">{formatCurrency(totalDebit)}</span></div>
-            <div className="flex justify-between"><span className="text-[#64748b]">Total Kredit</span><span className="tabular-nums font-medium">{formatCurrency(totalCredit)}</span></div>
-            <div className="flex justify-between border-t border-[#e2e8f0] pt-1"><span className="font-semibold text-[#334155]">Selisih</span><span className={cn('tabular-nums font-semibold', Math.abs(difference) < 0.01 ? 'text-green-700' : 'text-red-600')}>{formatCurrency(difference)}</span></div>
-          </div>
-        </div>
+                >
+                  {formatCurrency(difference)}
+                </td>
+                <td colSpan={2} />
+              </tr>
+            </>
+          )}
+        />
 
         {/* Actions */}
         <div className="flex flex-wrap justify-end gap-2">

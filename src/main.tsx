@@ -5,6 +5,7 @@ import { RouterProvider } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
 import { router } from '@/router'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { installCompanyScopeReset } from '@/lib/companyScope'
 import './index.css'
 
 // If user didn't check "remember me", clear auth when browser session ends
@@ -26,6 +27,11 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+// Cache Query tidak ber-scope perusahaan; tanpa ini, ganti perusahaan tetap
+// menampilkan data perusahaan sebelumnya. Dipasang setelah `logout()` di atas
+// supaya muat-ulang halaman tidak dianggap sebagai pergantian perusahaan.
+installCompanyScopeReset(queryClient)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

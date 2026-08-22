@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -11,15 +11,22 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
+import { cn, fieldErrorClass } from '@/lib/utils'
 import { useGoodsReceipt, useGoodsReceiptMutations } from '../hooks/useGoodsReceiptList'
 import { toGoodsReceiptPayload } from '../services/goodsReceiptAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { goodsReceiptSchema, type GoodsReceiptFormValues } from '../schemas/goodsReceiptSchema'
+import { goodsReceiptApi } from '../services/goodsReceiptApi'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine {
   product_id: number | null
@@ -40,7 +47,16 @@ function toGoodsReceiptLine(line: EditableLine): Omit<EditableLine, 'billed_quan
 }
 
 export default function GoodsReceiptFormPage() {
-  const navigate = useNavigate()
+  const { id } = useParams()
+  // `/purchase/goods-receipts/create` dan `/purchase/goods-receipts/:id` merender komponen
+  // yang sama, dan React Router tidak me-remount otomatis saat berpindah di antara keduanya
+  // (hanya param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <GoodsReceiptFormPageContent key={id ?? 'create'} />
+}
+
+function GoodsReceiptFormPageContent() {
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -50,12 +66,18 @@ export default function GoodsReceiptFormPage() {
   const gr = data?.data
   const { create, receive, cancel, void: voidGr } = useGoodsReceiptMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<GoodsReceiptFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<GoodsReceiptFormValues>({
     resolver: zodResolver(goodsReceiptSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+
+  // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
+
+  // ditolak ikut ditandai, bukan cuma toast.
+
+  const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
 
   const status = (gr?.status ?? 'draft') as DocumentStatus
@@ -74,31 +96,62 @@ export default function GoodsReceiptFormPage() {
     }
   }, [gr, reset])
 
-  const handleSave = handleSubmit(async (values) => {
-    try {
-      const res = await create.mutateAsync(toGoodsReceiptPayload(values, lines.map(toGoodsReceiptLine)))
-      toast.success('Penerimaan barang berhasil dibuat.')
-      navigate(`/purchase/goods-receipts/${res.data.id}`)
-    } catch { toast.error('Gagal menyimpan penerimaan barang.') }
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<GoodsReceiptFormValues, EditableLine[]>({
+    draftKey: `purchase.goods-receipt.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
+  })
+
+  const { saveAndClose, navProps } = useRecordFormNavigation<GoodsReceiptFormValues>({
+    id,
+    basePath: '/purchase/goods-receipts',
+    createLabel: 'Penerimaan Barang Baru',
+    sequenceQueryKey: ['purchase', 'goods-receipts', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await goodsReceiptApi.adjacent(recordId)).data,
+    handleSubmit,
+    save: async (values) => {
+      await create.mutateAsync(toGoodsReceiptPayload(values, lines.map(toGoodsReceiptLine)))
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setLineErrors({})
+    },
+    successMessage: () => 'Penerimaan barang berhasil dibuat.',
+    onError: (saveError) => {
+      // Backend memakai nama kolom DB (`receipt_date`), form memakai `date`.
+      setLineErrors(getApiLineErrors(saveError))
+      applyApiValidationErrors(saveError, setError, { receipt_date: 'date' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan penerimaan barang.'))
+    },
+    canSave: isEditable,
   })
 
   const handleReceive = async () => {
     try { await receive.mutateAsync(Number(id)); toast.success('Barang berhasil diterima.') }
-    catch { toast.error('Gagal menerima barang.') }
+    catch (receiveError) { toast.error(getApiErrorMessage(receiveError, 'Gagal menerima barang.')) }
   }
   const handleCancel = async () => {
     try { await cancel.mutateAsync(Number(id)); toast.success('GR dibatalkan.') }
-    catch { toast.error('Gagal membatalkan GR.') }
+    catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan GR.')) }
   }
   const handleVoid = async (reason: string) => {
     await voidGr.mutateAsync({ id: Number(id), reason })
+    formDraft.clearDraft()
     toast.success('GR berhasil di-void.')
     setVoidOpen(false)
   }
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('purchase.goods-receipts.create')) {
-    actions.push({ id: 'save', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (gr?.status === 'draft' && can('purchase.goods-receipts.receive')) {
@@ -160,7 +213,12 @@ export default function GoodsReceiptFormPage() {
         documentNumber={gr?.number}
         status={status}
         breadcrumb={[{ label: 'Pembelian' }, { label: 'Penerimaan Barang', path: '/purchase/goods-receipts' }, { label: isCreate ? 'Buat GR' : (gr?.number ?? '') }]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={gr?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={gr?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           <FormSection title="Header">
@@ -179,8 +237,8 @@ export default function GoodsReceiptFormPage() {
 
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
-              <Input {...register('date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+              <Input {...register('date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+              <FieldError message={errors.date?.message} />
             </div>
 
             <div className="flex flex-col gap-1">
@@ -191,6 +249,7 @@ export default function GoodsReceiptFormPage() {
                 onSearch={gudangApi.search}
                 placeholder="Pilih gudang..."
                 disabled={!isEditable}
+                error={errors.warehouse_id?.message}
                 selectedOptions={gr?.warehouse ? [{ value: gr.warehouse.id, label: gr.warehouse.name }] : []}
               />
             </div>
@@ -204,13 +263,15 @@ export default function GoodsReceiptFormPage() {
 
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
           </FormSection>
 
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Item</p>
             <LineItemsTable
+          errors={lineErrors}
               items={lines}
               columns={columns}
               onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}

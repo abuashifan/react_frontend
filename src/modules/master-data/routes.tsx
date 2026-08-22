@@ -14,7 +14,7 @@ const GudangPage = lazy(() => import('./pages/GudangPage'))
 const PaymentTermsPage = lazy(() => import('./pages/PaymentTermsPage'))
 const DepartemenPage = lazy(() => import('./pages/DepartemenPage'))
 const ProyekPage = lazy(() => import('./pages/ProyekPage'))
-const AccountMappingPage = lazy(() => import('./pages/AccountMappingPage'))
+const ProyekFormPage = lazy(() => import('./pages/ProyekFormPage'))
 
 const guard = (permission: string, children: React.ReactNode) => (
   <ProtectedRoute permission={permission} requireCompany requireOnboarding>
@@ -38,5 +38,6 @@ export const masterDataRoutes = [
   { path: '/master-data/payment-terms', element: guard('master-data.payment-terms.view', <PaymentTermsPage />) },
   { path: '/master-data/departments', element: guard('master-data.departments.view', <DepartemenPage />) },
   { path: '/master-data/projects', element: guard('master-data.projects.view', <ProyekPage />) },
-  { path: '/master-data/account-mappings', element: guard('master-data.account-mappings.view', <AccountMappingPage />) },
+  { path: '/master-data/projects/create', element: guard('master-data.projects.create', <ProyekFormPage />) },
+  { path: '/master-data/projects/:id', element: guard('master-data.projects.view', <ProyekFormPage />) },
 ]

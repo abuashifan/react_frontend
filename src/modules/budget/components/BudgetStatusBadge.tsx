@@ -7,6 +7,7 @@ const STATUS_LABELS: Record<BudgetSubmissionStatus, string> = {
   approved_by_head: 'Disetujui Kepala',
   approved: 'Disetujui',
   rejected: 'Ditolak',
+  superseded: 'Digantikan',
 }
 
 const STATUS_CLASSES: Record<BudgetSubmissionStatus, string> = {
@@ -15,6 +16,9 @@ const STATUS_CLASSES: Record<BudgetSubmissionStatus, string> = {
   approved_by_head: 'bg-blue-100 text-blue-700',
   approved: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700',
+  // Bukan kegagalan — versi ini sudah digantikan versi berikutnya dan tetap
+  // terbaca sebagai riwayat, jadi netral seperti draf.
+  superseded: 'bg-slate-100 text-slate-500',
 }
 
 interface Props {

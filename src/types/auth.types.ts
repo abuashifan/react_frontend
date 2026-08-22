@@ -12,7 +12,6 @@ export interface CompanySettings {
   currency: string
   timezone: string
   session_timeout_minutes: number
-  onboarding_completed?: boolean
 }
 
 export interface Company {
@@ -39,12 +38,26 @@ export interface LoginResponse {
   token: string
   token_type?: string
   user: User
+  subscription: SubscriptionSummary | null
 }
 
 export interface PermissionsResponse {
   role: string | null
   permission_mode: string
   permissions: string[]
+}
+
+/**
+ * Fase 3 (skema tier) — ringkasan langganan untuk spanduk peringatan.
+ * `null` di respons berarti client belum pernah berlangganan sama sekali
+ * (BUKAN kedaluwarsa) — staf yang bukan pemilik langganan juga selalu `null`.
+ */
+export interface SubscriptionSummary {
+  state: 'active' | 'grace' | 'expired' | 'cancelled'
+  ends_at: string | null
+  /** Negatif kalau sudah lewat `ends_at` (termasuk masa tenggang). */
+  days_remaining: number | null
+  renewal_url: string | null
 }
 
 export interface BackendCompany {
@@ -63,4 +76,16 @@ export interface BackendCompany {
 
 export interface SelectCompanyResponse {
   active_company: BackendCompany
+}
+
+export interface CreateCompanyPayload {
+  name: string
+}
+
+export interface CompanyQuota {
+  used: number
+  limit: number
+  can_create: boolean
+  plan_code: string | null
+  plan_name: string | null
 }

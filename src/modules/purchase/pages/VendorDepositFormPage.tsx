@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -10,19 +10,34 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
-import { formatCurrency } from '@/lib/utils'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useVendorDeposit, useVendorDepositMutations } from '../hooks/useVendorDepositList'
 import { toVendorDepositPayload } from '../services/vendorDepositAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { vendorDepositSchema, type VendorDepositFormValues } from '../schemas/vendorDepositSchema'
+import { vendorDepositApi } from '../services/vendorDepositApi'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { useState } from 'react'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 export default function VendorDepositFormPage() {
-  const navigate = useNavigate()
+  const { id } = useParams()
+  // `/purchase/vendor-deposits/create` dan `/purchase/vendor-deposits/:id` merender komponen
+  // yang sama, dan React Router tidak me-remount otomatis saat berpindah di antara keduanya
+  // (hanya param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <VendorDepositFormPageContent key={id ?? 'create'} />
+}
+
+function VendorDepositFormPageContent() {
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -33,7 +48,7 @@ export default function VendorDepositFormPage() {
   const deposit = data?.data
   const { create, post, void: voidDep } = useVendorDepositMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<VendorDepositFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<VendorDepositFormValues>({
     resolver: zodResolver(vendorDepositSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -46,24 +61,50 @@ export default function VendorDepositFormPage() {
     }
   }, [deposit, reset])
 
-  const handleSave = handleSubmit(async (values) => {
-    try {
-      const res = await create.mutateAsync(toVendorDepositPayload(values))
-      toast.success('Deposit vendor berhasil dibuat.')
-      navigate(`/purchase/vendor-deposits/${res.data.id}`)
-    } catch { toast.error('Gagal menyimpan deposit vendor.') }
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<VendorDepositFormValues>({
+    draftKey: `purchase.vendor-deposit.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
   })
 
-  const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Deposit berhasil diposting.') } catch { toast.error('Gagal posting deposit.') } }
+  const { saveAndClose, navProps } = useRecordFormNavigation<VendorDepositFormValues>({
+    id,
+    basePath: '/purchase/vendor-deposits',
+    createLabel: 'Deposit Vendor Baru',
+    sequenceQueryKey: ['purchase', 'vendor-deposits', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await vendorDepositApi.adjacent(recordId)).data,
+    handleSubmit,
+    save: async (values) => {
+      await create.mutateAsync(toVendorDepositPayload(values))
+    },
+    onSaved: () => formDraft.clearDraft(),
+    successMessage: () => 'Deposit vendor berhasil dibuat.',
+    onError: (saveError) => {
+      // Backend memakai nama kolom DB (`deposit_date`), form memakai `date`.
+      applyApiValidationErrors(saveError, setError, { deposit_date: 'date' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan deposit vendor.'))
+    },
+    // Deposit tersimpan langsung terposting: hanya form create yang bisa disimpan.
+    canSave: isCreate,
+  })
+
+  const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Deposit berhasil diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting deposit.')) } }
   const handleVoid = async (reason: string) => {
     await voidDep.mutateAsync({ id: Number(id), reason })
+    formDraft.clearDraft()
     toast.success('Deposit berhasil di-void.')
     setVoidOpen(false)
   }
 
   const actions: DocumentActionButton[] = []
   if (isCreate && can('purchase.deposits.create')) {
-    actions.push({ id: 'save', label: 'Simpan', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (deposit?.status === 'draft' && can('purchase.deposits.post')) {
@@ -89,7 +130,12 @@ export default function VendorDepositFormPage() {
         documentNumber={deposit?.number}
         status={status}
         breadcrumb={[{ label: 'Pembelian' }, { label: 'Deposit Vendor', path: '/purchase/vendor-deposits' }, { label: isCreate ? 'Buat Deposit' : (deposit?.number ?? '') }]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={deposit?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={deposit?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           <FormSection title="Header">
@@ -99,8 +145,8 @@ export default function VendorDepositFormPage() {
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
-              <Input {...register('date')} type="date" disabled={!isCreate} className="h-9 text-[13px]" />
-              {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+              <Input {...register('date')} type="date" disabled={!isCreate} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+              <FieldError message={errors.date?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Kas/Bank <span className="text-red-500">*</span></Label>
@@ -108,12 +154,13 @@ export default function VendorDepositFormPage() {
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jumlah <span className="text-red-500">*</span></Label>
-              <Input {...register('amount', { valueAsNumber: true })} type="number" disabled={!isCreate} className="h-9 text-[13px] tabular-nums text-right" min={0} />
-              {errors.amount && <p className="text-[11px] text-red-500">{errors.amount.message}</p>}
+              <Input {...register('amount', { valueAsNumber: true })} type="number" disabled={!isCreate} className={cn('h-9 text-[13px] tabular-nums text-right', fieldErrorClass(errors.amount))} min={0} />
+              <FieldError message={errors.amount?.message} />
             </div>
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} disabled={!isCreate} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} disabled={!isCreate} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
           </FormSection>
 

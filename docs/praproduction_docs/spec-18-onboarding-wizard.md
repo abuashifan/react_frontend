@@ -138,57 +138,58 @@ const companyInfoSchema = z.object({
 
 ## Step 2 — Pilih Template COA
 
-Grid card per industri:
+> **Update (implementasi 2026-08-18):** template COA sekarang benar-benar diterapkan ke
+> backend, bukan sekadar UI kosmetik. Detail kontrak & implementasi lengkap ada di
+> `spec-37-audit-13-remediation.md` § (rujuk perubahan `CoaTemplateService`). Ringkasan di bawah.
+
+Grid card per industri, data (label/deskripsi/jumlah akun/daftar akun lengkap) diambil dari
+`GET /setup/coa-templates` (`CoaTemplateService::templates()`, backend by `config/coa_templates.php`).
+`accountCount` per card **bukan** angka hardcode — diambil dari `account_count` hasil fetch, supaya
+selalu sama dengan isi template asli.
 
 ```tsx
+// Metadata presentasi (ikon) tetap statis di frontend (constants.ts) --
+// account_count & accounts datang dari API, bukan lagi hardcode di sini.
 const COA_TEMPLATES = [
-  {
-    id: 'gas_agent',
-    label: 'Agen Gas',
-    description: 'COA standar untuk bisnis distribusi gas LPG',
-    icon: Flame,
-    accountCount: 45,
-  },
-  {
-    id: 'trading',
-    label: 'Perdagangan Umum',
-    description: 'COA standar untuk bisnis dagang barang',
-    icon: ShoppingCart,
-    accountCount: 52,
-  },
-  {
-    id: 'service',
-    label: 'Jasa',
-    description: 'COA standar untuk bisnis jasa dan konsultan',
-    icon: Briefcase,
-    accountCount: 38,
-  },
-  {
-    id: 'manufacture',
-    label: 'Manufaktur',
-    description: 'COA standar untuk bisnis produksi',
-    icon: Factory,
-    accountCount: 68,
-  },
-  {
-    id: 'blank',
-    label: 'Kosong',
-    description: 'Mulai dari nol, buat COA sendiri',
-    icon: FileText,
-    accountCount: 0,
-  },
+  { id: 'gas_agent', label: 'Agen Gas', description: '...', icon: Flame },
+  { id: 'trading', label: 'Perdagangan Umum', description: '...', icon: ShoppingCart },
+  { id: 'service', label: 'Jasa', description: '...', icon: Briefcase },
+  { id: 'manufacture', label: 'Manufaktur', description: '...', icon: Factory },
+  { id: 'blank', label: 'Kosong', description: '...', icon: FileText },
 ]
-
-// Preview akun sebelum konfirmasi
-// Klik card → expand panel preview di bawah grid
-// Tampilkan tree COA dari template tersebut
 ```
+
+Preview & edit — **floating modal** (`CoaTemplateModal`), bukan accordion inline:
+
+- Klik card mana pun (terpilih atau belum) → buka `CoaTemplateModal` untuk template itu.
+- **Mode preview**: daftar lengkap akun template (bukan cuplikan ~7 baris), pakai `DataTable`
+  dengan pagination in-memory, indentasi kode akun berdasar kedalaman `parent_code`.
+- **Mode edit** (tombol "Edit"): `LineItemsTable` untuk tambah/hapus/ubah baris (kode, nama,
+  tipe, induk, kas/bank). Induk hanya bisa dipilih dari kode yang sudah ada di baris sebelumnya,
+  supaya urutan induk-lebih-dulu yang dibutuhkan backend tetap terjaga.
+- "Simpan" di modal menyimpan draft ke state Step 2 (`customAccounts`) — badge "Kustom" muncul di
+  card. Draft ini **belum** dikirim ke backend sampai user klik "Lanjutkan".
+- "Lanjutkan" memanggil `POST /setup/coa-templates/apply` dengan `{ template_id, accounts }`
+  (`customAccounts` bila ada, kalau tidak accounts asli template). Backend membuat baris
+  `chart_of_accounts` sungguhan (ditandai `is_system_default=true`, `metadata.template_id`),
+  lalu memanggil `AccountMappingStorageService::syncDefaultMappingsFromConfig()` supaya Step 4
+  langsung terisi otomatis sesuai kode akun template.
+- Ganti template setelah pernah apply akan **mengganti ulang** akun `is_system_default` yang lama
+  (bukan cuma reset mapping) — ditolak dengan error jelas kalau akun lama sudah dipakai jurnal/
+  saldo awal (lihat `CoaTemplateService::applyTemplate()`).
 
 ---
 
 ## Step 3 — Account Mapping
 
-Pre-filled dari template COA yang dipilih.
+Pre-filled dari template COA yang dipilih (otomatis lewat `syncDefaultMappingsFromConfig()` saat
+Step 2 apply — kode akun template sengaja disamakan dengan `default_account_codes` di
+`config/account_mappings.php`, lihat `config/coa_templates.php`).
+
+Selain `SearchableSelect` (ketik-cari cepat, sudah ada), tiap field mapping punya tombol ikon kaca
+pembesar yang membuka `AccountPickerDialog` (mode `multiple={false}`, `accountType` difilter kalau
+mapping cuma mengizinkan satu tipe akun) — modal pencarian akun dengan filter No Akun/Nama Akun
+terpisah dan tabel berpaginasi, dipakai ulang dari komponen yang sama untuk Journal/Vendor Bill/dll.
 User bisa ubah mapping menggunakan SearchableSelect.
 
 ```tsx

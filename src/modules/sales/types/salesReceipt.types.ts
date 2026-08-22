@@ -27,7 +27,8 @@ export interface SalesReceiptListParams {
   page: number
   per_page: number
   search?: string
-  status?: SalesReceiptStatus
+  /** Satu status, atau beberapa dipisah koma (mis. "draft,posted"). */
+  status?: string
   customer_id?: number
   date_from?: string
   date_to?: string

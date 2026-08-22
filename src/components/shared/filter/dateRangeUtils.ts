@@ -1,32 +1,9 @@
-const DATE_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}$/
-
 function pad(value: number): string {
   return String(value).padStart(2, '0')
 }
 
-function toDateKey(value: string | null | undefined): string | null {
-  if (value === null || value === undefined) return null
-  if (value.trim() === '') return null
-
-  const key = value.slice(0, 10)
-  if (DATE_INPUT_PATTERN.test(key)) return key
-
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return null
-  return toDateInputValue(parsed)
-}
-
 export function toDateInputValue(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
-}
-
-export function isDateInRange(value: string | null | undefined, from?: string, to?: string): boolean {
-  const key = toDateKey(value)
-  if (!from && !to) return true
-  if (!key) return false
-  if (from && key < from) return false
-  if (to && key > to) return false
-  return true
 }
 
 function shiftDate(base: Date, amount: number): Date {

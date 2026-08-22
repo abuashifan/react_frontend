@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage } from '@/lib/apiError'
 import { useAccountMappings, useAccountMappingMutations } from '@/modules/master-data/hooks/useAccountMappings'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 
@@ -31,8 +32,8 @@ export default function AccountMappingSettingsPage() {
       )
       setLocalValues({})
       toast.success('Pemetaan akun disimpan.')
-    } catch {
-      toast.error('Gagal menyimpan pemetaan akun.')
+    } catch (saveError) {
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan pemetaan akun.'))
     } finally {
       setSaving(false)
     }

@@ -1,8 +1,35 @@
 # gap-12-budget-module.md — Budget Module Design
 
-**Status**: Selesai  
+**Status**: Selesai — ⚠️ **sebagian SUPERSEDED sejak 2026-08-14**  
 **Dibuat**: 2026-06-29  
 **Referensi phase**: `prompt/prompt-phase-40-budget-backend.md`, `prompt/prompt-phase-41-budget-frontend.md`
+
+> ## ⚠️ Baca ini dulu — dokumen ini bukan lagi sumber kebenaran tunggal
+>
+> Rencana **Unified Multidimensional Budgeting**
+> (`/workspace/Finlite_knowladge/plans/budget-module/New_Fitures/`) mengubah **bentuk data**
+> modul ini. Yang di bawah masih akurat untuk **alur approval** (draft → submitted →
+> approved_by_head → approved, plus reject), tapi **tidak** untuk skema.
+>
+> Yang berubah:
+>
+> | Dulu (dokumen ini) | Sekarang |
+> |---|---|
+> | Dimensi `department_id` hanya di **header** pengajuan | Ada di **baris** (`budget_lines.department_id`) sebagai dimensi; header tetap ada sebagai *pemilik dokumen* |
+> | `budget_lines.period` | `budget_lines.period_month` |
+> | Tanpa `direction` | `budget_lines.direction` diturunkan dari `account_type` |
+> | Tanpa versioning | `version_no`, `parent_submission_id`, `is_active`, status `superseded` |
+> | `budget_lines` tanpa FK & unique | 4 FK + unique index berbasis ekspresi |
+> | Perbandingan actual pakai query sendiri | Satu mesin `BudgetAnalysisService` untuk semua view |
+>
+> Untuk skema, mesin agregasi, dan definisi variance: baca
+> `/workspace/laravel_backend/app/Modules/Budget/README.md`.
+>
+> **Tambahan 2026-08-15.** Alur approval yang dijelaskan dokumen ini sekarang
+> punya UI-nya: `/budget/submissions` (daftar lintas periode), `/budget/submissions/new`
+> (buat), detail, dan riwayat versi. Objek utama modul di navigasi adalah
+> **submission**, bukan period — period turun jadi master data di `/budget/periods`.
+> Rencananya: `Finlite_knowladge/plans/budget-module/UI_Reporting/`.
 
 ---
 

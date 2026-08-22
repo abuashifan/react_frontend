@@ -1,3 +1,5 @@
+import type { SortDirection } from '@/types/common.types'
+
 export type CashBankStatus = 'draft' | 'posted' | 'void'
 
 export interface CashBankLine {
@@ -20,6 +22,8 @@ export interface CashReceipt {
   notes?: string | null
   status: CashBankStatus
   lines: CashBankLine[]
+  /** Nama pembuat, dilampirkan backend dari database pusat (`users`). */
+  created_by_name?: string | null
   created_at: string
 }
 
@@ -35,6 +39,8 @@ export interface CashPayment {
   notes?: string | null
   status: CashBankStatus
   lines: CashBankLine[]
+  /** Nama pembuat, dilampirkan backend dari database pusat (`users`). */
+  created_by_name?: string | null
   created_at: string
 }
 
@@ -49,6 +55,8 @@ export interface BankTransfer {
   amount: number
   notes?: string | null
   status: CashBankStatus
+  /** Nama pembuat, dilampirkan backend dari database pusat (`users`). */
+  created_by_name?: string | null
   created_at: string
 }
 
@@ -76,6 +84,8 @@ export interface BankReconciliation {
   notes?: string | null
   status: 'draft' | 'finalized' | 'void'
   lines: BankReconciliationLine[]
+  /** Nama pembuat, dilampirkan backend dari database pusat (`users`). */
+  created_by_name?: string | null
   created_at: string
 }
 
@@ -83,10 +93,20 @@ export interface BankReconciliation {
 export interface CashBankListParams {
   page: number
   per_page: number
-  status?: CashBankStatus
+  search?: string
+  /** Satu status, atau beberapa dipisah koma (mis. "draft,posted"). */
+  status?: string
   date_from?: string
   date_to?: string
   cash_bank_account_id?: number
+  /**
+   * Kolom pengurutan server-side. Nilai yang didukung ditentukan allowlist
+   * `$listSortable` service backend masing-masing dokumen (lihat
+   * `CashPaymentService`, `CashReceiptService`, `BankTransferService`,
+   * `BankReconciliationService`). Nilai di luar daftar itu diabaikan backend.
+   */
+  sort_by?: string
+  sort_direction?: SortDirection
 }
 
 // Payloads
@@ -97,6 +117,8 @@ export interface CashBankLinePayload {
 }
 
 export interface CreateCashReceiptPayload {
+  /** Kosong/`undefined` -> nomor digenerate otomatis backend. */
+  receipt_number?: string
   receipt_date: string
   cash_bank_account_id: number
   contact_id?: number | null

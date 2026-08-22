@@ -1,26 +1,39 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
-import { FormSection } from '@/components/shared/form/FormSection'
+import { FormField } from '@/components/shared/form/FormField'
+import { AmountInput } from '@/components/shared/form/AmountInput'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { useBankTransfer, useBankTransferMutations } from '../hooks/useCashBankList'
 import { bankTransferSchema, type BankTransferFormValues } from '../schemas/cashBankSchemas'
+import { bankTransferApi } from '../services/cashBankApi'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
-import { toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
 
 export default function BankTransferFormPage() {
-  const navigate = useNavigate()
+  const { id } = useParams()
+  // `/cash-bank/bank-transfers/create` dan `/cash-bank/bank-transfers/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <BankTransferFormPageContent key={id ?? 'create'} />
+}
+
+function BankTransferFormPageContent() {
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -29,9 +42,10 @@ export default function BankTransferFormPage() {
   const transfer = data?.data
   const { create, post, void: voidTransfer } = useBankTransferMutations()
   const [isVoidOpen, setVoidOpen] = useState(false)
-  const { control, getValues, register, handleSubmit, setValue, reset, formState: { errors, isSubmitting } } = useForm<BankTransferFormValues>({ resolver: zodResolver(bankTransferSchema), defaultValues: { transfer_date: new Date().toISOString().slice(0, 10) } })
+  const { control, getValues, register, handleSubmit, setValue, reset, setError, formState: { errors, isSubmitting } } = useForm<BankTransferFormValues>({ resolver: zodResolver(bankTransferSchema), defaultValues: { transfer_date: new Date().toISOString().slice(0, 10) } })
   const fromAccountId = useWatch({ control, name: 'from_cash_bank_account_id' })
   const toAccountId = useWatch({ control, name: 'to_cash_bank_account_id' })
+  const transferAmount = useWatch({ control, name: 'amount' })
   const status = (transfer?.status ?? 'draft') as DocumentStatus
   const isEditable = isCreate
 
@@ -52,23 +66,36 @@ export default function BankTransferFormPage() {
   const handleDiscardDraft = () => {
     reset({ transfer_date: new Date().toISOString().slice(0, 10) })
     formDraft.discardDraft()
+    formDraft.clearDraft()
     toast.success('Draft lokal dibuang.')
   }
 
-  const handleSave = handleSubmit(async (values) => {
-    try {
-      const res = await create.mutateAsync(values)
-      formDraft.clearDraft()
-      toast.success('Transfer bank berhasil dibuat.')
-      navigate(`/cash-bank/bank-transfers/${res.data.id}`)
-    } catch { toast.error('Gagal menyimpan transfer bank.') }
+  const { saveAndClose, navProps } = useRecordFormNavigation<BankTransferFormValues>({
+    id,
+    basePath: '/cash-bank/bank-transfers',
+    createLabel: 'Transfer Bank Baru',
+    sequenceQueryKey: ['cash-bank', 'transfers', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await bankTransferApi.adjacent(recordId)).data,
+    handleSubmit,
+    save: async (values) => {
+      await create.mutateAsync(values)
+    },
+    onSaved: () => formDraft.clearDraft(),
+    successMessage: () => 'Transfer bank berhasil dibuat.',
+    onError: (saveError) => {
+      // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
+      // bukan hanya toast generik "Gagal menyimpan".
+      applyApiValidationErrors(saveError, setError)
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan transfer bank.'))
+    },
+    canSave: isEditable,
   })
 
-  const handlePost = async () => { try { await post.mutateAsync(Number(id)); formDraft.clearDraft(); toast.success('Diposting.') } catch { toast.error('Gagal posting.') } }
+  const handlePost = async () => { try { await post.mutateAsync(Number(id)); formDraft.clearDraft(); toast.success('Diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting.')) } }
   const handleVoid = async (reason: string) => { await voidTransfer.mutateAsync({ id: Number(id), reason }); formDraft.clearDraft(); toast.success('Berhasil di-void.'); setVoidOpen(false) }
 
   const actions: DocumentActionButton[] = []
-  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   if (isEditable && formDraft.isRestored) actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: handleDiscardDraft })
   if (!isCreate && transfer?.status === 'draft' && can('cash_bank.post')) actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
   if (!isCreate && transfer?.status === 'posted' && can('cash_bank.void')) actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
@@ -79,14 +106,56 @@ export default function BankTransferFormPage() {
     <>
       <FormLayout title={isCreate ? 'Buat Transfer Bank' : 'Transfer Bank'} documentNumber={transfer?.number} status={status} readOnly={!isEditable}
         breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Transfer Bank', path: '/cash-bank/bank-transfers' }, { label: isCreate ? 'Buat' : (transfer?.number ?? '') }]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={transfer?.number} actions={actions} />}>
-        <FormSection title="Header">
-          <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label><Input {...register('transfer_date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />{errors.transfer_date && <p className="text-[11px] text-red-500">{errors.transfer_date.message}</p>}</div>
-          <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Dari Akun <span className="text-red-500">*</span></Label><SearchableSelect value={fromAccountId ?? null} onChange={(v) => setValue('from_cash_bank_account_id', v as number)} onSearch={coaApi.search} placeholder="Pilih akun asal..." disabled={!isEditable} error={errors.from_cash_bank_account_id?.message} selectedOptions={transfer?.from_cash_bank_account ? [{ value: transfer.from_cash_bank_account.id, label: transfer.from_cash_bank_account.name }] : []} /></div>
-          <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Ke Akun <span className="text-red-500">*</span></Label><SearchableSelect value={toAccountId ?? null} onChange={(v) => setValue('to_cash_bank_account_id', v as number)} onSearch={coaApi.search} placeholder="Pilih akun tujuan..." disabled={!isEditable} error={errors.to_cash_bank_account_id?.message} selectedOptions={transfer?.to_cash_bank_account ? [{ value: transfer.to_cash_bank_account.id, label: transfer.to_cash_bank_account.name }] : []} /></div>
-          <div className="flex flex-col gap-1"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jumlah <span className="text-red-500">*</span></Label><Input {...register('amount', { valueAsNumber: true })} type="number" disabled={!isEditable} className="h-9 text-[13px] text-right tabular-nums" min={0} />{errors.amount && <p className="text-[11px] text-red-500">{errors.amount.message}</p>}</div>
-          <div className="flex flex-col gap-1 md:col-span-2"><Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label><Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} /></div>
-        </FormSection>
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={transfer?.number} actions={actions} />
+          </>
+        }>
+        <div className="space-y-2.5 [@media(max-height:620px)]:space-y-2">
+          <section className="rounded-lg border border-[#d9e2e5] bg-white px-3 py-2.5 lg:px-4 [@media(max-height:620px)]:py-2">
+            <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
+              <FormField label="Tgl. Transfer" htmlFor="transfer-date" required error={errors.transfer_date?.message} className="w-[160px]">
+                <Input
+                  id="transfer-date"
+                  {...register('transfer_date')}
+                  type="date"
+                  disabled={!isEditable}
+                  className={cn('h-8 text-[12px]', fieldErrorClass(errors.transfer_date))}
+                />
+              </FormField>
+
+              <FormField label="Dari Akun" required error={errors.from_cash_bank_account_id?.message} className="w-[240px]">
+                <SearchableSelect value={fromAccountId ?? null} onChange={(v) => setValue('from_cash_bank_account_id', v as number)} onSearch={(q) => coaApi.search(q, { is_cash_bank: true })} placeholder="Pilih akun asal..." disabled={!isEditable} size="sm" selectedOptions={transfer?.from_cash_bank_account ? [{ value: transfer.from_cash_bank_account.id, label: transfer.from_cash_bank_account.name, sublabel: transfer.from_cash_bank_account.code }] : []} />
+              </FormField>
+
+              <FormField label="Ke Akun" required error={errors.to_cash_bank_account_id?.message} className="w-[240px]">
+                <SearchableSelect value={toAccountId ?? null} onChange={(v) => setValue('to_cash_bank_account_id', v as number)} onSearch={(q) => coaApi.search(q, { is_cash_bank: true })} placeholder="Pilih akun tujuan..." disabled={!isEditable} size="sm" selectedOptions={transfer?.to_cash_bank_account ? [{ value: transfer.to_cash_bank_account.id, label: transfer.to_cash_bank_account.name, sublabel: transfer.to_cash_bank_account.code }] : []} />
+              </FormField>
+
+              <FormField label="Jumlah" required error={errors.amount?.message} className="w-[180px]">
+                <AmountInput
+                  value={transferAmount ?? 0}
+                  onChange={(v) => setValue('amount', v)}
+                  disabled={!isEditable}
+                  decimals={2}
+                  ariaLabel="Jumlah transfer"
+                />
+              </FormField>
+            </div>
+          </section>
+
+          <FormField label="Catatan" htmlFor="transfer-notes" error={errors.notes?.message}>
+            <Textarea
+              id="transfer-notes"
+              {...register('notes')}
+              disabled={!isEditable}
+              placeholder="Catatan..."
+              rows={2}
+              className={cn('min-h-[58px] resize-none text-[12px]', fieldErrorClass(errors.notes))}
+            />
+          </FormField>
+        </div>
       </FormLayout>
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={transfer?.number ?? ''} isLoading={voidTransfer.isPending} />
     </>

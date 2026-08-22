@@ -84,7 +84,15 @@ export function SearchableSelect({
       .filter((selectedLabel): selectedLabel is string => Boolean(selectedLabel))
 
     if (labels.length === 0) {
-      return multiple ? `${selectedValues.length} item dipilih` : `ID ${selectedValues[0]}`
+      // Fallback: pakai sublabel (mis. kode akun) jika tersedia, kalau tidak
+      // tampilkan ID numerik — tapi hanya sebagai last resort.
+      const withSublabel = selectedValues
+        .map((selectedValue) => knownSelectedOptions.find((opt) => opt.value === selectedValue)?.sublabel)
+        .filter((s): s is string => Boolean(s))
+      if (withSublabel.length > 0) {
+        return multiple ? withSublabel.join(', ') : withSublabel[0]
+      }
+      return multiple ? `${selectedValues.length} item dipilih` : `#${selectedValues[0]}`
     }
 
     return multiple ? labels.join(', ') : labels[0]

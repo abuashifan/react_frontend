@@ -34,7 +34,8 @@ export interface DeliveryOrderListParams {
   page: number
   per_page: number
   search?: string
-  status?: DeliveryOrderStatus
+  /** Satu status, atau beberapa dipisah koma (mis. "draft,posted"). */
+  status?: string
   customer_id?: number
   warehouse_id?: number
   date_from?: string

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
@@ -29,7 +29,7 @@ export default function CashBankStatementPage() {
     queryKey: ['cash-bank', 'accounts'],
     queryFn: () => reportsApi.cashBankAccounts(),
   })
-  const accounts: CashBankAccount[] = accountsData?.data?.accounts ?? []
+  const accounts: CashBankAccount[] = useMemo(() => accountsData?.data?.accounts ?? [], [accountsData])
 
   const searchAccounts = useCallback(
     (q: string) => {
@@ -39,7 +39,7 @@ export default function CashBankStatementPage() {
           (a.account_name.toLowerCase().includes(q.toLowerCase()) ||
             a.account_code.toLowerCase().includes(q.toLowerCase())),
       )
-      return Promise.resolve(filtered.map((a) => ({ id: a.id, label: `${a.account_code} — ${a.account_name}` })))
+      return Promise.resolve(filtered.map((a) => ({ value: a.id, id: a.id, label: `${a.account_code} — ${a.account_name}` })))
     },
     [accounts],
   )
@@ -62,10 +62,7 @@ export default function CashBankStatementPage() {
   }
 
   return (
-    <WorkspaceLayout
-      title="Mutasi Rekening"
-      breadcrumb={[{ label: 'Laporan' }, { label: 'Kas & Bank' }, { label: 'Mutasi Rekening' }]}
-    >
+    <WorkspaceLayout hideHeader>
       <div className="space-y-4">
         {/* Filter */}
         <div className="rounded-lg border border-[#e2e8f0] bg-white p-4">

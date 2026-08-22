@@ -57,6 +57,17 @@ export function LoginPage() {
       return
     }
 
+    // Fase 3, skema tier: kunci penuh setelah masa tenggang — beda dari akun
+    // dinonaktifkan admin, jalan keluarnya perpanjangan, bukan "hubungi admin".
+    if (error.code === 'SUBSCRIPTION_EXPIRED') {
+      const renewalUrl = error.meta?.renewal_url
+      toast.error(error.message || 'Langganan Anda sudah berakhir.', {
+        actionUrl: typeof renewalUrl === 'string' ? renewalUrl : null,
+        actionLabel: 'Perpanjang via WhatsApp',
+      })
+      return
+    }
+
     if (error.status === 403 || error.code === 'FORBIDDEN') {
       toast.error('Akun Anda telah dinonaktifkan. Hubungi administrator.')
       return

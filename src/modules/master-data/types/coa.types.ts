@@ -11,19 +11,39 @@ export interface Coa {
   normal_balance?: 'debit' | 'credit' | null
   is_cash_bank?: boolean
   is_active: boolean
-  level: number
-  children?: Coa[]
+  /**
+   * Kedalaman baris dalam pohon akun, 0 untuk akun tanpa induk.
+   *
+   * Dihitung server lewat recursive CTE dan HANYA dikirim pada daftar mode
+   * hierarkis — saat pencarian atau sort kolom aktif, daftarnya rata dan field
+   * ini tidak ada. Dipakai untuk indentasi, dan sengaja per baris supaya
+   * indentasinya tetap benar walau induknya berada di halaman lain.
+   */
+  depth?: number
   created_at: string
   updated_at: string
 }
 
 export interface CoaListParams {
-  page: number
-  per_page: 25 | 50 | 100
+  page?: number
+  per_page?: 25 | 50 | 100
   search?: string
+  /**
+   * Filter kolom terpisah untuk dialog pemilih akun. Berbeda dengan `search`
+   * yang mencocokkan kode ATAU nama, keduanya di-AND-kan di server.
+   */
+  account_code?: string
+  account_name?: string
   account_type?: CoaType
   is_active?: boolean
   is_cash_bank?: boolean
+  /**
+   * Sembunyikan akun induk (yang punya akun anak) -- akun induk hanya
+   * merangkum saldo di laporan dan tidak boleh dipakai transaksi. Dipakai
+   * semua pemilih akun transaksi; hanya dimatikan eksplisit untuk pemilih
+   * "Akun Induk" di CoaFormPage.
+   */
+  postable_only?: boolean
 }
 
 export interface CreateCoaPayload {

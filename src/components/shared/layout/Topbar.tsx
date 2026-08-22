@@ -1,7 +1,6 @@
-import { useNavigate } from 'react-router-dom'
-import { LogOut, User, Building2 } from 'lucide-react'
+import { DatabaseBackup, LogOut, User } from 'lucide-react'
 import {
-  Database, BookMarked, Banknote,
+  Database, BookMarked, Wallet, Banknote,
   ShoppingCart, ShoppingBag, Boxes, Building, FileBarChart2, Settings,
 } from 'lucide-react'
 import type { FC, SVGProps } from 'react'
@@ -23,14 +22,22 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { useCompanyStore } from '@/stores/useCompanyStore'
 import { useTabStore } from '@/stores/useTabStore'
 import type { ModuleKey } from '@/stores/useTabStore'
-import { authApi } from '@/modules/auth/services/authApi'
-import { TOP_MODULES } from '@/router/moduleConfig'
+import { MODULE_MAP, TOP_MODULES } from '@/router/moduleConfig'
+import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
+import { useCompanySession } from '@/hooks/useCompanySession'
+import { UnsavedFormsDialog } from '@/components/shared/feedback/UnsavedFormsDialog'
+import { SubscriptionWarningBadge } from './SubscriptionWarningBadge'
 import { cn } from '@/lib/utils'
 import { APP_NAME } from '@/lib/constants'
 
+// Ikon modul topbar TIDAK diambil dari `ModuleConfig` — petanya di sini,
+// dikunci id modul. Menambah modul di moduleConfig.ts tanpa menambah entri di
+// sini membuat tombolnya muncul tanpa ikon, tanpa error apa pun: pemakaiannya
+// `{Icon && <Icon />}`.
 const MODULE_ICONS: Record<string, LucideIcon> = {
   'master-data': Database,
   accounting:   BookMarked,
+  budget:       Wallet,
   'cash-bank':  Banknote,
   sales:        ShoppingCart,
   purchase:     ShoppingBag,
@@ -56,23 +63,36 @@ function UserAvatar({ name }: { name: string }) {
 }
 
 export function Topbar() {
-  const navigate = useNavigate()
-  const { user, logout } = useAuthStore()
+  const { user } = useAuthStore()
   const { activeCompany } = useCompanyStore()
   const { activeModule, isRibbonOpen, setActiveModule, openRibbon, closeRibbon } = useTabStore()
-
-  async function handleLogout() {
-    try {
-      await authApi.logout()
-    } catch {
-      // Ignore logout errors
-    }
-    logout()
-    navigate('/login', { replace: true })
-  }
+  const openTab = useOpenPrimaryTab()
+  const {
+    isBusy,
+    blocked,
+    requestCloseDatabase,
+    requestLogout,
+    dismissBlocked,
+    goToForm,
+  } = useCompanySession()
 
   function handleModuleClick(moduleId: string) {
     const moduleKey = moduleId as ModuleKey
+    const moduleConfig = MODULE_MAP[moduleKey]
+
+    // Modul tanpa ribbon (mis. Laporan): langsung buka tab halaman daftarnya.
+    if (moduleConfig?.opensListDirectly) {
+      closeRibbon()
+      openTab({
+        id: moduleKey,
+        menuKey: 'list',
+        label: moduleConfig.label,
+        module: moduleKey,
+        path: moduleConfig.path,
+      })
+      return
+    }
+
     if (activeModule === moduleKey && isRibbonOpen) {
       closeRibbon()
       return
@@ -80,10 +100,6 @@ export function Topbar() {
 
     setActiveModule(moduleKey)
     openRibbon()
-  }
-
-  function handleSwitchCompany() {
-    navigate('/select-company')
   }
 
   return (
@@ -149,8 +165,9 @@ export function Topbar() {
         </nav>
       </TooltipProvider>
 
-      {/* Right: company name + avatar */}
+      {/* Right: subscription warning + company name + avatar */}
       <div className="flex items-center gap-3 ml-2 flex-shrink-0">
+        <SubscriptionWarningBadge />
         {activeCompany && (
           <span className="text-white/70 text-[13px] hidden md:block max-w-[140px] truncate">
             {activeCompany.name}
@@ -176,20 +193,28 @@ export function Topbar() {
               <p className="text-[12px] text-[#64748b] truncate">{user?.email}</p>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={handleSwitchCompany}
-              className="text-[14px] gap-2 py-[7px] px-3 hover:bg-[#f8fbfc]"
-            >
-              <Building2 className="w-4 h-4" />
-              Ganti Perusahaan
-            </DropdownMenuItem>
             <DropdownMenuItem className="text-[14px] gap-2 py-[7px] px-3 hover:bg-[#f8fbfc]">
               <User className="w-4 h-4" />
               Profil Saya
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            {/*
+              Ganti perusahaan berjalan lewat sini: database yang sedang dibuka
+              ditutup dulu, lalu user memilih perusahaan berikutnya di halaman
+              pemilih. Tidak ada jalur "ganti langsung" — itu yang dulu membuat
+              data perusahaan lama tetap tampil setelah berpindah.
+            */}
             <DropdownMenuItem
-              onClick={handleLogout}
+              onClick={requestCloseDatabase}
+              disabled={isBusy}
+              className="text-[14px] gap-2 py-[7px] px-3 hover:bg-[#f8fbfc]"
+            >
+              <DatabaseBackup className="w-4 h-4" />
+              Tutup Database
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={requestLogout}
+              disabled={isBusy}
               className="text-[14px] gap-2 py-[7px] px-3 text-red-700 focus:text-red-700 hover:bg-[#f8fbfc]"
             >
               <LogOut className="w-4 h-4" />
@@ -198,6 +223,13 @@ export function Topbar() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <UnsavedFormsDialog
+        action={blocked?.action ?? null}
+        forms={blocked?.forms ?? []}
+        onClose={dismissBlocked}
+        onGoToForm={goToForm}
+      />
     </header>
   )
 }

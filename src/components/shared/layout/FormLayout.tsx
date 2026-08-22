@@ -17,6 +17,11 @@ interface FormLayoutProps {
   /** Override alasan read-only; default diturunkan dari `status`. */
   readOnlyReason?: string
   bottomBar?: React.ReactNode
+  /**
+   * Alternative to `bottomBar`: render action buttons (e.g. Batal/Simpan) inline in the
+   * header instead of a fixed bottom bar. Experimental — currently opt-in per page.
+   */
+  headerActions?: React.ReactNode
   children: React.ReactNode
 }
 
@@ -55,6 +60,7 @@ export function FormLayout({
   readOnly,
   readOnlyReason,
   bottomBar,
+  headerActions,
   children,
 }: FormLayoutProps) {
   return (
@@ -62,13 +68,16 @@ export function FormLayout({
       {/* Document header */}
       <div className="flex-shrink-0 bg-white border-b border-[#d9e2e5] px-4 lg:px-6 py-3">
         {breadcrumb && <Breadcrumb items={breadcrumb} />}
-        <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="text-[15px] lg:text-base font-semibold text-[#24323a]">{title}</h1>
-          {documentNumber && (
-            <span className="text-[13px] font-medium text-[#64748b]">#{documentNumber}</span>
-          )}
-          {status && <DocumentStatusBadge status={status} />}
-          {isSystemGenerated && <SystemGeneratedBadge />}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-[15px] lg:text-base font-semibold text-[#24323a]">{title}</h1>
+            {documentNumber && (
+              <span className="text-[13px] font-medium text-[#64748b]">#{documentNumber}</span>
+            )}
+            {status && <DocumentStatusBadge status={status} />}
+            {isSystemGenerated && <SystemGeneratedBadge />}
+          </div>
+          {headerActions && <div className="flex items-center gap-2">{headerActions}</div>}
         </div>
       </div>
 
@@ -76,7 +85,7 @@ export function FormLayout({
       <div
         className={cn(
           'min-h-0 flex-1 overflow-y-auto p-4 lg:p-6',
-          bottomBar && 'pb-[calc(56px+var(--shell-safe-bottom)+16px)]',
+          bottomBar && 'pb-[calc(var(--shell-bottom-bar-actual-h,56px)+32px)]',
         )}
       >
         <div className="max-w-[1200px]">

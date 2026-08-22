@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -10,17 +10,32 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { useCustomerDeposit, useCustomerDepositMutations } from '../hooks/useCustomerDepositList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { customerDepositSchema, type CustomerDepositFormValues } from '../schemas/customerDepositSchema'
-import { formatCurrency } from '@/lib/utils'
+import { customerDepositApi } from '../services/customerDepositApi'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
+import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
 import type { DocumentStatus } from '@/types/common.types'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 export default function CustomerDepositFormPage() {
-  const navigate = useNavigate()
+  const { id } = useParams()
+  // `/sales/customer-deposits/create` dan `/sales/customer-deposits/:id` merender komponen
+  // yang sama, dan React Router tidak me-remount otomatis saat berpindah di antara keduanya
+  // (hanya param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <CustomerDepositFormPageContent key={id ?? 'create'} />
+}
+
+function CustomerDepositFormPageContent() {
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -30,7 +45,7 @@ export default function CustomerDepositFormPage() {
   const deposit = data?.data
   const { create, post, void: voidDep } = useCustomerDepositMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<CustomerDepositFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<CustomerDepositFormValues>({
     resolver: zodResolver(customerDepositSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -52,30 +67,57 @@ export default function CustomerDepositFormPage() {
     }
   }, [deposit, reset])
 
-  const handleSave = handleSubmit(async (values) => {
-    try {
-      const res = await create.mutateAsync(values)
-      toast.success('Deposit berhasil disimpan.')
-      navigate(`/sales/customer-deposits/${res.data.id}`)
-    } catch { toast.error('Gagal menyimpan deposit.') }
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<CustomerDepositFormValues>({
+    draftKey: `sales.customer-deposit.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+  })
+
+  const { saveAndClose, navProps } = useRecordFormNavigation<CustomerDepositFormValues>({
+    id,
+    basePath: '/sales/customer-deposits',
+    createLabel: 'Deposit Baru',
+    sequenceQueryKey: ['sales', 'customer-deposits', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await customerDepositApi.adjacent(recordId)).data,
+    handleSubmit,
+    save: async (values) => {
+      await create.mutateAsync(values)
+    },
+    onSaved: () => formDraft.clearDraft(),
+    successMessage: () => 'Deposit berhasil disimpan.',
+    onError: (saveError) => {
+      // Backend memvalidasi tanggal sebagai `deposit_date`, form memakai `date`.
+      applyApiValidationErrors(saveError, setError, { deposit_date: 'date' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan deposit.'))
+    },
+    // Deposit tersimpan langsung terposting: hanya form create yang bisa disimpan.
+    canSave: isEditable,
   })
 
   const handlePost = async () => {
     try {
       await post.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Deposit berhasil diposting.')
-    } catch { toast.error('Gagal memposting deposit.') }
+    } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal memposting deposit.')) }
   }
 
   const handleVoid = async (reason: string) => {
     await voidDep.mutateAsync({ id: Number(id), reason })
+    formDraft.clearDraft()
     toast.success('Deposit berhasil di-void.')
     setVoidOpen(false)
   }
 
   const actions: DocumentActionButton[] = []
   if (isCreate && can('sales.deposits.create')) {
-    actions.push({ id: 'save', label: 'Simpan', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (deposit?.status === 'draft' && can('sales.deposits.post')) {
@@ -105,7 +147,12 @@ export default function CustomerDepositFormPage() {
           { label: 'Deposit Customer', path: '/sales/customer-deposits' },
           { label: isCreate ? 'Buat Deposit' : (deposit?.number ?? '') },
         ]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={deposit?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={deposit?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           <FormSection title="Informasi Deposit">
@@ -128,8 +175,8 @@ export default function CustomerDepositFormPage() {
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Tanggal <span className="text-red-500">*</span>
               </Label>
-              <Input {...register('date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+              <Input {...register('date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+              <FieldError message={errors.date?.message} />
             </div>
 
             <div className="flex flex-col gap-1">
@@ -156,15 +203,16 @@ export default function CustomerDepositFormPage() {
                 type="number"
                 min={0}
                 disabled={!isEditable}
-                className="h-9 text-[13px] text-right tabular-nums"
+                className={cn('h-9 text-[13px] text-right tabular-nums', fieldErrorClass(errors.amount))}
                 placeholder="0"
               />
-              {errors.amount && <p className="text-[11px] text-red-500">{errors.amount.message}</p>}
+              <FieldError message={errors.amount?.message} />
             </div>
 
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
           </FormSection>
 

@@ -5,10 +5,11 @@ import {
   Banknote, RotateCcw, BookOpen, ClipboardList, Package, PackageCheck,
   FileText, CreditCard, BarChart3, ArrowLeftRight, SlidersHorizontal,
   ClipboardCheck, Calendar, CalendarDays, TrendingUp, TrendingDown,
-  CheckSquare, BookMarked, Scale, LayoutGrid, Droplets, Clock,
+  CheckSquare,
   Landmark, Users, Ruler, Warehouse, CalendarClock, Building2,
   FolderKanban, Map, Building, RefreshCcw, UserCog, ShieldCheck, Star,
-  Mail, Shield, Archive,
+  Mail, Shield, Archive, Tags, CalendarRange, GitCompare, Upload,
+  Wallet, LayoutDashboard, FilePlus,
 } from 'lucide-react'
 
 export interface RibbonItem {
@@ -17,6 +18,22 @@ export interface RibbonItem {
   icon: LucideIcon
   path: string
   permission?: string
+  /**
+   * Item hanya relevan saat pengaturan awal perusahaan: dipakai sekali, lalu
+   * tidak pernah lagi. Ribbon menyembunyikannya begitu setup difinalisasi atau
+   * buku perusahaan sudah berisi transaksi — lihat `useSetupGate`.
+   */
+  setupOnly?: boolean
+  /**
+   * Pengelompokan visual di dalam ribbon. **Opsional** — modul yang tidak
+   * mengisinya tetap dirender datar seperti sebelumnya, jadi menambahkan field
+   * ini tidak menyentuh sembilan modul lain.
+   *
+   * Ribbon adalah strip horizontal setinggi 64px, bukan menu bertingkat: grup
+   * ditandai garis pemisah antar kelompok, bukan submenu. Nama grupnya sendiri
+   * hidup di breadcrumb halaman dan di katalog Laporan.
+   */
+  group?: string
 }
 
 export interface ModuleConfig {
@@ -25,6 +42,17 @@ export interface ModuleConfig {
   path: string
   permission?: string
   ribbonItems: RibbonItem[]
+  /**
+   * Klik main menu langsung membuka tab primer halaman daftar modul ini, tanpa
+   * ribbon. Dipakai modul yang ribbon-nya hanya jadi pemilih kategori.
+   */
+  opensListDirectly?: boolean
+  /**
+   * Konten menempel langsung di bawah baris tab, tanpa jarak kanvas. Dipakai
+   * modul yang punya toolbar sendiri di bawah tab (mis. filter bar Laporan)
+   * sehingga toolbar terlihat menyatu dengan tab.
+   */
+  flushContent?: boolean
 }
 
 export const MODULE_CONFIGS: ModuleConfig[] = [
@@ -42,12 +70,16 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
       { id: 'chart-of-accounts', label: 'Akun (COA)', icon: Landmark, path: '/master-data/coa', permission: 'master-data.view' },
       { id: 'contacts', label: 'Kontak', icon: Users, path: '/master-data/contacts', permission: 'master-data.view' },
       { id: 'products', label: 'Produk', icon: Package, path: '/master-data/products', permission: 'master-data.view' },
+      // Halaman & route-nya sudah lama ada, tapi entri menunya tidak pernah
+      // dibuat — jadi hanya terjangkau lewat URL langsung. Delapan master data
+      // lain punya entri; ini kelupaan, bukan kesengajaan.
+      { id: 'product-categories', label: 'Kategori Produk', icon: Tags, path: '/master-data/product-categories', permission: 'master-data.view' },
       { id: 'units', label: 'Satuan', icon: Ruler, path: '/master-data/units', permission: 'master-data.view' },
       { id: 'warehouses', label: 'Gudang', icon: Warehouse, path: '/master-data/warehouses', permission: 'master-data.view' },
       { id: 'payment-terms', label: 'Syarat Bayar', icon: CalendarClock, path: '/master-data/payment-terms', permission: 'master-data.view' },
       { id: 'departments', label: 'Departemen', icon: Building2, path: '/master-data/departments', permission: 'master-data.view' },
       { id: 'projects', label: 'Proyek', icon: FolderKanban, path: '/master-data/projects', permission: 'master-data.view' },
-      { id: 'account-mappings', label: 'Pemetaan Akun', icon: Map, path: '/master-data/account-mappings', permission: 'master-data.view' },
+      { id: 'import', label: 'Impor Data', icon: Upload, path: '/master-data/import', permission: 'imports.view' },
     ],
   },
   {
@@ -56,10 +88,48 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     path: '/accounting',
     ribbonItems: [
       { id: 'journals', label: 'Jurnal Umum', icon: BookOpen, path: '/accounting/journals', permission: 'journal.view' },
-      { id: 'opening-balance', label: 'Saldo Awal', icon: Archive, path: '/opening-balance', permission: 'opening_balance.view' },
+      // Saldo awal hanya boleh ada satu batch per perusahaan seumur hidupnya
+      // (OPENING_BALANCE_ACTIVE_BATCH_EXISTS di backend), jadi item ini hilang
+      // dari ribbon setelah setup awal selesai. Rutenya tetap hidup untuk
+      // wizard dan drill-down.
+      { id: 'opening-balance', label: 'Saldo Awal', icon: Archive, path: '/opening-balance', permission: 'opening_balance.view', setupOnly: true },
       { id: 'period-locks', label: 'Periode Akuntansi', icon: Calendar, path: '/accounting/period-locks', permission: 'accounting.period-locks.manage' },
       { id: 'period-end', label: 'Akhir Periode', icon: CheckSquare, path: '/accounting/period-end', permission: 'period_end.view' },
       { id: 'fiscal-years', label: 'Tahun Fiskal', icon: CalendarDays, path: '/accounting/fiscal-years', permission: 'accounting.fiscal-years.manage' },
+    ],
+  },
+  {
+    // Id `budget` bukan pilihan bebas: detectModuleFromPath() mencocokkan
+    // pathname.startsWith('/' + module.id), jadi id ini langsung cocok dengan
+    // rute /budget/... yang sudah ada tanpa memindahkan satu rute pun.
+    id: 'budget',
+    label: 'Anggaran',
+    path: '/budget',
+    ribbonItems: [
+      { id: 'budget-dashboard', group: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/budget/dashboard', permission: 'budgets.view' },
+
+      // Urutan mengikuti alur proses: pagu top-down (Tahap 1-2) dulu, baru
+      // pengajuan RAB bottom-up (Tahap 4) — bukan urutan CRUD submission yang
+      // jadi objek utama modul ini secara teknis.
+      { id: 'budget-periods', group: 'Budget', label: 'Pagu Anggaran', icon: CalendarRange, path: '/budget/periods', permission: 'budgets.view' },
+      { id: 'budget-list', group: 'Budget', label: 'Daftar Budget', icon: ClipboardList, path: '/budget/submissions', permission: 'budgets.view' },
+      { id: 'budget-create', group: 'Budget', label: 'Buat Budget', icon: FilePlus, path: '/budget/submissions/new', permission: 'budgets.submit' },
+
+      // Empat entri Monitoring adalah preset dari SATU halaman analisis, bukan
+      // empat halaman. Yang berbeda hanya `group_by` dan `mode` awalnya.
+      { id: 'budget-vs-actual', group: 'Monitoring', label: 'Budget vs Actual', icon: GitCompare, path: '/budget/analysis?preset=vs-actual', permission: 'budgets.view' },
+      { id: 'budget-variance', group: 'Monitoring', label: 'Variance', icon: TrendingDown, path: '/budget/analysis?preset=variance', permission: 'budgets.view' },
+      { id: 'budget-utilization', group: 'Monitoring', label: 'Utilization', icon: BarChart3, path: '/budget/analysis?preset=utilization', permission: 'budgets.view' },
+      { id: 'budget-summary', group: 'Monitoring', label: 'Summary', icon: LayoutDashboard, path: '/budget/analysis?preset=summary', permission: 'budgets.view' },
+
+      // Lima entri Project juga satu halaman, bertab.
+      { id: 'budget-project-budget', group: 'Project', label: 'Project Budget', icon: FolderKanban, path: '/budget/projects?tab=budget', permission: 'budgets.view' },
+      { id: 'budget-project-actual', group: 'Project', label: 'Project Actual', icon: Receipt, path: '/budget/projects?tab=actual', permission: 'budgets.view' },
+      { id: 'budget-project-profit', group: 'Project', label: 'Project Profitability', icon: TrendingUp, path: '/budget/projects?tab=profitability', permission: 'budgets.view' },
+      { id: 'budget-project-cash', group: 'Project', label: 'Project Cash Flow', icon: Banknote, path: '/budget/projects?tab=cash-flow', permission: 'budgets.view' },
+      { id: 'budget-project-tx', group: 'Project', label: 'Project Transactions', icon: BookOpen, path: '/budget/projects?tab=transactions', permission: 'budgets.view' },
+
+      { id: 'budget-cash', group: 'Cash', label: 'Cash Budget', icon: Wallet, path: '/budget/cash', permission: 'budgets.view' },
     ],
   },
   {
@@ -85,7 +155,13 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
       { id: 'invoices', label: 'Invoice', icon: Receipt, path: '/sales/invoices', permission: 'sales.invoices.view' },
       { id: 'receipts', label: 'Penerimaan', icon: Banknote, path: '/sales/receipts', permission: 'sales.receipts.view' },
       { id: 'returns', label: 'Retur', icon: RotateCcw, path: '/sales/returns', permission: 'sales.returns.view' },
-      { id: 'ar', label: 'Piutang', icon: BookOpen, path: '/sales/ar', permission: 'sales.ar.view' },
+      // Tidak ada item "Piutang" di sini — laporan piutang tinggal di menu
+      // Laporan (kategori Piutang: AR Aging, Faktur Belum Lunas, Ringkasan
+      // Pelanggan, dan Rekonsiliasi). Item ribbon lama menunjuk `/sales/ar`
+      // yang cuma <Navigate> telanjang di luar ProtectedRoute, jadi selain
+      // duplikat ia juga membuat AppShell unmount lalu mount berulang.
+      // Route /sales/ar/* sendiri dibiarkan hidup: masih dipakai drill-down
+      // dan URL langsung.
     ],
   },
   {
@@ -99,7 +175,8 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
       { id: 'bills', label: 'Tagihan', icon: FileText, path: '/purchase/bills', permission: 'purchase.bills.view' },
       { id: 'payments', label: 'Pembayaran', icon: CreditCard, path: '/purchase/payments', permission: 'purchase.payments.view' },
       { id: 'returns', label: 'Retur', icon: RotateCcw, path: '/purchase/returns', permission: 'purchase.returns.view' },
-      { id: 'ap', label: 'Hutang', icon: BookOpen, path: '/purchase/ap', permission: 'purchase.ap.view' },
+      // Tidak ada item "Hutang" di sini — alasannya sama dengan Piutang di modul
+      // Penjualan; laporannya ada di menu Laporan kategori Hutang.
     ],
   },
   {
@@ -130,18 +207,11 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     id: 'reports',
     label: 'Daftar Laporan',
     path: '/reports',
-    ribbonItems: [
-      { id: 'financial', label: 'Keuangan', icon: BarChart3, path: '/reports/financial', permission: 'reports.view' },
-      { id: 'gl', label: 'Buku Besar', icon: BookMarked, path: '/reports/gl', permission: 'reports.view' },
-      { id: 'sales', label: 'Penjualan', icon: TrendingUp, path: '/reports/sales', permission: 'reports.view' },
-      { id: 'purchase', label: 'Pembelian', icon: TrendingDown, path: '/reports/purchase', permission: 'reports.view' },
-      { id: 'ar', label: 'Piutang', icon: Clock, path: '/reports/ar', permission: 'reports.view' },
-      { id: 'ap', label: 'Hutang', icon: Clock, path: '/reports/ap', permission: 'reports.view' },
-      { id: 'reconciliation', label: 'Rekonsiliasi', icon: RefreshCcw, path: '/reports/reconciliation', permission: 'reports.view' },
-      { id: 'inventory', label: 'Persediaan', icon: Package, path: '/reports/inventory', permission: 'reports.view' },
-      { id: 'fixed-assets', label: 'Aktiva Tetap', icon: Building2, path: '/reports/fixed-assets', permission: 'reports.view' },
-      { id: 'cash-bank', label: 'Kas & Bank', icon: Landmark, path: '/reports/cash-bank', permission: 'reports.view' },
-    ],
+    // Ribbon Laporan dinonaktifkan — kategori kini jadi sidebar di ReportListPage.
+    // Model lamanya diarsipkan di src/router/legacy/reportsRibbon.legacy.ts.
+    ribbonItems: [],
+    opensListDirectly: true,
+    flushContent: true,
   },
   {
     id: 'settings',

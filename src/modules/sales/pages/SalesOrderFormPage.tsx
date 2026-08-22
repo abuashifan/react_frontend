@@ -11,6 +11,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
+import { cn, fieldErrorClass } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { useSalesOrder, useSalesOrderMutations } from '../hooks/useSalesOrderList'
@@ -18,10 +21,15 @@ import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { salesOrderSchema, type SalesOrderFormValues } from '../schemas/salesOrderSchema'
+import { salesOrderApi } from '../services/salesOrderApi'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine {
   product_id: number | null
+  product?: { id: number; code: string; name: string } | null
   description: string
   quantity: number
   unit_price: number
@@ -30,7 +38,7 @@ interface EditableLine {
   invoiced_quantity?: number
 }
 
-const DEFAULT_LINE: EditableLine = { product_id: null, description: '', quantity: 1, unit_price: 0, discount_percent: 0 }
+const DEFAULT_LINE: EditableLine = { product_id: null, product: null, description: '', quantity: 1, unit_price: 0, discount_percent: 0 }
 
 function lineSubtotal(l: EditableLine) {
   return l.quantity * l.unit_price * (1 - l.discount_percent / 100)
@@ -44,6 +52,19 @@ function toOrderLine(line: EditableLine): Omit<EditableLine, 'delivered_quantity
 }
 
 export default function SalesOrderFormPage() {
+  const { id } = useParams()
+  // `/sales/orders/create` dan `/sales/orders/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah. Alur ?from_quotation tetap aman:
+  // begitu konversi selesai, `navigate(..., { replace: true })` mengubah `id` di URL
+  // sehingga key ini otomatis berubah juga.
+  return <SalesOrderFormPageContent key={id ?? 'create'} />
+}
+
+function SalesOrderFormPageContent() {
+  // `navigate` masih dipakai alur deep link ?from_quotation yang tidak lahir dari tab.
   const navigate = useNavigate()
   const { id } = useParams()
   const [searchParams] = useSearchParams()
@@ -55,7 +76,7 @@ export default function SalesOrderFormPage() {
   const order = data?.data
   const { create, createFromQuotation, update, approve, confirm, cancel } = useSalesOrderMutations()
 
-  const { control, register, handleSubmit, setValue, reset, formState: { errors, isSubmitting } } = useForm<SalesOrderFormValues>({
+  const { control, register, handleSubmit, getValues, setValue, setError, reset, formState: { errors, isSubmitting } } = useForm<SalesOrderFormValues>({
     resolver: zodResolver(salesOrderSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
@@ -63,6 +84,12 @@ export default function SalesOrderFormPage() {
   const paymentTermId = useWatch({ control, name: 'payment_term_id' })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+
+  // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
+
+  // ditolak ikut ditandai, bukan cuma toast.
+
+  const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
   const [isCreatingFromQuotation, setCreatingFromQuotation] = useState(false)
 
   const status = (order?.status ?? 'draft') as DocumentStatus
@@ -75,7 +102,7 @@ export default function SalesOrderFormPage() {
       const timer = window.setTimeout(() => setCreatingFromQuotation(true), 0)
       createFromQuotation.mutateAsync(Number(quotationId))
         .then((res) => navigate(`/sales/orders/${res.data.id}`, { replace: true }))
-        .catch(() => toast.error('Gagal membuat SO dari quotation.'))
+        .catch((convertError: unknown) => toast.error(getApiErrorMessage(convertError, 'Gagal membuat SO dari quotation.')))
         .finally(() => setCreatingFromQuotation(false))
       return () => window.clearTimeout(timer)
     }
@@ -93,6 +120,7 @@ export default function SalesOrderFormPage() {
       const timer = window.setTimeout(() => {
         setLines(order.lines.map((l) => ({
           product_id: l.product_id,
+          product: l.product,
           description: l.description,
           quantity: l.quantity,
           unit_price: l.unit_price,
@@ -105,43 +133,74 @@ export default function SalesOrderFormPage() {
     }
   }, [order, reset])
 
-  const handleSaveDraft = handleSubmit(async (values) => {
-    try {
-      if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines: lines.map(toOrderLine) })
-        toast.success('Sales Order berhasil dibuat.')
-        navigate(`/sales/orders/${res.data.id}`)
-      } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines: lines.map(toOrderLine) } })
-        toast.success('Sales Order berhasil diperbarui.')
-      }
-    } catch { toast.error('Gagal menyimpan Sales Order.') }
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<SalesOrderFormValues, EditableLine[]>({
+    draftKey: `sales.order.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
+  })
+
+  const { saveAndClose, navProps } = useRecordFormNavigation<SalesOrderFormValues>({
+    id,
+    basePath: '/sales/orders',
+    createLabel: 'Sales Order Baru',
+    sequenceQueryKey: ['sales', 'orders', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await salesOrderApi.adjacent(recordId)).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      if (creating) await create.mutateAsync({ ...values, lines: lines.map(toOrderLine) })
+      else await update.mutateAsync({ id: Number(id), payload: { ...values, lines: lines.map(toOrderLine) } })
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setLineErrors({})
+    },
+    successMessage: (creating) => (creating ? 'Sales Order berhasil dibuat.' : 'Sales Order berhasil diperbarui.'),
+    onError: (saveError) => {
+      // Backend memakai `order_date`/`shipping_address`, form memakai
+      // `date`/`delivery_address` — dipetakan supaya pesan error mendarat di
+      // input yang benar.
+      setLineErrors(getApiLineErrors(saveError))
+      applyApiValidationErrors(saveError, setError, { order_date: 'date', shipping_address: 'delivery_address' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Sales Order.'))
+    },
+    canSave: isEditable,
   })
 
   const handleApprove = async () => {
     try {
       await approve.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Sales Order berhasil di-approve.')
-    } catch { toast.error('Gagal approve Sales Order.') }
+    } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve Sales Order.')) }
   }
 
   const handleConfirm = async () => {
     try {
       await confirm.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Sales Order berhasil dikonfirmasi.')
-    } catch { toast.error('Gagal konfirmasi Sales Order.') }
+    } catch (confirmError) { toast.error(getApiErrorMessage(confirmError, 'Gagal konfirmasi Sales Order.')) }
   }
 
   const handleCancel = async () => {
     try {
       await cancel.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Sales Order dibatalkan.')
-    } catch { toast.error('Gagal membatalkan Sales Order.') }
+    } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan Sales Order.')) }
   }
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('sales.orders.create')) {
-    actions.push({ id: 'save_draft', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
+    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (order?.status === 'draft' && can('sales.orders.approve')) {
@@ -165,11 +224,15 @@ export default function SalesOrderFormPage() {
       render: ({ item, isReadOnly, onUpdate }) => (
         <SearchableSelect
           value={item.product_id}
-          onChange={(v) => onUpdate('product_id', v)}
+          onChange={(v, opt) => {
+            onUpdate('product_id', v)
+            onUpdate('product', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null)
+          }}
           onSearch={produkApi.search}
           placeholder="Pilih produk..."
           disabled={isReadOnly}
           size="sm"
+          selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []}
         />
       ),
     },
@@ -248,7 +311,12 @@ export default function SalesOrderFormPage() {
         { label: 'Sales Order', path: '/sales/orders' },
         { label: isCreate ? 'Buat SO' : (order?.number ?? '') },
       ]}
-      bottomBar={<DocumentActionBar documentStatus={status} documentNumber={order?.number} actions={actions} />}
+      headerActions={
+        <>
+          <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+          <DocumentActionBar placement="header" documentStatus={status} documentNumber={order?.number} actions={actions} />
+        </>
+      }
     >
       <div className="space-y-3">
         <FormSection title="Header">
@@ -271,8 +339,8 @@ export default function SalesOrderFormPage() {
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
               Tanggal <span className="text-red-500">*</span>
             </Label>
-            <Input {...register('date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-            {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+            <Input {...register('date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+            <FieldError message={errors.date?.message} />
           </div>
 
           <div className="flex flex-col gap-1">
@@ -283,13 +351,15 @@ export default function SalesOrderFormPage() {
               onSearch={paymentTermsApi.search}
               placeholder="Pilih syarat pembayaran..."
               disabled={!isEditable}
+              error={errors.payment_term_id?.message}
               selectedOptions={order?.payment_term ? [{ value: order.payment_term.id, label: order.payment_term.name }] : []}
             />
           </div>
 
           <div className="flex flex-col gap-1 md:col-span-2">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Alamat Pengiriman</Label>
-            <Textarea {...register('delivery_address')} disabled={!isEditable} placeholder="Alamat pengiriman..." className="resize-none text-[13px]" rows={2} />
+            <Textarea {...register('delivery_address')} disabled={!isEditable} placeholder="Alamat pengiriman..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.delivery_address))} rows={2} />
+            <FieldError message={errors.delivery_address?.message} />
           </div>
 
           {order?.quotation_number && (
@@ -301,13 +371,15 @@ export default function SalesOrderFormPage() {
 
           <div className="flex flex-col gap-1 md:col-span-2">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-            <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+            <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+            <FieldError message={errors.notes?.message} />
           </div>
         </FormSection>
 
         <div>
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Item</p>
           <LineItemsTable
+          errors={lineErrors}
             items={lines}
             columns={columns}
             onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}

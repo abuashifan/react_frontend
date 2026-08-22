@@ -1,11 +1,15 @@
 import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
-import type { SelectOption } from '@/types/common.types'
+import type { SelectOption, AdjacentRecords } from '@/types/common.types'
 import type { Kontak, KontakListParams, CreateKontakPayload, UpdateKontakPayload } from '../types/kontak.types'
 
 export const kontakApi = {
   list: (params: KontakListParams) =>
     http.get<unknown, PaginatedResponse<Kontak>>('/master-data/contacts', { params }),
+
+  /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
+  adjacent: (id?: number) =>
+    http.get<unknown, ApiResponse<AdjacentRecords>>('/master-data/contacts/adjacent', { params: { id } }),
 
   get: (id: number) =>
     http.get<unknown, ApiResponse<Kontak>>(`/master-data/contacts/${id}`),
@@ -22,10 +26,18 @@ export const kontakApi = {
   deactivate: (id: number) =>
     http.patch<unknown, ApiResponse<void>>(`/master-data/contacts/${id}/deactivate`),
 
-  search: async (query: string, contact_type?: string): Promise<SelectOption<number>[]> => {
+  search: async (query: string, type?: 'customer' | 'supplier'): Promise<SelectOption<number>[]> => {
     const res = await http.get<unknown, PaginatedResponse<Kontak>>(
       '/master-data/contacts',
-      { params: { search: query, per_page: 10, contact_type, is_active: true } },
+      {
+        params: {
+          search: query,
+          per_page: 10,
+          is_active: true,
+          ...(type === 'customer' ? { is_customer: true } : {}),
+          ...(type === 'supplier' ? { is_supplier: true } : {}),
+        },
+      },
     )
     return res.data.map((c) => ({
       value: c.id,

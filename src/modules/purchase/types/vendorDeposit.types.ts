@@ -38,7 +38,8 @@ export interface VendorDepositListParams {
   page: number
   per_page: number
   search?: string
-  status?: VendorDepositStatus
+  /** Satu status, atau beberapa dipisah koma (mis. "draft,posted"). */
+  status?: string
   vendor_id?: number
   date_from?: string
   date_to?: string

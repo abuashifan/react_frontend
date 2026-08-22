@@ -3,7 +3,46 @@ import { http } from '@/services/http'
 import type { ApiResponse } from '@/types/api.types'
 import type {
   ReportParams,
+  SalesSummaryReport,
+  SalesSummaryRow,
+  SalesByCustomerReport,
+  SalesByCustomerRow,
+  SalesByProductReport,
+  SalesByProductRow,
+  PurchaseSummaryReport,
+  PurchaseSummaryRow,
+  PurchaseByVendorReport,
+  PurchaseByVendorRow,
+  PurchaseByProductReport,
+  PurchaseByProductRow,
   GeneralLedgerReport,
+  GeneralLedgerDetailReport,
+  GeneralLedgerDetailLine,
+  JournalListReport,
+  JournalListRow,
+  InventoryAgingReport,
+  InventoryAgingRow,
+  InventoryAgingBuckets,
+  ProductHistoryReport,
+  ProductHistoryRow,
+  ProductHistoryDocumentType,
+  OpnameWorksheetReport,
+  OpnameWorksheetRow,
+  RetainedEarningsReport,
+  EquityChangesReport,
+  EquityChangeRow,
+  CashFlowDirectReport,
+  CashFlowDirectSection,
+  CashFlowDirectLine,
+  MultiPeriodInput,
+  MultiPeriodSection,
+  MultiPeriodRow,
+  ProfitLossMultiPeriodReport,
+  BalanceSheetMultiPeriodReport,
+  OutputVatReport,
+  OutputVatRow,
+  InputVatReport,
+  InputVatRow,
   TrialBalanceReport,
   TrialBalanceAccount,
   TrialBalanceTotals,
@@ -33,6 +72,14 @@ import type {
   FaDepreciationReport,
   FaDisposalsReport,
   FaReconciliationReport,
+  ArOutstandingReport,
+  ArOutstandingRow,
+  ApOutstandingReport,
+  ApOutstandingRow,
+  ArCustomerSummaryReport,
+  ArCustomerSummaryRow,
+  ApVendorSummaryReport,
+  ApVendorSummaryRow,
 } from '../types/reports.types'
 import { adaptApiResponse, adaptApAgingResponse, adaptReconciliationReport } from '@/modules/purchase/services/apAdapters'
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -232,6 +279,147 @@ function adaptGeneralLedger(raw: Raw): GeneralLedgerReport {
         ending_balance: num(row.ending_balance),
       }
     }),
+  }
+}
+
+// Buku Besar - Rincian (Fase 7): sama seperti ringkasan tetapi tiap akun membawa `lines`.
+function adaptGeneralLedgerDetail(raw: Raw): GeneralLedgerDetailReport {
+  return {
+    accounts: asArray(raw.accounts).map((row) => {
+      const account = asRecord(row.account)
+      const period = asRecord(row.period_totals)
+      const opening = asRecord(row.opening_balance)
+      const lines: GeneralLedgerDetailLine[] = asArray(row.lines).map((l) => ({
+        journal_entry_id: num(l.journal_entry_id),
+        journal_number: str(l.journal_number),
+        journal_date: str(l.journal_date),
+        description: l.description == null ? null : str(l.description),
+        debit: num(l.debit),
+        credit: num(l.credit),
+        running_balance: num(l.running_balance),
+        source_type: l.source_type == null ? null : str(l.source_type),
+        source_number: l.source_number == null ? null : str(l.source_number),
+        source_module: l.source_module == null ? null : str(l.source_module),
+      }))
+      return {
+        account_id: num(account.id),
+        account_code: str(account.account_code),
+        account_name: str(account.account_name),
+        account_type: str(account.account_type),
+        normal_balance: str(account.normal_balance),
+        opening_balance: num(opening.balance),
+        period_debit: num(period.debit),
+        period_credit: num(period.credit),
+        ending_balance: num(row.ending_balance),
+        lines,
+      }
+    }),
+  }
+}
+
+// Laporan Jurnal (Fase 7 T7.2/T7.3): daftar jurnal posted + total debit/kredit per jurnal.
+function adaptJournalList(raw: Raw): JournalListReport {
+  const totals = asRecord(raw.totals)
+  const filter = asRecord(raw.filter)
+  const rows: JournalListRow[] = asArray(raw.rows).map((r) => ({
+    journal_entry_id: num(r.journal_entry_id),
+    journal_number: str(r.journal_number),
+    journal_date: str(r.journal_date),
+    description: r.description == null ? null : str(r.description),
+    source_type: r.source_type == null ? null : str(r.source_type),
+    source_number: r.source_number == null ? null : str(r.source_number),
+    source_module: r.source_module == null ? null : str(r.source_module),
+    total_debit: num(r.total_debit),
+    total_credit: num(r.total_credit),
+    line_count: num(r.line_count),
+  }))
+  return {
+    rows,
+    totals: {
+      journal_count: num(totals.journal_count),
+      total_debit: num(totals.total_debit),
+      total_credit: num(totals.total_credit),
+    },
+    filter: {
+      start_date: filter.start_date == null ? null : str(filter.start_date),
+      end_date: filter.end_date == null ? null : str(filter.end_date),
+      source: str(filter.source) || 'all',
+    },
+  }
+}
+
+// Umur Persediaan (Fase 8 T8.1). Response inventory dibungkus { as_of_date, rows, totals }.
+function adaptInventoryAgingBuckets(raw: Raw): InventoryAgingBuckets {
+  return {
+    days_0_30: num(raw['0_30']),
+    days_31_60: num(raw['31_60']),
+    days_61_90: num(raw['61_90']),
+    days_over_90: num(raw.over_90),
+  }
+}
+
+function adaptInventoryAging(raw: Raw): InventoryAgingReport {
+  const totals = asRecord(raw.totals)
+  const rows: InventoryAgingRow[] = asArray(raw.rows).map((r) => ({
+    product_id: num(r.product_id),
+    product_code: str(r.product_code),
+    product_name: str(r.product_name),
+    warehouse_id: num(r.warehouse_id),
+    warehouse_name: str(r.warehouse_name),
+    quantity_on_hand: num(r.quantity_on_hand),
+    average_cost: num(r.average_cost),
+    total_value: num(r.total_value),
+    last_inbound_date: r.last_inbound_date == null ? null : str(r.last_inbound_date),
+    age_days: num(r.age_days),
+    buckets: adaptInventoryAgingBuckets(asRecord(r.buckets)),
+  }))
+  return {
+    as_of_date: str(raw.as_of_date),
+    rows,
+    totals: {
+      total_quantity_on_hand: num(totals.total_quantity_on_hand),
+      total_value: num(totals.total_value),
+      buckets: adaptInventoryAgingBuckets(asRecord(totals.buckets)),
+    },
+  }
+}
+
+// Kertas Kerja Opname (Fase 8 T8.3).
+function adaptOpnameWorksheet(raw: Raw): OpnameWorksheetReport {
+  const opnameRaw = raw.opname == null ? null : asRecord(raw.opname)
+  const totals = asRecord(raw.totals)
+  const rows: OpnameWorksheetRow[] = asArray(raw.rows).map((r) => ({
+    product_id: num(r.product_id),
+    product_code: str(r.product_code),
+    product_name: str(r.product_name),
+    warehouse_id: num(r.warehouse_id),
+    warehouse_name: str(r.warehouse_name),
+    unit_name: str(r.unit_name),
+    system_quantity: num(r.system_quantity),
+    physical_quantity: r.physical_quantity == null ? null : num(r.physical_quantity),
+    difference_quantity: num(r.difference_quantity),
+    average_cost: num(r.average_cost),
+    difference_value: num(r.difference_value),
+    counted: Boolean(r.counted),
+  }))
+  return {
+    opname: opnameRaw == null ? null : {
+      id: num(opnameRaw.id),
+      opname_number: str(opnameRaw.opname_number),
+      opname_date: opnameRaw.opname_date == null ? null : str(opnameRaw.opname_date),
+      status: str(opnameRaw.status),
+      warehouse_id: num(opnameRaw.warehouse_id),
+      warehouse_name: str(opnameRaw.warehouse_name),
+    },
+    rows,
+    totals: {
+      line_count: num(totals.line_count),
+      counted_lines: num(totals.counted_lines),
+      total_system_quantity: num(totals.total_system_quantity),
+      total_physical_quantity: num(totals.total_physical_quantity),
+      total_difference_quantity: num(totals.total_difference_quantity),
+      total_difference_value: num(totals.total_difference_value),
+    },
   }
 }
 
@@ -451,8 +639,211 @@ function adaptAccountStatement(raw: Raw): AccountStatementReport {
   }
 }
 
+// Laba Ditahan (Fase 9 T9.1).
+function adaptRetainedEarnings(raw: Raw): RetainedEarningsReport {
+  return {
+    beginning_retained_earnings: num(raw.beginning_retained_earnings),
+    net_income: num(raw.net_income),
+    ending_retained_earnings: num(raw.ending_retained_earnings),
+  }
+}
+
+// Perubahan Ekuitas (Fase 9 T9.2).
+function adaptEquityChanges(raw: Raw): EquityChangesReport {
+  const totals = asRecord(raw.totals)
+  const rows: EquityChangeRow[] = asArray(raw.rows).map((r) => ({
+    account_id: r.account_id == null ? null : num(r.account_id),
+    account_code: r.account_code == null ? null : str(r.account_code),
+    account_name: str(r.account_name),
+    opening_balance: num(r.opening_balance),
+    movement: num(r.movement),
+    closing_balance: num(r.closing_balance),
+    is_current_earnings: Boolean(r.is_current_earnings),
+  }))
+  return {
+    rows,
+    totals: {
+      opening_total: num(totals.opening_total),
+      movement_total: num(totals.movement_total),
+      closing_total: num(totals.closing_total),
+    },
+  }
+}
+
+// Arus Kas Metode Langsung (Fase 9 T9.3).
+function adaptCashFlowDirect(raw: Raw): CashFlowDirectReport {
+  const summary = asRecord(raw.summary)
+  const notes = asRecord(raw.notes)
+  const sections: CashFlowDirectSection[] = asArray(raw.sections).map((s) => ({
+    key: str(s.key),
+    label: str(s.label),
+    subtotal_net: num(s.subtotal_net),
+    lines: asArray(s.lines).map((l): CashFlowDirectLine => ({
+      account_id: l.account_id == null ? null : num(l.account_id),
+      account_code: l.account_code == null ? null : str(l.account_code),
+      account_name: str(l.account_name),
+      cash_in: num(l.cash_in),
+      cash_out: num(l.cash_out),
+      net: num(l.net),
+    })),
+  }))
+  return {
+    summary: {
+      opening_cash_balance: num(summary.opening_cash_balance),
+      cash_in: num(summary.cash_in),
+      cash_out: num(summary.cash_out),
+      net_cash_flow: num(summary.net_cash_flow),
+      ending_cash_balance: num(summary.ending_cash_balance),
+    },
+    sections,
+    no_cash_accounts: Boolean(notes.no_cash_accounts),
+  }
+}
+
+// Multi-Periode (Fase 10): sections dengan values[] per kolom periode.
+function adaptMultiPeriodShared(raw: Raw): { periods: BalanceSheetMultiPeriodReport['periods']; sections: MultiPeriodSection[] } {
+  const periods = asArray(raw.periods).map((p) => ({
+    label: str(p.label),
+    start_date: str(p.start_date),
+    end_date: str(p.end_date),
+  }))
+  const sections: MultiPeriodSection[] = asArray(raw.sections).map((s) => ({
+    key: str(s.key),
+    label: str(s.label),
+    totals: asArray(s.totals).map((v) => num(v)),
+    rows: asArray(s.rows).map((r): MultiPeriodRow => ({
+      account_id: r.account_id == null ? null : num(r.account_id),
+      account_code: r.account_code == null ? null : str(r.account_code),
+      account_name: str(r.account_name),
+      account_type: r.account_type == null ? null : str(r.account_type),
+      values: asArray(r.values).map((v) => num(v)),
+    })),
+  }))
+  return { periods, sections }
+}
+
+function adaptProfitLossMultiPeriod(raw: Raw): ProfitLossMultiPeriodReport {
+  const { periods, sections } = adaptMultiPeriodShared(raw)
+  return {
+    periods,
+    sections,
+    summary_totals: asArray(raw.summary_totals).map((t) => ({
+      total_revenue: num(t.total_revenue),
+      total_expense: num(t.total_expense),
+      net_profit_or_loss: num(t.net_profit_or_loss),
+    })),
+  }
+}
+
+function adaptBalanceSheetMultiPeriod(raw: Raw): BalanceSheetMultiPeriodReport {
+  const { periods, sections } = adaptMultiPeriodShared(raw)
+  return {
+    periods,
+    sections,
+    summary_totals: asArray(raw.summary_totals).map((t) => ({
+      total_assets: num(t.total_assets),
+      total_liabilities: num(t.total_liabilities),
+      total_equity: num(t.total_equity),
+      total_liabilities_and_equity: num(t.total_liabilities_and_equity),
+      current_year_profit_or_loss: num(t.current_year_profit_or_loss),
+      is_balanced: Boolean(t.is_balanced),
+    })),
+  }
+}
+
+// Serialisasi periods[] (array of objek) ke bracket-notation karena axios default
+// tidak men-serialize nested array-of-object. Dimensi opsional ikut diserialkan.
+function buildMultiPeriodQuery(params: { periods: MultiPeriodInput[]; department_id?: number; project_id?: number }): string {
+  const usp = new URLSearchParams()
+  params.periods.forEach((p, i) => {
+    usp.append(`periods[${i}][start_date]`, p.start_date)
+    usp.append(`periods[${i}][end_date]`, p.end_date)
+    if (p.label != null) usp.append(`periods[${i}][label]`, p.label)
+  })
+  if (params.department_id != null) usp.append('department_id', String(params.department_id))
+  if (params.project_id != null) usp.append('project_id', String(params.project_id))
+  return usp.toString()
+}
+
+// PPN Keluaran (Fase 11 T11.1).
+function adaptOutputVat(raw: Raw): OutputVatReport {
+  const totals = asRecord(raw.totals)
+  const rows: OutputVatRow[] = asArray(raw.rows).map((r) => ({
+    id: num(r.id),
+    invoice_number: str(r.invoice_number),
+    invoice_date: str(r.invoice_date),
+    customer_name: r.customer_name == null ? null : str(r.customer_name),
+    dpp: num(r.dpp),
+    ppn: num(r.ppn),
+    total: num(r.total),
+  }))
+  return {
+    rows,
+    totals: {
+      invoice_count: num(totals.invoice_count),
+      dpp: num(totals.dpp),
+      ppn: num(totals.ppn),
+      total: num(totals.total),
+    },
+  }
+}
+
+// PPN Masukan (Fase 11 T11.2).
+function adaptInputVat(raw: Raw): InputVatReport {
+  const totals = asRecord(raw.totals)
+  const rows: InputVatRow[] = asArray(raw.rows).map((r) => ({
+    id: num(r.id),
+    bill_number: str(r.bill_number),
+    bill_date: str(r.bill_date),
+    vendor_invoice_number: r.vendor_invoice_number == null ? null : str(r.vendor_invoice_number),
+    vendor_name: r.vendor_name == null ? null : str(r.vendor_name),
+    dpp: num(r.dpp),
+    ppn: num(r.ppn),
+    total: num(r.total),
+  }))
+  return {
+    rows,
+    totals: {
+      bill_count: num(totals.bill_count),
+      dpp: num(totals.dpp),
+      ppn: num(totals.ppn),
+      total: num(totals.total),
+    },
+  }
+}
+
 function adaptResponse<T>(res: ApiResponse<unknown>, adapt: (raw: Raw) => T): ApiResponse<T> {
   return { ...res, data: adapt(asRecord(res.data)) }
+}
+
+// E-Faktur DJP export (Fase 12): backend men-stream file CSV siap-unduh (bukan
+// JSON adapter). Ambil sebagai blob lalu picu unduhan di browser. Nama file
+// diambil dari header Content-Disposition, dengan fallback bila absen.
+async function downloadEfaktur(kind: 'sales' | 'purchase', params: ReportParams): Promise<void> {
+  const { token, activeCompanyId } = useAuthStore.getState()
+  const response = await axios.get<Blob>(`${import.meta.env.VITE_API_BASE_URL}/api/reports/tax/efaktur/${kind}`, {
+    params,
+    responseType: 'blob',
+    headers: {
+      Accept: 'text/csv',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(activeCompanyId ? { 'X-Company-ID': String(activeCompanyId) } : {}),
+    },
+  })
+
+  const disposition = String(response.headers['content-disposition'] ?? '')
+  const match = disposition.match(/filename="?([^"]+)"?/)
+  const fallback = kind === 'sales' ? 'efaktur-keluaran.csv' : 'efaktur-masukan.csv'
+  const filename = match?.[1] ?? fallback
+
+  const url = URL.createObjectURL(response.data)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }
 
 async function getRawApiResponse<T>(path: string, params: ReportParams): Promise<ApiResponse<T>> {
@@ -475,6 +866,30 @@ export const reportsApi = {
       .get<unknown, ApiResponse<unknown>>('/reports/general-ledger', { params })
       .then((res) => adaptResponse(res, adaptGeneralLedger)),
 
+  // Buku Besar - Rincian (Fase 7 T7.1): endpoint sama dengan mode=detail.
+  generalLedgerDetail: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/general-ledger', { params: { ...params, mode: 'detail' } })
+      .then((res) => adaptResponse(res, adaptGeneralLedgerDetail)),
+
+  // Laporan Jurnal (Fase 7 T7.2/T7.3): daftar jurnal + filter sumber.
+  journalList: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/journals', { params })
+      .then((res) => adaptResponse(res, adaptJournalList)),
+
+  // Umur Persediaan (Fase 8 T8.1).
+  inventoryAging: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/inventory/reports/aging', { params })
+      .then((res) => adaptResponse(res, adaptInventoryAging)),
+
+  // Kertas Kerja Opname (Fase 8 T8.3).
+  opnameWorksheet: (params: ReportParams & { opname_id?: number }) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/inventory/reports/opname-worksheet', { params })
+      .then((res) => adaptResponse(res, adaptOpnameWorksheet)),
+
   trialBalance: (params: ReportParams) =>
     http
       .get<unknown, ApiResponse<unknown>>('/reports/trial-balance', { params })
@@ -494,6 +909,52 @@ export const reportsApi = {
     http
       .get<unknown, ApiResponse<unknown>>('/reports/cash-flow', { params })
       .then((res) => adaptResponse(res, adaptCashFlow)),
+
+  // Arus Kas Metode Langsung (Fase 9 T9.3).
+  cashFlowDirect: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/cash-flow-direct', { params })
+      .then((res) => adaptResponse(res, adaptCashFlowDirect)),
+
+  // Laba Ditahan (Fase 9 T9.1).
+  retainedEarnings: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/retained-earnings', { params })
+      .then((res) => adaptResponse(res, adaptRetainedEarnings)),
+
+  // Perubahan Ekuitas (Fase 9 T9.2).
+  equityChanges: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/equity-changes', { params })
+      .then((res) => adaptResponse(res, adaptEquityChanges)),
+
+  // Laba Rugi Multi-Periode (Fase 10 T10.3).
+  profitLossMultiPeriod: (params: { periods: MultiPeriodInput[]; department_id?: number; project_id?: number }) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/profit-loss/multi-period?' + buildMultiPeriodQuery(params))
+      .then((res) => adaptResponse(res, adaptProfitLossMultiPeriod)),
+
+  // Neraca Multi-Periode (Fase 10 T10.2).
+  balanceSheetMultiPeriod: (params: { periods: MultiPeriodInput[]; department_id?: number; project_id?: number }) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/balance-sheet/multi-period?' + buildMultiPeriodQuery(params))
+      .then((res) => adaptResponse(res, adaptBalanceSheetMultiPeriod)),
+
+  // PPN Keluaran (Fase 11 T11.1).
+  outputVat: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/tax/output-vat', { params })
+      .then((res) => adaptResponse(res, adaptOutputVat)),
+
+  // PPN Masukan (Fase 11 T11.2).
+  inputVat: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/tax/input-vat', { params })
+      .then((res) => adaptResponse(res, adaptInputVat)),
+
+  // Ekspor E-Faktur DJP CSV (Fase 12) — unduhan blob, bukan adapter tabel.
+  downloadEfakturSales: (params: ReportParams) => downloadEfaktur('sales', params),
+  downloadEfakturPurchase: (params: ReportParams) => downloadEfaktur('purchase', params),
 
   financialSummary: (params: ReportParams) =>
     http
@@ -685,5 +1146,275 @@ export const reportsApi = {
             difference_accumulated_depreciation: num(raw.difference_accumulated_depreciation),
           },
         }
+      }),
+
+  arOutstanding: (params: { customer_id?: number; as_of_date?: string }) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/sales/ar/open-invoices', { params })
+      .then((res): ApiResponse<ArOutstandingReport> => {
+        const rows: ArOutstandingRow[] = asArray(res.data).map((r) => ({
+          invoice_id: num(r.invoice_id),
+          invoice_number: str(r.invoice_number),
+          invoice_date: r.invoice_date == null ? null : str(r.invoice_date),
+          due_date: r.due_date == null ? null : str(r.due_date),
+          customer_id: num(r.customer_id),
+          customer_name: str(r.customer_name),
+          grand_total: num(r.grand_total),
+          paid_amount: num(r.paid_amount),
+          returned_amount: num(r.returned_amount),
+          balance_due: num(r.balance_due),
+          status: str(r.status),
+        }))
+        const totals = rows.reduce(
+          (acc, r) => ({ grand_total: acc.grand_total + r.grand_total, paid_amount: acc.paid_amount + r.paid_amount, balance_due: acc.balance_due + r.balance_due }),
+          { grand_total: 0, paid_amount: 0, balance_due: 0 },
+        )
+        return { ...res, data: { rows, totals } }
+      }),
+
+  apOutstanding: (params: { vendor_id?: number; as_of_date?: string }) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/purchase/ap/open-bills', { params })
+      .then((res): ApiResponse<ApOutstandingReport> => {
+        const rows: ApOutstandingRow[] = asArray(res.data).map((r) => ({
+          bill_id: num(r.bill_id),
+          bill_number: str(r.bill_number),
+          bill_date: r.bill_date == null ? null : str(r.bill_date),
+          due_date: r.due_date == null ? null : str(r.due_date),
+          vendor_id: num(r.vendor_id),
+          vendor_name: str(r.vendor_name),
+          grand_total: num(r.grand_total),
+          paid_amount: num(r.paid_amount),
+          returned_amount: num(r.returned_amount),
+          balance_due: num(r.balance_due),
+          status: str(r.status),
+        }))
+        const totals = rows.reduce(
+          (acc, r) => ({ grand_total: acc.grand_total + r.grand_total, paid_amount: acc.paid_amount + r.paid_amount, balance_due: acc.balance_due + r.balance_due }),
+          { grand_total: 0, paid_amount: 0, balance_due: 0 },
+        )
+        return { ...res, data: { rows, totals } }
+      }),
+
+  arCustomerSummary: (params: { as_of_date?: string }) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/sales/ar/customer-summary', { params })
+      .then((res): ApiResponse<ArCustomerSummaryReport> => {
+        const rows: ArCustomerSummaryRow[] = asArray(res.data).map((r) => ({
+          customer_id: num(r.customer_id),
+          customer_name: str(r.customer_name),
+          debit: num(r.debit),
+          credit: num(r.credit),
+          balance: num(r.balance),
+          unapplied_deposit_total: num(r.unapplied_deposit_total),
+          net_customer_exposure: num(r.net_customer_exposure),
+        }))
+        const totals = rows.reduce(
+          (acc, r) => ({ balance: acc.balance + r.balance, net_customer_exposure: acc.net_customer_exposure + r.net_customer_exposure }),
+          { balance: 0, net_customer_exposure: 0 },
+        )
+        return { ...res, data: { rows, totals } }
+      }),
+
+  salesSummary: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/sales/summary', { params })
+      .then((res): ApiResponse<SalesSummaryReport> => {
+        const raw = asRecord(res.data)
+        const rows: SalesSummaryRow[] = asArray(raw.rows).map((r) => ({
+          period: str(r.period),
+          invoice_count: num(r.invoice_count),
+          subtotal: num(r.subtotal),
+          tax: num(r.tax),
+          total: num(r.total),
+        }))
+        const t = asRecord(raw.totals)
+        return {
+          ...res,
+          data: {
+            rows,
+            totals: { invoice_count: num(t.invoice_count), subtotal: num(t.subtotal), tax: num(t.tax), total: num(t.total) },
+          },
+        }
+      }),
+
+  salesByCustomer: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/sales/by-customer', { params })
+      .then((res): ApiResponse<SalesByCustomerReport> => {
+        const raw = asRecord(res.data)
+        const rows: SalesByCustomerRow[] = asArray(raw.rows).map((r) => ({
+          customer_id: num(r.customer_id),
+          customer_name: str(r.customer_name),
+          invoice_count: num(r.invoice_count),
+          subtotal: num(r.subtotal),
+          tax: num(r.tax),
+          total: num(r.total),
+        }))
+        const t = asRecord(raw.totals)
+        return {
+          ...res,
+          data: {
+            rows,
+            totals: { invoice_count: num(t.invoice_count), subtotal: num(t.subtotal), tax: num(t.tax), total: num(t.total) },
+          },
+        }
+      }),
+
+  productHistory: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/product-history', { params })
+      .then((res): ApiResponse<ProductHistoryReport> => {
+        const raw = asRecord(res.data)
+        const rows: ProductHistoryRow[] = asArray(raw.rows).map((r) => ({
+          date: str(r.date),
+          document_type: str(r.document_type) as ProductHistoryDocumentType,
+          document_id: num(r.document_id),
+          document_number: str(r.document_number),
+          direction: r.direction === 'in' ? 'in' : 'out',
+          contact_name: typeof r.contact_name === 'string' ? r.contact_name : null,
+          description: typeof r.description === 'string' ? r.description : null,
+          quantity: num(r.quantity),
+          unit_price: num(r.unit_price),
+          line_total: num(r.line_total),
+          department_name: typeof r.department_name === 'string' ? r.department_name : null,
+          project_name: typeof r.project_name === 'string' ? r.project_name : null,
+        }))
+        const rawProduct = asRecord(raw.product)
+        const product = rawProduct.id === undefined
+          ? null
+          : {
+              id: num(rawProduct.id),
+              product_code: str(rawProduct.product_code),
+              product_name: str(rawProduct.product_name),
+            }
+        const t = asRecord(raw.totals)
+        return {
+          ...res,
+          data: {
+            product,
+            rows,
+            totals: {
+              purchased_qty: num(t.purchased_qty),
+              purchased_value: num(t.purchased_value),
+              sold_qty: num(t.sold_qty),
+              sold_value: num(t.sold_value),
+              adjusted_qty: num(t.adjusted_qty),
+              avg_buy_price: num(t.avg_buy_price),
+              avg_sell_price: num(t.avg_sell_price),
+            },
+          },
+        }
+      }),
+
+  salesByProduct: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/sales/by-product', { params })
+      .then((res): ApiResponse<SalesByProductReport> => {
+        const raw = asRecord(res.data)
+        const rows: SalesByProductRow[] = asArray(raw.rows).map((r) => ({
+          product_id: num(r.product_id),
+          product_code: str(r.product_code),
+          product_name: str(r.product_name),
+          qty: num(r.qty),
+          subtotal: num(r.subtotal),
+          total: num(r.total),
+        }))
+        const t = asRecord(raw.totals)
+        return {
+          ...res,
+          data: {
+            rows,
+            totals: { qty: num(t.qty), subtotal: num(t.subtotal), total: num(t.total) },
+          },
+        }
+      }),
+
+  purchaseSummary: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/purchase/summary', { params })
+      .then((res): ApiResponse<PurchaseSummaryReport> => {
+        const raw = asRecord(res.data)
+        const rows: PurchaseSummaryRow[] = asArray(raw.rows).map((r) => ({
+          period: str(r.period),
+          bill_count: num(r.bill_count),
+          subtotal: num(r.subtotal),
+          tax: num(r.tax),
+          total: num(r.total),
+        }))
+        const t = asRecord(raw.totals)
+        return {
+          ...res,
+          data: {
+            rows,
+            totals: { bill_count: num(t.bill_count), subtotal: num(t.subtotal), tax: num(t.tax), total: num(t.total) },
+          },
+        }
+      }),
+
+  purchaseByVendor: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/purchase/by-vendor', { params })
+      .then((res): ApiResponse<PurchaseByVendorReport> => {
+        const raw = asRecord(res.data)
+        const rows: PurchaseByVendorRow[] = asArray(raw.rows).map((r) => ({
+          vendor_id: num(r.vendor_id),
+          vendor_name: str(r.vendor_name),
+          bill_count: num(r.bill_count),
+          subtotal: num(r.subtotal),
+          tax: num(r.tax),
+          total: num(r.total),
+        }))
+        const t = asRecord(raw.totals)
+        return {
+          ...res,
+          data: {
+            rows,
+            totals: { bill_count: num(t.bill_count), subtotal: num(t.subtotal), tax: num(t.tax), total: num(t.total) },
+          },
+        }
+      }),
+
+  purchaseByProduct: (params: ReportParams) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/reports/purchase/by-product', { params })
+      .then((res): ApiResponse<PurchaseByProductReport> => {
+        const raw = asRecord(res.data)
+        const rows: PurchaseByProductRow[] = asArray(raw.rows).map((r) => ({
+          product_id: num(r.product_id),
+          product_code: str(r.product_code),
+          product_name: str(r.product_name),
+          qty: num(r.qty),
+          subtotal: num(r.subtotal),
+          total: num(r.total),
+        }))
+        const t = asRecord(raw.totals)
+        return {
+          ...res,
+          data: {
+            rows,
+            totals: { qty: num(t.qty), subtotal: num(t.subtotal), total: num(t.total) },
+          },
+        }
+      }),
+
+  apVendorSummary: (params: { as_of_date?: string }) =>
+    http
+      .get<unknown, ApiResponse<unknown>>('/purchase/ap/vendor-summary', { params })
+      .then((res): ApiResponse<ApVendorSummaryReport> => {
+        const rows: ApVendorSummaryRow[] = asArray(res.data).map((r) => ({
+          vendor_id: num(r.vendor_id),
+          vendor_name: str(r.vendor_name),
+          debit: num(r.debit),
+          credit: num(r.credit),
+          balance: num(r.balance),
+          unapplied_deposit_total: num(r.unapplied_deposit_total),
+          net_vendor_exposure: num(r.net_vendor_exposure),
+        }))
+        const totals = rows.reduce(
+          (acc, r) => ({ balance: acc.balance + r.balance, net_vendor_exposure: acc.net_vendor_exposure + r.net_vendor_exposure }),
+          { balance: 0, net_vendor_exposure: 0 },
+        )
+        return { ...res, data: { rows, totals } }
       }),
 }

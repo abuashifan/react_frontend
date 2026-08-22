@@ -76,7 +76,8 @@ export interface PurchaseOrderListParams {
   page: number
   per_page: number
   search?: string
-  status?: PurchaseOrderStatus
+  /** Satu status, atau beberapa dipisah koma (mis. "draft,posted"). */
+  status?: string
   vendor_id?: number
   date_from?: string
   date_to?: string

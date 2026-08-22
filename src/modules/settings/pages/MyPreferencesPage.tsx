@@ -8,6 +8,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/useToast'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { cn, fieldErrorClass } from '@/lib/utils'
 import { http } from '@/services/http'
 
 const passwordSchema = z.object({
@@ -32,8 +35,11 @@ export default function MyPreferencesPage() {
       })
       toast.success('Password berhasil diubah.')
       pwForm.reset()
-    } catch {
-      toast.error('Gagal mengubah password. Pastikan password saat ini benar.')
+    } catch (passwordError) {
+      // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
+      // bukan hanya toast generik.
+      applyApiValidationErrors(passwordError, pwForm.setError)
+      toast.error(getApiErrorMessage(passwordError, 'Gagal mengubah password. Pastikan password saat ini benar.'))
     } finally {
       setChanging(false)
     }
@@ -43,9 +49,9 @@ export default function MyPreferencesPage() {
     <WorkspaceLayout title="Preferensi Saya" breadcrumb={[{ label: 'Pengaturan' }, { label: 'Preferensi Saya' }]}>
       <form onSubmit={(e) => void onChangePassword(e)} className="space-y-4">
         <FormSection title="Ganti Password">
-          <div className="flex flex-col gap-1"><Label htmlFor="settings-preferences-current-password" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Password Saat Ini <span className="text-red-500">*</span></Label><Input id="settings-preferences-current-password" {...pwForm.register('current_password')} type="password" className="h-9 text-[13px]" />{pwForm.formState.errors.current_password && <p className="text-[11px] text-red-500">{pwForm.formState.errors.current_password.message}</p>}</div>
-          <div className="flex flex-col gap-1"><Label htmlFor="settings-preferences-new-password" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Password Baru <span className="text-red-500">*</span></Label><Input id="settings-preferences-new-password" {...pwForm.register('new_password')} type="password" className="h-9 text-[13px]" />{pwForm.formState.errors.new_password && <p className="text-[11px] text-red-500">{pwForm.formState.errors.new_password.message}</p>}</div>
-          <div className="flex flex-col gap-1"><Label htmlFor="settings-preferences-new-password-confirmation" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Konfirmasi Password Baru <span className="text-red-500">*</span></Label><Input id="settings-preferences-new-password-confirmation" {...pwForm.register('new_password_confirmation')} type="password" className="h-9 text-[13px]" />{pwForm.formState.errors.new_password_confirmation && <p className="text-[11px] text-red-500">{pwForm.formState.errors.new_password_confirmation.message}</p>}</div>
+          <div className="flex flex-col gap-1"><Label htmlFor="settings-preferences-current-password" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Password Saat Ini <span className="text-red-500">*</span></Label><Input id="settings-preferences-current-password" {...pwForm.register('current_password')} type="password" className={cn('h-9 text-[13px]', fieldErrorClass(pwForm.formState.errors.current_password))} /><FieldError message={pwForm.formState.errors.current_password?.message} /></div>
+          <div className="flex flex-col gap-1"><Label htmlFor="settings-preferences-new-password" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Password Baru <span className="text-red-500">*</span></Label><Input id="settings-preferences-new-password" {...pwForm.register('new_password')} type="password" className={cn('h-9 text-[13px]', fieldErrorClass(pwForm.formState.errors.new_password))} /><FieldError message={pwForm.formState.errors.new_password?.message} /></div>
+          <div className="flex flex-col gap-1"><Label htmlFor="settings-preferences-new-password-confirmation" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Konfirmasi Password Baru <span className="text-red-500">*</span></Label><Input id="settings-preferences-new-password-confirmation" {...pwForm.register('new_password_confirmation')} type="password" className={cn('h-9 text-[13px]', fieldErrorClass(pwForm.formState.errors.new_password_confirmation))} /><FieldError message={pwForm.formState.errors.new_password_confirmation?.message} /></div>
         </FormSection>
         <div className="flex justify-end">
           <Button type="submit" disabled={changing} className="h-9 bg-[#e39774] px-6 text-[13px] hover:bg-[#d4845e]">

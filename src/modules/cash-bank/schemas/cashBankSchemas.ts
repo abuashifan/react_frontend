@@ -1,6 +1,9 @@
 import { z } from 'zod'
 
 export const cashReceiptSchema = z.object({
+  // Kosong = penomoran otomatis. Diisi hanya saat mode "Manual" dipilih di
+  // form — lihat `numberMode` di CashReceiptFormPage.
+  receipt_number: z.string().optional(),
   receipt_date: z.string().min(1, 'Tanggal wajib diisi'),
   cash_bank_account_id: z.number({ message: 'Akun kas/bank wajib dipilih' }),
   contact_id: z.number().nullable().optional(),

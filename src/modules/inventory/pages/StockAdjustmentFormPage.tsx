@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -13,16 +13,21 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { useStockAdjustment, useStockAdjustmentMutations } from '../hooks/useStockAdjustmentList'
 import { stockAdjustmentSchema, stockAdjustmentLineSchema, type StockAdjustmentFormValues } from '../schemas/stockAdjustmentSchema'
+import { stockAdjustmentApi } from '../services/stockAdjustmentApi'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation, FormValidationAbort } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import type { StockAdjustmentLineType } from '../types/stockAdjustment.types'
-import { toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
 
 interface EditableLine {
   product_id: number | null
@@ -38,7 +43,16 @@ interface SelectOption { value: number; label: string; sublabel?: string }
 const DEFAULT_LINE: EditableLine = { product_id: null, warehouse_id: null, adjustment_type: 'increase', quantity: 1, unit_cost: 0, reason: '' }
 
 export default function StockAdjustmentFormPage() {
-  const navigate = useNavigate()
+  const { id } = useParams()
+  // `/inventory/adjustments/create` dan `/inventory/adjustments/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <StockAdjustmentFormPageContent key={id ?? 'create'} />
+}
+
+function StockAdjustmentFormPageContent() {
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -48,7 +62,7 @@ export default function StockAdjustmentFormPage() {
   const adj = data?.data
   const { create, update, approve, post, void: voidAdj } = useStockAdjustmentMutations()
 
-  const { control, getValues, register, handleSubmit, setValue, reset, formState: { errors, isSubmitting } } = useForm<StockAdjustmentFormValues>({
+  const { control, getValues, register, handleSubmit, setValue, reset, setError, formState: { errors, isSubmitting } } = useForm<StockAdjustmentFormValues>({
     resolver: zodResolver(stockAdjustmentSchema),
     defaultValues: { adjustment_date: new Date().toISOString().slice(0, 10) },
   })
@@ -56,6 +70,10 @@ export default function StockAdjustmentFormPage() {
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
   const [lineErrors, setLineErrors] = useState<Record<number, Partial<Record<keyof EditableLine, string>>>>({})
+  // Terpisah dari `lineErrors` di atas: yang itu hasil validasi sisi klien dan
+  // dirender per-sel, sedangkan ini error baris dari backend (lines.0.quantity)
+  // yang ditandai oleh LineItemsTable.
+  const [apiLineErrors, setApiLineErrors] = useState<LineItemErrorMap>({})
   const [preloadedProducts, setPreloadedProducts] = useState<Map<number, SelectOption>>(new Map())
   const [preloadedWarehouses, setPreloadedWarehouses] = useState<Map<number, SelectOption>>(new Map())
   const [isVoidOpen, setVoidOpen] = useState(false)
@@ -139,6 +157,7 @@ export default function StockAdjustmentFormPage() {
       setLines([{ ...DEFAULT_LINE }])
     }
     formDraft.discardDraft()
+    formDraft.clearDraft()
     toast.success('Draft lokal dibuang.')
   }
 
@@ -161,39 +180,58 @@ export default function StockAdjustmentFormPage() {
     return valid
   }
 
-  const handleSave = handleSubmit(async (values) => {
-    if (lines.length === 0) { toast.error('Tambahkan minimal satu item.'); return }
-    if (!validateLines()) { toast.error('Periksa kembali item yang belum lengkap.'); return }
-
-    const linePayloads = lines.map((l) => ({
-      product_id: l.product_id!,
-      warehouse_id: l.warehouse_id!,
-      adjustment_type: l.adjustment_type,
-      quantity: l.quantity,
-      unit_cost: l.unit_cost || null,
-      reason: l.reason || null,
-    }))
-    try {
-      if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines: linePayloads })
-        formDraft.clearDraft()
-        toast.success('Penyesuaian berhasil dibuat.')
-        navigate(`/inventory/adjustments/${res.data.id}`)
-      } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads } })
-        formDraft.clearDraft()
-        toast.success('Penyesuaian berhasil diperbarui.')
+  const { saveAndClose, navProps } = useRecordFormNavigation<StockAdjustmentFormValues>({
+    id,
+    basePath: '/inventory/adjustments',
+    createLabel: 'Penyesuaian Stok Baru',
+    sequenceQueryKey: ['inventory', 'stock-adjustments', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await stockAdjustmentApi.adjacent(recordId)).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      // Validasi baris milik form ini jalan sebelum request; melemparnya sebagai
+      // FormValidationAbort menghentikan simpan sekaligus navigasi.
+      if (lines.length === 0) {
+        toast.error('Tambahkan minimal satu item.')
+        throw new FormValidationAbort()
       }
-    } catch { toast.error('Gagal menyimpan penyesuaian.') }
+      if (!validateLines()) {
+        toast.error('Periksa kembali item yang belum lengkap.')
+        throw new FormValidationAbort()
+      }
+
+      const linePayloads = lines.map((l) => ({
+        product_id: l.product_id!,
+        warehouse_id: l.warehouse_id!,
+        adjustment_type: l.adjustment_type,
+        quantity: l.quantity,
+        unit_cost: l.unit_cost || null,
+        reason: l.reason || null,
+      }))
+      if (creating) await create.mutateAsync({ ...values, lines: linePayloads })
+      else await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads } })
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setApiLineErrors({})
+    },
+    successMessage: (creating) => (creating ? 'Penyesuaian berhasil dibuat.' : 'Penyesuaian berhasil diperbarui.'),
+    onError: (saveError) => {
+      // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
+      // bukan hanya toast generik "Gagal menyimpan".
+      setApiLineErrors(getApiLineErrors(saveError))
+      applyApiValidationErrors(saveError, setError)
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan penyesuaian.'))
+    },
+    canSave: isEditable,
   })
 
   const handleApprove = async () => {
     try { await approve.mutateAsync(Number(id)); formDraft.clearDraft(); toast.success('Penyesuaian di-approve.') }
-    catch { toast.error('Gagal approve.') }
+    catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve.')) }
   }
   const handlePost = async () => {
     try { await post.mutateAsync(Number(id)); formDraft.clearDraft(); toast.success('Penyesuaian berhasil diposting.') }
-    catch { toast.error('Gagal posting.') }
+    catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting.')) }
   }
   const handleVoid = async (reason: string) => {
     await voidAdj.mutateAsync({ id: Number(id), reason })
@@ -266,7 +304,7 @@ export default function StockAdjustmentFormPage() {
   if (isEditable) {
     const savePerm = isCreate ? 'inventory.adjustments.create' : 'inventory.adjustments.edit'
     if (can(savePerm)) {
-      actions.push({ id: 'save', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+      actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
     }
   }
   if (isEditable && formDraft.isRestored) {
@@ -300,32 +338,40 @@ export default function StockAdjustmentFormPage() {
         status={status}
         readOnly={!isEditable}
         breadcrumb={[{ label: 'Inventori' }, { label: 'Penyesuaian', path: '/inventory/adjustments' }, { label: isCreate ? 'Buat Penyesuaian' : (adj?.number ?? '') }]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={adj?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={adj?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
-              <Input {...register('adjustment_date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.adjustment_date && <p className="text-[11px] text-red-500">{errors.adjustment_date.message}</p>}
+              <Input {...register('adjustment_date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.adjustment_date))} />
+              <FieldError message={errors.adjustment_date?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Gudang Default</Label>
-              <SearchableSelect value={warehouseId ?? null} onChange={(v) => setValue('warehouse_id', v)} onSearch={gudangApi.search} placeholder="Pilih gudang..." disabled={!isEditable} />
+              <SearchableSelect value={warehouseId ?? null} onChange={(v) => setValue('warehouse_id', v)} onSearch={gudangApi.search} placeholder="Pilih gudang..." disabled={!isEditable} error={errors.warehouse_id?.message} selectedOptions={adj?.warehouse ? [{ value: adj.warehouse.id, label: adj.warehouse.name }] : []} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Alasan</Label>
-              <Input {...register('reason')} disabled={!isEditable} placeholder="Alasan penyesuaian..." className="h-9 text-[13px]" />
+              <Input {...register('reason')} disabled={!isEditable} placeholder="Alasan penyesuaian..." className={cn('h-9 text-[13px]', fieldErrorClass(errors.reason))} />
+              <FieldError message={errors.reason?.message} />
             </div>
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
           </FormSection>
 
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Item</p>
             <LineItemsTable
+          errors={apiLineErrors}
               items={lines} columns={columns}
               onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
               onRemove={(i) => { setLines((prev) => prev.filter((_, idx) => idx !== i)); setLineErrors((prev) => { const n: typeof prev = {}; Object.keys(prev).forEach((k) => { const ki = Number(k); if (ki !== i) n[ki > i ? ki - 1 : ki] = prev[ki] }); return n }) }}

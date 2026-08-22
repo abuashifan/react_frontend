@@ -11,16 +11,22 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { usePurchaseOrder, usePurchaseOrderMutations } from '../hooks/usePurchaseOrderList'
 import { toPurchaseOrderPayload } from '../services/purchaseOrderAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { purchaseOrderSchema, type PurchaseOrderFormValues } from '../schemas/purchaseOrderSchema'
+import { purchaseOrderApi } from '../services/purchaseOrderApi'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
-import { toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine {
   product_id: number | null
@@ -47,6 +53,21 @@ function toPurchaseOrderLine(line: EditableLine): Omit<EditableLine, 'received_q
 }
 
 export default function PurchaseOrderFormPage() {
+  const { id } = useParams()
+  const [outerSearchParams] = useSearchParams()
+  // `/purchase/orders/create` dan `/purchase/orders/:id` merender komponen yang sama, dan
+  // React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya param
+  // yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang sebelumnya
+  // dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru setiap kali id
+  // record berubah. Mode create juga bisa datang dari `?from_request=<PR id>` (konversi PR →
+  // PO) — itu dianggap instance yang berbeda dari create kosong biasa, jadi ikut jadi bagian
+  // key supaya berpindah antar "create dari PR X" dan "create kosong" juga dapat instance bersih.
+  const fromRequestId = outerSearchParams.get('from_request')
+  return <PurchaseOrderFormPageContent key={id ?? fromRequestId ?? 'create'} />
+}
+
+function PurchaseOrderFormPageContent() {
+  // `navigate` masih dipakai alur deep link yang tidak lahir dari tab.
   const navigate = useNavigate()
   const { id } = useParams()
   const [searchParams] = useSearchParams()
@@ -58,12 +79,18 @@ export default function PurchaseOrderFormPage() {
   const po = data?.data
   const { create, createFromRequest, update, approve, confirm, cancel } = usePurchaseOrderMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<PurchaseOrderFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<PurchaseOrderFormValues>({
     resolver: zodResolver(purchaseOrderSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+
+  // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
+
+  // ditolak ikut ditandai, bukan cuma toast.
+
+  const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
   const [isCreatingFromRequest, setCreatingFromRequest] = useState(false)
 
   const status = (po?.status ?? 'draft') as DocumentStatus
@@ -77,7 +104,7 @@ export default function PurchaseOrderFormPage() {
       setCreatingFromRequest(true)
       createFromRequest.mutateAsync(Number(prId))
         .then((res) => navigate(`/purchase/orders/${res.data.id}`, { replace: true }))
-        .catch(() => toast.error('Gagal membuat PO dari PR.'))
+        .catch((convertError: unknown) => toast.error(getApiErrorMessage(convertError, 'Gagal membuat PO dari PR.')))
         .finally(() => setCreatingFromRequest(false))
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -96,27 +123,54 @@ export default function PurchaseOrderFormPage() {
     }
   }, [po, reset])
 
-  const handleSave = handleSubmit(async (values) => {
-    try {
-      const payload = toPurchaseOrderPayload(values, lines.map(toPurchaseOrderLine))
-      if (isCreate) {
-        const res = await create.mutateAsync(payload)
-        toast.success('Purchase Order berhasil dibuat.')
-        navigate(`/purchase/orders/${res.data.id}`)
-      } else {
-        await update.mutateAsync({ id: Number(id), payload })
-        toast.success('Purchase Order berhasil diperbarui.')
-      }
-    } catch { toast.error('Gagal menyimpan Purchase Order.') }
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<PurchaseOrderFormValues, EditableLine[]>({
+    draftKey: `purchase.order.${id ?? searchParams.get('from_request') ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
   })
 
-  const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); toast.success('PO di-approve.') } catch { toast.error('Gagal approve PO.') } }
-  const handleConfirm = async () => { try { await confirm.mutateAsync(Number(id)); toast.success('PO dikonfirmasi.') } catch { toast.error('Gagal konfirmasi PO.') } }
-  const handleCancel = async () => { try { await cancel.mutateAsync(Number(id)); toast.success('PO dibatalkan.') } catch { toast.error('Gagal membatalkan PO.') } }
+  const { saveAndClose, navProps } = useRecordFormNavigation<PurchaseOrderFormValues>({
+    id,
+    basePath: '/purchase/orders',
+    createLabel: 'Purchase Order Baru',
+    sequenceQueryKey: ['purchase', 'orders', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await purchaseOrderApi.adjacent(recordId)).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      const payload = toPurchaseOrderPayload(values, lines.map(toPurchaseOrderLine))
+      if (creating) await create.mutateAsync(payload)
+      else await update.mutateAsync({ id: Number(id), payload })
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setLineErrors({})
+    },
+    successMessage: (creating) => (creating ? 'Purchase Order berhasil dibuat.' : 'Purchase Order berhasil diperbarui.'),
+    onError: (saveError) => {
+      // Backend memakai nama kolom DB (`order_date`, `expected_date`), form memakai
+      // `date` dan `expected_delivery_date` — lihat `toPurchaseOrderPayload`.
+      setLineErrors(getApiLineErrors(saveError))
+      applyApiValidationErrors(saveError, setError, { order_date: 'date', expected_date: 'expected_delivery_date' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Purchase Order.'))
+    },
+    canSave: isEditable,
+  })
+
+  const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); toast.success('PO di-approve.') } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve PO.')) } }
+  const handleConfirm = async () => { try { await confirm.mutateAsync(Number(id)); toast.success('PO dikonfirmasi.') } catch (confirmError) { toast.error(getApiErrorMessage(confirmError, 'Gagal konfirmasi PO.')) } }
+  const handleCancel = async () => { try { await cancel.mutateAsync(Number(id)); toast.success('PO dibatalkan.') } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan PO.')) } }
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('purchase.orders.create')) {
-    actions.push({ id: 'save', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (po?.status === 'draft' && can('purchase.orders.approve')) {
@@ -190,7 +244,12 @@ export default function PurchaseOrderFormPage() {
       status={status}
       readOnly={!isEditable}
       breadcrumb={[{ label: 'Pembelian' }, { label: 'Purchase Order', path: '/purchase/orders' }, { label: isCreate ? 'Buat PO' : (po?.number ?? '') }]}
-      bottomBar={<DocumentActionBar documentStatus={status} documentNumber={po?.number} actions={actions} />}
+      headerActions={
+        <>
+          <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+          <DocumentActionBar placement="header" documentStatus={status} documentNumber={po?.number} actions={actions} />
+        </>
+      }
     >
       <div className="space-y-3">
         <FormSection title="Header">
@@ -209,8 +268,8 @@ export default function PurchaseOrderFormPage() {
 
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
-            <Input {...register('date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-            {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+            <Input {...register('date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+            <FieldError message={errors.date?.message} />
           </div>
 
           <div className="flex flex-col gap-1">
@@ -221,13 +280,15 @@ export default function PurchaseOrderFormPage() {
               onSearch={paymentTermsApi.search}
               placeholder="Pilih syarat pembayaran..."
               disabled={!isEditable}
+              error={errors.payment_term_id?.message}
               selectedOptions={po?.payment_term ? [{ value: po.payment_term.id, label: po.payment_term.name }] : []}
             />
           </div>
 
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tgl Pengiriman</Label>
-            <Input {...register('expected_delivery_date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
+            <Input {...register('expected_delivery_date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.expected_delivery_date))} />
+            <FieldError message={errors.expected_delivery_date?.message} />
           </div>
 
           {po?.purchase_request_number && (
@@ -239,13 +300,15 @@ export default function PurchaseOrderFormPage() {
 
           <div className="flex flex-col gap-1 md:col-span-2">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-            <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+            <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+            <FieldError message={errors.notes?.message} />
           </div>
         </FormSection>
 
         <div>
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Item</p>
           <LineItemsTable
+          errors={lineErrors}
             items={lines}
             columns={columns}
             onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}

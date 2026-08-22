@@ -1,6 +1,20 @@
+import { Fragment } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn, formatCurrency } from '@/lib/utils'
+import type { LineItemErrorMap } from '@/lib/apiError'
+
+/**
+ * Cocokkan nama field dari backend dengan kolom tabel.
+ *
+ * `column.id` tidak selalu sama persis dengan nama field backend — mis. kolom
+ * `product` untuk field `product_id`, atau kolom `discount` untuk
+ * `discount_value`. Pencocokan dibuat toleran supaya sel yang benar ikut ditandai;
+ * kalau tetap tidak ketemu, pesannya tetap tampil sebagai pesan baris.
+ */
+function fieldMatchesColumn(field: string, columnId: string): boolean {
+  return field === columnId || field.startsWith(`${columnId}_`) || columnId.startsWith(`${field}_`)
+}
 
 export interface LineItemColumn<T> {
   id: string
@@ -18,7 +32,13 @@ export interface LineItemColumn<T> {
 interface LineItemsTableProps<T> {
   items: T[]
   columns: LineItemColumn<T>[]
-  onAdd: () => void
+  /**
+   * Tombol "+ Tambah Item" bawaan. Kalau tidak diisi, tombolnya tidak dirender
+   * sama sekali — dipakai form yang menambah baris dari kontrol lain (mis.
+   * `SearchableSelect` di atas tabel), sehingga barisnya datang sudah terisi
+   * data alih-alih kosong.
+   */
+  onAdd?: () => void
   onRemove: (index: number) => void
   onUpdate: (index: number, field: string, value: unknown) => void
   getSubtotal?: (item: T) => number
@@ -26,6 +46,30 @@ interface LineItemsTableProps<T> {
   addLabel?: string
   emptyLabel?: string
   currency?: string
+  /**
+   * Error per baris dari backend (lihat `getApiLineErrors`). Baris yang punya
+   * error ditandai merah dan pesannya ditampilkan di bawah baris tersebut.
+   */
+  errors?: LineItemErrorMap
+  /**
+   * Tambahkan garis pembatas vertikal antar kolom, membuat tabel terbaca
+   * sebagai satu grid bordered utuh (gaya spreadsheet) alih-alih sel kosong
+   * berisi input yang masing-masing punya border/rounded sendiri. Dipakai
+   * bersama input "flush" (`border-0 rounded-none`) di kolom pemanggil —
+   * tanpa itu tabel akan punya dua border yang tumpang tindih.
+   */
+  bordered?: boolean
+  /**
+   * Baris ringkasan opsional di bawah baris terakhir (mis. Total). Callback
+   * mengembalikan satu atau beberapa `<tr>`; komponen hanya menyediakan
+   * `<tfoot>` beserta garis pemisahnya — isinya sepenuhnya milik pemanggil,
+   * sama seperti `column.render`.
+   *
+   * `cellCount` adalah jumlah sel per baris (kolom `#`, semua kolom data,
+   * Subtotal bila ada, dan kolom aksi) supaya `colSpan` bisa dihitung tanpa
+   * menebak jumlah kolom internal.
+   */
+  footer?: (items: T[], cellCount: number) => React.ReactNode
 }
 
 /** Reusable horizontal table for transaction line items. */
@@ -40,14 +84,19 @@ export function LineItemsTable<T>({
   addLabel = 'Tambah Item',
   emptyLabel = 'Belum ada item',
   currency = 'IDR',
+  errors,
+  bordered = false,
+  footer,
 }: LineItemsTableProps<T>) {
+  const columnCount = columns.length + (getSubtotal ? 3 : 2)
+  const dividerClass = bordered ? 'border-r border-[#e2e8f0] last:border-r-0' : undefined
   return (
     <div className="overflow-hidden rounded-lg border border-[#d9e2e5] bg-white">
       <div className="overflow-x-auto">
         <table className="min-w-full border-collapse text-[13px]">
           <thead>
             <tr className="bg-[#eeeeee]">
-              <th className="w-8 px-2 py-2 text-center text-[11px] font-bold uppercase text-[#64748b]">
+              <th className={cn('w-8 px-2 py-2 text-center text-[11px] font-bold uppercase text-[#64748b]', dividerClass)}>
                 #
               </th>
               {columns.map((column) => (
@@ -58,6 +107,7 @@ export function LineItemsTable<T>({
                     column.align === 'right' && 'text-right',
                     column.align === 'center' && 'text-center',
                     !column.align && 'text-left',
+                    dividerClass,
                   )}
                   style={column.width ? { minWidth: column.width } : undefined}
                 >
@@ -65,7 +115,7 @@ export function LineItemsTable<T>({
                 </th>
               ))}
               {getSubtotal && (
-                <th className="min-w-[120px] px-2.5 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">
+                <th className={cn('min-w-[120px] px-2.5 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]', dividerClass)}>
                   Subtotal
                 </th>
               )}
@@ -76,29 +126,49 @@ export function LineItemsTable<T>({
             {items.length === 0 ? (
               <tr>
                 <td
-                  colSpan={columns.length + (getSubtotal ? 3 : 2)}
+                  colSpan={columnCount}
                   className="px-3 py-8 text-center text-[13px] text-[#94a3b8]"
                 >
                   {emptyLabel}
                 </td>
               </tr>
             ) : (
-              items.map((item, index) => (
+              items.map((item, index) => {
+                const rowErrors = errors?.[index]
+                const rowMessages = rowErrors ? Object.values(rowErrors) : []
+
+                return (
+                <Fragment key={index}>
                 <tr
-                  key={index}
                   className={cn(
                     'group border-b border-[#f1f5f9] last:border-b-0',
                     !isReadOnly && 'hover:bg-[#f8fbfc]',
+                    rowMessages.length > 0 && 'bg-red-50/60',
                   )}
                 >
-                  <td className="px-2 py-2 text-center text-[12px] text-[#94a3b8]">{index + 1}</td>
-                  {columns.map((column) => (
+                  <td
+                    className={cn(
+                      'px-2 py-2 text-center text-[12px] text-[#94a3b8]',
+                      rowMessages.length > 0 && 'border-l-2 border-red-500 font-semibold text-red-600',
+                      dividerClass,
+                    )}
+                  >
+                    {index + 1}
+                  </td>
+                  {columns.map((column) => {
+                    const cellHasError = rowErrors
+                      ? Object.keys(rowErrors).some((field) => fieldMatchesColumn(field, column.id))
+                      : false
+
+                    return (
                     <td
                       key={column.id}
                       className={cn(
                         'px-2.5 py-2 align-top',
                         column.align === 'right' && 'text-right tabular-nums',
                         column.align === 'center' && 'text-center',
+                        cellHasError && 'rounded-sm ring-1 ring-inset ring-red-400',
+                        dividerClass,
                       )}
                     >
                       {column.render({
@@ -108,9 +178,10 @@ export function LineItemsTable<T>({
                         onUpdate: (field, value) => onUpdate(index, field, value),
                       })}
                     </td>
-                  ))}
+                    )
+                  })}
                   {getSubtotal && (
-                    <td className="px-2.5 py-2 text-right font-medium tabular-nums text-[#24323a]">
+                    <td className={cn('px-2.5 py-2 text-right font-medium tabular-nums text-[#24323a]', dividerClass)}>
                       {formatCurrency(getSubtotal(item), currency)}
                     </td>
                   )}
@@ -127,13 +198,35 @@ export function LineItemsTable<T>({
                     )}
                   </td>
                 </tr>
-              ))
+
+                {/* Pesan error baris ditampilkan utuh di sini — kolomnya mungkin tidak
+                    punya padanan sel (mis. field backend tanpa kolom di tabel), jadi
+                    jangan sampai ada pesan yang hilang. */}
+                {rowMessages.length > 0 && (
+                  <tr className="border-b border-[#f1f5f9] bg-red-50/60">
+                    <td />
+                    <td colSpan={columnCount - 1} className="px-2.5 pb-2 pt-0">
+                      {rowMessages.map((message) => (
+                        <p key={message} className="text-[11px] text-red-500">{message}</p>
+                      ))}
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
+                )
+              })
             )}
           </tbody>
+
+          {footer && (
+            <tfoot className="border-t border-[#d9e2e5] bg-[#f8fafc]">
+              {footer(items, columnCount)}
+            </tfoot>
+          )}
         </table>
       </div>
 
-      {!isReadOnly && (
+      {!isReadOnly && onAdd && (
         <Button
           type="button"
           variant="ghost"

@@ -1,0 +1,160 @@
+export interface AdminUser {
+  id: number
+  name: string
+  email: string
+  is_platform_admin: true
+}
+
+export interface AdminLoginResponse {
+  user: AdminUser
+  token: string
+  token_type?: string
+}
+
+export interface AdminPlan {
+  id: number
+  code: string
+  name: string
+  max_companies: number
+  max_users: number
+  /** Tier yang jumlah perusahaannya diisi manual per client. */
+  is_custom: boolean
+}
+
+/** Fase 3 — siklus langganan. `state: null` berarti client belum pernah berlangganan sama sekali (BUKAN kedaluwarsa). */
+export interface ClientSubscription {
+  state: 'none' | 'active' | 'grace' | 'expired' | 'cancelled'
+  ends_at: string | null
+  /** Negatif kalau sudah lewat (termasuk masa tenggang). `null` kalau belum pernah berlangganan. */
+  days_remaining: number | null
+  billing_cycle: 'monthly' | 'yearly' | null
+  price: string | null
+  plan_name: string | null
+  history: ClientSubscriptionHistoryRow[]
+}
+
+export interface ClientSubscriptionHistoryRow {
+  id: number
+  plan_name: string | null
+  billing_cycle: string
+  price: string
+  starts_at: string | null
+  ends_at: string | null
+  cancelled_at: string | null
+}
+
+/** Fase 4 — kuota penyimpanan, satu baris per perusahaan milik client. */
+export interface ClientCompanyStorage {
+  id: number
+  name: string
+  status: string
+  used_bytes: number
+  quota_bytes: number
+  percent_used: number
+  can_accept: boolean
+  /** null berarti belum pernah diukur `storage:measure` — dianggap 0, bukan penuh. */
+  measured_at: string | null
+  near_limit: boolean
+}
+
+export interface ClientDueSoonRow {
+  id: number
+  name: string
+  email: string
+  phone: string | null
+  state: 'active' | 'grace'
+  days_remaining: number | null
+}
+
+export interface ClientUser {
+  id: number
+  name: string
+  email: string
+  phone: string | null
+  /** Tempat client bekerja — informasi kontak, bukan perusahaan tenant miliknya. */
+  company_name: string | null
+  job_title: string | null
+  address: string | null
+  notes: string | null
+  status: string
+  plan: Pick<AdminPlan, 'id' | 'code' | 'name' | 'max_companies' | 'is_custom'> | null
+  /** null berarti kuota mengikuti paket; angka berarti kuota khusus. */
+  company_quota: number | null
+  user_quota: number | null
+  /** Add-on user: dibeli per client, menambah slot di semua perusahaannya. */
+  extra_users: number
+  companies_used: number
+  companies_limit: number
+  limit_source: 'plan' | 'custom'
+  /** Batas user per perusahaan milik client ini. */
+  users_limit: number
+  /** Client yang paketnya diturunkan setelah terlanjur punya banyak perusahaan. */
+  over_quota: boolean
+  last_login_at: string | null
+  created_at: string | null
+  subscription: ClientSubscription
+}
+
+export interface ClientUserListParams {
+  page?: number
+  per_page?: number
+  search?: string
+  status?: string
+  plan_id?: number
+}
+
+/** Bagian yang sama antara membuat dan mengubah client. */
+export interface ClientProfileFields {
+  phone?: string | null
+  company_name?: string | null
+  job_title?: string | null
+  address?: string | null
+  notes?: string | null
+  plan_id?: number | null
+  company_quota?: number | null
+  user_quota?: number | null
+  extra_users?: number | null
+}
+
+export interface CreateClientPayload extends ClientProfileFields {
+  name: string
+  email: string
+  password: string
+}
+
+export interface UpdateClientPayload extends ClientProfileFields {
+  name?: string
+  email?: string
+  status?: string
+}
+
+/** Owner yang jatah kuotanya terpakai oleh sebuah perusahaan. */
+export interface DeletedCompanyOwner {
+  id: number
+  name: string
+  email: string
+  quota_used: number
+  quota_limit: number
+  quota_available: boolean
+}
+
+/** Alasan sebuah perusahaan belum bisa dipulihkan. */
+export interface RestoreBlocker {
+  code: string
+  message: string
+}
+
+export interface DeletedCompany {
+  id: number
+  name: string
+  code: string | null
+  slug: string | null
+  deleted_at: string | null
+  /** Batas akhir pemulihan — lewat ini dihapus permanen oleh sweep harian. */
+  purge_after: string | null
+  days_remaining: number | null
+  is_expired: boolean
+  owners: DeletedCompanyOwner[]
+  can_restore: boolean
+  restore_blocker: RestoreBlocker | null
+}

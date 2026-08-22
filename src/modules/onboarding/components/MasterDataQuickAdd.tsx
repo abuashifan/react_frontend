@@ -2,12 +2,15 @@ import { useState } from 'react'
 import { Check, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { getApiErrorMessage, getApiValidationErrors } from '@/lib/apiError'
 
 interface FieldDef {
   name: string
   label: string
   type?: 'text' | 'number'
   placeholder?: string
+  /** Default `true`. Set `false` untuk field opsional (mis. Alamat) -- lihat backend Store*Request. */
+  required?: boolean
 }
 
 export interface QuickAddItem {
@@ -44,7 +47,7 @@ export function MasterDataQuickAdd({
   const isFulfilled = items.length >= minRequired
 
   const handleSubmit = async () => {
-    const missing = fields.find((f) => !form[f.name]?.trim())
+    const missing = fields.find((f) => f.required !== false && !form[f.name]?.trim())
     if (missing) {
       setError(`${missing.label} wajib diisi`)
       return
@@ -60,8 +63,12 @@ export function MasterDataQuickAdd({
       await onAdd(data)
       setForm({})
       setIsAdding(false)
-    } catch {
-      setError('Gagal menyimpan. Coba lagi.')
+    } catch (submitError) {
+      // Toast generik "Periksa kembali isian yang ditandai." tidak ada gunanya di
+      // form sederhana ini yang tidak menandai field satu-satu -- tampilkan detail
+      // per field dari backend kalau ada, supaya penyebabnya kelihatan langsung.
+      const fieldErrors = Object.values(getApiValidationErrors(submitError))
+      setError(fieldErrors.length > 0 ? fieldErrors.join(' ') : getApiErrorMessage(submitError, 'Gagal menyimpan. Coba lagi.'))
     } finally {
       setIsSubmitting(false)
     }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -11,31 +11,50 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
+import { cn, fieldErrorClass } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useProforma, useProformaMutations } from '../hooks/useProformaList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { salesInvoiceApi } from '../services/salesInvoiceApi'
 import { proformaSchema, type ProformaFormValues } from '../schemas/proformaSchema'
+import { proformaApi } from '../services/proformaApi'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine {
   product_id: number | null
+  product?: { id: number; code: string; name: string } | null
   description: string
   quantity: number
   unit_price: number
   discount_percent: number
 }
 
-const DEFAULT_LINE: EditableLine = { product_id: null, description: '', quantity: 1, unit_price: 0, discount_percent: 0 }
+const DEFAULT_LINE: EditableLine = { product_id: null, product: null, description: '', quantity: 1, unit_price: 0, discount_percent: 0 }
 
 function lineSubtotal(l: EditableLine) {
   return l.quantity * l.unit_price * (1 - l.discount_percent / 100)
 }
 
 export default function ProformaFormPage() {
-  const navigate = useNavigate()
+  const { id } = useParams()
+  // `/sales/proformas/create` dan `/sales/proformas/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <ProformaFormPageContent key={id ?? 'create'} />
+}
+
+function ProformaFormPageContent() {
+  const { openRecordTab } = useRecordTab()
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -45,12 +64,18 @@ export default function ProformaFormPage() {
   const proforma = data?.data
   const { create, update, issue, accept, cancel } = useProformaMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<ProformaFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<ProformaFormValues>({
     resolver: zodResolver(proformaSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+
+  // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
+
+  // ditolak ikut ditandai, bukan cuma toast.
+
+  const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
   const [isConverting, setConverting] = useState(false)
 
   const status = (proforma?.status ?? 'draft') as DocumentStatus
@@ -66,6 +91,7 @@ export default function ProformaFormPage() {
       })
       setLines(proforma.lines.map((l) => ({
         product_id: l.product_id,
+        product: l.product,
         description: l.description,
         quantity: l.quantity,
         unit_price: l.unit_price,
@@ -74,53 +100,84 @@ export default function ProformaFormPage() {
     }
   }, [proforma, reset])
 
-  const handleSaveDraft = handleSubmit(async (values) => {
-    try {
-      if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines })
-        toast.success('Proforma berhasil dibuat.')
-        navigate(`/sales/proformas/${res.data.id}`)
-      } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
-        toast.success('Proforma berhasil diperbarui.')
-      }
-    } catch { toast.error('Gagal menyimpan Proforma.') }
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<ProformaFormValues, EditableLine[]>({
+    draftKey: `sales.proforma.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
+  })
+
+  const { saveAndClose, navProps } = useRecordFormNavigation<ProformaFormValues>({
+    id,
+    basePath: '/sales/proformas',
+    createLabel: 'Proforma Baru',
+    sequenceQueryKey: ['sales', 'proformas', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await proformaApi.adjacent(recordId)).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      if (creating) await create.mutateAsync({ ...values, lines })
+      else await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setLineErrors({})
+    },
+    successMessage: (creating) => (creating ? 'Proforma berhasil dibuat.' : 'Proforma berhasil diperbarui.'),
+    onError: (saveError) => {
+      // Backend memvalidasi tanggal sebagai `proforma_date`, form memakai `date`.
+      setLineErrors(getApiLineErrors(saveError))
+      applyApiValidationErrors(saveError, setError, { proforma_date: 'date' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Proforma.'))
+    },
+    canSave: isEditable,
   })
 
   const handleIssue = async () => {
     try {
       await issue.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Proforma berhasil diterbitkan.')
-    } catch { toast.error('Gagal menerbitkan proforma.') }
+    } catch (issueError) { toast.error(getApiErrorMessage(issueError, 'Gagal menerbitkan proforma.')) }
   }
 
   const handleAccept = async () => {
     try {
       await accept.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Proforma diterima.')
-    } catch { toast.error('Gagal menerima proforma.') }
+    } catch (acceptError) { toast.error(getApiErrorMessage(acceptError, 'Gagal menerima proforma.')) }
   }
 
   const handleCancel = async () => {
     try {
       await cancel.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Proforma dibatalkan.')
-    } catch { toast.error('Gagal membatalkan proforma.') }
+    } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan proforma.')) }
   }
 
   const handleConvertToInvoice = async () => {
     setConverting(true)
     try {
       const res = await salesInvoiceApi.createFromProforma(Number(id))
+      formDraft.clearDraft()
       toast.success('Invoice berhasil dibuat dari proforma.')
-      navigate(`/sales/invoices/${res.data.id}`)
-    } catch { toast.error('Gagal membuat invoice dari proforma.') }
+      // Hasil konversi jadi tab baru, bukan menggantikan tab proforma asalnya.
+      openRecordTab({ label: res.data.number, path: `/sales/invoices/${res.data.id}` })
+    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat invoice dari proforma.')) }
     finally { setConverting(false) }
   }
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('sales.proformas.create')) {
-    actions.push({ id: 'save_draft', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
+    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (proforma?.status === 'draft' && can('sales.proformas.update')) {
@@ -145,11 +202,15 @@ export default function ProformaFormPage() {
       render: ({ item, isReadOnly, onUpdate }) => (
         <SearchableSelect
           value={item.product_id}
-          onChange={(v) => onUpdate('product_id', v)}
+          onChange={(v, opt) => {
+            onUpdate('product_id', v)
+            onUpdate('product', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null)
+          }}
           onSearch={produkApi.search}
           placeholder="Pilih produk..."
           disabled={isReadOnly}
           size="sm"
+          selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []}
         />
       ),
     },
@@ -208,7 +269,12 @@ export default function ProformaFormPage() {
         { label: 'Proforma', path: '/sales/proformas' },
         { label: isCreate ? 'Buat Proforma' : (proforma?.number ?? '') },
       ]}
-      bottomBar={<DocumentActionBar documentStatus={status} documentNumber={proforma?.number} actions={actions} />}
+      headerActions={
+        <>
+          <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+          <DocumentActionBar placement="header" documentStatus={status} documentNumber={proforma?.number} actions={actions} />
+        </>
+      }
     >
       <div className="space-y-3">
         <FormSection title="Header">
@@ -231,8 +297,8 @@ export default function ProformaFormPage() {
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
               Tanggal <span className="text-red-500">*</span>
             </Label>
-            <Input {...register('date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-            {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+            <Input {...register('date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+            <FieldError message={errors.date?.message} />
           </div>
 
           {proforma?.sales_order_number && (
@@ -244,13 +310,15 @@ export default function ProformaFormPage() {
 
           <div className="flex flex-col gap-1 md:col-span-2">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-            <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+            <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+            <FieldError message={errors.notes?.message} />
           </div>
         </FormSection>
 
         <div>
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Item</p>
           <LineItemsTable
+          errors={lineErrors}
             items={lines}
             columns={columns}
             onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}

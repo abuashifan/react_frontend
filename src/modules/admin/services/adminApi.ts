@@ -1,0 +1,136 @@
+import { adminHttp } from '@/services/adminHttp'
+import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
+import type {
+  AdminLoginResponse,
+  AdminPlan,
+  ClientCompanyStorage,
+  ClientDueSoonRow,
+  ClientUser,
+  ClientUserListParams,
+  CreateClientPayload,
+  DeletedCompany,
+  UpdateClientPayload,
+} from '@/types/admin.types'
+
+/** Bentuk mentah `listResponse()` backend sebelum diratakan jadi PaginatedResponse. */
+interface BackendPage<T> {
+  data: T[]
+  current_page: number
+  last_page: number
+  per_page: number
+  total: number
+}
+
+function toPaginated<T>(page: BackendPage<T>): PaginatedResponse<T> {
+  return {
+    success: true,
+    data: page.data,
+    meta: {
+      current_page: page.current_page,
+      last_page: page.last_page,
+      per_page: page.per_page,
+      total: page.total,
+    },
+  }
+}
+
+export const adminApi = {
+  async login(email: string, password: string): Promise<ApiResponse<AdminLoginResponse>> {
+    return adminHttp.post<unknown, ApiResponse<AdminLoginResponse>>('/admin/login', {
+      email,
+      password,
+    })
+  },
+
+  async logout(): Promise<void> {
+    await adminHttp.post('/admin/logout')
+  },
+
+  async plans(): Promise<ApiResponse<AdminPlan[]>> {
+    return adminHttp.get<unknown, ApiResponse<AdminPlan[]>>('/admin/plans')
+  },
+
+  async clients(params: ClientUserListParams): Promise<PaginatedResponse<ClientUser>> {
+    const response = await adminHttp.get<unknown, ApiResponse<BackendPage<ClientUser>>>(
+      '/admin/clients',
+      { params },
+    )
+
+    return toPaginated(response.data)
+  },
+
+  async client(id: number): Promise<ApiResponse<ClientUser>> {
+    return adminHttp.get<unknown, ApiResponse<ClientUser>>(`/admin/clients/${id}`)
+  },
+
+  async createClient(payload: CreateClientPayload): Promise<ApiResponse<ClientUser>> {
+    return adminHttp.post<unknown, ApiResponse<ClientUser>>('/admin/clients', payload)
+  },
+
+  async updateClient(id: number, payload: UpdateClientPayload): Promise<ApiResponse<ClientUser>> {
+    return adminHttp.patch<unknown, ApiResponse<ClientUser>>(`/admin/clients/${id}`, payload)
+  },
+
+  async updateClientPlan(id: number, planId: number | null): Promise<ApiResponse<ClientUser>> {
+    return adminHttp.patch<unknown, ApiResponse<ClientUser>>(`/admin/clients/${id}/plan`, {
+      plan_id: planId,
+    })
+  },
+
+  async resetClientPassword(id: number, password: string): Promise<void> {
+    await adminHttp.post(`/admin/clients/${id}/reset-password`, { password })
+  },
+
+  async subscribeClient(
+    id: number,
+    payload: { plan_id: number; billing_cycle: 'monthly' | 'yearly' },
+  ): Promise<ApiResponse<ClientUser>> {
+    return adminHttp.post<unknown, ApiResponse<ClientUser>>(`/admin/clients/${id}/subscribe`, payload)
+  },
+
+  async renewClient(
+    id: number,
+    payload?: { plan_id?: number | null; billing_cycle?: 'monthly' | 'yearly' | null },
+  ): Promise<ApiResponse<ClientUser>> {
+    return adminHttp.post<unknown, ApiResponse<ClientUser>>(`/admin/clients/${id}/renew`, payload ?? {})
+  },
+
+  async unlockClient(id: number): Promise<ApiResponse<ClientUser>> {
+    return adminHttp.post<unknown, ApiResponse<ClientUser>>(`/admin/clients/${id}/unlock`)
+  },
+
+  async dueSoonClients(): Promise<ApiResponse<ClientDueSoonRow[]>> {
+    return adminHttp.get<unknown, ApiResponse<ClientDueSoonRow[]>>('/admin/clients/due-soon')
+  },
+
+  async clientStorage(id: number): Promise<ApiResponse<ClientCompanyStorage[]>> {
+    return adminHttp.get<unknown, ApiResponse<ClientCompanyStorage[]>>(`/admin/clients/${id}/storage`)
+  },
+
+  /** Perusahaan terhapus yang masih dalam masa pemulihan. */
+  async deletedCompanies(): Promise<
+    ApiResponse<DeletedCompany[]> & { retentionDays: number }
+  > {
+    const response = await adminHttp.get<unknown, ApiResponse<DeletedCompany[]>>(
+      '/admin/companies/deleted',
+    )
+
+    // `retention_days` dikirim di meta supaya `data` tetap berupa array murni.
+    const retentionDays = response.meta?.retention_days
+    return {
+      ...response,
+      retentionDays: typeof retentionDays === 'number' ? retentionDays : 30,
+    }
+  },
+
+  async restoreCompany(id: number): Promise<ApiResponse<DeletedCompany>> {
+    return adminHttp.post<unknown, ApiResponse<DeletedCompany>>(`/admin/companies/${id}/restore`)
+  },
+
+  /** Hapus permanen — tidak bisa dibatalkan. Nama harus diketik ulang persis. */
+  async purgeCompany(id: number, confirmName: string): Promise<ApiResponse<null>> {
+    return adminHttp.delete<unknown, ApiResponse<null>>(`/admin/companies/${id}/purge`, {
+      data: { confirm_name: confirmName },
+    })
+  },
+}

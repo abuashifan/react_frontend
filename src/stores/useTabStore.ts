@@ -1,5 +1,19 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
+import { clearFormDraftForPath } from '@/lib/formDraftStorage'
+import { useUnsavedFormsStore } from '@/stores/useUnsavedFormsStore'
+
+/**
+ * Menutup tab form = isian yang belum tersimpan memang dibuang user. Draft dan
+ * status "belum tersimpan" harus hilang bersamaan: kalau statusnya tertinggal,
+ * tab create berikutnya dengan path yang sama akan langsung dianggap kotor dan
+ * memblokir Tutup Database / Keluar tanpa ada isian apa pun.
+ */
+function discardFormWork(tab: SecondaryTab): void {
+  if (tab.type !== 'form' || !tab.path) return
+  clearFormDraftForPath(tab.path)
+  useUnsavedFormsStore.getState().markSaved(tab.path)
+}
 
 export type ModuleKey =
   | 'dashboard'
@@ -10,6 +24,7 @@ export type ModuleKey =
   | 'purchase'
   | 'inventory'
   | 'fixed-assets'
+  | 'budget'
   | 'reports'
   | 'settings'
 
@@ -41,6 +56,7 @@ interface TabState {
 }
 
 interface TabActions {
+  resetForCompanyChange: () => void
   setActiveModule: (module: ModuleKey | null) => void
   openRibbon: () => void
   closeRibbon: () => void
@@ -50,6 +66,7 @@ interface TabActions {
   closePrimaryTab: (tabId: string) => void
   setActivePrimaryTab: (tabId: string) => void
   openSecondaryTab: (primaryTabId: string, tab: SecondaryTab) => void
+  replaceSecondaryTab: (primaryTabId: string, fromId: string, tab: SecondaryTab) => boolean
   closeSecondaryTab: (primaryTabId: string, secondaryTabId: string) => void
   setActiveSecondaryTab: (primaryTabId: string, secondaryTabId: string) => void
   updateFormState: (
@@ -72,10 +89,31 @@ export const DASHBOARD_TAB: PrimaryTab = {
   path: '/',
 }
 
+/** Keadaan awal shell: hanya Dashboard, ribbon tertutup. */
+const INITIAL_TAB_STATE: TabState = {
+  activeModule: null,
+  isRibbonOpen: false,
+  isSidebarCollapsed: false,
+  primaryTabs: [DASHBOARD_TAB],
+  activePrimaryTabId: DASHBOARD_TAB.id,
+  secondaryTabs: {},
+  activeSecondaryTabId: {},
+}
+
 function getActiveModuleForTab(tab: PrimaryTab | null): ModuleKey | null {
   if (!tab || tab.id === DASHBOARD_TAB.id) return null
   return tab.module
 }
+
+/**
+ * Tab primer yang menunya sudah dihapus — dibuang saat migrasi.
+ *
+ * `sales-ar`, `purchase-ap` dibuang di v5. `master-data-account-mappings`
+ * dibuang di v6: Pemetaan Akun sekarang hanya ada di Pengaturan, dan rute
+ * `/master-data/account-mappings` ikut dihapus — tanpa dipensiunkan di sini,
+ * user yang tabnya tersimpan di sessionStorage mendarat di rute yang tidak ada.
+ */
+const RETIRED_TAB_IDS = new Set(['sales-ar', 'purchase-ap', 'master-data-account-mappings'])
 
 function createListTab(tab: PrimaryTab): SecondaryTab {
   return {
@@ -90,13 +128,24 @@ function createListTab(tab: PrimaryTab): SecondaryTab {
 export const useTabStore = create<TabState & TabActions>()(
   persist(
     (set, get) => ({
-      activeModule: null,
-      isRibbonOpen: false,
-      isSidebarCollapsed: false,
-      primaryTabs: [DASHBOARD_TAB],
-      activePrimaryTabId: DASHBOARD_TAB.id,
-      secondaryTabs: {},
-      activeSecondaryTabId: {},
+      ...INITIAL_TAB_STATE,
+
+      /**
+       * Tutup semua tab dan kembali ke Dashboard saat perusahaan aktif berganti.
+       *
+       * Wajib, bukan kosmetik: `path` tab memuat id record (`/master-data/coa/5`),
+       * dan tiap tenant punya database sendiri dengan autoincrement dari 1 — jadi
+       * id 5 ADA di kedua perusahaan sebagai akun yang berbeda. Membiarkan tab
+       * terbuka berarti tab berlabel akun perusahaan A menampilkan (dan menyunting)
+       * akun perusahaan B.
+       *
+       * Draft form di localStorage TIDAK dibuang: kuncinya sudah memuat
+       * `company-<id>` (lihat `usePersistentFormDraft`), jadi isian yang belum
+       * tersimpan tetap ada saat user kembali ke perusahaan itu. Karena itu
+       * `clearFormDraftForPath()` sengaja tidak dipanggil di sini, berbeda dengan
+       * `closePrimaryTab()` yang memang berarti user membuang isiannya.
+       */
+      resetForCompanyChange: () => set({ ...INITIAL_TAB_STATE }),
 
       setActiveModule: (module) => set({ activeModule: module }),
 
@@ -151,6 +200,11 @@ export const useTabStore = create<TabState & TabActions>()(
             : [DASHBOARD_TAB, ...state.primaryTabs.filter((tab) => tab.id !== tabId)]
           const nextSecondaryTabs = { ...state.secondaryTabs }
           const nextActiveSecondary = { ...state.activeSecondaryTabId }
+
+          // Tab modul ditutup ikut menutup semua tab form di dalamnya — buang juga
+          // draft-nya, sama seperti menutup tab form satu per satu.
+          ;(state.secondaryTabs[tabId] ?? []).forEach(discardFormWork)
+
           delete nextSecondaryTabs[tabId]
           delete nextActiveSecondary[tabId]
 
@@ -206,11 +260,32 @@ export const useTabStore = create<TabState & TabActions>()(
         }))
       },
 
+      // Dipakai saat dokumen baru tersimpan: tab "…/create" berubah identitas menjadi
+      // tab record-nya, di posisi yang sama, tanpa berkedip jadi dua tab.
+      replaceSecondaryTab: (primaryTabId, fromId, tab) => {
+        const tabs = get().secondaryTabs[primaryTabId] ?? []
+        if (!tabs.some((secondaryTab) => secondaryTab.id === fromId)) return false
+
+        // Bila tab tujuan kebetulan sudah terbuka, tab asal cukup dibuang.
+        const targetExists = tabs.some((secondaryTab) => secondaryTab.id === tab.id)
+        const nextTabs = targetExists
+          ? tabs.filter((secondaryTab) => secondaryTab.id !== fromId)
+          : tabs.map((secondaryTab) => (secondaryTab.id === fromId ? tab : secondaryTab))
+
+        set((state) => ({
+          secondaryTabs: { ...state.secondaryTabs, [primaryTabId]: nextTabs },
+          activeSecondaryTabId: { ...state.activeSecondaryTabId, [primaryTabId]: tab.id },
+        }))
+        return true
+      },
+
       closeSecondaryTab: (primaryTabId, secondaryTabId) => {
         set((state) => {
           const tabs = state.secondaryTabs[primaryTabId] ?? []
           const closingTab = tabs.find((tab) => tab.id === secondaryTabId)
           if (closingTab?.pinned) return state
+
+          if (closingTab) discardFormWork(closingTab)
 
           const closingIndex = tabs.findIndex((tab) => tab.id === secondaryTabId)
           const nextTabs = tabs.filter((tab) => tab.id !== secondaryTabId)
@@ -285,28 +360,40 @@ export const useTabStore = create<TabState & TabActions>()(
     }),
     {
       name: 'seaside-erp-tabs',
-      version: 3,
+      version: 6,
       storage: createJSONStorage(() => sessionStorage),
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') {
-          return {
-            activeModule: null,
-            isRibbonOpen: false,
-            isSidebarCollapsed: false,
-            primaryTabs: [DASHBOARD_TAB],
-            activePrimaryTabId: DASHBOARD_TAB.id,
-            secondaryTabs: {},
-            activeSecondaryTabId: {},
-          }
+          return { ...INITIAL_TAB_STATE }
         }
 
         const state = persistedState as Partial<TabState>
-        const tabs = state.primaryTabs ?? []
-        const primaryTabs = tabs.some((tab) => tab.id === DASHBOARD_TAB.id)
-          ? tabs
-          : [DASHBOARD_TAB, ...tabs]
+        // v4: ribbon Laporan dinonaktifkan. Tab sisa ribbon lama (mis. `reports-financial`
+        // berlabel "Keuangan" menuju /reports/financial) dibuang agar user tidak
+        // menyimpan tab kategori yang sudah tidak punya jalur masuk.
+        const tabs = (state.primaryTabs ?? []).filter(
+          (tab) => tab.module !== 'reports' || tab.id === 'reports',
+        )
+        // v5: item ribbon Piutang (`sales-ar`) dan Hutang (`purchase-ap`)
+        // dihapus — laporannya duplikat dari menu Laporan. Tab yang terlanjur
+        // tersimpan dibuang, sama seperti v4 membuang tab kategori Laporan
+        // lama: path-nya (`/sales/ar`, `/purchase/ap`) cuma <Navigate>
+        // telanjang di luar ProtectedRoute, sehingga AppShell unmount lalu
+        // mount lagi tiap kali effect-nya memaksa URL kembali ke path tab.
+        const live = tabs.filter((tab) => !RETIRED_TAB_IDS.has(tab.id))
+        const primaryTabs = live.some((tab) => tab.id === DASHBOARD_TAB.id)
+          ? live
+          : [DASHBOARD_TAB, ...live]
+        const liveTabIds = new Set(primaryTabs.map((tab) => tab.id))
         const activePrimaryTabId = state.activePrimaryTabId ?? DASHBOARD_TAB.id
         const activeTab = primaryTabs.find((tab) => tab.id === activePrimaryTabId) ?? DASHBOARD_TAB
+
+        const secondaryTabs = Object.fromEntries(
+          Object.entries(state.secondaryTabs ?? {}).filter(([tabId]) => liveTabIds.has(tabId)),
+        )
+        const activeSecondaryTabId = Object.fromEntries(
+          Object.entries(state.activeSecondaryTabId ?? {}).filter(([tabId]) => liveTabIds.has(tabId)),
+        )
 
         return {
           ...state,
@@ -314,8 +401,8 @@ export const useTabStore = create<TabState & TabActions>()(
           isRibbonOpen: false,
           primaryTabs,
           activePrimaryTabId: activeTab.id,
-          secondaryTabs: state.secondaryTabs ?? {},
-          activeSecondaryTabId: state.activeSecondaryTabId ?? {},
+          secondaryTabs,
+          activeSecondaryTabId,
         }
       },
     },

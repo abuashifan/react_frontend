@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { DataTable } from '@/components/shared/table/DataTable'
@@ -9,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn, formatCurrency, formatDate } from '@/lib/utils'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { fixedAssetCategoryApi } from '../services/fixedAssetCategoryApi'
 import { useFixedAssetList } from '../hooks/useFixedAssetList'
 import type { ColumnDef, PaginationState } from '@/components/shared/table/DataTable'
@@ -40,7 +40,7 @@ function StatusBadge({ status }: { status: FixedAssetStatus }) {
 }
 
 export default function FixedAssetListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 25 })
   const [search, setSearch] = useState('')
   const [categoryId, setCategoryId] = useState<number | null>(null)
@@ -65,11 +65,18 @@ export default function FixedAssetListPage() {
       header: 'Kode Aktiva',
       size: 150,
       meta: { sticky: true, stickyLeft: 0 },
-      cell: ({ original }) => (
-        <Link className="font-semibold text-[#326273] hover:text-[#e39774]" to={`/fixed-assets/${original.id}`}>
-          {original.asset_number ?? original.number ?? `FA-${original.id}`}
-        </Link>
-      ),
+      cell: ({ original }) => {
+        const label = original.asset_number ?? original.number ?? `FA-${original.id}`
+        return (
+          <button
+            type="button"
+            className="font-semibold text-[#326273] hover:text-[#e39774]"
+            onClick={() => openRecordTab({ label, path: `/fixed-assets/${original.id}` })}
+          >
+            {label}
+          </button>
+        )
+      },
     },
     {
       id: 'name',
@@ -154,7 +161,10 @@ export default function FixedAssetListPage() {
       sidebar={sidebar}
       action={
         <PermissionGuard permission="fixed_assets.create">
-          <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/fixed-assets/create')}>
+          <Button
+            className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]"
+            onClick={() => openRecordTab({ label: 'Aktiva Baru', path: '/fixed-assets/create' })}
+          >
             <Plus className="mr-1 h-3.5 w-3.5" />
             Tambah Aktiva
           </Button>

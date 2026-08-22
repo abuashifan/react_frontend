@@ -1,5 +1,6 @@
 import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
+import type { AdjacentRecords } from '@/types/common.types'
 import type {
   StockAdjustment,
   StockAdjustmentListParams,
@@ -10,6 +11,10 @@ import type {
 export const stockAdjustmentApi = {
   list: (params: StockAdjustmentListParams) =>
     http.get<unknown, PaginatedResponse<StockAdjustment>>('/inventory/stock-adjustments', { params }),
+
+  /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
+  adjacent: (id?: number) =>
+    http.get<unknown, ApiResponse<AdjacentRecords>>('/inventory/stock-adjustments/adjacent', { params: { id } }),
 
   get: (id: number) =>
     http.get<unknown, ApiResponse<StockAdjustment>>(`/inventory/stock-adjustments/${id}`),

@@ -1,11 +1,15 @@
 import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
-import type { SelectOption } from '@/types/common.types'
+import type { SelectOption, AdjacentRecords } from '@/types/common.types'
 import type { Produk, ProdukListParams, CreateProdukPayload, UpdateProdukPayload } from '../types/produk.types'
 
 export const produkApi = {
   list: (params: ProdukListParams) =>
     http.get<unknown, PaginatedResponse<Produk>>('/master-data/products', { params }),
+
+  /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
+  adjacent: (id?: number) =>
+    http.get<unknown, ApiResponse<AdjacentRecords>>('/master-data/products/adjacent', { params: { id } }),
 
   get: (id: number) =>
     http.get<unknown, ApiResponse<Produk>>(`/master-data/products/${id}`),

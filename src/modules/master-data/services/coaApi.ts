@@ -1,11 +1,15 @@
 import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
-import type { SelectOption } from '@/types/common.types'
+import type { SelectOption, AdjacentRecords } from '@/types/common.types'
 import type { Coa, CoaListParams, CreateCoaPayload, UpdateCoaPayload } from '../types/coa.types'
 
 export const coaApi = {
   list: (params: CoaListParams) =>
     http.get<unknown, PaginatedResponse<Coa>>('/master-data/chart-of-accounts', { params }),
+
+  /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
+  adjacent: (id?: number) =>
+    http.get<unknown, ApiResponse<AdjacentRecords>>('/master-data/chart-of-accounts/adjacent', { params: { id } }),
 
   get: (id: number) =>
     http.get<unknown, ApiResponse<Coa>>(`/master-data/chart-of-accounts/${id}`),
@@ -22,18 +26,49 @@ export const coaApi = {
   deactivate: (id: number) =>
     http.patch<unknown, ApiResponse<void>>(`/master-data/chart-of-accounts/${id}/deactivate`),
 
+  /**
+   * `postable_only` default `true` -- akun induk tidak boleh dipakai
+   * transaksi (lihat `PostableAccount` di backend), jadi pemilih akun tidak
+   * boleh menawarkannya. Kirim `{ postable_only: false }` eksplisit untuk
+   * pemilih yang justru butuh akun induk (mis. "Akun Induk" di CoaFormPage).
+   */
   search: async (
     query: string,
-    filters: Partial<Pick<CoaListParams, 'account_type' | 'is_active' | 'is_cash_bank'>> = {},
+    filters: Partial<Pick<CoaListParams, 'account_type' | 'is_active' | 'is_cash_bank' | 'postable_only'>> = {},
   ): Promise<SelectOption<number>[]> => {
     const res = await http.get<unknown, PaginatedResponse<Coa>>(
       '/master-data/chart-of-accounts',
-      { params: { search: query, per_page: 10, ...filters } },
+      { params: { search: query, per_page: 10, postable_only: true, ...filters } },
     )
     return res.data.map((a) => ({
       value: a.id,
       label: a.account_name,
       sublabel: a.account_code,
+    }))
+  },
+
+  /**
+   * Varian pencarian akun dengan **kode akun sebagai label utama** dan nama
+   * akun sebagai sublabel.
+   *
+   * Dipakai baris jurnal yang memisahkan kolom "No. Akun" dan "Nama Akun":
+   * di sana trigger select harus menampilkan kode, sedangkan namanya tampil di
+   * kolom sebelahnya. `SearchableSelect` menyimpan opsi terpilih apa adanya,
+   * jadi urutan label/sublabel harus sudah benar sejak dari service —
+   * kalau tidak, label trigger berubah setelah user memilih.
+   */
+  searchByCode: async (
+    query: string,
+    filters: Partial<Pick<CoaListParams, 'account_type' | 'is_active' | 'is_cash_bank' | 'postable_only'>> = {},
+  ): Promise<SelectOption<number>[]> => {
+    const res = await http.get<unknown, PaginatedResponse<Coa>>(
+      '/master-data/chart-of-accounts',
+      { params: { search: query, per_page: 10, is_active: true, postable_only: true, ...filters } },
+    )
+    return res.data.map((a) => ({
+      value: a.id,
+      label: a.account_code,
+      sublabel: a.account_name,
     }))
   },
 }

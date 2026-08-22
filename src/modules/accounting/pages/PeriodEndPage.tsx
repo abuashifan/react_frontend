@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { AlertTriangle, CheckCircle2, Loader2, RotateCcw, XCircle } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ConfirmDialog } from '@/components/shared/document/ConfirmDialog'
@@ -8,10 +8,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { useCompanyStore } from '@/stores/useCompanyStore'
-import { cn, formatDate } from '@/lib/utils'
-import { getApiErrorMessage } from '@/lib/apiError'
+import { cn, fieldErrorClass, formatDate } from '@/lib/utils'
+import { getApiErrorMessage, getApiValidationErrors } from '@/lib/apiError'
 import { usePeriodEndChecklist, usePeriodEndMutations, usePeriodEndStatus } from '../hooks/usePeriodEnd'
 import type { PeriodEndChecklistItem, PeriodEndIssue, PeriodEndStatusCode } from '../services/periodEndApi'
 
@@ -74,8 +75,12 @@ export default function PeriodEndPage() {
   const { toast } = useToast()
   const timezone = useCompanyStore((state) => state.activeCompany?.settings?.timezone ?? 'Asia/Jakarta')
   const [period, setPeriod] = useState(() => currentPeriod(timezone))
+  const [prevTimezone, setPrevTimezone] = useState(timezone)
   const [reopenOpen, setReopenOpen] = useState(false)
   const [reopenReason, setReopenReason] = useState('')
+  // Dialog reopen tidak memakai react-hook-form, jadi pesan error field disimpan
+  // manual supaya alasan yang ditolak backend ditandai tepat di textarea-nya.
+  const [reopenError, setReopenError] = useState<string | undefined>()
   const [runConfirmOpen, setRunConfirmOpen] = useState(false)
 
   const statusQuery = usePeriodEndStatus(period)
@@ -86,9 +91,12 @@ export default function PeriodEndPage() {
   const checklistItems = useMemo(() => checklist?.items ?? [], [checklist?.items])
   const queryError = statusQuery.error ?? checklistQuery.error
 
-  useEffect(() => {
+  // Sinkronkan periode saat timezone perusahaan berubah. Dijalankan saat render
+  // (pola "adjust state on prop change" React) agar tidak memicu cascading render dari effect.
+  if (timezone !== prevTimezone) {
+    setPrevTimezone(timezone)
     setPeriod(currentPeriod(timezone))
-  }, [timezone])
+  }
 
   const handleRun = async () => {
     try {
@@ -102,15 +110,18 @@ export default function PeriodEndPage() {
 
   const handleReopen = async () => {
     if (!reopenReason.trim()) {
+      setReopenError('Alasan reopen wajib diisi.')
       toast.error('Alasan reopen wajib diisi.')
       return
     }
+    setReopenError(undefined)
     try {
       await mutations.reopen.mutateAsync(reopenReason.trim())
       toast.success('Periode berhasil dibuka kembali.')
       setReopenOpen(false)
       setReopenReason('')
     } catch (error) {
+      setReopenError(getApiValidationErrors(error).reopen_reason)
       toast.error(getApiErrorMessage(error, 'Gagal membuka kembali periode.'))
     }
   }
@@ -286,11 +297,12 @@ export default function PeriodEndPage() {
             </Label>
             <Textarea
               value={reopenReason}
-              onChange={(event) => setReopenReason(event.target.value)}
+              onChange={(event) => { setReopenReason(event.target.value); setReopenError(undefined) }}
               rows={3}
-              className="resize-none text-[13px]"
+              className={cn('resize-none text-[13px]', fieldErrorClass(reopenError))}
               placeholder="Alasan membuka kembali periode..."
             />
+            <FieldError message={reopenError} />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" className="h-8 text-[13px]" onClick={() => setReopenOpen(false)}>Batal</Button>

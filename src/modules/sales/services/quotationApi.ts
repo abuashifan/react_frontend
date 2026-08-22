@@ -1,6 +1,6 @@
 import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
-import type { SelectOption } from '@/types/common.types'
+import type { SelectOption, AdjacentRecords } from '@/types/common.types'
 import type {
   SalesQuotation,
   SalesQuotationListParams,
@@ -11,6 +11,10 @@ import type {
 export const quotationApi = {
   list: (params: SalesQuotationListParams) =>
     http.get<unknown, PaginatedResponse<SalesQuotation>>('/sales/quotations', { params }),
+
+  /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
+  adjacent: (id?: number) =>
+    http.get<unknown, ApiResponse<AdjacentRecords>>('/sales/quotations/adjacent', { params: { id } }),
 
   get: (id: number) =>
     http.get<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}`),

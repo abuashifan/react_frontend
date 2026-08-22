@@ -1,34 +1,35 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import { Plus, Trash2, AlertTriangle } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { EmptyState } from '@/components/shared/feedback/EmptyState'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { useVendorBillList, useVendorBillMutations } from '../hooks/useVendorBillList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { VendorBill, VendorBillStatus } from '../types/vendorBill.types'
+import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: VendorBillStatus[] = ['draft', 'approved', 'posted', 'partially_paid', 'paid', 'void']
 
 export default function VendorBillListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState<25 | 50 | 100>(25)
-  const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
+  const [prevSearch, setPrevSearch] = useState('')
   const [filterStatuses, setFilterStatuses] = useState<VendorBillStatus[]>([])
   const [dateRange, setDateRange] = useState({ from: '', to: '' })
   const [filterVendor, setFilterVendor] = useState<number | null>(null)
@@ -37,14 +38,10 @@ export default function VendorBillListPage() {
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
   const { void: voidBill } = useVendorBillMutations()
 
-  // Debounce input pencarian agar tidak refetch tiap ketukan.
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setSearch(searchInput.trim())
-      setPage(0)
-    }, 350)
-    return () => window.clearTimeout(timer)
-  }, [searchInput])
+  if (search !== prevSearch) {
+    setPrevSearch(search)
+    setPage(0)
+  }
 
   const { data, isLoading, isFetching, isError, refetch } = useVendorBillList({
     page: page + 1,
@@ -97,16 +94,17 @@ export default function VendorBillListPage() {
       const results = await Promise.allSettled(selectedBills.map((bill) => voidBill.mutateAsync({ id: Number(bill.id), reason })))
       const successCount = results.filter((result) => result.status === 'fulfilled').length
       const failureCount = results.length - successCount
+      const failureDetail = getBulkFailureDetail(results)
 
       if (failureCount === 0) {
         toast.success(`${successCount} tagihan vendor berhasil di-void.`)
       } else if (successCount === 0) {
-        toast.error(`Gagal void ${failureCount} tagihan vendor.`)
+        toast.error(`Gagal void ${failureCount} tagihan vendor.${failureDetail ? ` ${failureDetail}` : ''}`)
       } else {
-        toast.warning(`${successCount} tagihan vendor berhasil di-void, ${failureCount} gagal.`)
+        toast.warning(`${successCount} tagihan vendor berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
       }
-    } catch {
-      toast.error('Gagal memproses bulk void.')
+    } catch (bulkError) {
+      toast.error(getApiErrorMessage(bulkError, 'Gagal memproses bulk void.'))
     } finally {
       setBulkVoidOpen(false)
       setBulkVoidIds([])
@@ -121,7 +119,7 @@ export default function VendorBillListPage() {
       size: 140,
       meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => (
-        <button type="button" onClick={() => navigate(`/purchase/bills/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">
+        <button type="button" onClick={() => openRecordTab({ label: original.number, path: `/purchase/bills/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.number}
         </button>
       ),
@@ -159,21 +157,21 @@ export default function VendorBillListPage() {
     <FilterSidebar
       activeCount={activeFilters}
       onReset={() => {
-        setSearchInput('')
+        setSearch('')
         setFilterStatuses([])
         setDateRange({ from: '', to: '' })
         setFilterVendor(null)
         resetSelection()
       }}
     >
-      <FilterSection title="Cari">
-        <Input
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Nomor bill, vendor..."
-          className="h-8 text-[13px]"
+      <div className="border-b border-[#f1f5f9] px-4 py-3">
+        <ListSearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Cari nomor bill, vendor..."
+          className="w-full max-w-none"
         />
-      </FilterSection>
+      </div>
       <MultiCheckboxFilter
         title="Status"
         options={STATUSES.map((status) => ({ value: status, label: status.replace('_', ' ') }))}
@@ -213,7 +211,7 @@ export default function VendorBillListPage() {
         sidebar={sidebar}
         action={
           <PermissionGuard permission="purchase.bills.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/purchase/bills/create')}>
+            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Tagihan Baru', path: '/purchase/bills/create' })}>
               <Plus className="mr-1 h-3.5 w-3.5" /> Buat Bill
             </Button>
           </PermissionGuard>

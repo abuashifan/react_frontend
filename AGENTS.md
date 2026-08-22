@@ -215,11 +215,142 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 ### 6C. Build Status
 
 ```
-Terakhir dicek  : 2026-06-21 (Audit-13 Period-End, perubahan dokumen saja)
+Terakhir dicek  : 2026-08-20 (Hapus & pulihkan perusahaan — picker client + area super admin)
 npm run build   : ✅ 0 error
-npm run lint    : ✅ 0 error; 35 warning RHF watch/useMemo legacy
-                  di file-file yang tidak diubah pada audit ini
-Playwright      : ✅ Chromium headless; Period-End live + route-mock pada 1440×900,
+npm run lint    : ✅ 0 error, 0 warning
+Backend test    : ✅ php artisan test (1464 tests, 5 skipped) + pint --test clean
+Hapus perusahaan: - Client: menu "⋮" per kartu di CompanyPickerPage (owner saja) →
+                    DeleteCompanyDialog ketik-ulang-nama → DELETE /companies/{id}
+                  - Penghapusan HANYA menyentuh `companies.deleted_at`. Soft delete sudah
+                    menutup semua pintu: EnsureCompanyAccess (Company::find → 404), daftar
+                    picker, dan CompanyQuotaService::usedCount() (slot kuota otomatis bebas)
+                  - Versi pertama sempat menimpa `company_users.status`='removed' dan
+                    `tenant_databases.status`='deleted'. Dibuang karena merusak pemulihan:
+                    status staf yang sengaja dinonaktifkan ikut tertimpa dan tidak bisa
+                    dikembalikan. Migration `repair_legacy_company_deletion_state` memperbaiki
+                    baris yang terlanjur tertimpa
+                  - `select()` kini memakai Rule::exists()->whereNull('deleted_at') — tanpa itu
+                    perusahaan terhapus lolos validasi lalu gagal sebagai 404 findOrFail
+Pulihkan (admin): - Hanya super admin: /admin/companies/deleted (platform.admin), client tidak
+                    punya jalur pemulihan sama sekali
+                  - Masa pemulihan 30 hari (config/companies.php) → lewat itu
+                    `companies:sweep-deleted` (cron harian, ada --dry-run/--days) menghapus
+                    permanen: forceDelete + file SQLite tenant + cascade tabel pusat
+                  - Restore diblokir bila kuota owner penuh (COMPANY_RESTORE_QUOTA_EXCEEDED)
+                    atau masa pemulihan lewat (COMPANY_RESTORE_WINDOW_EXPIRED); daftar admin
+                    menandainya sebelum tombol ditekan, bukan hanya menolak setelahnya
+                  - Purge lebih awal dari halaman admin = jalan keluar membebaskan slot kuota
+                  - Restore hanya menghapus `deleted_at`, jadi status user/produk/transaksi
+                    kembali persis seperti sebelum dihapus (diuji eksplisit)
+                  - CompanyDeletion/Restore/PurgeService ditaruh di `app/Shared/Company/`,
+                    bukan Modules/Companies: dipakai modul Companies DAN Admin, dan hanya
+                    menyentuh model Shared. Menaruhnya di Modules melanggar ModuleBoundariesTest
+                    (preseden sama: Shared/Subscription/CompanyQuotaService)
+Batal wizard    : - OnboardingPage dapat tombol "Batalkan" di header → dialog konfirmasi →
+                    `useCompanySession().requestCloseDatabase()` (tutup database +
+                    /select-company). Sebelumnya wizard TIDAK punya jalan keluar sama sekali:
+                    tidak ada Topbar di sana, jadi user yang salah masuk perusahaan terkunci
+                  - `WizardState` kini menyimpan `companyId`. Wajib: satu kunci sessionStorage
+                    (`seaside-onboarding-wizard`) dipakai bergantian sejak wizard bisa
+                    ditinggalkan — tanpa penanda ini, membuka perusahaan lain yang juga belum
+                    selesai setup memuat langkah + ringkasan milik perusahaan sebelumnya
+Playwright      : ✅ Chromium headless 1280×900, dev server lokal (vite + php artisan serve):
+                    /admin/companies/deleted merender 3 perusahaan terhapus dengan owner,
+                    kuota 2/5, badge "30 hari lagi", tombol Pulihkan + Hapus Permanen;
+                    dialog purge terbuka dengan tombol konfirmasi disabled sebelum nama
+                    diketik; 0 console error
+                  ✅ Alur batal wizard end-to-end (memory router, semua lewat klik): login →
+                    Tambah Perusahaan (AUDIT-Cancel-Wizard-*) → mendarat di wizard langkah 1 →
+                    Batalkan → dialog → "Lanjutkan Setup" tetap di wizard → Batalkan → "Ya,
+                    Pilih Perusahaan" → mendarat di "Pilih Perusahaan"; 0 console error.
+                    Perusahaan uji dipurge setelahnya
+
+Terakhir dicek  : 2026-08-18 (Setup wizard — Template COA apply + Account Mapping picker/sticky nav)
+npm run build   : ✅ 0 error
+npm run lint    : ✅ 0 error, 0 warning
+Backend test    : ✅ php artisan test --filter=CoaTemplateApply (7 passed), --filter=Setup
+                    (14 passed), --filter=AccountMapping (29 passed) + pint --test clean
+Wizard COA/mapping: - Backend: baru `CoaTemplateService` + `config/coa_templates.php` (5 template
+                    gas_agent/trading/service/manufacture/blank, kode akun selaras
+                    `default_account_codes` di account_mappings.php) + endpoint
+                    `GET /setup/coa-templates` & `POST /setup/coa-templates/apply`
+                    (bulk-create transaksional, tag `is_system_default`+`metadata.template_id`,
+                    tolak re-apply kalau akun lama sudah dipakai jurnal/saldo awal, lalu panggil
+                    `AccountMappingStorageService::syncDefaultMappingsFromConfig()`)
+                  - Frontend: Step2TemplateCOA fetch template asli (bukan lagi array statis) +
+                    `CoaTemplateModal` baru (preview full list DataTable in-memory + mode edit
+                    LineItemsTable, ganti accordion lama). Step3AccountMapping dapat tombol cari
+                    per field yang buka `AccountPickerDialog` (diperluas dengan prop
+                    `multiple`/`accountType` untuk mode single-select) selain SearchableSelect
+                    yang sudah ada
+                  - Root cause tombol "Lanjutkan" ke-scroll: `OnboardingPage` pakai `min-h-dvh`
+                    sehingga `<main overflow-y-auto>` tidak pernah jadi scroll container
+                    sungguhan (window yang scroll, bukan main) — diganti `h-dvh`; nav bar Step 2
+                    & Step 3 dibuat `sticky bottom-0` terhadap `<main>`
+                  - Fix bug turunan: field mapping yang diisi lewat AccountPickerDialog sempat
+                    menampilkan fallback "#id" karena SearchableSelect tidak tahu label pilihan
+                    eksternal — ditambahkan `overrideOptions` state di Step3AccountMapping
+Playwright      : ✅ Chromium headless 1280×900, dev server lokal (vite + php artisan serve),
+                    login admin@example.com → company baru (AUDIT-Wizard-Check-*) → wizard step
+                    1-4: pilih template (42 akun asli tampil di modal, bukan ~7 baris lama),
+                    edit+simpan draft, Lanjutkan → POST coa-templates/apply 200, Account Mapping
+                    terisi otomatis (Kas/Bank/Piutang/dst sesuai kode template), tombol cari
+                    dialog pilih akun & label terisi benar, scroll konten panjang → tombol
+                    Lanjutkan tetap terlihat (sticky, boundingBox dalam viewport)
+
+Terakhir dicek  : 2026-08-10 (Setup awal — gate menu Saldo Awal & wizard)
+npm run build   : ✅ 0 error
+npm run lint    : ✅ 0 error, 0 warning
+Backend test    : ✅ php artisan test (1128 passed, 5 skipped) + pint --test clean
+Setup awal      : - Backend: /setup/status & /setup/steps kini mengembalikan `gate`
+                    (is_finalized, has_operational_data, initial_setup_available)
+                  - Frontend: hook useSetupStatus/useSetupGate jadi satu-satunya
+                    sumber status setup; flag `onboarding_completed` di
+                    CompanySettings dihapus (backend tidak pernah mengirimnya,
+                    default `true` di companyApi membuat guard tak pernah aktif)
+                  - RibbonItem punya `setupOnly`; item Saldo Awal hilang dari
+                    ribbon Buku Besar setelah setup final / buku sudah berisi
+                  - Wizard jadi 7 langkah: "Modul Aktif" (step canonical
+                    `module_selection`) disisipkan setelah Informasi Perusahaan
+                  - Posisi langkah wizard disimpan di sessionStorage
+                  - Backend fix: route OpeningBalance {batch} → {id}; implicit
+                    binding berjalan sebelum `company.access` sehingga 8 dari 11
+                    endpoint selalu 500. Regression test menonaktifkan koneksi
+                    tenant sebelum request agar urutan itu benar-benar teruji
+Playwright      : ✅ Chromium headless 1280×900, dev server lokal: ribbon Buku
+                  Besar tanpa Saldo Awal pada perusahaan berjalan, wizard 7
+                  langkah, resume langkah, batch saldo awal tidak lagi stuck
+
+Terakhir dicek  : 2026-08-09 (Jurnal Umum — UX daftar & form)
+npm run build   : ✅ 0 error
+npm run lint    : ✅ 0 error, 0 warning
+Backend test    : ✅ php artisan test --filter=Journal (109 passed) + pint --test clean
+Jurnal Umum     : - DataTable: kolom `sortable`/`sortKey` + hook `useListSort` (server-side sort)
+                  - Backend list jurnal: agregat total_debit/total_credit (withSum), keduanya
+                    masuk allowlist sort; filter `is_system_generated` akhirnya diterapkan
+                  - Bulk void daftar jurnal lewat hook baru `useBulkVoid`
+                  - ListSearchBar: prop `hint` (cakupan pencarian: nomor jurnal + keterangan)
+                  - Form jurnal: header ringkas 1 baris, kolom No. Akun + Nama Akun terpisah,
+                    Keterangan dipindah setelah Kredit, `AmountInput` (pemisah ribuan),
+                    ringkasan Debit/Kredit/Selisih di samping Deskripsi
+                  - Fix: nominal decimal string dari API tidak lagi membuat total tampil "-"
+                  - Kolom daftar final: checkbox | Tanggal | Nomor Jurnal | Deskripsi |
+                    Debit | Kredit | Dibuat Oleh — lebar dijaga agar muat di 1024px
+                    tanpa scroll horizontal (padding sel px-2 + teks bebas di-truncate)
+                  - `created_by_name` dilampirkan backend lewat query terpisah ke DB pusat
+                    (users di central DB, journal_entries di tenant — tidak bisa eager-load)
+Playwright      : ✅ Chromium headless 1024×656, dev server lokal (vite + php artisan serve):
+                  daftar (sort, checkbox, bulk-void dialog) dan form (create + detail posted)
+Fase 7          : - JournalListReportPage (Laporan Jurnal /reports/journals) + filter sumber (?source=)
+                  - GeneralLedgerPage: toggle Ringkasan/Rincian (mode=detail), 2 query terpisah
+                  - reportsApi: adapter journalList + generalLedgerDetail; katalog `gl` diperluas
+                  - Backend: GET /reports/journals + GL mode=detail; fix bug import ChartOfAccount/
+                    Department/Project di JournalEntryLine (journal create sebelumnya 500 di test)
+                  - exhaustive-deps: nilai turunan `?? []` dibungkus useMemo (23 file list/report)
+                  - no-unused-vars: ignoreRestSiblings + pola `^_` (pola omit field)
+                  - set-state-in-effect PeriodEndPage → pola render-phase adjust-state
+                  - react-hooks/incompatible-library dimatikan (inheren RHF watch, bukan bug)
+Playwright (F7) : ✅ Chromium headless; Period-End live + route-mock pada 1440×900,
                   1180×708, 1024×656, dan 390×844; POST run/reopen diintersep
 ```
 

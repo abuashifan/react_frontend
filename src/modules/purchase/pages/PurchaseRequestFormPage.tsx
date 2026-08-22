@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -11,14 +11,21 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
+import { cn, fieldErrorClass } from '@/lib/utils'
 import { usePurchaseRequest, usePurchaseRequestMutations } from '../hooks/usePurchaseRequestList'
 import { toPurchaseRequestPayload } from '../services/purchaseRequestAdapter'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { purchaseRequestSchema, type PurchaseRequestFormValues } from '../schemas/purchaseRequestSchema'
+import { purchaseRequestApi } from '../services/purchaseRequestApi'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine {
   product_id: number | null
@@ -35,7 +42,16 @@ function lineSubtotal(l: EditableLine) {
 }
 
 export default function PurchaseRequestFormPage() {
-  const navigate = useNavigate()
+  const { id } = useParams()
+  // `/purchase/requests/create` dan `/purchase/requests/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <PurchaseRequestFormPageContent key={id ?? 'create'} />
+}
+
+function PurchaseRequestFormPageContent() {
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -45,12 +61,18 @@ export default function PurchaseRequestFormPage() {
   const pr = data?.data
   const { create, update, submit, approve, reject, cancel } = usePurchaseRequestMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<PurchaseRequestFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<PurchaseRequestFormValues>({
     resolver: zodResolver(purchaseRequestSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+
+  // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
+
+  // ditolak ikut ditandai, bukan cuma toast.
+
+  const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
 
   const status = (pr?.status ?? 'draft') as DocumentStatus
   const isEditable = isCreate || pr?.status === 'draft'
@@ -69,40 +91,66 @@ export default function PurchaseRequestFormPage() {
     }
   }, [pr, reset])
 
-  const handleSave = handleSubmit(async (values) => {
-    try {
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<PurchaseRequestFormValues, EditableLine[]>({
+    draftKey: `purchase.request.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
+  })
+
+  const { saveAndClose, navProps } = useRecordFormNavigation<PurchaseRequestFormValues>({
+    id,
+    basePath: '/purchase/requests',
+    createLabel: 'Purchase Request Baru',
+    sequenceQueryKey: ['purchase', 'requests', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await purchaseRequestApi.adjacent(recordId)).data,
+    handleSubmit,
+    save: async (values, creating) => {
       const payload = toPurchaseRequestPayload(values, lines.map(({ product, ...line }) => line))
-      if (isCreate) {
-        const res = await create.mutateAsync(payload)
-        toast.success('Purchase Request berhasil dibuat.')
-        navigate(`/purchase/requests/${res.data.id}`)
-      } else {
-        await update.mutateAsync({ id: Number(id), payload })
-        toast.success('Purchase Request berhasil diperbarui.')
-      }
-    } catch { toast.error('Gagal menyimpan Purchase Request.') }
+      if (creating) await create.mutateAsync(payload)
+      else await update.mutateAsync({ id: Number(id), payload })
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setLineErrors({})
+    },
+    successMessage: (creating) => (creating ? 'Purchase Request berhasil dibuat.' : 'Purchase Request berhasil diperbarui.'),
+    onError: (saveError) => {
+      // Backend memakai nama kolom DB (`request_date`), form memakai `date`.
+      setLineErrors(getApiLineErrors(saveError))
+      applyApiValidationErrors(saveError, setError, { request_date: 'date' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Purchase Request.'))
+    },
+    canSave: isEditable,
   })
 
   const handleSubmitPR = async () => {
     try { await submit.mutateAsync(Number(id)); toast.success('PR berhasil disubmit.') }
-    catch { toast.error('Gagal submit PR.') }
+    catch (submitError) { toast.error(getApiErrorMessage(submitError, 'Gagal submit PR.')) }
   }
   const handleApprovePR = async () => {
     try { await approve.mutateAsync(Number(id)); toast.success('PR berhasil di-approve.') }
-    catch { toast.error('Gagal approve PR.') }
+    catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve PR.')) }
   }
   const handleReject = async () => {
     try { await reject.mutateAsync(Number(id)); toast.success('PR ditolak.') }
-    catch { toast.error('Gagal menolak PR.') }
+    catch (rejectError) { toast.error(getApiErrorMessage(rejectError, 'Gagal menolak PR.')) }
   }
   const handleCancel = async () => {
     try { await cancel.mutateAsync(Number(id)); toast.success('PR dibatalkan.') }
-    catch { toast.error('Gagal membatalkan PR.') }
+    catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan PR.')) }
   }
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('purchase.requests.create')) {
-    actions.push({ id: 'save', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSave(), isLoading: isSubmitting })
+    actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (pr?.status === 'draft' && can('purchase.requests.edit')) {
@@ -166,14 +214,19 @@ export default function PurchaseRequestFormPage() {
       documentNumber={pr?.number}
       status={status}
       breadcrumb={[{ label: 'Pembelian' }, { label: 'Purchase Request', path: '/purchase/requests' }, { label: isCreate ? 'Buat PR' : (pr?.number ?? '') }]}
-      bottomBar={<DocumentActionBar documentStatus={status} documentNumber={pr?.number} actions={actions} />}
+      headerActions={
+        <>
+          <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+          <DocumentActionBar placement="header" documentStatus={status} documentNumber={pr?.number} actions={actions} />
+        </>
+      }
     >
       <div className="space-y-3">
         <FormSection title="Header">
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
-            <Input {...register('date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-            {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+            <Input {...register('date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+            <FieldError message={errors.date?.message} />
           </div>
 
           <div className="flex flex-col gap-1">
@@ -184,19 +237,22 @@ export default function PurchaseRequestFormPage() {
               onSearch={departemenApi.search}
               placeholder="Pilih departemen..."
               disabled={!isEditable}
+              error={errors.department_id?.message}
               selectedOptions={pr?.department ? [{ value: pr.department.id, label: pr.department.name }] : []}
             />
           </div>
 
           <div className="flex flex-col gap-1 md:col-span-2">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan / Alasan</Label>
-            <Textarea {...register('notes')} disabled={!isEditable} placeholder="Alasan kebutuhan..." className="resize-none text-[13px]" rows={2} />
+            <Textarea {...register('notes')} disabled={!isEditable} placeholder="Alasan kebutuhan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+            <FieldError message={errors.notes?.message} />
           </div>
         </FormSection>
 
         <div>
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Item</p>
           <LineItemsTable
+          errors={lineErrors}
             items={lines}
             columns={columns}
             onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}

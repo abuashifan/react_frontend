@@ -14,10 +14,61 @@ export interface ReportParams extends DateRangeParams {
   department_id?: number
   project_id?: number
   warehouse_id?: number
+  customer_id?: number
+  vendor_id?: number
+  // Fase 14: filter kontekstual tambahan (dikirim ke backend bila laporan mendukung).
+  supplier_id?: number
+  contact_id?: number
+  status?: string
+  product_id?: number
+  group_by?: 'day' | 'month'
   include_zero_balance?: boolean
+  // Umur Persediaan (Fase 8): backend inventory memakai `include_zero` (bukan _balance).
+  include_zero?: boolean
+  category_id?: number
   only_difference?: boolean
+  // Buku Besar: 'summary' = saldo per akun (default); 'detail' = baris jurnal per akun (Fase 7 T7.1).
+  mode?: 'summary' | 'detail'
+  // Laporan jurnal: filter per sumber/modul (Fase 7 T7.3).
+  source?: JournalSource
   page?: number
   per_page?: number
+}
+
+// Parameter Laporan (Fase 14) — konfigurasi yang dikonsumsi ReportParameterModal.
+// Dipindah dari ReportFilterParameter (dihapus). Page mendeklarasikan filter &
+// kolom yang relevan; modal merendernya secara data-driven.
+export interface DimensionFilterConfig {
+  department?: boolean
+  project?: boolean
+  warehouse?: boolean
+}
+
+export interface ExtraFilterConfig {
+  include_zero_balance?: boolean
+  only_difference?: boolean
+}
+
+export interface StatusFilterConfig {
+  options: { label: string; value: string }[]
+}
+
+export interface ContextFilterConfig {
+  customer?: boolean
+  supplier?: boolean
+  // vendor: sama seperti supplier tetapi mengisi `vendor_id` (dipakai laporan AP
+  // yang backend-nya memfilter per vendor_id).
+  vendor?: boolean
+  product?: boolean
+  account?: boolean
+  contact?: boolean
+  status?: StatusFilterConfig
+}
+
+export interface ColumnConfig {
+  key: string
+  label: string
+  defaultVisible?: boolean
 }
 
 // General Ledger
@@ -41,6 +92,169 @@ export interface GeneralLedgerAccountSummary {
 
 export interface GeneralLedgerReport {
   accounts: GeneralLedgerAccountSummary[]
+}
+
+// Buku Besar - Rincian (Fase 7 T7.1): tiap akun membawa baris jurnalnya. Backend
+// (GeneralLedgerQueryService::getLedgerDetail) dikembalikan saat param mode=detail.
+// Catatan: baris rincian GL tidak memuat journal_entry_line_id (beda dengan
+// AccountLedgerLine), jadi baris di-key via journal_entry_id + index.
+export interface GeneralLedgerDetailLine {
+  journal_entry_id: number
+  journal_number: string
+  journal_date: string
+  description: string | null
+  debit: number
+  credit: number
+  running_balance: number
+  source_type: string | null
+  source_number: string | null
+  source_module: string | null
+}
+
+export interface GeneralLedgerDetailAccount extends GeneralLedgerAccountSummary {
+  lines: GeneralLedgerDetailLine[]
+}
+
+export interface GeneralLedgerDetailReport {
+  accounts: GeneralLedgerDetailAccount[]
+}
+
+// Laporan Jurnal (Fase 7 T7.2/T7.3) — /reports/journals.
+// 'general' = Jurnal Umum (jurnal manual). 'all' tanpa filter sumber.
+// 'inventory' = Jurnal Persediaan (Fase 8 T8.2, reuse endpoint jurnal).
+export type JournalSource = 'all' | 'sales' | 'purchase' | 'inventory' | 'general'
+
+export interface JournalListRow {
+  journal_entry_id: number
+  journal_number: string
+  journal_date: string
+  description: string | null
+  source_type: string | null
+  source_number: string | null
+  source_module: string | null
+  total_debit: number
+  total_credit: number
+  line_count: number
+}
+
+export interface JournalListReport {
+  rows: JournalListRow[]
+  totals: { journal_count: number; total_debit: number; total_credit: number }
+  filter: { start_date: string | null; end_date: string | null; source: string }
+}
+
+// Umur Persediaan (Fase 8 T8.1) — /inventory/reports/aging.
+// Response backend dibungkus { as_of_date, filters, rows, totals } (ranjau §8).
+// Metode aging: average cost (no FIFO), seluruh on-hand baris masuk satu bucket
+// berdasarkan tanggal inbound terakhir vs as_of_date.
+export interface InventoryAgingBuckets {
+  days_0_30: number
+  days_31_60: number
+  days_61_90: number
+  days_over_90: number
+}
+
+export interface InventoryAgingRow {
+  product_id: number
+  product_code: string
+  product_name: string
+  warehouse_id: number
+  warehouse_name: string
+  quantity_on_hand: number
+  average_cost: number
+  total_value: number
+  last_inbound_date: string | null
+  age_days: number
+  buckets: InventoryAgingBuckets
+}
+
+export interface InventoryAgingReport {
+  as_of_date: string
+  rows: InventoryAgingRow[]
+  totals: { total_quantity_on_hand: number; total_value: number; buckets: InventoryAgingBuckets }
+}
+
+export type ProductHistoryDocumentType =
+  | 'sales_invoice'
+  | 'sales_return'
+  | 'vendor_bill'
+  | 'purchase_return'
+  /** Pergerakan stok — tanpa lawan transaksi, dinilai dengan HPP. */
+  | 'stock_adjustment'
+  | 'stock_opname'
+  | 'stock_transfer'
+  /** Titik mulai pembukuan — tanpa dokumen sumber, jadi tidak bisa dibuka. */
+  | 'opening_balance'
+  /** Jenis sumber yang belum dikenali; tetap tampil, tidak ditautkan. */
+  | 'stock_movement'
+
+export interface ProductHistoryRow {
+  date: string
+  document_type: ProductHistoryDocumentType
+  document_id: number
+  document_number: string
+  direction: 'in' | 'out'
+  contact_name: string | null
+  description: string | null
+  /** Bertanda: negatif untuk yang mengurangi stok (jual, retur beli). */
+  quantity: number
+  unit_price: number
+  line_total: number
+  department_name: string | null
+  project_name: string | null
+}
+
+export interface ProductHistoryReport {
+  /** Identitas produk yang dilaporkan; null bila produknya sudah dihapus. */
+  product: { id: number; product_code: string; product_name: string } | null
+  rows: ProductHistoryRow[]
+  totals: {
+    purchased_qty: number
+    purchased_value: number
+    sold_qty: number
+    sold_value: number
+    /** Bertanda; negatif berarti stok berkurang lewat penyesuaian. */
+    adjusted_qty: number
+    /** Tertimbang (nilai ÷ kuantitas), bukan rata-rata harga satuan. */
+    avg_buy_price: number
+    avg_sell_price: number
+  }
+}
+
+// Kertas Kerja Opname (Fase 8 T8.3) — /inventory/reports/opname-worksheet.
+export interface OpnameWorksheetRow {
+  product_id: number
+  product_code: string
+  product_name: string
+  warehouse_id: number
+  warehouse_name: string
+  unit_name: string
+  system_quantity: number
+  physical_quantity: number | null
+  difference_quantity: number
+  average_cost: number
+  difference_value: number
+  counted: boolean
+}
+
+export interface OpnameWorksheetReport {
+  opname: {
+    id: number
+    opname_number: string
+    opname_date: string | null
+    status: string
+    warehouse_id: number
+    warehouse_name: string
+  } | null
+  rows: OpnameWorksheetRow[]
+  totals: {
+    line_count: number
+    counted_lines: number
+    total_system_quantity: number
+    total_physical_quantity: number
+    total_difference_quantity: number
+    total_difference_value: number
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -173,6 +387,141 @@ export interface CashFlowReport {
     financing?: CashFlowSection
     unclassified?: CashFlowSection
   }
+}
+
+// Pajak PPN (Fase 11) — /reports/tax/{output-vat,input-vat}.
+export interface OutputVatRow {
+  id: number
+  invoice_number: string
+  invoice_date: string
+  customer_name: string | null
+  dpp: number
+  ppn: number
+  total: number
+}
+
+export interface OutputVatReport {
+  rows: OutputVatRow[]
+  totals: { invoice_count: number; dpp: number; ppn: number; total: number }
+}
+
+export interface InputVatRow {
+  id: number
+  bill_number: string
+  bill_date: string
+  vendor_invoice_number: string | null
+  vendor_name: string | null
+  dpp: number
+  ppn: number
+  total: number
+}
+
+export interface InputVatReport {
+  rows: InputVatRow[]
+  totals: { bill_count: number; dpp: number; ppn: number; total: number }
+}
+
+// Multi-Periode (Fase 10) — /reports/{profit-loss,balance-sheet}/multi-period.
+// Opsi (a): backend menerima periods[] → kolom per periode. Tiap kolom identik
+// dengan laporan single-period untuk periode itu.
+export interface MultiPeriodInput {
+  start_date: string
+  end_date: string
+  label?: string
+}
+
+export interface MultiPeriodColumn {
+  label: string
+  start_date: string
+  end_date: string
+}
+
+export interface MultiPeriodRow {
+  account_id: number | null
+  account_code: string | null
+  account_name: string
+  account_type: string | null
+  values: number[] // sejajar dengan periods[]
+}
+
+export interface MultiPeriodSection {
+  key: string
+  label: string
+  rows: MultiPeriodRow[]
+  totals: number[] // per periode
+}
+
+export interface ProfitLossMultiPeriodSummary {
+  total_revenue: number
+  total_expense: number
+  net_profit_or_loss: number
+}
+
+export interface BalanceSheetMultiPeriodSummary {
+  total_assets: number
+  total_liabilities: number
+  total_equity: number
+  total_liabilities_and_equity: number
+  current_year_profit_or_loss: number
+  is_balanced: boolean
+}
+
+export interface ProfitLossMultiPeriodReport {
+  periods: MultiPeriodColumn[]
+  sections: MultiPeriodSection[]
+  summary_totals: ProfitLossMultiPeriodSummary[]
+}
+
+export interface BalanceSheetMultiPeriodReport {
+  periods: MultiPeriodColumn[]
+  sections: MultiPeriodSection[]
+  summary_totals: BalanceSheetMultiPeriodSummary[]
+}
+
+// Laba Ditahan (Fase 9 T9.1) — /reports/retained-earnings.
+export interface RetainedEarningsReport {
+  beginning_retained_earnings: number
+  net_income: number
+  ending_retained_earnings: number
+}
+
+// Perubahan Ekuitas (Fase 9 T9.2) — /reports/equity-changes.
+export interface EquityChangeRow {
+  account_id: number | null
+  account_code: string | null
+  account_name: string
+  opening_balance: number
+  movement: number
+  closing_balance: number
+  is_current_earnings: boolean
+}
+
+export interface EquityChangesReport {
+  rows: EquityChangeRow[]
+  totals: { opening_total: number; movement_total: number; closing_total: number }
+}
+
+// Arus Kas Metode Langsung (Fase 9 T9.3) — /reports/cash-flow-direct.
+export interface CashFlowDirectLine {
+  account_id: number | null
+  account_code: string | null
+  account_name: string
+  cash_in: number
+  cash_out: number
+  net: number
+}
+
+export interface CashFlowDirectSection {
+  key: string
+  label: string
+  lines: CashFlowDirectLine[]
+  subtotal_net: number
+}
+
+export interface CashFlowDirectReport {
+  summary: CashFlowSummary
+  sections: CashFlowDirectSection[]
+  no_cash_accounts: boolean
 }
 
 // Financial Summary — backend: { profit_loss, balance_sheet, cash_flow }
@@ -509,6 +858,189 @@ export interface FaReconciliationReport {
   difference_accumulated_depreciation: number
 }
 
+// AR Outstanding — /sales/ar/open-invoices
+export interface ArOutstandingRow {
+  invoice_id: number
+  invoice_number: string
+  invoice_date: string | null
+  due_date: string | null
+  customer_id: number
+  customer_name: string
+  grand_total: number
+  paid_amount: number
+  returned_amount: number
+  balance_due: number
+  status: string
+}
+
+export interface ArOutstandingReport {
+  rows: ArOutstandingRow[]
+  totals: { grand_total: number; paid_amount: number; balance_due: number }
+}
+
+// AP Outstanding — /purchase/ap/open-bills
+export interface ApOutstandingRow {
+  bill_id: number
+  bill_number: string
+  bill_date: string | null
+  due_date: string | null
+  vendor_id: number
+  vendor_name: string
+  grand_total: number
+  paid_amount: number
+  returned_amount: number
+  balance_due: number
+  status: string
+}
+
+export interface ApOutstandingReport {
+  rows: ApOutstandingRow[]
+  totals: { grand_total: number; paid_amount: number; balance_due: number }
+}
+
+// AR Customer Summary — /sales/ar/customer-summary
+export interface ArCustomerSummaryRow {
+  customer_id: number
+  customer_name: string
+  debit: number
+  credit: number
+  balance: number
+  unapplied_deposit_total: number
+  net_customer_exposure: number
+}
+
+export interface ArCustomerSummaryReport {
+  rows: ArCustomerSummaryRow[]
+  totals: { balance: number; net_customer_exposure: number }
+}
+
+// AP Vendor Summary — /purchase/ap/vendor-summary
+export interface ApVendorSummaryRow {
+  vendor_id: number
+  vendor_name: string
+  debit: number
+  credit: number
+  balance: number
+  unapplied_deposit_total: number
+  net_vendor_exposure: number
+}
+
+export interface ApVendorSummaryReport {
+  rows: ApVendorSummaryRow[]
+  totals: { balance: number; net_vendor_exposure: number }
+}
+
+// Sales Aggregation Reports — /reports/sales/{summary,by-customer,by-product}
+export interface SalesSummaryRow {
+  period: string
+  invoice_count: number
+  subtotal: number
+  tax: number
+  total: number
+}
+
+export interface SalesSummaryReport {
+  rows: SalesSummaryRow[]
+  totals: { invoice_count: number; subtotal: number; tax: number; total: number }
+}
+
+export interface SalesByCustomerRow {
+  customer_id: number
+  customer_name: string
+  invoice_count: number
+  subtotal: number
+  tax: number
+  total: number
+}
+
+export interface SalesByCustomerReport {
+  rows: SalesByCustomerRow[]
+  totals: { invoice_count: number; subtotal: number; tax: number; total: number }
+}
+
+export interface SalesByProductRow {
+  product_id: number
+  product_code: string
+  product_name: string
+  qty: number
+  subtotal: number
+  total: number
+}
+
+export interface SalesByProductReport {
+  rows: SalesByProductRow[]
+  totals: { qty: number; subtotal: number; total: number }
+}
+
+// Purchase Aggregation Reports — /reports/purchase/{summary,by-vendor,by-product}
+export interface PurchaseSummaryRow {
+  period: string
+  bill_count: number
+  subtotal: number
+  tax: number
+  total: number
+}
+
+export interface PurchaseSummaryReport {
+  rows: PurchaseSummaryRow[]
+  totals: { bill_count: number; subtotal: number; tax: number; total: number }
+}
+
+export interface PurchaseByVendorRow {
+  vendor_id: number
+  vendor_name: string
+  bill_count: number
+  subtotal: number
+  tax: number
+  total: number
+}
+
+export interface PurchaseByVendorReport {
+  rows: PurchaseByVendorRow[]
+  totals: { bill_count: number; subtotal: number; tax: number; total: number }
+}
+
+export interface PurchaseByProductRow {
+  product_id: number
+  product_code: string
+  product_name: string
+  qty: number
+  subtotal: number
+  total: number
+}
+
+export interface PurchaseByProductReport {
+  rows: PurchaseByProductRow[]
+  totals: { qty: number; subtotal: number; total: number }
+}
+
 // NOTE: Transaction list report (/reports/transactions) dan export PDF/Excel
 // (/reports/{type}/export/*) TIDAK punya route backend (Audit-12 A12-15).
 // Endpoint & UI-nya sengaja dihapus, bukan dibiarkan memanggil 404.
+
+// Laporan Tersimpan (Fase 13). report_key = id laporan (mis. 'general-ledger'),
+// params = filter ReportParams yang disimpan. Dibagikan ke banyak user.
+export interface SavedReport {
+  id: number
+  report_key: string
+  name: string
+  params: ReportParams
+  is_owner: boolean
+  owner_user_id: number
+  shared_user_ids: number[]
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface SavedReportInput {
+  report_key: string
+  name: string
+  params: ReportParams
+  shared_user_ids?: number[]
+}
+
+export interface ShareableUser {
+  id: number
+  name: string
+  email: string
+}

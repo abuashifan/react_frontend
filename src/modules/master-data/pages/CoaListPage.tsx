@@ -1,17 +1,19 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ChevronRight, ChevronDown, Plus, Power, PowerOff } from 'lucide-react'
+import { Plus, Power, PowerOff } from 'lucide-react'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { FilterSidebar } from '@/components/shared/layout/FilterSidebar'
+import { SingleCheckboxFilter } from '@/components/shared/filter/SingleCheckboxFilter'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
+import { DataTable } from '@/components/shared/table/DataTable'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
+import { ActiveStatusBadge } from '@/components/shared/badge/ActiveStatusBadge'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/useToast'
+import { getBulkFailureDetail } from '@/lib/apiError'
 import { useCoaList, useCoaMutations } from '../hooks/useCoaList'
 import type { Coa, CoaType } from '../types/coa.types'
-import { cn } from '@/lib/utils'
+import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 
 const COA_TYPE_LABELS: Record<CoaType, string> = {
   asset: 'Aset',
@@ -21,218 +23,175 @@ const COA_TYPE_LABELS: Record<CoaType, string> = {
   expense: 'Beban',
 }
 
-function buildTree(flat: Coa[]): Coa[] {
-  const map = new Map<number, Coa>()
-  const roots: Coa[] = []
+const STATUS_OPTIONS: { value: boolean | undefined; label: string }[] = [
+  { value: true, label: 'Aktif' },
+  { value: false, label: 'Nonaktif' },
+  { value: undefined, label: 'Semua' },
+]
 
-  flat.forEach((item) => map.set(item.id, { ...item, children: [] }))
-
-  flat.forEach((item) => {
-    const node = map.get(item.id)!
-    if (item.parent_account_id && map.has(item.parent_account_id)) {
-      map.get(item.parent_account_id)!.children!.push(node)
-    } else {
-      roots.push(node)
-    }
-  })
-
-  return roots
-}
-
-interface CoaRowProps {
-  node: Coa
-  level: number
-  selectedIds: string[]
-  onSelect: (id: string) => void
-  onNavigate: (id: number) => void
-  onToggleActive: (node: Coa) => void
-  isTogglingId: number | null
-}
-
-function CoaRow({ node, level, selectedIds, onSelect, onNavigate, onToggleActive, isTogglingId }: CoaRowProps) {
-  const [expanded, setExpanded] = useState(true)
-  const hasChildren = (node.children?.length ?? 0) > 0
-  const isSelected = selectedIds.includes(String(node.id))
-  const isToggling = isTogglingId === node.id
-
-  return (
-    <>
-      <tr
-        className={cn(
-          'h-9 border-b border-[#f1f5f9] transition-colors hover:bg-[#f8fbfc]',
-          isSelected && 'bg-[#EFF9FB]',
-        )}
-      >
-        <td className="sticky left-0 w-8 bg-inherit px-2">
-          <Checkbox
-            checked={isSelected}
-            onCheckedChange={() => onSelect(String(node.id))}
-          />
-        </td>
-        <td
-          className="sticky left-8 bg-inherit px-3 py-2 font-medium text-[#5c9ead] hover:text-[#326273] hover:underline cursor-pointer"
-          style={{ paddingLeft: `${12 + level * 20}px` }}
-        >
-          <div className="flex items-center gap-1">
-            {hasChildren ? (
-              <button
-                type="button"
-                onClick={() => setExpanded((v) => !v)}
-                className="text-[#64748b] hover:text-[#326273] flex-shrink-0"
-              >
-                {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-              </button>
-            ) : (
-              <span className="w-3.5 flex-shrink-0" />
-            )}
-            <span onClick={() => onNavigate(node.id)}>{node.account_code}</span>
-          </div>
-        </td>
-        <td className="px-3 py-2 text-[13px] text-[#24323a] cursor-pointer" onClick={() => onNavigate(node.id)}>
-          {node.account_name}
-        </td>
-        <td className="px-3 py-2 text-[13px] text-[#64748b]">
-          {COA_TYPE_LABELS[node.account_type]}
-        </td>
-        <td className="px-3 py-2">
-          <Badge
-            className={cn(
-              'text-[11px] px-2 py-0.5 rounded-full font-medium',
-              node.is_active
-                ? 'bg-[#D1FAE5] text-[#065F46] hover:bg-[#D1FAE5]'
-                : 'bg-[#F1F5F9] text-[#64748b] hover:bg-[#F1F5F9]',
-            )}
-          >
-            {node.is_active ? 'Aktif' : 'Nonaktif'}
-          </Badge>
-        </td>
-        <td className="px-3 py-2">
-          <PermissionGuard permission="master-data.coa.edit">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-[12px] text-[#64748b] hover:text-[#326273]"
-              onClick={() => onToggleActive(node)}
-              disabled={isToggling}
-            >
-              {node.is_active ? (
-                <><PowerOff className="w-3.5 h-3.5 mr-1" />Nonaktifkan</>
-              ) : (
-                <><Power className="w-3.5 h-3.5 mr-1" />Aktifkan</>
-              )}
-            </Button>
-          </PermissionGuard>
-        </td>
-      </tr>
-      {expanded && node.children?.map((child) => (
-        <CoaRow
-          key={child.id}
-          node={child}
-          level={level + 1}
-          selectedIds={selectedIds}
-          onSelect={onSelect}
-          onNavigate={onNavigate}
-          onToggleActive={onToggleActive}
-          isTogglingId={isTogglingId}
-        />
-      ))}
-    </>
-  )
-}
+/** Lebar satu tingkat indentasi, dalam piksel. */
+const INDENT_PX = 20
 
 export default function CoaListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
   const [filterType, setFilterType] = useState<CoaType | undefined>()
-  const [filterActive, setFilterActive] = useState<boolean | undefined>()
-  const [togglingId, setTogglingId] = useState<number | null>(null)
+  // Default: hanya tampilkan akun aktif. Pilih "Semua" di filter Status untuk menampilkan semuanya.
+  const [filterActive, setFilterActive] = useState<boolean | undefined>(true)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [search, setSearch] = useState('')
 
-  const { data, isLoading } = useCoaList({
-    page: 1,
-    per_page: 100,
+  // Daftar ini TERPAGINASI tapi tetap terbaca sebagai hierarki: server
+  // meratakan pohon lewat recursive CTE, mengurutkannya pre-order (induk lalu
+  // keturunannya), dan mengirim `depth` per baris. Jadi indentasi tetap benar
+  // walau induk sebuah akun berada di halaman sebelumnya — sama seperti
+  // aplikasi acuan.
+  //
+  // Sebelumnya halaman ini terkunci `page: 1, per_page: 100` tanpa UI paginasi
+  // (perusahaan dengan >100 akun kehilangan sisanya diam-diam), lalu sempat
+  // dibuat memuat SEMUA baris tanpa paginasi supaya `buildTree` di sisi klien
+  // tidak memutus pohon. Keduanya cuma memindahkan batasnya.
+  const { data, isLoading, isFetching } = useCoaList({
+    page,
+    per_page: perPage,
     account_type: filterType,
     is_active: filterActive,
+    search: search || undefined,
   })
+
+  // Kembali ke halaman 1 saat filter berubah, supaya tidak mendarat di halaman
+  // kosong setelah hasilnya menyusut. Seleksi juga dikosongkan — aksi massal
+  // tidak boleh mengenai baris yang sudah tidak terlihat.
+  const [prevFilters, setPrevFilters] = useState('')
+  const filterKey = `${search}|${String(filterType)}|${String(filterActive)}`
+  if (filterKey !== prevFilters) {
+    setPrevFilters(filterKey)
+    setPage(1)
+    setSelectedIds([])
+  }
 
   const { activate, deactivate } = useCoaMutations()
 
-  const flat = data?.data ?? []
-  const tree = buildTree(flat)
+  const rows = data?.data ?? []
 
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    )
-  }
-
-  const handleToggleActive = async (node: Coa) => {
-    setTogglingId(node.id)
-    try {
-      if (node.is_active) {
-        await deactivate.mutateAsync(node.id)
-        toast.success(`Akun "${node.account_name}" dinonaktifkan.`)
-      } else {
-        await activate.mutateAsync(node.id)
-        toast.success(`Akun "${node.account_name}" diaktifkan.`)
-      }
-    } catch {
-      toast.error('Gagal mengubah status akun.')
-    } finally {
-      setTogglingId(null)
+  /**
+   * Jalankan aksi massal per akun terpilih.
+   *
+   * Pakai `allSettled` (bukan loop `await` berurutan) supaya satu akun yang gagal
+   * — mis. akun induk yang masih punya sub-akun aktif — tidak menghentikan sisanya
+   * tanpa kabar apa pun ke user.
+   */
+  const runBulkStatusChange = async (
+    ids: string[],
+    targetActive: boolean,
+    mutateAsync: (id: number) => Promise<unknown>,
+  ) => {
+    const eligible = rows.filter((r) => ids.includes(String(r.id)) && r.is_active !== targetActive)
+    const verb = targetActive ? 'diaktifkan' : 'dinonaktifkan'
+    if (eligible.length === 0) {
+      toast.warning(`Akun yang dipilih sudah ${verb}.`)
+      return
     }
-  }
+    if (!targetActive && !confirm(`Nonaktifkan ${eligible.length} akun terpilih?`)) return
 
-  const handleBulkActivate = async () => {
-    for (const id of selectedIds) {
-      await activate.mutateAsync(Number(id))
+    const results = await Promise.allSettled(eligible.map((r) => mutateAsync(r.id)))
+    const successCount = results.filter((result) => result.status === 'fulfilled').length
+    const failureCount = results.length - successCount
+    const failureDetail = getBulkFailureDetail(results)
+
+    if (failureCount === 0) {
+      toast.success(`${successCount} akun ${verb}.`)
+    } else if (successCount === 0) {
+      // mis. ACCOUNT_HAS_ACTIVE_CHILDREN saat menonaktifkan akun induk.
+      toast.error(`Gagal ${targetActive ? 'mengaktifkan' : 'menonaktifkan'} ${failureCount} akun.${failureDetail ? ` ${failureDetail}` : ''}`)
+    } else {
+      toast.warning(`${successCount} akun ${verb}, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
     }
-    toast.success(`${selectedIds.length} akun diaktifkan.`)
     setSelectedIds([])
   }
 
-  const handleBulkDeactivate = async () => {
-    for (const id of selectedIds) {
-      await deactivate.mutateAsync(Number(id))
-    }
-    toast.success(`${selectedIds.length} akun dinonaktifkan.`)
-    setSelectedIds([])
-  }
+  const bulkActions: BulkAction[] = [
+    {
+      id: 'bulk-activate',
+      label: 'Aktifkan Terpilih',
+      icon: <Power className="h-3.5 w-3.5" />,
+      permission: 'coa.edit',
+      onClick: (ids) => runBulkStatusChange(ids, true, (id) => activate.mutateAsync(id)),
+    },
+    {
+      id: 'bulk-deactivate',
+      label: 'Nonaktifkan Terpilih',
+      icon: <PowerOff className="h-3.5 w-3.5" />,
+      variant: 'destructive',
+      permission: 'coa.deactivate',
+      onClick: (ids) => runBulkStatusChange(ids, false, (id) => deactivate.mutateAsync(id)),
+    },
+  ]
+
+  const columns: ColumnDef<Coa>[] = [
+    {
+      id: 'account_code',
+      header: 'Kode',
+      size: 180,
+      meta: { sticky: true, stickyLeft: 32, className: 'font-medium text-[#5c9ead]' },
+      // Indentasi dibaca dari `depth` milik baris itu sendiri, BUKAN dari
+      // rekursi pohon. `?? 0` menangani mode datar (saat pencarian aktif),
+      // di mana server tidak mengirim `depth`.
+      cell: ({ original }) => (
+        <span style={{ paddingLeft: `${(original.depth ?? 0) * INDENT_PX}px` }}>
+          {original.account_code}
+        </span>
+      ),
+    },
+    {
+      id: 'account_name',
+      header: 'Nama Akun',
+      size: 220,
+      cell: ({ original }) => original.account_name,
+    },
+    {
+      id: 'account_type',
+      header: 'Tipe',
+      size: 130,
+      cell: ({ original }) => COA_TYPE_LABELS[original.account_type],
+    },
+    {
+      id: 'is_active',
+      header: 'Status',
+      size: 100,
+      cell: ({ original }) => <ActiveStatusBadge isActive={original.is_active} />,
+    },
+  ]
 
   const activeFilterCount = [filterType, filterActive].filter((v) => v !== undefined).length
 
   const sidebar = (
     <FilterSidebar
       activeCount={activeFilterCount}
-      onReset={() => { setFilterType(undefined); setFilterActive(undefined) }}
+      onReset={() => { setFilterType(undefined); setFilterActive(true) }}
     >
-      <FilterSection title="Tipe Akun">
-        {(['asset', 'liability', 'equity', 'revenue', 'expense'] as CoaType[]).map((t) => (
-          <label key={t} className="flex items-center gap-2 cursor-pointer">
-            <Checkbox
-              checked={filterType === t}
-              onCheckedChange={(checked) => setFilterType(checked ? t : undefined)}
-            />
-            <span className="text-[12px] text-[#334155]">{COA_TYPE_LABELS[t]}</span>
-          </label>
-        ))}
-      </FilterSection>
-      <FilterSection title="Status">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={filterActive === true}
-            onCheckedChange={(checked) => setFilterActive(checked ? true : undefined)}
-          />
-          <span className="text-[12px] text-[#334155]">Aktif</span>
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={filterActive === false}
-            onCheckedChange={(checked) => setFilterActive(checked ? false : undefined)}
-          />
-          <span className="text-[12px] text-[#334155]">Nonaktif</span>
-        </label>
-      </FilterSection>
+      <div className="border-b border-[#f1f5f9] px-4 py-3">
+        <ListSearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Cari kode atau nama akun..."
+          className="w-full max-w-none"
+        />
+      </div>
+      <SingleCheckboxFilter
+        title="Tipe Akun"
+        options={(['asset', 'liability', 'equity', 'revenue', 'expense'] as CoaType[]).map((t) => ({ value: t, label: COA_TYPE_LABELS[t] }))}
+        value={filterType}
+        onChange={setFilterType}
+      />
+      <SingleCheckboxFilter
+        title="Status"
+        options={STATUS_OPTIONS}
+        value={filterActive}
+        onChange={setFilterActive}
+      />
     </FilterSidebar>
   )
 
@@ -245,93 +204,32 @@ export default function CoaListPage() {
         <PermissionGuard permission="master-data.coa.create">
           <Button
             className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]"
-            onClick={() => navigate('/master-data/coa/create')}
+            onClick={() => openRecordTab({ label: 'Akun Baru', path: '/master-data/coa/create' })}
           >
             <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Akun
           </Button>
         </PermissionGuard>
       }
     >
-      {/* Bulk action bar */}
-      {selectedIds.length > 0 && (
-        <div className="mb-2 flex items-center justify-between rounded-lg border border-[#5c9ead] bg-[#EFF9FB] px-4 py-2">
-          <span className="text-[13px] font-medium text-[#326273]">
-            {selectedIds.length} item dipilih
-          </span>
-          <div className="flex items-center gap-2">
-            <PermissionGuard permission="master-data.coa.edit">
-              <Button variant="outline" size="sm" className="h-7 text-[12px]" onClick={handleBulkActivate}>
-                Aktifkan
-              </Button>
-              <Button variant="outline" size="sm" className="h-7 text-[12px]" onClick={handleBulkDeactivate}>
-                Nonaktifkan
-              </Button>
-            </PermissionGuard>
-            <button
-              type="button"
-              className="text-[12px] text-[#64748b] hover:text-[#24323a]"
-              onClick={() => setSelectedIds([])}
-            >
-              Batalkan pilihan
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="overflow-hidden rounded-lg border border-[#d9e2e5] bg-white">
-        <div className="overflow-x-auto">
-          <table className="w-full text-[13px] border-collapse min-w-[640px]">
-            <thead>
-              <tr className="border-b border-[#d9e2e5] bg-[#eeeeee] h-9">
-                <th className="sticky left-0 z-20 bg-[#eeeeee] w-8 px-2">
-                  <Checkbox
-                    checked={selectedIds.length === flat.length && flat.length > 0}
-                    onCheckedChange={(v) => setSelectedIds(v ? flat.map((r) => String(r.id)) : [])}
-                    disabled={flat.length === 0}
-                  />
-                </th>
-                <th className="sticky left-8 z-20 bg-[#eeeeee] px-3 text-left text-[11px] font-bold uppercase text-[#64748b] tracking-wide min-w-[140px]">Kode</th>
-                <th className="px-3 text-left text-[11px] font-bold uppercase text-[#64748b] tracking-wide min-w-[200px]">Nama Akun</th>
-                <th className="px-3 text-left text-[11px] font-bold uppercase text-[#64748b] tracking-wide min-w-[120px]">Tipe</th>
-                <th className="px-3 text-left text-[11px] font-bold uppercase text-[#64748b] tracking-wide min-w-[100px]">Status</th>
-                <th className="px-3 text-left text-[11px] font-bold uppercase text-[#64748b] tracking-wide min-w-[120px]">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                Array.from({ length: 6 }).map((_, i) => (
-                  <tr key={i} className="h-9 border-b border-[#f1f5f9]">
-                    {Array.from({ length: 6 }).map((__, j) => (
-                      <td key={j} className="px-3 py-2">
-                        <Skeleton className="h-4 w-24 rounded" />
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              ) : tree.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-16 text-center text-[13px] text-[#94a3b8]">
-                    Belum ada akun. Klik "Tambah Akun" untuk memulai.
-                  </td>
-                </tr>
-              ) : (
-                tree.map((node) => (
-                  <CoaRow
-                    key={node.id}
-                    node={node}
-                    level={0}
-                    selectedIds={selectedIds}
-                    onSelect={toggleSelect}
-                    onNavigate={(id) => navigate(`/master-data/coa/${id}`)}
-                    onToggleActive={handleToggleActive}
-                    isTogglingId={togglingId}
-                  />
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        data={rows}
+        columns={columns}
+        totalRows={data?.meta.total ?? 0}
+        isLoading={isLoading}
+        isFetching={isFetching}
+        pagination={{ pageIndex: page - 1, pageSize: perPage }}
+        onPaginationChange={(s) => {
+          setPage(s.pageIndex + 1)
+          setPerPage(s.pageSize)
+          setSelectedIds([])
+        }}
+        selectedRows={selectedIds}
+        onRowSelect={setSelectedIds}
+        bulkActions={bulkActions}
+        onRowClick={(row) => openRecordTab({ label: row.account_code, path: `/master-data/coa/${row.id}` })}
+        emptyTitle="Belum ada akun"
+        emptyDescription='Klik "Tambah Akun" untuk memulai.'
+      />
     </WorkspaceLayout>
   )
 }

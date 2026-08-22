@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -12,29 +12,46 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
+import { cn, fieldErrorClass } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { useSalesReturn, useSalesReturnMutations } from '../hooks/useSalesReturnList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { salesReturnSchema, type SalesReturnFormValues } from '../schemas/salesReturnSchema'
+import { salesReturnApi } from '../services/salesReturnApi'
+import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
+import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
 interface EditableLine {
   product_id: number | null
+  product?: { id: number; code: string; name: string } | null
   description: string
   quantity: number
   unit_price: number
 }
 
-const DEFAULT_LINE: EditableLine = { product_id: null, description: '', quantity: 1, unit_price: 0 }
+const DEFAULT_LINE: EditableLine = { product_id: null, product: null, description: '', quantity: 1, unit_price: 0 }
 
 function lineSubtotal(l: EditableLine) {
   return l.quantity * l.unit_price
 }
 
 export default function SalesReturnFormPage() {
-  const navigate = useNavigate()
+  const { id } = useParams()
+  // `/sales/returns/create` dan `/sales/returns/:id` merender komponen yang sama,
+  // dan React Router tidak me-remount otomatis saat berpindah di antara keduanya (hanya
+  // param yang berubah) — tanpa `key` di sini, state react-hook-form dari record yang
+  // sebelumnya dibuka akan "bocor" ke tab form kosong lain. `key` memaksa instance baru
+  // setiap kali id record (atau mode create) berubah.
+  return <SalesReturnFormPageContent key={id ?? 'create'} />
+}
+
+function SalesReturnFormPageContent() {
   const { id } = useParams()
   const isCreate = !id
   const { toast } = useToast()
@@ -44,12 +61,18 @@ export default function SalesReturnFormPage() {
   const ret = data?.data
   const { create, update, approve, post, void: voidRet } = useSalesReturnMutations()
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<SalesReturnFormValues>({
+  const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<SalesReturnFormValues>({
     resolver: zodResolver(salesReturnSchema),
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+
+  // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
+
+  // ditolak ikut ditandai, bukan cuma toast.
+
+  const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
 
   const status = (ret?.status ?? 'draft') as DocumentStatus
@@ -65,6 +88,7 @@ export default function SalesReturnFormPage() {
       })
       setLines(ret.lines.map((l) => ({
         product_id: l.product_id,
+        product: l.product,
         description: l.description,
         quantity: l.quantity,
         unit_price: l.unit_price,
@@ -72,42 +96,71 @@ export default function SalesReturnFormPage() {
     }
   }, [ret, reset])
 
-  const handleSaveDraft = handleSubmit(async (values) => {
-    try {
-      if (isCreate) {
-        const res = await create.mutateAsync({ ...values, lines })
-        toast.success('Retur berhasil disimpan.')
-        navigate(`/sales/returns/${res.data.id}`)
-      } else {
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
-        toast.success('Retur berhasil diperbarui.')
-      }
-    } catch { toast.error('Gagal menyimpan retur.') }
+
+  // Form ini di-remount saat tab record/create berpindah (lihat `key` di wrapper
+  // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
+  // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
+  // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
+  const formDraft = usePersistentFormDraft<SalesReturnFormValues, EditableLine[]>({
+    draftKey: `sales.return.${id ?? 'new'}`,
+    control,
+    getValues,
+    reset,
+    extra: lines,
+    onRestoreExtra: (draftLines) => setLines(draftLines.length > 0 ? draftLines : [DEFAULT_LINE]),
+  })
+
+  const { saveAndClose, navProps } = useRecordFormNavigation<SalesReturnFormValues>({
+    id,
+    basePath: '/sales/returns',
+    createLabel: 'Retur Penjualan Baru',
+    sequenceQueryKey: ['sales', 'returns', 'adjacent'],
+    fetchAdjacent: async (recordId) => (await salesReturnApi.adjacent(recordId)).data,
+    handleSubmit,
+    save: async (values, creating) => {
+      if (creating) await create.mutateAsync({ ...values, lines })
+      else await update.mutateAsync({ id: Number(id), payload: { ...values, lines } })
+    },
+    onSaved: () => {
+      formDraft.clearDraft()
+      setLineErrors({})
+    },
+    successMessage: (creating) => (creating ? 'Retur berhasil disimpan.' : 'Retur berhasil diperbarui.'),
+    onError: (saveError) => {
+      // Backend memvalidasi tanggal sebagai `return_date`, form memakai `date`.
+      setLineErrors(getApiLineErrors(saveError))
+      applyApiValidationErrors(saveError, setError, { return_date: 'date' })
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan retur.'))
+    },
+    canSave: isEditable,
   })
 
   const handleApprove = async () => {
     try {
       await approve.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Retur berhasil di-approve.')
-    } catch { toast.error('Gagal approve retur.') }
+    } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve retur.')) }
   }
 
   const handlePost = async () => {
     try {
       await post.mutateAsync(Number(id))
+      formDraft.clearDraft()
       toast.success('Retur berhasil diposting.')
-    } catch { toast.error('Gagal memposting retur.') }
+    } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal memposting retur.')) }
   }
 
   const handleVoid = async (reason: string) => {
     await voidRet.mutateAsync({ id: Number(id), reason })
+    formDraft.clearDraft()
     toast.success('Retur berhasil di-void.')
     setVoidOpen(false)
   }
 
   const actions: DocumentActionButton[] = []
   if (isEditable && can('sales.returns.create')) {
-    actions.push({ id: 'save_draft', label: 'Simpan Draft', variant: 'secondary', onClick: () => void handleSaveDraft(), isLoading: isSubmitting })
+    actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (ret?.status === 'draft' && can('sales.returns.approve')) {
@@ -129,9 +182,13 @@ export default function SalesReturnFormPage() {
       render: ({ item, isReadOnly, onUpdate }) => (
         <SearchableSelect
           value={item.product_id}
-          onChange={(v) => onUpdate('product_id', v)}
+          onChange={(v, opt) => {
+            onUpdate('product_id', v)
+            onUpdate('product', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null)
+          }}
           onSearch={produkApi.search}
           placeholder="Pilih produk..."
+          selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []}
           disabled={isReadOnly}
           size="sm"
         />
@@ -184,7 +241,12 @@ export default function SalesReturnFormPage() {
           { label: 'Retur', path: '/sales/returns' },
           { label: isCreate ? 'Buat Retur' : (ret?.number ?? '') },
         ]}
-        bottomBar={<DocumentActionBar documentStatus={status} documentNumber={ret?.number} actions={actions} />}
+        headerActions={
+          <>
+            <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentActionBar placement="header" documentStatus={status} documentNumber={ret?.number} actions={actions} />
+          </>
+        }
       >
         <div className="space-y-3">
           <FormSection title="Header">
@@ -207,8 +269,8 @@ export default function SalesReturnFormPage() {
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Tanggal <span className="text-red-500">*</span>
               </Label>
-              <Input {...register('date')} type="date" disabled={!isEditable} className="h-9 text-[13px]" />
-              {errors.date && <p className="text-[11px] text-red-500">{errors.date.message}</p>}
+              <Input {...register('date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+              <FieldError message={errors.date?.message} />
             </div>
 
             {(ret?.sales_invoice_number || ret?.delivery_order_number) && (
@@ -222,13 +284,15 @@ export default function SalesReturnFormPage() {
 
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className="resize-none text-[13px]" rows={2} />
+              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <FieldError message={errors.notes?.message} />
             </div>
           </FormSection>
 
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Item Retur</p>
             <LineItemsTable
+          errors={lineErrors}
               items={lines}
               columns={columns}
               onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}

@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
@@ -11,17 +11,16 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
-import { isDateInRange } from '@/components/shared/filter/dateRangeUtils'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
+import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useSalesInvoiceList, useSalesInvoiceMutations } from '../hooks/useSalesInvoiceList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { SalesInvoice, SalesInvoiceStatus } from '../types/salesInvoice.types'
 
 const STATUSES: SalesInvoiceStatus[] = ['draft', 'approved', 'posted', 'partially_paid', 'paid', 'void']
-const FILTER_HINT = 'Filter multi-select dan tanggal berlaku pada data halaman yang sedang dimuat.'
-
 function isOverdue(invoice: SalesInvoice): boolean {
   if (!invoice.due_date) return false
   if (invoice.balance_due <= 0) return false
@@ -29,7 +28,7 @@ function isOverdue(invoice: SalesInvoice): boolean {
 }
 
 export default function SalesInvoiceListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
   const [page, setPage] = useState(0)
   const [filterStatuses, setFilterStatuses] = useState<SalesInvoiceStatus[]>([])
@@ -38,24 +37,29 @@ export default function SalesInvoiceListPage() {
   const [selectedRows, setSelectedRows] = useState<string[]>([])
   const [bulkVoidIds, setBulkVoidIds] = useState<string[]>([])
   const [isBulkVoidOpen, setBulkVoidOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  // Semua filter dikirim ke server, jadi perubahannya harus mengembalikan
+  // halaman ke 1 -- kalau tidak, pengguna di halaman 5 yang memfilter sampai
+  // tersisa 2 halaman akan melihat daftar kosong dan mengira filternya rusak.
+  const [prevFilters, setPrevFilters] = useState('')
+  const filterKey = `${search}|${filterStatuses.join(',')}|${dateRange.from}|${dateRange.to}|${String(filterCustomer)}`
+  if (filterKey !== prevFilters) {
+    setPrevFilters(filterKey)
+    setPage(0)
+  }
   const { void: voidInvoice } = useSalesInvoiceMutations()
 
   const { data, isLoading, isFetching } = useSalesInvoiceList({
     page: page + 1,
     per_page: 25,
+    search: search || undefined,
     customer_id: filterCustomer ?? undefined,
+    status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
+    date_from: dateRange.from || undefined,
+    date_to: dateRange.to || undefined,
   })
 
-  const rows = data?.data ?? []
-  const visibleRows = useMemo(
-    () =>
-      rows.filter((invoice) => {
-        const matchesStatus = filterStatuses.length === 0 || filterStatuses.includes(invoice.status)
-        const matchesDate = isDateInRange(invoice.date, dateRange.from, dateRange.to)
-        return matchesStatus && matchesDate
-      }),
-    [rows, filterStatuses, dateRange.from, dateRange.to],
-  )
+  const rows = useMemo(() => data?.data ?? [], [data])
 
   const activeFilters = [filterStatuses.length > 0, dateRange.from, dateRange.to, filterCustomer].filter(Boolean).length
 
@@ -72,7 +76,7 @@ export default function SalesInvoiceListPage() {
       variant: 'destructive',
       permission: 'sales.invoices.void',
       onClick: (ids) => {
-        const eligible = visibleRows.filter((invoice) => ids.includes(String(invoice.id)) && invoice.status !== 'void')
+        const eligible = rows.filter((invoice) => ids.includes(String(invoice.id)) && invoice.status !== 'void')
         if (eligible.length === 0) {
           toast.warning('Dokumen yang dipilih tidak bisa di-void.')
           return
@@ -84,7 +88,7 @@ export default function SalesInvoiceListPage() {
   ]
 
   const handleBulkVoid = async (reason: string) => {
-    const selectedInvoices = visibleRows.filter((invoice) => bulkVoidIds.includes(String(invoice.id)))
+    const selectedInvoices = rows.filter((invoice) => bulkVoidIds.includes(String(invoice.id)))
     if (selectedInvoices.length === 0) {
       toast.warning('Tidak ada invoice valid untuk di-void.')
       setBulkVoidOpen(false)
@@ -98,16 +102,17 @@ export default function SalesInvoiceListPage() {
       )
       const successCount = results.filter((result) => result.status === 'fulfilled').length
       const failureCount = results.length - successCount
+      const failureDetail = getBulkFailureDetail(results)
 
       if (failureCount === 0) {
         toast.success(`${successCount} invoice berhasil di-void.`)
       } else if (successCount === 0) {
-        toast.error(`Gagal void ${failureCount} invoice.`)
+        toast.error(`Gagal void ${failureCount} invoice.${failureDetail ? ` ${failureDetail}` : ''}`)
       } else {
-        toast.warning(`${successCount} invoice berhasil di-void, ${failureCount} gagal.`)
+        toast.warning(`${successCount} invoice berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
       }
-    } catch {
-      toast.error('Gagal memproses bulk void.')
+    } catch (bulkError) {
+      toast.error(getApiErrorMessage(bulkError, 'Gagal memproses bulk void.'))
     } finally {
       setBulkVoidOpen(false)
       setBulkVoidIds([])
@@ -122,7 +127,11 @@ export default function SalesInvoiceListPage() {
       size: 140,
       meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => (
-        <button type="button" onClick={() => navigate(`/sales/invoices/${original.id}`)} className="font-medium text-[#5c9ead] hover:underline">
+        <button
+          type="button"
+          onClick={() => openRecordTab({ label: original.number, path: `/sales/invoices/${original.id}` })}
+          className="font-medium text-[#5c9ead] hover:underline"
+        >
           {original.number}
         </button>
       ),
@@ -181,8 +190,15 @@ export default function SalesInvoiceListPage() {
         setFilterCustomer(null)
         resetSelection()
       }}
-      hint={FILTER_HINT}
     >
+      <div className="border-b border-[#f1f5f9] px-4 py-3">
+        <ListSearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Cari nomor invoice, customer..."
+          className="w-full max-w-none"
+        />
+      </div>
       <MultiCheckboxFilter
         title="Status"
         options={STATUSES.map((status) => ({ value: status, label: status.replace('_', ' ') }))}
@@ -199,7 +215,6 @@ export default function SalesInvoiceListPage() {
           setDateRange(next)
           resetSelection()
         }}
-        note="Berlaku pada data halaman yang sedang dimuat."
       />
       <FilterSection title="Customer">
         <SearchableSelect
@@ -223,14 +238,17 @@ export default function SalesInvoiceListPage() {
         sidebar={sidebar}
         action={
           <PermissionGuard permission="sales.invoices.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => navigate('/sales/invoices/create')}>
+            <Button
+              className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]"
+              onClick={() => openRecordTab({ label: 'Invoice Baru', path: '/sales/invoices/create' })}
+            >
               <Plus className="mr-1 h-3.5 w-3.5" /> Buat Invoice
             </Button>
           </PermissionGuard>
         }
       >
         <DataTable
-          data={visibleRows}
+          data={rows}
           columns={columns}
           totalRows={data?.meta.total ?? 0}
           isLoading={isLoading}
@@ -258,7 +276,7 @@ export default function SalesInvoiceListPage() {
         onConfirm={(reason) => void handleBulkVoid(reason)}
         documentNumber={
           bulkVoidIds.length === 1
-            ? (visibleRows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
+            ? (rows.find((row) => String(row.id) === bulkVoidIds[0])?.number ?? '1 dokumen terpilih')
             : `${bulkVoidIds.length} dokumen terpilih`
         }
         isLoading={voidInvoice.isPending}

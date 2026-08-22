@@ -1,19 +1,27 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { Plus, Power, PowerOff } from 'lucide-react'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
+import { SingleCheckboxFilter } from '@/components/shared/filter/SingleCheckboxFilter'
+import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
+import { ActiveStatusBadge } from '@/components/shared/badge/ActiveStatusBadge'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Badge } from '@/components/ui/badge'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
-import { useProdukList } from '../hooks/useProdukList'
+import { useToast } from '@/hooks/useToast'
+import { getBulkFailureDetail } from '@/lib/apiError'
+import { useProdukList, useProdukMutations } from '../hooks/useProdukList'
 import { kategoriProdukApi } from '../services/kategoriProdukApi'
 import type { Produk } from '../types/produk.types'
-import type { ColumnDef } from '@/components/shared/table/DataTable'
-import { cn } from '@/lib/utils'
+import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
+
+const STATUS_OPTIONS: { value: boolean | undefined; label: string }[] = [
+  { value: true, label: 'Aktif' },
+  { value: false, label: 'Nonaktif' },
+  { value: undefined, label: 'Semua' },
+]
 
 const columns: ColumnDef<Produk>[] = [
   {
@@ -51,41 +59,106 @@ const columns: ColumnDef<Produk>[] = [
     id: 'is_active',
     header: 'Status',
     size: 90,
-    cell: ({ original }) => (
-      <Badge
-        className={cn(
-          'text-[11px] px-2 py-0.5 rounded-full',
-          original.is_active
-            ? 'bg-[#D1FAE5] text-[#065F46] hover:bg-[#D1FAE5]'
-            : 'bg-[#F1F5F9] text-[#64748b] hover:bg-[#F1F5F9]',
-        )}
-      >
-        {original.is_active ? 'Aktif' : 'Nonaktif'}
-      </Badge>
-    ),
+    cell: ({ original }) => <ActiveStatusBadge isActive={original.is_active} />,
   },
 ]
 
 export default function ProdukListPage() {
-  const navigate = useNavigate()
+  const { openRecordTab } = useRecordTab()
+  const { toast } = useToast()
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState<25 | 50 | 100>(25)
   const [filterCategoryId, setFilterCategoryId] = useState<number | null>(null)
-  const [filterActive, setFilterActive] = useState<boolean | undefined>()
+  // Default: hanya tampilkan produk aktif. Pilih "Semua" di filter Status untuk menampilkan semuanya.
+  const [filterActive, setFilterActive] = useState<boolean | undefined>(true)
+  const [selectedRows, setSelectedRows] = useState<string[]>([])
+  const [search, setSearch] = useState('')
   const { data, isLoading, isFetching } = useProdukList({
     page,
     per_page: perPage,
     product_category_id: filterCategoryId ?? undefined,
     is_active: filterActive,
+    search: search || undefined,
   })
 
+  // Setiap perubahan filter mengembalikan ke halaman 1 dan mengosongkan
+  // seleksi — kalau tidak, memilih kategori saat berada di halaman 3 mendarat
+  // di halaman kosong, dan aksi massal bisa mengenai baris yang tidak terlihat.
+  const [prevFilters, setPrevFilters] = useState('')
+  const filterKey = `${search}|${String(filterCategoryId)}|${String(filterActive)}`
+  if (filterKey !== prevFilters) {
+    setPrevFilters(filterKey)
+    setPage(1)
+    setSelectedRows([])
+  }
+
+  const { activate, deactivate } = useProdukMutations()
+
   const activeFilterCount = [filterCategoryId, filterActive].filter((v) => v !== undefined && v !== null).length
+
+  // Pola identik dengan KontakListPage (halaman acuan): baris yang sudah dalam
+  // status tujuan tidak ikut dikirim, dan menonaktifkan minta konfirmasi
+  // sedangkan mengaktifkan tidak.
+  const runBulkStatusChange = async (
+    ids: string[],
+    targetActive: boolean,
+    mutateAsync: (id: number) => Promise<unknown>,
+  ) => {
+    const rows = data?.data ?? []
+    const eligible = rows.filter((p) => ids.includes(String(p.id)) && p.is_active !== targetActive)
+    const verb = targetActive ? 'diaktifkan' : 'dinonaktifkan'
+    if (eligible.length === 0) {
+      toast.warning(`Produk yang dipilih sudah ${verb}.`)
+      return
+    }
+    if (!targetActive && !confirm(`Nonaktifkan ${eligible.length} produk terpilih?`)) return
+
+    const results = await Promise.allSettled(eligible.map((p) => mutateAsync(p.id)))
+    const successCount = results.filter((r) => r.status === 'fulfilled').length
+    const failureCount = results.length - successCount
+    const failureDetail = getBulkFailureDetail(results)
+
+    if (failureCount === 0) {
+      toast.success(`${successCount} produk berhasil ${verb}.`)
+    } else if (successCount === 0) {
+      toast.error(`Gagal ${targetActive ? 'mengaktifkan' : 'menonaktifkan'} ${failureCount} produk.${failureDetail ? ` ${failureDetail}` : ''}`)
+    } else {
+      toast.warning(`${successCount} produk ${verb}, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
+    }
+    setSelectedRows([])
+  }
+
+  const bulkActions: BulkAction[] = [
+    {
+      id: 'bulk-activate',
+      label: 'Aktifkan Terpilih',
+      icon: <Power className="h-3.5 w-3.5" />,
+      permission: 'products.edit',
+      onClick: (ids) => runBulkStatusChange(ids, true, (id) => activate.mutateAsync(id)),
+    },
+    {
+      id: 'bulk-deactivate',
+      label: 'Nonaktifkan Terpilih',
+      icon: <PowerOff className="h-3.5 w-3.5" />,
+      variant: 'destructive',
+      permission: 'products.deactivate',
+      onClick: (ids) => runBulkStatusChange(ids, false, (id) => deactivate.mutateAsync(id)),
+    },
+  ]
 
   const sidebar = (
     <FilterSidebar
       activeCount={activeFilterCount}
-      onReset={() => { setFilterCategoryId(null); setFilterActive(undefined) }}
+      onReset={() => { setFilterCategoryId(null); setFilterActive(true) }}
     >
+      <div className="border-b border-[#f1f5f9] px-4 py-3">
+        <ListSearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Cari kode atau nama produk..."
+          className="w-full max-w-none"
+        />
+      </div>
       <FilterSection title="Kategori">
         <SearchableSelect
           value={filterCategoryId}
@@ -95,22 +168,12 @@ export default function ProdukListPage() {
           size="sm"
         />
       </FilterSection>
-      <FilterSection title="Status">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={filterActive === true}
-            onCheckedChange={(checked) => setFilterActive(checked ? true : undefined)}
-          />
-          <span className="text-[12px] text-[#334155]">Aktif</span>
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={filterActive === false}
-            onCheckedChange={(checked) => setFilterActive(checked ? false : undefined)}
-          />
-          <span className="text-[12px] text-[#334155]">Nonaktif</span>
-        </label>
-      </FilterSection>
+      <SingleCheckboxFilter
+        title="Status"
+        options={STATUS_OPTIONS}
+        value={filterActive}
+        onChange={setFilterActive}
+      />
     </FilterSidebar>
   )
 
@@ -123,7 +186,7 @@ export default function ProdukListPage() {
         <PermissionGuard permission="master-data.products.create">
           <Button
             className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]"
-            onClick={() => navigate('/master-data/products/create')}
+            onClick={() => openRecordTab({ label: 'Produk Baru', path: '/master-data/products/create' })}
           >
             <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Produk
           </Button>
@@ -138,6 +201,10 @@ export default function ProdukListPage() {
         isFetching={isFetching}
         pagination={{ pageIndex: page - 1, pageSize: perPage }}
         onPaginationChange={(s) => { setPage(s.pageIndex + 1); setPerPage(s.pageSize) }}
+        selectedRows={selectedRows}
+        onRowSelect={setSelectedRows}
+        bulkActions={bulkActions}
+        onRowClick={(row) => openRecordTab({ label: row.product_name, path: `/master-data/products/${row.id}` })}
         emptyTitle="Belum ada produk"
         emptyDescription="Tambahkan produk pertama untuk memulai."
       />

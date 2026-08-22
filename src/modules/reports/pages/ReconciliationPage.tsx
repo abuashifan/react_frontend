@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { ReportFilterParameter } from '../components/ReportFilterParameter'
+import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
-import type { ReportParams, ReconciliationReport, GrniReconciliationReport, DepositReconciliationReport } from '../types/reports.types'
+import type { ReconciliationReport, GrniReconciliationReport, DepositReconciliationReport } from '../types/reports.types'
+import { useReportParams } from '../hooks/useReportParams'
 
 const today = new Date().toISOString().slice(0, 10)
 
@@ -186,10 +187,8 @@ function DepositTable({ report, contactLabel }: { report: DepositReconciliationR
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function ReconciliationPage() {
-  const [params, setParams] = useState<ReportParams>({ as_of_date: today })
-  const [activeParams, setActiveParams] = useState<ReportParams | null>(null)
+  const { params, setParams, activeParams, setActiveParams, showFilter, setShowFilter } = useReportParams({ as_of_date: today })
   const [activeType, setActiveType] = useState<ReconType>('ar')
-  const [showFilter, setShowFilter] = useState(true)
 
   const isSubledgerType = activeType === 'ar' || activeType === 'ap' || activeType === 'inventory'
   const isGrniType = activeType === 'grni'
@@ -233,7 +232,10 @@ export default function ReconciliationPage() {
   const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false) }
 
   return (
-    <WorkspaceLayout title="Rekonsiliasi" breadcrumb={[{ label: 'Laporan', path: '/reports' }, { label: 'Rekonsiliasi' }]}>
+    <WorkspaceLayout
+      hideHeader
+      toolbar={<ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} mode="as_of_date" />}
+    >
       <div className="space-y-4">
         <div role="tablist" aria-label="Tab Rekonsiliasi" className="flex flex-wrap gap-2">
           {(['ar', 'ap', 'inventory', 'grni', 'customer_deposits', 'vendor_deposits'] as ReconType[]).map((t) => (
@@ -250,9 +252,7 @@ export default function ReconciliationPage() {
           ))}
         </div>
 
-        {showFilter
-          ? <ReportFilterParameter params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} mode="as_of_date" isLoading={isLoading} extras={{ only_difference: true }} />
-          : <ReportCompactBar params={activeParams!} onEdit={() => setShowFilter(true)} mode="as_of_date" />}
+        {showFilter && <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} mode="as_of_date" isLoading={isLoading} extras={{ only_difference: true }} />}
 
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
         {isError && <ReportError onRetry={() => refetch()} />}

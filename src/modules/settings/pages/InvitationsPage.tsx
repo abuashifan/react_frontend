@@ -14,7 +14,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from '@/hooks/useToast'
 import { ConfirmDialog } from '@/components/shared/document/ConfirmDialog'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
-import { formatDate, cn } from '@/lib/utils'
+import { FieldError } from '@/components/shared/form/FieldError'
+import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { formatDate, cn, fieldErrorClass } from '@/lib/utils'
 import { useInvitations, useInvitationMutations, useAccessRoles } from '../hooks/useAccessManagement'
 import type { Invitation, InvitationStatus } from '../types/access.types'
 
@@ -51,17 +53,22 @@ export default function InvitationsPage() {
       toast.success('Undangan terkirim.')
       setDialogOpen(false)
       form.reset()
-    } catch { toast.error('Gagal mengirim undangan.') }
+    } catch (inviteError) {
+      // Tandai field penyebab dari backend (mis. email sudah diundang) supaya user
+      // tahu isian mana yang salah, bukan hanya toast generik.
+      applyApiValidationErrors(inviteError, form.setError)
+      toast.error(getApiErrorMessage(inviteError, 'Gagal mengirim undangan.'))
+    }
   })
 
   const handleResend = async (inv: Invitation) => {
     try { await resend.mutateAsync(inv.id); toast.success('Undangan dikirim ulang.') }
-    catch { toast.error('Gagal mengirim ulang undangan.') }
+    catch (resendError) { toast.error(getApiErrorMessage(resendError, 'Gagal mengirim ulang undangan.')) }
   }
 
   const handleRevoke = async (inv: Invitation) => {
     try { await revoke.mutateAsync(inv.id); toast.success('Undangan dibatalkan.') }
-    catch { toast.error('Gagal membatalkan undangan.') }
+    catch (revokeError) { toast.error(getApiErrorMessage(revokeError, 'Gagal membatalkan undangan.')) }
   }
 
   const columns: ColumnDef<Invitation>[] = [
@@ -126,8 +133,8 @@ export default function InvitationsPage() {
           <form onSubmit={(e) => void handleCreate(e)} className="space-y-3 pt-1">
             <div className="flex flex-col gap-1">
               <Label htmlFor="settings-invitations-email" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Email <span className="text-red-500">*</span></Label>
-              <Input id="settings-invitations-email" {...form.register('email')} type="email" className="h-9 text-[13px]" placeholder="nama@perusahaan.com" />
-              {form.formState.errors.email && <p className="text-[11px] text-red-500">{form.formState.errors.email.message}</p>}
+              <Input id="settings-invitations-email" {...form.register('email')} type="email" className={cn('h-9 text-[13px]', fieldErrorClass(form.formState.errors.email))} placeholder="nama@perusahaan.com" />
+              <FieldError message={form.formState.errors.email?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="settings-invitations-role-id" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Peran</Label>
@@ -135,11 +142,12 @@ export default function InvitationsPage() {
                 id="settings-invitations-role-id"
                 value={form.watch('role_id') ?? ''}
                 onChange={(e) => form.setValue('role_id', e.target.value ? Number(e.target.value) : null)}
-                className="h-9 rounded-md border border-input bg-background px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-ring"
+                className={cn('h-9 rounded-md border border-input bg-background px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-ring', fieldErrorClass(form.formState.errors.role_id))}
               >
                 <option value="">— Pilih peran —</option>
                 {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>
+              <FieldError message={form.formState.errors.role_id?.message} />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="h-9 text-[13px]">Batal</Button>

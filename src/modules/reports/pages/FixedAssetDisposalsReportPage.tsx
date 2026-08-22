@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { ReportFilterParameter } from '../components/ReportFilterParameter'
+import { ReportParameterModal } from '../components/ReportParameterModal'
+import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
-import type { ReportParams } from '../types/reports.types'
+import { useReportParams } from '../hooks/useReportParams'
 
 const today = new Date().toISOString().slice(0, 10)
 const firstOfYear = today.slice(0, 4) + '-01-01'
@@ -16,8 +17,11 @@ interface ActiveQuery {
 }
 
 export default function FixedAssetDisposalsReportPage() {
-  const [params, setParams] = useState<ReportParams>({ start_date: firstOfYear, end_date: today })
-  const [activeQuery, setActiveQuery] = useState<ActiveQuery | null>(null)
+  const { params, setParams, activeParams, setActiveParams, showFilter, setShowFilter } = useReportParams({ start_date: firstOfYear, end_date: today })
+  const activeQuery = useMemo<ActiveQuery | null>(
+    () => (activeParams ? { disposal_date_from: activeParams.start_date, disposal_date_to: activeParams.end_date } : null),
+    [activeParams],
+  )
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['reports', 'fa-disposals', activeQuery],
@@ -28,19 +32,17 @@ export default function FixedAssetDisposalsReportPage() {
   const rows = data?.data ?? []
 
   const handleSubmit = () => {
-    setActiveQuery({
-      disposal_date_from: params.start_date,
-      disposal_date_to: params.end_date,
-    })
+    setActiveParams({ ...params })
+    setShowFilter(false)
   }
 
   return (
     <WorkspaceLayout
-      title="Laporan Pelepasan Aset"
-      breadcrumb={[{ label: 'Laporan' }, { label: 'Aktiva Tetap' }, { label: 'Laporan Pelepasan' }]}
+      hideHeader
+      toolbar={activeQuery ? <ReportCompactBar params={params} onOpenModal={() => setShowFilter(true)} mode="range" /> : undefined}
     >
       <div className="space-y-4">
-        <ReportFilterParameter
+        <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)}
           params={params}
           onChange={(p) => setParams((prev) => ({ ...prev, ...p }))}
           onSubmit={handleSubmit}

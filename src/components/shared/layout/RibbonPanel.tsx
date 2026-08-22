@@ -1,6 +1,7 @@
 import { useTabStore } from '@/stores/useTabStore'
 import { usePermission } from '@/hooks/usePermission'
-import { useToast } from '@/hooks/useToast'
+import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
+import { useSetupGate } from '@/modules/onboarding/hooks/useSetupStatus'
 import { MODULE_MAP } from '@/router/moduleConfig'
 import type { RibbonItem } from '@/router/moduleConfig'
 import { cn } from '@/lib/utils'
@@ -52,11 +53,11 @@ export function RibbonPanel() {
     activePrimaryTabId,
     isRibbonOpen,
     closeRibbon,
-    openPrimaryTab,
     primaryTabs,
   } = useTabStore()
   const { can, permissionsLoaded } = usePermission()
-  const { toast } = useToast()
+  const openTab = useOpenPrimaryTab()
+  const setupGate = useSetupGate()
   const activePrimaryTab = primaryTabs.find((tab) => tab.id === activePrimaryTabId)
 
   if (!activeModule) return null
@@ -64,25 +65,24 @@ export function RibbonPanel() {
   const moduleId = activeModule
   const moduleConfig = MODULE_MAP[moduleId]
 
-  const visibleItems = (moduleConfig?.ribbonItems ?? []).filter(
-    (item) => !permissionsLoaded || !item.permission || can(item.permission),
-  )
+  const visibleItems = (moduleConfig?.ribbonItems ?? []).filter((item) => {
+    if (permissionsLoaded && item.permission && !can(item.permission)) return false
+    // Menu setup-only hanya muncul selama pengaturan awal masih terbuka.
+    if (item.setupOnly && !setupGate.initial_setup_available) return false
+    return true
+  })
+
+  // Modul tanpa item ribbon (mis. Laporan) tidak boleh memunculkan panel kosong.
+  if (visibleItems.length === 0) return null
 
   function handleItemClick(item: RibbonItem) {
-    const didOpen = openPrimaryTab({
+    openTab({
       id: `${activeModule}-${item.id}`,
       menuKey: item.id,
       label: item.label,
       module: moduleId,
       path: item.path,
     })
-
-    if (!didOpen) {
-      toast.warning('Maksimal 10 tab dapat dibuka sekaligus. Tutup tab yang tidak diperlukan.')
-      closeRibbon()
-      return
-    }
-
     closeRibbon()
   }
 
@@ -91,7 +91,7 @@ export function RibbonPanel() {
   return (
     <div
       className={cn(
-        'fixed left-0 right-0 top-[52px] z-[60] h-[64px] overflow-hidden bg-white border-b border-[#d9e2e5]',
+        'no-print fixed left-0 right-0 top-[52px] z-[60] h-[64px] overflow-hidden bg-white border-b border-[#d9e2e5]',
         'transition-all duration-150 ease-out',
         isRibbonOpen
           ? 'translate-y-0 opacity-100 pointer-events-auto'
@@ -99,14 +99,25 @@ export function RibbonPanel() {
       )}
     >
       <div className="flex h-[64px] items-stretch overflow-x-auto overflow-y-hidden no-scrollbar px-1">
-        {visibleItems.map((item) => (
-          <RibbonItemButton
-            key={item.id}
-            item={item}
-            isActive={activeId === item.id}
-            onClick={() => handleItemClick(item)}
-          />
-        ))}
+        {visibleItems.map((item, index) => {
+          // Pemisah antar grup. Ribbon adalah strip horizontal 64px, bukan menu
+          // bertingkat — jadi grup ditandai garis, bukan submenu. Modul tanpa
+          // `group` tidak pernah memunculkan pemisah dan tampil persis seperti
+          // sebelumnya.
+          const previousGroup = index > 0 ? visibleItems[index - 1].group : undefined
+          const needsDivider = !!item.group && index > 0 && item.group !== previousGroup
+
+          return (
+            <div key={item.id} className="flex items-stretch">
+              {needsDivider && <div className="my-3 w-px flex-shrink-0 bg-[#e2e8f0]" aria-hidden="true" />}
+              <RibbonItemButton
+                item={item}
+                isActive={activeId === item.id}
+                onClick={() => handleItemClick(item)}
+              />
+            </div>
+          )
+        })}
       </div>
     </div>
   )
