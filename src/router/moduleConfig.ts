@@ -88,11 +88,12 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     path: '/accounting',
     ribbonItems: [
       { id: 'journals', label: 'Jurnal Umum', icon: BookOpen, path: '/accounting/journals', permission: 'journal.view' },
-      // Saldo awal hanya boleh ada satu batch per perusahaan seumur hidupnya
-      // (OPENING_BALANCE_ACTIVE_BATCH_EXISTS di backend), jadi item ini hilang
-      // dari ribbon setelah setup awal selesai. Rutenya tetap hidup untuk
-      // wizard dan drill-down.
-      { id: 'opening-balance', label: 'Saldo Awal', icon: Archive, path: '/opening-balance', permission: 'opening_balance.view', setupOnly: true },
+      // Saldo awal memang hanya boleh punya satu batch aktif per perusahaan
+      // (OPENING_BALANCE_ACTIVE_BATCH_EXISTS di backend), tapi itu bukan alasan
+      // menyembunyikan menunya sesudah setup: batch yang sudah diposting tetap
+      // perlu dibuka untuk diperiksa, dicetak, atau dibuka kembali (reopen).
+      // Halamannya sendiri yang menentukan aksi apa yang masih boleh dilakukan.
+      { id: 'opening-balance', label: 'Saldo Awal', icon: Archive, path: '/opening-balance', permission: 'opening_balance.view' },
       { id: 'period-locks', label: 'Periode Akuntansi', icon: Calendar, path: '/accounting/period-locks', permission: 'accounting.period-locks.manage' },
       { id: 'period-end', label: 'Akhir Periode', icon: CheckSquare, path: '/accounting/period-end', permission: 'period_end.view' },
       { id: 'fiscal-years', label: 'Tahun Fiskal', icon: CalendarDays, path: '/accounting/fiscal-years', permission: 'accounting.fiscal-years.manage' },

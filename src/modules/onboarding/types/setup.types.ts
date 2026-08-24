@@ -73,6 +73,12 @@ export interface CoaTemplateAccountInput {
   parent_code: string | null
   is_cash_bank?: boolean
   description?: string | null
+  /**
+   * Hanya diisi akun kontra (akumulasi penyusutan/amortisasi: bertipe `asset`
+   * tapi bersaldo normal `credit`). Kalau kosong, backend menurunkannya dari
+   * `type` -- lihat ChartOfAccountService::validateNormalBalance().
+   */
+  normal_balance?: 'debit' | 'credit' | null
 }
 
 export interface CoaTemplateDef {
@@ -81,4 +87,41 @@ export interface CoaTemplateDef {
   description: string
   account_count: number
   accounts: CoaTemplateAccountInput[]
+}
+
+/**
+ * Bentuk seperlunya dari `GET /setup/opening-balance/preview`
+ * (SetupWizardService::buildOpeningBalancePreview). Hanya field yang benar-benar
+ * dipakai wizard yang diketik di sini; responsnya sendiri jauh lebih besar.
+ */
+export interface SetupOpeningBalancePreview {
+  reconciled: boolean
+  blocking_errors: { code: string; message: string }[]
+  warnings: { code: string; message: string }[]
+  fixed_asset_totals: {
+    count: number
+    cost: number
+    accumulated_depreciation: number
+    net_book_value: number
+  } | null
+}
+
+/** Hasil `POST /setup/validate-step`. */
+export interface SetupStepValidationResult {
+  valid: boolean
+  errors: { code: string; message: string }[]
+  warnings: { code: string; message: string }[]
+  /**
+   * `skipped: true` hanya muncul kalau backend benar-benar mengambil jalur
+   * lewati (flag skip diset DAN tidak ada batch tersisa) -- lihat
+   * SetupWizardService::validateOpeningBalancePreview(). Dipakai wizard untuk
+   * menulis ringkasan yang jujur, bukan menebak dari state lokal.
+   */
+  metadata?: { skipped?: boolean } & Record<string, unknown>
+}
+
+export interface SetupValidateStepResponse {
+  step: SetupStepKey
+  result: SetupStepValidationResult
+  state: SetupState
 }

@@ -1,3 +1,4 @@
+import { Upload } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
@@ -57,6 +58,22 @@ export default function OpeningBalanceStatusPage() {
                 {createBatch.isPending ? 'Membuat...' : 'Mulai Input Saldo Awal'}
               </Button>
             </PermissionGuard>
+            {/*
+              Neraca awal biasanya sudah ada dalam bentuk spreadsheet, jadi jalur
+              impor ditawarkan berdampingan dengan input manual — bukan
+              disembunyikan di menu Master Data saja. Profil impornya `opening_balance`.
+            */}
+            <PermissionGuard permission="imports.upload" fallback={null}>
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => navigate('/master-data/import')}
+                  className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#5c9ead] transition-colors hover:text-[#326273]"
+                >
+                  <Upload className="h-3.5 w-3.5" /> Impor dari berkas CSV/XLSX
+                </button>
+              </div>
+            </PermissionGuard>
           </div>
         ) : (
           <div className="space-y-4 rounded-lg border border-[#e2e8f0] bg-white p-6">
@@ -81,6 +98,13 @@ export default function OpeningBalanceStatusPage() {
               <Button type="button" onClick={() => navigate(`/opening-balance/${batch.id}`)} className="h-9 bg-[#5c9ead] px-5 text-[13px] hover:bg-[#4a8a9b]">
                 {batch.status === 'draft' ? 'Lanjutkan Input' : 'Lihat Detail'}
               </Button>
+              {batch.status === 'draft' && (
+                <PermissionGuard permission="imports.upload" fallback={null}>
+                  <Button type="button" variant="outline" onClick={() => navigate('/master-data/import')} className="h-9 gap-1.5 px-5 text-[13px]">
+                    <Upload className="h-3.5 w-3.5" /> Impor dari Berkas
+                  </Button>
+                </PermissionGuard>
+              )}
             </div>
           </div>
         )}

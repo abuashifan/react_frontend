@@ -1,7 +1,13 @@
 import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type { SelectOption } from '@/types/common.types'
-import type { CoaTemplateAccountInput, CoaTemplateDef, SetupStatus } from '../types/setup.types'
+import type {
+  CoaTemplateAccountInput,
+  CoaTemplateDef,
+  SetupOpeningBalancePreview,
+  SetupStatus,
+  SetupValidateStepResponse,
+} from '../types/setup.types'
 
 interface AccountSearchResult {
   id: number
@@ -32,9 +38,9 @@ export const setupApi = {
   updateCurrentStep: (step: string, openingDate?: string) =>
     http.patch<unknown, ApiResponse<Record<string, unknown>>>('/setup/current-step', { current_step: step, opening_date: openingDate }),
   validateStep: (step: string, data?: { opening_date?: string; confirm_no_opening_fixed_assets?: boolean; confirm_opening_balance_skipped?: boolean }) =>
-    http.post<unknown, ApiResponse<Record<string, unknown>>>('/setup/validate-step', { step, ...data }),
+    http.post<unknown, ApiResponse<SetupValidateStepResponse>>('/setup/validate-step', { step, ...data }),
   validateAll: () => http.post<unknown, ApiResponse<{ valid: boolean; results: Record<string, unknown> }>>('/setup/validate-all'),
-  getOpeningBalancePreview: () => http.get<unknown, ApiResponse<Record<string, unknown>>>('/setup/opening-balance/preview'),
+  getOpeningBalancePreview: () => http.get<unknown, ApiResponse<SetupOpeningBalancePreview>>('/setup/opening-balance/preview'),
   finalize: () => http.post<unknown, ApiResponse<Record<string, unknown>>>('/setup/finalize'),
   reopen: (reason: string) => http.post<unknown, ApiResponse<Record<string, unknown>>>('/setup/reopen', { reason }),
   listCoaTemplates: () => http.get<unknown, ApiResponse<CoaTemplateDef[]>>('/setup/coa-templates'),
