@@ -51,11 +51,12 @@ export function Step5OpeningBalance({ onComplete, onBack }: Props) {
    *
    * `opening_fixed_assets` sama persis: wajib divalidasi saat finalize kalau
    * modul Aktiva Tetap aktif (SetupWizardService::fixedAssetsEnabled()), tapi
-   * wizard belum punya alur impor aset tetap awal sendiri -- checkbox di
+   * wizard belum punya alur pengisian aset tetap awal sendiri -- checkbox di
    * bawah cuma mengonfirmasi "tidak ada aset tetap awal" ke backend supaya
-   * user tidak wajib mampir ke halaman Aktiva Tetap dulu. Kalau perusahaan
-   * sudah punya baris `fixed_assets` bersumber `opening_import`, konfirmasi
-   * ini tidak berpengaruh -- backend memvalidasi dari jumlah baris dulu.
+   * user tidak wajib mampir ke halaman Aktiva Tetap dulu, dan bisa mengisinya
+   * belakangan lewat halaman itu. Kalau perusahaan sudah punya baris
+   * `fixed_assets` bersumber `opening_import`, konfirmasi ini tidak
+   * berpengaruh -- backend memvalidasi dari jumlah baris dulu.
    */
   const handleContinue = async () => {
     setIsContinuing(true)
@@ -110,8 +111,8 @@ export function Step5OpeningBalance({ onComplete, onBack }: Props) {
 
       <p className="text-[13px] text-[#64748b]">
         Saldo awal dikelola di halaman khusus menggunakan konsep batch (draft → validasi → posting).
-        Buka halaman Saldo Awal untuk menginput posisi keuangan awal perusahaan, atau centang di
-        bawah kalau perusahaan ini belum punya saldo awal sama sekali.
+        Kalau perusahaan ini belum punya saldo awal, centang di bawah untuk melanjutkan — datanya
+        bisa diisi nanti lewat halaman Saldo Awal kapan saja.
       </p>
 
       {isLoading ? (
@@ -135,7 +136,7 @@ export function Step5OpeningBalance({ onComplete, onBack }: Props) {
             onCheckedChange={(checked) => setNoOpeningBalance(checked === true)}
             className="mt-0.5"
           />
-          <span>Perusahaan ini belum punya saldo awal — lanjutkan tanpa saldo awal.</span>
+          <span>Perusahaan ini belum punya saldo awal — lanjutkan, akan diisi nanti.</span>
         </label>
       )}
 
@@ -151,9 +152,9 @@ export function Step5OpeningBalance({ onComplete, onBack }: Props) {
         <div className="space-y-2 border-t border-[#d9e2e5] pt-6">
           <h3 className="text-[14px] font-semibold text-[#24323a]">Aset Tetap Awal</h3>
           <p className="text-[13px] text-[#64748b]">
-            Modul Aktiva Tetap aktif untuk perusahaan ini. Wizard belum menyediakan impor aset
-            tetap awal — buka halaman Aktiva Tetap untuk menambahkannya, atau centang di bawah
-            kalau perusahaan ini belum punya aset tetap awal sama sekali.
+            Modul Aktiva Tetap aktif untuk perusahaan ini. Kalau perusahaan ini belum punya aset
+            tetap awal, centang di bawah untuk melanjutkan — datanya bisa diisi nanti lewat
+            halaman Aktiva Tetap kapan saja.
           </p>
           <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-dashed border-[#d9e2e5] p-4 text-[13px] text-[#64748b]">
             <Checkbox
@@ -161,7 +162,7 @@ export function Step5OpeningBalance({ onComplete, onBack }: Props) {
               onCheckedChange={(checked) => setNoOpeningFixedAssets(checked === true)}
               className="mt-0.5"
             />
-            <span>Perusahaan ini belum punya aset tetap awal — lanjutkan tanpa aset tetap awal.</span>
+            <span>Perusahaan ini belum punya aset tetap awal — lanjutkan, akan diisi nanti.</span>
           </label>
           <button
             type="button"
