@@ -6,6 +6,7 @@ export interface AccountMapping {
   is_required: boolean
   account_code: string | null
   account_name: string | null
+  account_types: string[]
   settings_section: string | null
 }
 

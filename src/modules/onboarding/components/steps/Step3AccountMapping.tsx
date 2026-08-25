@@ -1,13 +1,11 @@
 import { useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, AlertTriangle, Search } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { CheckCircle2, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
-import { AccountPickerDialog } from '@/modules/master-data/components/AccountPickerDialog'
-import type { Coa, CoaType } from '@/modules/master-data/types/coa.types'
-import { onboardingApi } from '../../services/onboardingApi'
+import { useAccountMappings } from '@/modules/master-data/hooks/useAccountMappings'
+import { accountMappingApi } from '@/modules/master-data/services/accountMappingApi'
+import { AccountMappingGroupedFields } from '@/modules/master-data/components/AccountMappingGroupedFields'
 import { useToast } from '@/hooks/useToast'
-import type { SelectOption } from '@/types/common.types'
 import { getApiErrorMessage } from '@/lib/apiError'
 
 interface Props {
@@ -15,63 +13,27 @@ interface Props {
   onBack: () => void
 }
 
-const MODULE_ORDER = [
-  'sales',
-  'purchase',
-  'inventory',
-  'fixed_assets',
-  'cash_bank',
-  'opening_balance',
-  'closing',
-  'journal',
-] as const
-
-const MODULE_TITLES: Record<string, string> = {
-  sales: 'Penjualan',
-  purchase: 'Pembelian',
-  inventory: 'Persediaan',
-  fixed_assets: 'Aset Tetap',
-  cash_bank: 'Kas & Bank',
-  opening_balance: 'Saldo Awal',
-  closing: 'Tutup Buku',
-  journal: 'Jurnal',
-}
-
+/**
+ * Sama persis dengan Pengaturan -> Pemetaan Akun (lihat AccountMappingSettingsPage) --
+ * keduanya memakai AccountMappingGroupedFields dan endpoint
+ * `/master-data/account-mappings` yang sama, jadi apa pun yang diisi di sini
+ * langsung menjadi pemetaan aktif perusahaan, bukan draft terpisah yang harus
+ * diulang lagi di menu Pengaturan.
+ */
 export function Step3AccountMapping({ onComplete, onBack }: Props) {
   const { toast } = useToast()
   const qc = useQueryClient()
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['onboarding-account-mappings'],
-    queryFn: () => onboardingApi.listAccountMappings(),
-  })
+  const { data, isLoading, isError, refetch } = useAccountMappings()
   const [overrides, setOverrides] = useState<Record<string, number | null>>({})
-  // Label akun yang dipilih lewat AccountPickerDialog -- SearchableSelect hanya tahu label dari
-  // `selectedOptions` (data server) atau pilihannya sendiri; tanpa ini field akan menampilkan
-  // fallback "#id" karena dipilih dari luar komponennya.
-  const [overrideOptions, setOverrideOptions] = useState<Record<string, SelectOption<number>>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [pickerKey, setPickerKey] = useState<string | null>(null)
 
-  const mappings = data ?? []
+  const mappings = data?.data ?? []
   const valueFor = (key: string, original: number | null): number | null =>
     key in overrides ? overrides[key] : original
 
   const missingRequired = mappings.filter(
     (m) => m.is_required && valueFor(m.mapping_key, m.account_id) === null,
   )
-
-  const handleSearch = (query: string): Promise<SelectOption<number>[]> =>
-    onboardingApi.searchAccounts(query)
-
-  const handlePicked = (key: string, accounts: Coa[]) => {
-    const account = accounts[0]
-    if (!account) return
-    setOverrides((prev) => ({ ...prev, [key]: account.id }))
-    setOverrideOptions((prev) => ({
-      ...prev,
-      [key]: { value: account.id, label: account.account_name, sublabel: account.account_code },
-    }))
-  }
 
   const handleContinue = async () => {
     setIsSubmitting(true)
@@ -81,11 +43,11 @@ export function Step3AccountMapping({ onComplete, onBack }: Props) {
           const original = mappings.find((m) => m.mapping_key === key)?.account_id ?? null
           return val !== null && val !== original
         })
-        .map(([key, val]) => onboardingApi.updateAccountMapping(key, val as number))
+        .map(([key, val]) => accountMappingApi.update(key, { account_id: val }))
 
       if (tasks.length > 0) {
         await Promise.all(tasks)
-        await qc.invalidateQueries({ queryKey: ['onboarding-account-mappings'] })
+        await qc.invalidateQueries({ queryKey: ['master-data-account-mappings'] })
         toast.success('Perubahan pemetaan akun disimpan.')
       }
       onComplete()
@@ -95,10 +57,6 @@ export function Step3AccountMapping({ onComplete, onBack }: Props) {
       setIsSubmitting(false)
     }
   }
-
-  const pickerMapping = mappings.find((m) => m.mapping_key === pickerKey)
-  const pickerAccountType: CoaType | undefined =
-    pickerMapping?.account_types.length === 1 ? (pickerMapping.account_types[0] as CoaType) : undefined
 
   if (isLoading) {
     return (
@@ -145,63 +103,12 @@ export function Step3AccountMapping({ onComplete, onBack }: Props) {
         </div>
       )}
 
-      {MODULE_ORDER.filter((mod) => mappings.some((m) => m.module === mod)).map((mod) => (
-        <div key={mod} className="overflow-hidden rounded-lg border border-[#d9e2e5]">
-          <div className="border-b border-[#d9e2e5] bg-[#f8fafc] px-4 py-2.5">
-            <p className="text-[12px] font-semibold uppercase tracking-wide text-[#24323a]">
-              {MODULE_TITLES[mod] ?? mod}
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
-            {mappings
-              .filter((m) => m.module === mod)
-              .map((m) => {
-                const current = valueFor(m.mapping_key, m.account_id)
-                const overrideOption = overrideOptions[m.mapping_key]
-                const presetOption: SelectOption<number>[] = overrideOption
-                  ? [overrideOption]
-                  : m.account_id !== null && m.account_name !== null
-                    ? [{ value: m.account_id, label: m.account_name, sublabel: m.account_code ?? undefined }]
-                    : []
-                return (
-                  <div key={m.mapping_key}>
-                    <label
-                      htmlFor={`onboarding-account-mapping-${m.mapping_key}`}
-                      className="mb-1.5 block text-[12px] font-medium text-[#24323a]"
-                    >
-                      {m.label ?? m.mapping_key}{' '}
-                      {m.is_required && <span className="text-red-500">*</span>}
-                    </label>
-                    <div className="flex items-center gap-1.5">
-                      <div className="flex-1">
-                        <SearchableSelect
-                          triggerId={`onboarding-account-mapping-${m.mapping_key}`}
-                          triggerAriaLabel={m.label ?? m.mapping_key}
-                          value={current}
-                          selectedOptions={presetOption}
-                          onChange={(val) =>
-                            setOverrides((prev) => ({ ...prev, [m.mapping_key]: val }))
-                          }
-                          onSearch={handleSearch}
-                          placeholder="Cari akun..."
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setPickerKey(m.mapping_key)}
-                        aria-label={`Cari akun untuk ${m.label ?? m.mapping_key} lewat dialog`}
-                        title="Cari akun lewat dialog"
-                        className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-md border border-[#d9e2e5] text-[#64748b] transition-colors hover:border-[#5c9ead] hover:text-[#5c9ead] lg:h-9 lg:w-9"
-                      >
-                        <Search className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-          </div>
-        </div>
-      ))}
+      <AccountMappingGroupedFields
+        mappings={mappings}
+        overrides={overrides}
+        onOverrideChange={(key, val) => setOverrides((prev) => ({ ...prev, [key]: val }))}
+        idPrefix="onboarding-account-mapping"
+      />
 
       <div className="sticky bottom-0 -mx-6 mt-2 flex items-center justify-between border-t border-[#d9e2e5] bg-white px-6 py-3 lg:-mx-8 lg:px-8">
         <Button type="button" variant="outline" onClick={onBack}>← Kembali</Button>
@@ -214,18 +121,6 @@ export function Step3AccountMapping({ onComplete, onBack }: Props) {
           {isSubmitting ? 'Menyimpan...' : 'Lanjutkan →'}
         </Button>
       </div>
-
-      <AccountPickerDialog
-        open={pickerKey !== null}
-        onClose={() => setPickerKey(null)}
-        multiple={false}
-        accountType={pickerAccountType}
-        title={`Cari Akun — ${pickerMapping?.label ?? pickerKey ?? ''}`}
-        onConfirm={(accounts) => {
-          if (pickerKey) handlePicked(pickerKey, accounts)
-          setPickerKey(null)
-        }}
-      />
     </div>
   )
 }
