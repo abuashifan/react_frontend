@@ -215,6 +215,165 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 ### 6C. Build Status
 
 ```
+Terakhir dicek  : 2026-08-25 (Fase 7F+7G: aktivasi aset saldo awal saat posting,
+                    akun kontrol per kelas, batch koreksi, centang aset saldo awal)
+npm run build   : ✅ 0 error
+npm run lint    : ✅ 0 error, 0 warning (npx eslint src/)
+Backend test    : ✅ php artisan test penuh: 1492 tests, 1487 passed, 5 skipped, 0 failed
+                    + pint --test bersih untuk semua file yang disentuh
+Playwright      : ✅ Chromium headless 1280×900, dev server lokal, perusahaan demo dengan
+                    batch saldo awal berstatus draft:
+                    - Daftar Aktiva → tombol "Impor Aset Awal" tampil
+                    - Form Tambah Aktiva → centang "Aset saldo awal" tampil; field
+                      Akumulasi Penyusutan tersembunyi sampai dicentang, lalu muncul
+                      bersama catatan "aktif otomatis saat batch saldo awal diposting"
+                    - Validasi silang klien: akumulasi 5jt > perolehan 1jt ditolak
+                      ("tidak boleh melebihi nilai perolehan dikurangi nilai residu")
+                    - 0 console error; tidak ada data yang tersimpan
+                  ⚠ TIDAK terverifikasi di browser: tombol Kapitalisasi disembunyikan untuk
+                    aset saldo awal. Harness tidak berhasil memunculkan tombol itu bahkan
+                    pada versi file SEBELUM perubahan (aset normal draft pun tidak
+                    menampilkannya), jadi kontrolnya tidak valid — bukan regresi dari
+                    perubahan ini. Penjaga sesungguhnya ada di backend dan diuji:
+                    FIXED_ASSET_OPENING_NOT_CAPITALIZABLE
+Aktivasi aset   : - Penyusutan digerakkan tabel JADWAL, bukan status aset. Aset impor
+                    berhenti di `draft` tanpa jadwal → tidak pernah ikut depreciation run,
+                    diam-diam, tanpa error. Itu yang ditutup di sini
+                  - Pemicunya POSTING batch saldo awal, bukan tombol manual. Alasannya
+                    konkret: SetupWizardService::finalize() sendiri yang memanggil post()
+                    di klik terakhir wizard, jadi tombol manual akan selalu mati sampai
+                    halaman terakhir lalu user harus INGAT mampir ke Aktiva Tetap
+                  - Jadwal = SISA nilai selama SISA umur; periode pertama = bulan tanggal
+                    saldo awal (bukan +1 seperti aset baru), periode terakhir = akhir masa
+                    manfaat ASLI. Terverifikasi: Avanza 250jt/akum 23,4jt/perolehan Mar
+                    2025/saldo awal Jan 2026 → 87 baris Jan 2026–Mar 2033
+                  - Aset yang umurnya sudah habis tapi masih bernilai buku DITOLAK saat
+                    posting (OPENING_ASSET_LIFE_ALREADY_ENDED), menyebut nama asetnya
+                  - Reopen mengembalikan aset ke draft; ditolak kalau penyusutan sudah
+                    terposting
+Akun per kelas  : - fixedAssetSystemLines() dipecah per akun kontrol. Tanpa ini akumulasi
+                    SATU aset terbelah: saldo awal ke akun generik (1531 Akum Peralatan),
+                    penyusutan bulanan ke akun per kategori (1511 Akum Kendaraan)
+                  - Pemecahannya di FixedAssetService::openingAssetTotals(), bukan di modul
+                    Saldo Awal — akun mana milik aset mana adalah pengetahuan modul aset
+Batch koreksi   : - Aset terlewat setelah setup selesai = batch BARU bertipe `correction`,
+                    bukan reopen. Reopen membatalkan jurnal pembuka dan diblokir sistem
+                    begitu ada transaksi operasional
+                  - OpeningBalanceType::CORRECTION sudah ada di kode tapi tidak pernah
+                    dipakai; tiga penjaga "hanya satu batch" dilonggarkan khusus untuknya
+                  - Kolom baru `fixed_assets.opening_balance_batch_id` (migration tenant
+                    2026_08_25_000001) mencap aset dengan batch yang membukukannya. Tanpa
+                    cap itu, batch koreksi membukukan ulang seluruh aset batch pertama
+Form manual     : - Centang "Aset saldo awal" + field Akumulasi Penyusutan, hanya muncul
+                    selama ada batch yang masih bisa diisi (draft/reopened/belum ada).
+                    Tanpa batasan itu ada yang akan mencentangnya untuk aset yang baru
+                    dibeli, dan biaya aset itu tidak akan pernah masuk buku besar
+                  - `isSuccess` query status saldo awal wajib dicek: user tanpa izin
+                    opening_balance.view dapat query gagal, dan data undefined tidak boleh
+                    diartikan "belum ada batch"
+
+Terakhir dicek  : 2026-08-25 (Fase 7 impor data: profil Saldo Awal + Aset Tetap Awal,
+                    penyambungan akun kategori aset tetap, pintu masuk impor di 3 halaman)
+npm run build   : ✅ 0 error
+npm run lint    : ✅ 0 error, 0 warning (npx eslint src/ — lihat catatan RTK di bawah)
+Backend test    : ✅ php artisan test penuh: 1486 tests, 1481 passed, 5 skipped, 0 failed
+                    + pint --test bersih untuk seluruh file yang disentuh
+Playwright      : ✅ Chromium headless 1280×900, dev server lokal:
+                    - Ribbon Buku Besar → "Saldo Awal" TAMPIL di perusahaan yang setup-nya
+                      sudah final (bukti perbaikan setupOnly di sesi yang sama)
+                    - Saldo Awal → "Impor dari Berkas" → halaman Impor terbuka dengan
+                      profil "Saldo Awal" TERPILIH + petunjuk urutan tampil
+                    - Aktiva Tetap → "Impor Aset Awal" → profil "Aset Tetap Awal" terpilih
+                      MESKI tab Impor sudah terbuka sebelumnya (kasus tab dipakai ulang)
+                    - Unggah CSV nyata → pemetaan → pratinjau: baris akun daun `valid`,
+                      akun induk ditolak "hanya bisa diisi ke akun daun", akun tak dikenal
+                      ditolak; tombol "Commit 1 Baris Valid" muncul. Batch dibatalkan
+                      setelahnya, 0 console error
+Profil impor    : - `opening_balance` & `fixed_asset_opening` ditambahkan ke
+                    config/imports.php + committer + ImportCommitterFactory + whitelist
+                    rute master (Basic+). Keduanya SINKRON (async=false): tidak memposting
+                    jurnal, jadi tidak butuh worker antrean
+                  - Halaman ImportPage TIDAK perlu diubah untuk mengenali profil baru —
+                    dropdown/templat/pemetaan/pratinjau semuanya dibangun dari respons
+                    GET /imports/profiles
+                  - URUTAN WAJIB: aset tetap dulu, baru saldo awal.
+                    OpeningBalanceBatchService::fixedAssetSystemLines() mengubah aset
+                    ber-source_type 'opening_import' jadi baris kontrol otomatis, dan
+                    baris manual dengan akun sama ditolak FIXED_ASSET_CONTROL_DUPLICATE.
+                    Committer saldo awal menolak akun kontrol itu per baris + ImportPage
+                    menampilkan petunjuknya saat profil saldo awal dipilih
+                  - Impor saldo awal MENGGABUNG, tidak mengganti: replaceLines() menghapus
+                    semua baris dulu, jadi committer membaca baris manual yang sudah ada
+                    dan menulis ulang bersama baris impor. Akun yang bentrok ditandai
+                    invalid, bukan ditimpa diam-diam
+Kategori aset   : - Koreksi diagnosis: `fixed_asset_categories` TERNYATA sudah di-seed
+                    migration tenant 2026_06_15_000001 (15 kategori). Yang tidak pernah
+                    terjadi adalah pengisian kolom `*_account_id`-nya — migration jalan
+                    sebelum ada akun COA
+                  - FixedAssetCategoryAccountLinker (dipanggil CoaTemplateService::
+                    applyTemplate setelah syncDefaultMappingsFromConfig) mengisi kolom itu
+                    dari config/fixed_asset_categories.php. Barulah 12 kunci mapping per
+                    kelas dari 3e6bcbb benar-benar menggerakkan jurnal
+                  - LAND/CIP/GOODWILL sengaja dibiarkan null (templat COA belum punya akun
+                    khususnya; null = jatuh ke mapping generik, bukan salah alamat)
+Perbaikan lain  : - StoreFixedAssetRequest tidak punya aturan `accumulated_depreciation`,
+                    jadi `validated()` MEMBUANGNYA diam-diam walau assetPayload() sudah
+                    menghormatinya. Aset warisan masuk dengan NBV = harga perolehan penuh.
+                    Aturannya ditambah + batas `<= cost - salvage` ditegakkan di service
+                    supaya berlaku untuk jalur form DAN impor
+                  - Tipe `OBBatchStatus` kehilangan anggota `'reopened'` padahal backend
+                    memakainya (reopen() menyetelnya, editable() menerimanya). Ditambahkan
+                    beserta badge-nya di dua halaman
+⚠ Alat          : - `rtk tsc` DAN `rtk lint` sama-sama melaporkan "no issues" untuk galat
+                    yang nyata di sesi ini (TS2367 pada OBBatchStatus, dan
+                    react-hooks/set-state-in-effect di ImportPage). Selalu konfirmasi
+                    dengan `npm run build` dan `npx eslint src/` sebelum menyatakan bersih
+Belum dikerjakan: - Aset awal berhenti di status `draft`; generateSchedules() hanya jalan
+                    kalau `capitalized_at` terisi, sementara capitalize() memposting jurnal
+                    yang akan mendobelkan pembukuan. Jalur "kapitalisasi tanpa jurnal"
+                    untuk aset awal = Fase 7F, WAJIB selesai sebelum penyusutan bulan
+                    pertama atau aset awal diam-diam tidak pernah disusutkan
+                  - fixedAssetSystemLines() masih memakai akun kontrol generik, jadi semua
+                    kelas aset mendarat di satu akun di neraca pembuka (total benar,
+                    rincian rata)
+
+Terakhir dicek  : 2026-08-25 (Menu Saldo Awal permanen + rencana impor saldo awal/aset tetap;
+                    daftar COA sembunyikan akun induk)
+npm run build   : ✅ 0 error
+npm run lint    : ✅ 0 error, 0 warning
+Backend test    : — tidak ada perubahan backend di sesi ini
+Menu Saldo Awal : - Bug: item ribbon "Saldo Awal" bertanda `setupOnly: true`, jadi RibbonPanel
+                    menyembunyikannya begitu `initial_setup_available` false — tepat setelah
+                    wizard difinalisasi. Digabung checkbox "akan diisi nanti" di Step 5, user
+                    diberi janji yang tidak bisa ditepati: rute /opening-balance hidup tapi
+                    tidak terjangkau menu mana pun
+                  - Fix: `setupOnly` dilepas dari item itu. Halaman tujuannya sudah menangani
+                    semua keadaan (belum ada batch → tombol mulai; posted/locked → "Lihat
+                    Detail"), jadi aman tampil permanen; gate `opening_balance.view` tetap
+                  - Karena itu satu-satunya pemakai `setupOnly`, mekanismenya ikut dihapus
+                    (field di RibbonItem + cabang filter + useSetupGate di RibbonPanel) —
+                    daripada ditinggal jadi kode mati
+                  - Catatan (pre-existing, di luar scope): `opening_balance.*` hanya dimiliki
+                    role owner/admin (`['*']`) di config/permissions.php. Role finance dan
+                    accountant TIDAK punya izin itu, jadi menu ini tetap tak terlihat buat
+                    mereka meski sekarang permanen
+Rencana Fase 7  : - Finlite_knowladge/plans/data-import/phase-7-saldo-awal-dan-aset-tetap.md
+                    (📋 rencana, belum ada kode). Ledger README rencana ikut diperbarui
+                  - Temuan pemblokir: `fixed_asset_categories` tidak pernah di-seed (nol baris
+                    di perusahaan baru) — impor aset tetap mustahil sebelum ini beres
+                  - Temuan: `StoreFixedAssetRequest` tidak punya aturan
+                    `accumulated_depreciation`, jadi `validated()` membuangnya diam-diam
+                    walau `assetPayload()` sudah menghormatinya
+                  - Urutan wajib impor: aset tetap DULU, baru saldo awal — dipaksa
+                    `OpeningBalanceBatchService::fixedAssetSystemLines()` yang mengubah aset
+                    `source_type='opening_import'` jadi baris kontrol otomatis, dan menolak
+                    baris manual dengan akun sama (FIXED_ASSET_CONTROL_DUPLICATE)
+Daftar COA rapi : - `postable_only: true` di CoaListPage menyembunyikan akun induk/header
+                    (AKTIVA LANCAR, ASET TETAP, dst) yang cuma rangkuman saldo laporan
+                  - Indentasi per-`depth` di kolom Kode dihapus: tanpa induk yang tampil,
+                    kode akun cuma menjorok acak tanpa acuan yang terlihat
+                  - Playwright (template Perdagangan Umum): 51 → 42 baris, 0 console error
+
 Terakhir dicek  : 2026-08-25 (Setup wizard — checkbox no-opening di Step Opening Balance, fix
                     race condition finalize balik ke wizard bukan dashboard)
 npm run build   : ✅ 0 error

@@ -1,7 +1,11 @@
 // Opening Balance — mengikuti backend aktual (OpeningBalanceController + OpeningBalanceBatchService).
 // Phase 11 — spec-29.
 
-export type OBBatchStatus = 'draft' | 'validated' | 'posted' | 'locked' | 'voided'
+// `reopened` sempat hilang di sini padahal backend memakainya: reopen()
+// menyetel status ke 'reopened', dan `editable()` menerima draft ATAU
+// reopened. Tanpa anggota ini, kode frontend yang mengecek batch bisa
+// diubah selalu meleset untuk batch yang baru dibuka kembali.
+export type OBBatchStatus = 'draft' | 'reopened' | 'validated' | 'posted' | 'locked' | 'voided'
 
 export interface OBLine {
   id?: number

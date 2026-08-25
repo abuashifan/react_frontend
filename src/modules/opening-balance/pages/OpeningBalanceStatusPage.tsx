@@ -1,16 +1,20 @@
 import { useNavigate } from 'react-router-dom'
+import { Upload } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { useToast } from '@/hooks/useToast'
 import { formatCurrency, cn } from '@/lib/utils'
+import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
+import { useImportPresetStore } from '@/modules/imports/stores/useImportPresetStore'
 import { useOBStatus, useOBMutations } from '../hooks/useOpeningBalance'
 import type { OBBatchStatus } from '../types/openingBalance.types'
 import { getApiErrorMessage } from '@/lib/apiError'
 
 const STATUS_BADGE: Record<OBBatchStatus, { label: string; className: string }> = {
   draft: { label: 'Draft', className: 'bg-[#FEF3C7] text-[#92400E] hover:bg-[#FEF3C7]' },
+  reopened: { label: 'Dibuka Kembali', className: 'bg-[#FEF3C7] text-[#92400E] hover:bg-[#FEF3C7]' },
   validated: { label: 'Tervalidasi', className: 'bg-[#DBEAFE] text-[#1E40AF] hover:bg-[#DBEAFE]' },
   posted: { label: 'Diposting', className: 'bg-[#D1FAE5] text-[#065F46] hover:bg-[#D1FAE5]' },
   locked: { label: 'Dikunci', className: 'bg-[#E0E7FF] text-[#3730A3] hover:bg-[#E0E7FF]' },
@@ -22,6 +26,24 @@ export default function OpeningBalanceStatusPage() {
   const { toast } = useToast()
   const { data, isLoading } = useOBStatus()
   const { createBatch } = useOBMutations()
+  const openTab = useOpenPrimaryTab()
+
+  /**
+   * Halaman impor hidup di modul Master Data, jadi tab primernya didaftarkan
+   * dulu -- AppShell mengarahkan router ke tab aktif saat mount, sehingga
+   * navigate() telanjang akan dipantulkan balik. Pola yang sama dipakai
+   * Step5OpeningBalance saat membuka halaman ini.
+   */
+  const openImport = (profile: string) => {
+    useImportPresetStore.getState().requestProfile(profile)
+    openTab({
+      id: 'master-data-import',
+      menuKey: 'import',
+      label: 'Impor Data',
+      module: 'master-data',
+      path: '/master-data/import',
+    })
+  }
 
   const status = data?.data
   const batch = status?.batch ?? null
@@ -53,9 +75,14 @@ export default function OpeningBalanceStatusPage() {
             <p className="text-[14px] font-semibold text-[#24323a]">Belum ada saldo awal</p>
             <p className="mt-1 text-[13px] text-[#64748b]">Mulai input saldo awal untuk menetapkan posisi keuangan awal perusahaan.</p>
             <PermissionGuard permission="opening_balance.manage" fallback={null}>
-              <Button type="button" onClick={() => void handleStart()} disabled={createBatch.isPending} className="mt-4 h-9 bg-[#e39774] px-6 text-[13px] hover:bg-[#d4845e]">
-                {createBatch.isPending ? 'Membuat...' : 'Mulai Input Saldo Awal'}
-              </Button>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                <Button type="button" onClick={() => void handleStart()} disabled={createBatch.isPending} className="h-9 bg-[#e39774] px-6 text-[13px] hover:bg-[#d4845e]">
+                  {createBatch.isPending ? 'Membuat...' : 'Mulai Input Saldo Awal'}
+                </Button>
+                <Button type="button" variant="outline" className="h-9 gap-1.5 px-5 text-[13px]" onClick={() => openImport('opening_balance')}>
+                  <Upload className="h-3.5 w-3.5" /> Impor dari Berkas
+                </Button>
+              </div>
             </PermissionGuard>
           </div>
         ) : (
@@ -79,8 +106,17 @@ export default function OpeningBalanceStatusPage() {
 
             <div className="flex flex-wrap gap-2">
               <Button type="button" onClick={() => navigate(`/opening-balance/${batch.id}`)} className="h-9 bg-[#5c9ead] px-5 text-[13px] hover:bg-[#4a8a9b]">
-                {batch.status === 'draft' ? 'Lanjutkan Input' : 'Lihat Detail'}
+                {batch.status === 'draft' || batch.status === 'reopened' ? 'Lanjutkan Input' : 'Lihat Detail'}
               </Button>
+              {/* Impor hanya mungkin selama batch masih bisa diubah — backend
+                  menolaknya begitu diposting/dikunci. */}
+              {(batch.status === 'draft' || batch.status === 'reopened') && (
+                <PermissionGuard permission="opening_balance.manage" fallback={null}>
+                  <Button type="button" variant="outline" className="h-9 gap-1.5 px-5 text-[13px]" onClick={() => openImport('opening_balance')}>
+                    <Upload className="h-3.5 w-3.5" /> Impor dari Berkas
+                  </Button>
+                </PermissionGuard>
+              )}
             </div>
           </div>
         )}

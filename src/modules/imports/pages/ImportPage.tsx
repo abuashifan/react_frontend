@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, CheckCircle2, Download, FileDown, Upload, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Download, FileDown, Info, Upload, XCircle } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +11,7 @@ import { getApiErrorMessage, getApiValidationErrors } from '@/lib/apiError'
 import { cn } from '@/lib/utils'
 import { importsApi } from '../services/importsApi'
 import { useImportBatch, useImportMutations, useImportProfiles, useImportRows } from '../hooks/useImports'
+import { useImportPresetStore } from '../stores/useImportPresetStore'
 import type { ActiveBatchExistsMeta, DuplicateFileWarningMeta, ImportProfile } from '../types/imports.types'
 import type { ApiError } from '@/types/api.types'
 
@@ -52,6 +53,36 @@ export default function ImportPage() {
   const { data: profilesResponse, isLoading: profilesLoading } = useImportProfiles()
   const profiles = profilesResponse?.data ?? []
   const profile = profiles.find((p: ImportProfile) => p.key === profileKey) ?? null
+
+  // Halaman lain (Saldo Awal, Aktiva Tetap, Step 5 wizard) menitipkan profil
+  // yang mereka maksud lewat store. Dikonsumsi sekali lalu dikosongkan, supaya
+  // user tetap bebas mengganti pilihan di dropdown setelahnya tanpa dipaksa
+  // balik ke profil titipan.
+  //
+  // Dibelah dua dengan sengaja:
+  //   1. State MILIK SENDIRI disetel saat render (pola adjust-state-saat-render
+  //      yang dipakai di seluruh kode ini).
+  //   2. Store BERSAMA dikosongkan di effect. Mengosongkannya saat render
+  //      memicu peringatan React "Cannot update a component while rendering a
+  //      different component"; menyetel state lokal di dalam effect melanggar
+  //      `react-hooks/set-state-in-effect`. Pembelahan ini memenuhi keduanya.
+  const requestedProfile = useImportPresetStore((state) => state.requestedProfile)
+  const consumeRequestedProfile = useImportPresetStore((state) => state.consumeRequestedProfile)
+  const [handledPreset, setHandledPreset] = useState<string | null>(null)
+
+  if (requestedProfile !== null && requestedProfile !== handledPreset && profiles.length > 0) {
+    setHandledPreset(requestedProfile)
+    if (profiles.some((p: ImportProfile) => p.key === requestedProfile)) {
+      setProfileKey(requestedProfile)
+      setStep('upload')
+    }
+  }
+
+  useEffect(() => {
+    if (requestedProfile !== null && requestedProfile === handledPreset) {
+      consumeRequestedProfile()
+    }
+  }, [requestedProfile, handledPreset, consumeRequestedProfile])
 
   const { data: batchResponse } = useImportBatch(activeUuid)
   const batch = batchResponse?.data ?? null
@@ -251,6 +282,24 @@ export default function ImportPage() {
                 >
                   <Download className="w-3.5 h-3.5" /> Unduh Templat {profile.label}
                 </Button>
+              )}
+
+              {/*
+                Urutan aset tetap → saldo awal itu wajib, bukan saran: harga
+                perolehan dan akumulasi penyusutan aset awal dihitung otomatis
+                jadi baris saldo awal, dan baris manual dengan akun yang sama
+                ditolak. Salah urutan menghasilkan galat neraca yang jauh dari
+                penyebabnya, jadi satu kalimat di sini jauh lebih murah.
+              */}
+              {profileKey === 'opening_balance' && (
+                <div className="flex gap-2 rounded-md border border-[#bfdbfe] bg-[#eff6ff] p-3 text-[12px] text-[#1e40af]">
+                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <p>
+                    Impor <strong>Aset Tetap Awal</strong> lebih dulu kalau perusahaan ini punya aset tetap.
+                    Harga perolehan dan akumulasi penyusutannya otomatis jadi baris saldo awal, jadi
+                    akun-akun itu <strong>jangan</strong> dimasukkan ke berkas ini.
+                  </p>
+                </div>
               )}
 
               <div>

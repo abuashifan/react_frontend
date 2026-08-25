@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Upload } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import { useRecordTab } from '@/hooks/useRecordTab'
+import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
+import { useImportPresetStore } from '@/modules/imports/stores/useImportPresetStore'
 import { fixedAssetCategoryApi } from '../services/fixedAssetCategoryApi'
 import { useFixedAssetList } from '../hooks/useFixedAssetList'
 import type { ColumnDef, PaginationState } from '@/components/shared/table/DataTable'
@@ -41,6 +43,23 @@ function StatusBadge({ status }: { status: FixedAssetStatus }) {
 
 export default function FixedAssetListPage() {
   const { openRecordTab } = useRecordTab()
+  const openTab = useOpenPrimaryTab()
+
+  /**
+   * Shell ini state-only: cukup daftarkan/aktifkan tab primernya, AppShell yang
+   * mengarahkan router ke path tab itu. Profil yang dimaksud dititipkan lewat
+   * store karena query string akan tertimpa (lihat useImportPresetStore).
+   */
+  const openOpeningImport = () => {
+    useImportPresetStore.getState().requestProfile('fixed_asset_opening')
+    openTab({
+      id: 'master-data-import',
+      menuKey: 'import',
+      label: 'Impor Data',
+      module: 'master-data',
+      path: '/master-data/import',
+    })
+  }
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 25 })
   const [search, setSearch] = useState('')
   const [categoryId, setCategoryId] = useState<number | null>(null)
@@ -160,15 +179,27 @@ export default function FixedAssetListPage() {
       breadcrumb={[{ label: 'Aktiva Tetap' }, { label: 'Daftar Aktiva' }]}
       sidebar={sidebar}
       action={
-        <PermissionGuard permission="fixed_assets.create">
-          <Button
-            className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]"
-            onClick={() => openRecordTab({ label: 'Aktiva Baru', path: '/fixed-assets/create' })}
-          >
-            <Plus className="mr-1 h-3.5 w-3.5" />
-            Tambah Aktiva
-          </Button>
-        </PermissionGuard>
+        <div className="flex items-center gap-2">
+          <PermissionGuard permission="fixed_assets.opening_import">
+            <Button
+              variant="outline"
+              className="h-8 px-3 text-[13px]"
+              onClick={openOpeningImport}
+            >
+              <Upload className="mr-1 h-3.5 w-3.5" />
+              Impor Aset Awal
+            </Button>
+          </PermissionGuard>
+          <PermissionGuard permission="fixed_assets.create">
+            <Button
+              className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]"
+              onClick={() => openRecordTab({ label: 'Aktiva Baru', path: '/fixed-assets/create' })}
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              Tambah Aktiva
+            </Button>
+          </PermissionGuard>
+        </div>
       }
     >
       <DataTable

@@ -18,6 +18,7 @@ import { usePermission } from '@/hooks/usePermission'
 import { useUnsavedFormTracker } from '@/hooks/useUnsavedFormTracker'
 import { cn, fieldErrorClass, formatCurrency, formatDate, toDateInputValue } from '@/lib/utils'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
+import { useOBStatus } from '@/modules/opening-balance/hooks/useOpeningBalance'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
@@ -83,6 +84,7 @@ function mapAssetToForm(asset?: FixedAsset | null): FixedAssetFormValues {
     useful_life_years: asset?.useful_life_years ?? null,
     quantity: asset?.quantity ? Number(asset.quantity) : 1,
     salvage_value: asset?.salvage_value ? Number(asset.salvage_value) : 0,
+    accumulated_depreciation: asset?.accumulated_depreciation ? Number(asset.accumulated_depreciation) : 0,
     department_id: asset?.department_id ?? null,
     project_id: asset?.project_id ?? null,
     source_type: asset?.source_type ?? '',
@@ -101,6 +103,7 @@ function cleanForm(values: FixedAssetFormValues): FixedAssetFormValues {
     project_id: values.project_id ?? null,
     useful_life_years: values.useful_life_years ?? null,
     salvage_value: values.salvage_value ?? null,
+    accumulated_depreciation: values.accumulated_depreciation ?? null,
     quantity: values.quantity ?? null,
   }
 }
@@ -132,19 +135,44 @@ function FixedAssetFormPageContent() {
   const hasPostedDepreciation = (asset?.schedules ?? []).some((schedule) => schedule.status === 'posted')
   const isEditable = isCreate || (!hasPostedDepreciation && !['disposed', 'partially_disposed', 'fully_depreciated'].includes(status))
   const isFinancialLocked = !isCreate && ['capitalized', 'active'].includes(status)
-  const canCapitalize = !isCreate && status === 'draft'
+  const isOpeningAsset = asset?.source_type === 'opening_import'
+  // Aset saldo awal TIDAK boleh dikapitalisasi manual: harga perolehannya sudah
+  // dibukukan jurnal saldo awal, jadi kapitalisasi normal akan membukukannya
+  // dua kali. Backend menolaknya (FIXED_ASSET_OPENING_NOT_CAPITALIZABLE);
+  // tombolnya disembunyikan supaya user tidak menabraknya lebih dulu. Aset ini
+  // aktif otomatis saat batch saldo awalnya diposting.
+  const canCapitalize = !isCreate && status === 'draft' && !isOpeningAsset
   const canDispose = !isCreate && ['active', 'capitalized', 'partially_disposed', 'fully_depreciated'].includes(status)
+
+  /**
+   * Penandaan "aset saldo awal" hanya ditawarkan selama ada batch saldo awal
+   * yang masih bisa diisi. Kalau selalu tersedia, cepat atau lambat ada yang
+   * mencentangnya untuk aset yang baru dibeli — dan biaya aset itu tidak akan
+   * pernah masuk buku besar, karena ia menunggu posting yang sudah lewat.
+   *
+   * `isSuccess` wajib dicek: user tanpa izin `opening_balance.view` mendapat
+   * query gagal, dan `data` undefined tidak boleh diartikan "belum ada batch".
+   */
+  const { data: obStatus, isSuccess: obStatusLoaded } = useOBStatus()
+  const obBatch = obStatus?.data.batch ?? null
+  const canMarkAsOpening =
+    isCreate && obStatusLoaded && (obBatch === null || obBatch.status === 'draft' || obBatch.status === 'reopened')
 
   const {
     control,
     register,
     handleSubmit,
     setError,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FixedAssetFormValues>({
     resolver: zodResolver(fixedAssetSchema) as unknown as Resolver<FixedAssetFormValues>,
     values: formValues,
   })
+
+  // `source_type` tidak punya input sendiri — centang di bawah yang menyetelnya.
+  const markAsOpening = watch('source_type') === 'opening_import'
 
   // Halaman ini tidak memakai `usePersistentFormDraft`, jadi pelacaknya dipasang
   // langsung — tanpa ini, Tutup Database/Keluar tidak tahu ada isian di sini.
@@ -408,6 +436,46 @@ function FixedAssetFormPageContent() {
               <Input {...register('salvage_value')} type="number" min="0" disabled={!isEditable || isFinancialLocked} className={cn('h-9 text-[13px] tabular-nums', fieldErrorClass(errors.salvage_value))} />
               <FieldError message={errors.salvage_value?.message} />
             </div>
+
+            {canMarkAsOpening && (
+              <div className="flex flex-col gap-2 rounded-lg border border-dashed border-[#d9e2e5] bg-[#f8fbfc] p-3 md:col-span-2">
+                <label className="flex cursor-pointer items-start gap-2 text-[13px] text-[#334155]">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={markAsOpening}
+                    onChange={(event) => {
+                      const checked = event.target.checked
+                      setValue('source_type', checked ? 'opening_import' : '')
+                      if (!checked) setValue('accumulated_depreciation', 0)
+                    }}
+                  />
+                  <span>
+                    <span className="font-medium">Aset saldo awal</span> — sudah dimiliki sebelum perusahaan memakai
+                    aplikasi ini, dan sudah menyusut di pembukuan sebelumnya.
+                  </span>
+                </label>
+
+                {markAsOpening && (
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
+                      Akumulasi Penyusutan s/d Tanggal Saldo Awal
+                    </Label>
+                    <Input
+                      {...register('accumulated_depreciation')}
+                      type="number"
+                      min="0"
+                      className={cn('h-9 text-[13px] tabular-nums', fieldErrorClass(errors.accumulated_depreciation))}
+                    />
+                    <FieldError message={errors.accumulated_depreciation?.message} />
+                    <p className="text-[11px] text-[#64748b]">
+                      Aset ini tidak dikapitalisasi manual. Ia aktif otomatis — beserta jadwal penyusutan sisa
+                      umurnya — saat batch saldo awal diposting.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-2 md:col-span-2 md:grid-cols-3">
               <div className="rounded-lg border border-[#d9e2e5] bg-[#f8fbfc] p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akum Dep</p>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, Upload } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -7,6 +7,7 @@ import { formatCurrency, cn } from '@/lib/utils'
 import { useOBStatus } from '@/modules/opening-balance/hooks/useOpeningBalance'
 import { useCompanySettings } from '@/modules/settings/hooks/useCompanySettings'
 import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
+import { useImportPresetStore } from '@/modules/imports/stores/useImportPresetStore'
 import { setupApi } from '../../services/onboardingApi'
 
 interface Props {
@@ -94,6 +95,24 @@ export function Step5OpeningBalance({ onComplete, onBack }: Props) {
     navigate('/opening-balance')
   }
 
+  /**
+   * Impor mengisi data yang dijanjikan checkbox "akan diisi nanti" tanpa harus
+   * mengetik satu per satu -- klien pindahan biasanya punya puluhan sampai
+   * ratusan baris. Sama seperti dua tautan lain di step ini, tab primernya
+   * didaftarkan dulu supaya AppShell tidak memantulkan navigasi.
+   */
+  const handleOpenImport = (profile: string) => {
+    useImportPresetStore.getState().requestProfile(profile)
+    openTab({
+      id: 'master-data-import',
+      menuKey: 'import',
+      label: 'Impor Data',
+      module: 'master-data',
+      path: '/master-data/import',
+    })
+    navigate('/master-data/import')
+  }
+
   const handleOpenFixedAssets = () => {
     openTab({
       id: 'fixed-assets-list',
@@ -140,13 +159,22 @@ export function Step5OpeningBalance({ onComplete, onBack }: Props) {
         </label>
       )}
 
-      <button
-        type="button"
-        onClick={handleOpenOpeningBalance}
-        className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#5c9ead] transition-colors hover:text-[#326273]"
-      >
-        <ExternalLink className="h-3.5 w-3.5" /> Buka Halaman Saldo Awal
-      </button>
+      <div className="flex flex-wrap items-center gap-4">
+        <button
+          type="button"
+          onClick={handleOpenOpeningBalance}
+          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#5c9ead] transition-colors hover:text-[#326273]"
+        >
+          <ExternalLink className="h-3.5 w-3.5" /> Buka Halaman Saldo Awal
+        </button>
+        <button
+          type="button"
+          onClick={() => handleOpenImport('opening_balance')}
+          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#5c9ead] transition-colors hover:text-[#326273]"
+        >
+          <Upload className="h-3.5 w-3.5" /> Impor dari Berkas
+        </button>
+      </div>
 
       {fixedAssetEnabled && (
         <div className="space-y-2 border-t border-[#d9e2e5] pt-6">
@@ -164,13 +192,22 @@ export function Step5OpeningBalance({ onComplete, onBack }: Props) {
             />
             <span>Perusahaan ini belum punya aset tetap awal — lanjutkan, akan diisi nanti.</span>
           </label>
-          <button
-            type="button"
-            onClick={handleOpenFixedAssets}
-            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#5c9ead] transition-colors hover:text-[#326273]"
-          >
-            <ExternalLink className="h-3.5 w-3.5" /> Buka Halaman Aktiva Tetap
-          </button>
+          <div className="flex flex-wrap items-center gap-4">
+            <button
+              type="button"
+              onClick={handleOpenFixedAssets}
+              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#5c9ead] transition-colors hover:text-[#326273]"
+            >
+              <ExternalLink className="h-3.5 w-3.5" /> Buka Halaman Aktiva Tetap
+            </button>
+            <button
+              type="button"
+              onClick={() => handleOpenImport('fixed_asset_opening')}
+              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#5c9ead] transition-colors hover:text-[#326273]"
+            >
+              <Upload className="h-3.5 w-3.5" /> Impor dari Berkas
+            </button>
+          </div>
         </div>
       )}
 
