@@ -215,6 +215,56 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 ### 6C. Build Status
 
 ```
+Terakhir dicek  : 2026-08-25 (Setup wizard — COA/Account Mapping aset tetap per kelas, unifikasi
+                    UI mapping, fix blocker finalize opening_fixed_assets)
+npm run build   : ✅ 0 error
+npm run lint    : ✅ 0 error, 0 warning
+Backend test    : ✅ SetupWizardTest + CoaTemplateApplyTest + FixedAssets + Accounting +
+                    OpeningBalance + Journal (161 tests) + pint --test clean
+Aset tetap split: - `config/coa_templates.php` & `config/account_mappings.php`: blok aset tetap
+                    gabungan (1520 Aset Tetap / 1521 Akumulasi / 6170 Beban) dipecah 4 kelas —
+                    Kendaraan 1510/1511/6170, Gedung 1520/1521/6171, Peralatan 1530/1531/6172,
+                    Software 1540/1541 (amortisasi)/6175. Key generik (`fixed_assets.cost` dkk)
+                    tetap ada sebagai fallback posting ke kelas Peralatan
+                  - Halaman Pemetaan Akun section "Aset Tetap" naik 8→20 baris (12 baru per
+                    kelas, semua opsional); 8 baris lama diterjemahkan ke Indonesia
+                  - Belum ada seeding `fixed_asset_categories` yang menghubungkan kategori
+                    default (Kendaraan/Gedung/Peralatan/Software, lihat
+                    docs/accounting-setup-and-fixed-assets-context.md) ke akun-akun baru ini —
+                    pemetaan baru dipakai sebagai acuan saat mengisi kategori manual di Master
+                    Data, belum otomatis
+Unifikasi mapping: - `Step3AccountMapping` (wizard) dan `AccountMappingSettingsPage` (menu
+                    Pengaturan) sebelumnya dua implementasi terpisah yang kebetulan memanggil
+                    endpoint sama (`/master-data/account-mappings`) — grouping-per-modul hanya
+                    ada di wizard, halaman Pengaturan flat tanpa dialog pencarian akun
+                  - Diekstrak jadi satu komponen bersama
+                    `modules/master-data/components/AccountMappingGroupedFields.tsx`, dipakai
+                    kedua layar. Efek samping: halaman Pengaturan sekarang juga dapat dialog
+                    pencarian akun, dan search-nya pindah dari `onboardingApi.searchAccounts`
+                    (tanpa filter) ke `coaApi.search` (`postable_only: true`) — sebelumnya
+                    wizard bisa mengizinkan user memilih akun induk sebagai target mapping
+                  - `onboardingApi.listAccountMappings`/`updateAccountMapping`/
+                    `OnboardingAccountMapping` dihapus (duplikat endpoint master-data).
+                    `MAPPING_SECTIONS` di `onboarding/constants.ts` juga dihapus — dead code,
+                    tidak pernah diimpor, kedua layar sudah ambil grouping dari sini
+Fix blocker     : - Bug: perusahaan yang mengaktifkan modul Aktiva Tetap di Step 2 (Modul
+                    Aktif) tapi belum punya aset tetap SELALU gagal finalize — backend
+                    mewajibkan step canonical `opening_fixed_assets`
+                    (SetupWizardService::validateOpeningFixedAssets) begitu modul aktif, tapi
+                    wizard frontend tidak pernah punya UI atau panggilan
+                    `confirm_no_opening_fixed_assets` untuk step itu. User macet permanen di
+                    "7. Selesai" dengan toast generik "Periksa kembali isian yang ditandai"
+                    tanpa field apa pun untuk ditandai di halaman itu
+                  - Fix: Step5OpeningBalance.tsx sekarang juga mengirim
+                    `confirm_no_opening_fixed_assets: true` bareng
+                    `confirm_opening_balance_skipped` saat lanjut/lewati, kalau
+                    `fixed_asset_enabled` true (dibaca dari useCompanySettings). Belum ada alur
+                    impor aset tetap awal beneran di wizard — step ini murni mengonfirmasi
+                    "belum ada", dengan link ke halaman Aktiva Tetap untuk diisi manual nanti
+                  - Regresi dikunci di SetupWizardTest: `..._without_opening_fixed_assets_
+                    confirmation` (reproduksi bug — masih ada, jaga supaya tidak berubah jadi
+                    silent-pass) dan `..._can_be_explicitly_confirmed_as_none_...` (jalur fix)
+
 Terakhir dicek  : 2026-08-20 (Hapus & pulihkan perusahaan — picker client + area super admin)
 npm run build   : ✅ 0 error
 npm run lint    : ✅ 0 error, 0 warning
