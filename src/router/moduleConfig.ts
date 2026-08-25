@@ -19,12 +19,6 @@ export interface RibbonItem {
   path: string
   permission?: string
   /**
-   * Item hanya relevan saat pengaturan awal perusahaan: dipakai sekali, lalu
-   * tidak pernah lagi. Ribbon menyembunyikannya begitu setup difinalisasi atau
-   * buku perusahaan sudah berisi transaksi — lihat `useSetupGate`.
-   */
-  setupOnly?: boolean
-  /**
    * Pengelompokan visual di dalam ribbon. **Opsional** — modul yang tidak
    * mengisinya tetap dirender datar seperti sebelumnya, jadi menambahkan field
    * ini tidak menyentuh sembilan modul lain.
@@ -89,10 +83,15 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     ribbonItems: [
       { id: 'journals', label: 'Jurnal Umum', icon: BookOpen, path: '/accounting/journals', permission: 'journal.view' },
       // Saldo awal hanya boleh ada satu batch per perusahaan seumur hidupnya
-      // (OPENING_BALANCE_ACTIVE_BATCH_EXISTS di backend), jadi item ini hilang
-      // dari ribbon setelah setup awal selesai. Rutenya tetap hidup untuk
-      // wizard dan drill-down.
-      { id: 'opening-balance', label: 'Saldo Awal', icon: Archive, path: '/opening-balance', permission: 'opening_balance.view', setupOnly: true },
+      // (OPENING_BALANCE_ACTIVE_BATCH_EXISTS di backend), tapi item ini TIDAK
+      // boleh disembunyikan setelah setup selesai: Step 5 wizard mengizinkan
+      // user melewati saldo awal dengan janji "akan diisi nanti", dan satu-
+      // satunya jalan mengisinya adalah halaman ini. Menyembunyikannya membuat
+      // janji itu tidak bisa ditepati -- rutenya hidup tapi tak terjangkau
+      // menu mana pun. Halaman tujuannya sendiri sudah menangani semua
+      // keadaan (belum ada batch → tombol mulai; sudah diposting/dikunci →
+      // "Lihat Detail"), jadi aman tampil permanen.
+      { id: 'opening-balance', label: 'Saldo Awal', icon: Archive, path: '/opening-balance', permission: 'opening_balance.view' },
       { id: 'period-locks', label: 'Periode Akuntansi', icon: Calendar, path: '/accounting/period-locks', permission: 'accounting.period-locks.manage' },
       { id: 'period-end', label: 'Akhir Periode', icon: CheckSquare, path: '/accounting/period-end', permission: 'period_end.view' },
       { id: 'fiscal-years', label: 'Tahun Fiskal', icon: CalendarDays, path: '/accounting/fiscal-years', permission: 'accounting.fiscal-years.manage' },

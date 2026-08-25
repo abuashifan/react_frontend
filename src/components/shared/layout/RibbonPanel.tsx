@@ -1,7 +1,6 @@
 import { useTabStore } from '@/stores/useTabStore'
 import { usePermission } from '@/hooks/usePermission'
 import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
-import { useSetupGate } from '@/modules/onboarding/hooks/useSetupStatus'
 import { MODULE_MAP } from '@/router/moduleConfig'
 import type { RibbonItem } from '@/router/moduleConfig'
 import { cn } from '@/lib/utils'
@@ -57,7 +56,6 @@ export function RibbonPanel() {
   } = useTabStore()
   const { can, permissionsLoaded } = usePermission()
   const openTab = useOpenPrimaryTab()
-  const setupGate = useSetupGate()
   const activePrimaryTab = primaryTabs.find((tab) => tab.id === activePrimaryTabId)
 
   if (!activeModule) return null
@@ -67,8 +65,6 @@ export function RibbonPanel() {
 
   const visibleItems = (moduleConfig?.ribbonItems ?? []).filter((item) => {
     if (permissionsLoaded && item.permission && !can(item.permission)) return false
-    // Menu setup-only hanya muncul selama pengaturan awal masih terbuka.
-    if (item.setupOnly && !setupGate.initial_setup_available) return false
     return true
   })
 
