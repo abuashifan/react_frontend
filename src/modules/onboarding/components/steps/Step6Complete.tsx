@@ -36,7 +36,16 @@ export function Step6Complete({ summary, onBack }: Props) {
       await setupApi.finalize()
       // Backend kini berstatus finalized. Segarkan status setup supaya guard
       // tidak memantulkan balik ke /onboarding dan menu setup-only hilang.
-      await queryClient.invalidateQueries({ queryKey: SETUP_STATUS_KEY })
+      //
+      // `refetchType: 'all'` wajib -- halaman wizard ini tidak dibungkus
+      // AppShell, jadi query `setup/status` tidak sedang aktif diobservasi
+      // saat ini (default `invalidateQueries` hanya me-refetch query aktif).
+      // Tanpa ini, cache cuma ditandai stale tanpa benar-benar di-fetch ulang;
+      // begitu `navigate('/')` mount ProtectedRoute, `useSetupGate` sempat
+      // membaca data lama (initial_setup_available masih true) sebelum
+      // refetch selesai, dan guard langsung memantulkan balik ke /onboarding
+      // -- persis seperti wizard baru dimulai lagi.
+      await queryClient.invalidateQueries({ queryKey: SETUP_STATUS_KEY, refetchType: 'all' })
       // Wizard selesai — posisi langkah tidak perlu dipulihkan lagi.
       try { sessionStorage.removeItem(WIZARD_STATE_KEY) } catch { /* diabaikan */ }
       toast.success('Setup perusahaan selesai! Selamat datang di Seaside Escape ERP.')

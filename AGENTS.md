@@ -215,10 +215,43 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 ### 6C. Build Status
 
 ```
-Terakhir dicek  : 2026-08-25 (Setup wizard — COA/Account Mapping aset tetap per kelas, unifikasi
-                    UI mapping, fix blocker finalize opening_fixed_assets)
+Terakhir dicek  : 2026-08-25 (Setup wizard — checkbox no-opening di Step Opening Balance, fix
+                    race condition finalize balik ke wizard bukan dashboard)
 npm run build   : ✅ 0 error
 npm run lint    : ✅ 0 error, 0 warning
+Playwright      : ✅ Chromium headless 1280×900, dev server lokal (vite + php artisan serve):
+                    login → Tambah Perusahaan → Step 1-5 (termasuk aktifkan modul Aktiva
+                    Tetap) → Step 6 Opening Balance kedua checkbox baru tercentang default,
+                    klik Lanjutkan TANPA membuka halaman Saldo Awal/Aktiva Tetap → Step 7
+                    "Mulai Gunakan Seaside Escape" → mendarat di Dashboard perusahaan (bukan
+                    balik ke wizard); 0 console error. Perusahaan uji dipurge setelahnya
+Checkbox skip   : - Step5OpeningBalance.tsx: dua checkbox eksplisit ("belum punya saldo awal"
+                    / "belum punya aset tetap awal", checkbox terakhir hanya muncul kalau
+                    modul Aktiva Tetap aktif) menggantikan link "Lewati, isi nanti" +
+                    auto-skip implisit. Default tercentang saat belum ada data (`!hasBatch`
+                    untuk saldo awal; aset tetap selalu default tercentang karena wizard
+                    belum punya impor aset tetap awal) — user cukup klik Lanjutkan, tidak
+                    wajib mampir ke halaman Saldo Awal/Aktiva Tetap dulu
+                  - Default disinkronkan dari status server sekali saat data pertama dimuat
+                    (pola adjust-state-saat-render), bukan hardcode true, supaya perusahaan
+                    yang sudah punya batch saldo awal tidak menampilkan checkbox tercentang
+                    yang salah
+Fix redirect    : - Bug: setelah "Mulai Gunakan Seaside Escape" di Step 7, malah balik ke
+                    wizard setup baru (bukan Dashboard) -- padahal `finalize()` backend
+                    sudah sukses. Sebelum bug opening_fixed_assets di atas diperbaiki,
+                    finalize TIDAK PERNAH sukses, jadi race condition ini belum pernah
+                    ketahuan
+                  - Akar masalah: Step6Complete.tsx memanggil
+                    `queryClient.invalidateQueries({ queryKey: SETUP_STATUS_KEY })` lalu
+                    langsung `navigate('/')`. Halaman wizard tidak dibungkus AppShell,
+                    jadi query `setup/status` sedang TIDAK aktif diobservasi -- default
+                    `invalidateQueries` cuma menandai stale tanpa benar-benar refetch untuk
+                    query inaktif. `ProtectedRoute` yang mount di `/` sempat membaca cache
+                    lama (`initial_setup_available` masih true dari sebelum wizard mulai)
+                    sebelum refetch selesai, dan langsung redirect balik ke /onboarding
+                  - Fix: tambah `refetchType: 'all'` supaya invalidateQueries benar-benar
+                    memaksa refetch (bukan cuma menandai stale) dan di-`await` sebelum
+                    navigate — cache sudah segar sebelum guard route membacanya
 Backend test    : ✅ SetupWizardTest + CoaTemplateApplyTest + FixedAssets + Accounting +
                     OpeningBalance + Journal (161 tests) + pint --test clean
 Aset tetap split: - `config/coa_templates.php` & `config/account_mappings.php`: blok aset tetap
