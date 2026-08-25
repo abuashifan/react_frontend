@@ -29,9 +29,6 @@ const STATUS_OPTIONS: { value: boolean | undefined; label: string }[] = [
   { value: undefined, label: 'Semua' },
 ]
 
-/** Lebar satu tingkat indentasi, dalam piksel. */
-const INDENT_PX = 20
-
 export default function CoaListPage() {
   const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
@@ -43,22 +40,20 @@ export default function CoaListPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [search, setSearch] = useState('')
 
-  // Daftar ini TERPAGINASI tapi tetap terbaca sebagai hierarki: server
-  // meratakan pohon lewat recursive CTE, mengurutkannya pre-order (induk lalu
-  // keturunannya), dan mengirim `depth` per baris. Jadi indentasi tetap benar
-  // walau induk sebuah akun berada di halaman sebelumnya — sama seperti
-  // aplikasi acuan.
-  //
-  // Sebelumnya halaman ini terkunci `page: 1, per_page: 100` tanpa UI paginasi
-  // (perusahaan dengan >100 akun kehilangan sisanya diam-diam), lalu sempat
-  // dibuat memuat SEMUA baris tanpa paginasi supaya `buildTree` di sisi klien
-  // tidak memutus pohon. Keduanya cuma memindahkan batasnya.
+  // `postable_only` menyembunyikan akun induk (header kategori seperti
+  // "AKTIVA LANCAR"/"ASET TETAP") -- akun-akun itu cuma rangkuman saldo di
+  // laporan dan tidak bisa dipakai transaksi, jadi tidak ada gunanya di
+  // daftar kerja sehari-hari. Konsekuensinya daftar ini rata (bukan
+  // hierarkis lagi): tanpa induknya tampil, indentasi per-`depth` cuma
+  // membuat kode akun menjorok acak tanpa induk yang terlihat -- makanya
+  // kolom Kode di bawah TIDAK diberi padding indentasi lagi.
   const { data, isLoading, isFetching } = useCoaList({
     page,
     per_page: perPage,
     account_type: filterType,
     is_active: filterActive,
     search: search || undefined,
+    postable_only: true,
   })
 
   // Kembali ke halaman 1 saat filter berubah, supaya tidak mendarat di halaman
@@ -136,14 +131,7 @@ export default function CoaListPage() {
       header: 'Kode',
       size: 180,
       meta: { sticky: true, stickyLeft: 32, className: 'font-medium text-[#5c9ead]' },
-      // Indentasi dibaca dari `depth` milik baris itu sendiri, BUKAN dari
-      // rekursi pohon. `?? 0` menangani mode datar (saat pencarian aktif),
-      // di mana server tidak mengirim `depth`.
-      cell: ({ original }) => (
-        <span style={{ paddingLeft: `${(original.depth ?? 0) * INDENT_PX}px` }}>
-          {original.account_code}
-        </span>
-      ),
+      cell: ({ original }) => original.account_code,
     },
     {
       id: 'account_name',
