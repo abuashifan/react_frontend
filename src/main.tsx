@@ -8,6 +8,26 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { installCompanyScopeReset } from '@/lib/companyScope'
 import './index.css'
 
+/**
+ * Vite melempar event ini saat dynamic import() gagal (chunk 404) -- biasanya
+ * karena index.html yang sudah dimuat browser masih menunjuk ke nama file
+ * hash lama, padahal server sudah di-build ulang dengan hash baru dan chunk
+ * lama sudah tidak ada. Tanpa penanganan ini, navigasi ke halaman mana pun
+ * yang lazy-loaded (semua modul, lihat masing-masing `routes.tsx`) berakhir
+ * di layar "Unexpected Application Error!" default React Router.
+ *
+ * Reload sekali mengambil index.html terbaru yang menunjuk ke hash yang
+ * benar. Guard sessionStorage mencegah reload berulang tanpa henti kalau
+ * penyebabnya bukan cache basi (mis. server memang sedang down) -- percobaan
+ * kedua yang tetap gagal akan menampilkan error seperti biasa, bukan loop.
+ */
+window.addEventListener('vite:preloadError', () => {
+  const key = 'vite-preload-reload-attempted'
+  if (sessionStorage.getItem(key)) return
+  sessionStorage.setItem(key, '1')
+  window.location.reload()
+})
+
 // If user didn't check "remember me", clear auth when browser session ends
 const { rememberMe, logout } = useAuthStore.getState()
 if (!rememberMe && !sessionStorage.getItem('auth-session')) {

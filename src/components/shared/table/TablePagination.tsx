@@ -31,9 +31,9 @@ export function TablePagination({ pagination, totalRows, onChange, isFetching }:
   const goTo = (index: number) => onChange({ ...pagination, pageIndex: index })
 
   return (
-    <div className="flex h-11 flex-shrink-0 items-center justify-between gap-3 border-t border-[#d9e2e5] bg-white px-3 md:px-4">
+    <div className="flex min-h-11 flex-shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[#d9e2e5] bg-white px-3 py-1.5 md:px-4">
       <div className="flex items-center gap-2 min-w-0">
-        <span className="hidden text-[12px] text-[#64748b] sm:inline">Baris per halaman</span>
+        <span className="hidden whitespace-nowrap text-[12px] text-[#64748b] sm:inline">Baris per halaman</span>
         <Select
           value={String(pageSize)}
           onValueChange={(v) =>
