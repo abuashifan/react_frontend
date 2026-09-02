@@ -6,7 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { FormSummary } from '@/components/shared/form/FormSummary'
-import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
+import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/components/shared/form/LineItemsTable'
+import { AmountInput } from '@/components/shared/form/AmountInput'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { DocumentLockedBanner } from '@/components/shared/document/DocumentLockedBanner'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
@@ -311,6 +312,7 @@ function VendorBillFormPageContent() {
       render: ({ item, index, isReadOnly, onUpdate }) =>
         item.line_classification === 'fixed_asset' ? (
           <SearchableSelect
+          flush
             value={item.fixed_asset_category_id}
             onChange={(v) => onUpdate('fixed_asset_category_id', v)}
             onSearch={fixedAssetCategoryApi.search}
@@ -322,6 +324,7 @@ function VendorBillFormPageContent() {
           />
         ) : (
           <SearchableSelect
+          flush
             value={item.product_id}
             onChange={(v) => onUpdate('product_id', v)}
             onSearch={produkApi.search}
@@ -335,19 +338,19 @@ function VendorBillFormPageContent() {
     },
     { id: 'description', header: 'Deskripsi', width: 150, render: ({ item, index, isReadOnly, onUpdate }) => (
       <div>
-        <Input value={item.description} onChange={(e) => onUpdate('description', e.target.value)} disabled={isReadOnly} placeholder="Deskripsi..." className="h-8 text-[12px]" />
+        <Input value={item.description} onChange={(e) => onUpdate('description', e.target.value)} disabled={isReadOnly} placeholder="Deskripsi..." className={cn('h-8 text-[12px]', FLUSH_INPUT_CLASS)} />
         {lineErrors[index]?.description && <p className="mt-0.5 text-[10px] text-red-500">{lineErrors[index]?.description}</p>}
       </div>
     ) },
     { id: 'quantity', header: 'Qty', width: 70, align: 'right', render: ({ item, index, isReadOnly, onUpdate }) => (
       <div>
-        <Input type="number" value={item.quantity} onChange={(e) => onUpdate('quantity', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} />
+        <AmountInput value={item.quantity} onChange={(v) => onUpdate('quantity', v)} disabled={isReadOnly} decimals={2} ariaLabel="quantity" className={cn(FLUSH_INPUT_CLASS, 'text-right')} />
         {lineErrors[index]?.quantity && <p className="mt-0.5 text-[10px] text-red-500">{lineErrors[index]?.quantity}</p>}
       </div>
     ) },
-    { id: 'unit_price', header: 'Harga', width: 110, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <Input type="number" value={item.unit_price} onChange={(e) => onUpdate('unit_price', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} /> },
-    { id: 'discount', header: 'Dis%', width: 65, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <Input type="number" value={item.discount_percent} onChange={(e) => onUpdate('discount_percent', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} max={100} /> },
-    { id: 'tax', header: 'Pajak%', width: 65, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <Input type="number" value={item.tax_percent} onChange={(e) => onUpdate('tax_percent', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} max={100} /> },
+    { id: 'unit_price', header: 'Harga', width: 110, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <AmountInput value={item.unit_price} onChange={(v) => onUpdate('unit_price', v)} disabled={isReadOnly} decimals={2} ariaLabel="unit_price" className={cn(FLUSH_INPUT_CLASS, 'text-right')} /> },
+    { id: 'discount', header: 'Dis%', width: 65, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <AmountInput value={item.discount_percent} onChange={(v) => onUpdate('discount_percent', v)} disabled={isReadOnly} decimals={2} ariaLabel="discount_percent" className={cn(FLUSH_INPUT_CLASS, 'text-right')} /> },
+    { id: 'tax', header: 'Pajak%', width: 65, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <AmountInput value={item.tax_percent} onChange={(v) => onUpdate('tax_percent', v)} disabled={isReadOnly} decimals={2} ariaLabel="tax_percent" className={cn(FLUSH_INPUT_CLASS, 'text-right')} /> },
   ]
 
   if (!isCreate && isLoading) {

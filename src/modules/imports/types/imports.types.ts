@@ -32,6 +32,8 @@ export interface ImportBatch {
   total_rows: number
   valid_rows: number
   failed_rows: number
+  /** Baris valid yang membawa peringatan — tetap ikut ter-commit. */
+  warning_rows: number
   committed_rows: number
   error_message: string | null
   created_by: number | null
@@ -48,6 +50,12 @@ export interface ImportRow {
   normalized: Record<string, string> | null
   status: ImportRowStatus
   errors: Record<string, string[]> | null
+  /**
+   * Hal yang mungkin salah tapi tetap boleh di-commit — mis. umur manfaat yang
+   * beda dari default kategori, atau akumulasi penyusutan yang jauh dari garis
+   * lurus. Tidak pernah mengubah `status`.
+   */
+  warnings: Record<string, string[]> | null
   document_id: number | null
   document_type: string | null
   external_ref: string | null

@@ -1,7 +1,7 @@
 import { http } from '@/services/http'
 import type { ApiResponse } from '@/types/api.types'
 import type {
-  OBStatus, OBBatch, OBPreview, CreateOBBatchPayload, OBLinePayload,
+  OBStatus, OBBatch, OBPreview, OBValidateResult, CreateOBBatchPayload, OBLinePayload,
 } from '../types/openingBalance.types'
 
 // Backend: app/Modules/OpeningBalance/Routes/api.php
@@ -17,7 +17,7 @@ export const openingBalanceApi = {
   replaceLines: (batchId: number, lines: OBLinePayload[]) =>
     http.put<unknown, ApiResponse<OBBatch>>(`/opening-balance/batches/${batchId}/lines`, { lines }),
   validate: (batchId: number) =>
-    http.post<unknown, ApiResponse<OBBatch>>(`/opening-balance/batches/${batchId}/validate`),
+    http.post<unknown, ApiResponse<OBValidateResult>>(`/opening-balance/batches/${batchId}/validate`),
   preview: (batchId: number) =>
     http.get<unknown, ApiResponse<OBPreview>>(`/opening-balance/batches/${batchId}/preview`),
   post: (batchId: number) =>

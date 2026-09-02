@@ -3,9 +3,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { AmountInput } from '@/components/shared/form/AmountInput'
+import { Search } from 'lucide-react'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
-import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
-import { coaApi } from '@/modules/master-data/services/coaApi'
+import { AccountPickerDialog } from '@/modules/master-data/components/AccountPickerDialog'
+import type { Coa } from '@/modules/master-data/types/coa.types'
+import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/components/shared/form/LineItemsTable'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { proyekApi } from '@/modules/master-data/services/proyekApi'
 import { cn, formatCurrency } from '@/lib/utils'
@@ -55,9 +57,12 @@ function linesToState(lines: BudgetLine[]): LineState[] {
   }))
 }
 
+const DEFAULT_ROW: LineState = { account_id: null, department_id: null, project_id: null, period: '', amount: '' }
+
 export function BudgetLineEditor({ submissionId, lines, readonly = false, onSaveSuccess }: Props) {
   const qc = useQueryClient()
   const [rows, setRows] = useState<LineState[]>(() => linesToState(lines))
+  const [pickerRow, setPickerRow] = useState<number | null>(null)
 
   /**
    * `useState` di atas hanya berjalan sekali saat mount, sehingga baris yang
@@ -78,8 +83,6 @@ export function BudgetLineEditor({ submissionId, lines, readonly = false, onSave
     lastSyncedRef.current = serverSignature
     setRows(linesToState(lines))
   }, [serverSignature, lines])
-
-  const searchCoa = useCallback((q: string) => coaApi.search(q), [])
   const searchDepartment = useCallback((q: string) => departemenApi.search(q), [])
   const searchProject = useCallback((q: string) => proyekApi.search(q), [])
 
@@ -102,10 +105,40 @@ export function BudgetLineEditor({ submissionId, lines, readonly = false, onSave
     },
   })
 
-  const addRow = () =>
-    setRows((prev) => [...prev, { account_id: null, department_id: null, project_id: null, period: '', amount: '' }])
+  const addRow = () => setRows((prev) => [...prev, { ...DEFAULT_ROW }])
 
   const removeRow = (index: number) => setRows((prev) => prev.filter((_, i) => i !== index))
+
+  /**
+   * Centang beberapa akun di AccountPickerDialog = beberapa baris sekaligus.
+   * Baris yang sudah terisi akun lain tidak ditimpa — akun berikutnya
+   * disisipkan sebagai baris baru supaya nominal yang sudah diketik pada baris
+   * tersebut tidak ikut berpindah pasangan akunnya. Sama seperti
+   * `CashReceiptFormPage.applyPickedAccounts`.
+   */
+  const applyPickedAccounts = (startIndex: number, accounts: Coa[]) => {
+    if (accounts.length === 0) return
+
+    setRows((prev) => {
+      const next = [...prev]
+      accounts.forEach((account, offset) => {
+        const target = startIndex + offset
+        const picked = { account_id: account.id, account_label: account.account_name }
+
+        if (target < next.length) {
+          if (offset > 0 && next[target].account_id !== null) {
+            next.splice(target, 0, { ...DEFAULT_ROW, ...picked })
+            return
+          }
+          next[target] = { ...next[target], ...picked }
+          return
+        }
+
+        next.push({ ...DEFAULT_ROW, ...picked })
+      })
+      return next
+    })
+  }
 
   const updateRow = (index: number, field: string, value: unknown) =>
     setRows((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)))
@@ -149,25 +182,25 @@ export function BudgetLineEditor({ submissionId, lines, readonly = false, onSave
       id: 'account',
       header: 'Akun',
       width: 220,
-      render: ({ item, isReadOnly, onUpdate }) =>
+      render: ({ item, index, isReadOnly }) =>
         isReadOnly ? (
           <span className="text-[12px]">{item.account_label ?? '—'}</span>
         ) : (
-          <SearchableSelect
-            value={item.account_id}
-            onSearch={searchCoa}
-            onChange={(v, opt) => {
-              onUpdate('account_id', v)
-              onUpdate('account_label', opt?.label)
-            }}
-            placeholder="Pilih akun..."
-            size="sm"
-            selectedOptions={
-              item.account_id && item.account_label
-                ? [{ value: item.account_id, label: item.account_label }]
-                : []
-            }
-          />
+          <button
+            type="button"
+            onClick={() => setPickerRow(index)}
+            className={cn(
+              'flex h-8 w-full items-center justify-between gap-1 text-left text-[12px]',
+              FLUSH_INPUT_CLASS,
+              'hover:bg-[#f8fbfc]',
+              !item.account_label && 'text-[#94a3b8]',
+            )}
+          >
+            <span className="truncate" title={item.account_label}>
+              {item.account_label ?? 'Pilih akun...'}
+            </span>
+            <Search className="h-3.5 w-3.5 shrink-0 text-[#94a3b8]" />
+          </button>
         ),
     },
     {
@@ -179,6 +212,7 @@ export function BudgetLineEditor({ submissionId, lines, readonly = false, onSave
           <span className="text-[12px]">{item.department_label ?? '—'}</span>
         ) : (
           <SearchableSelect
+          flush
             value={item.department_id}
             onSearch={searchDepartment}
             onChange={(v, opt) => {
@@ -204,6 +238,7 @@ export function BudgetLineEditor({ submissionId, lines, readonly = false, onSave
           <span className="text-[12px]">{item.project_label ?? '—'}</span>
         ) : (
           <SearchableSelect
+          flush
             value={item.project_id}
             onSearch={searchProject}
             onChange={(v, opt) => {
@@ -235,7 +270,8 @@ export function BudgetLineEditor({ submissionId, lines, readonly = false, onSave
             aria-invalid={isPeriodInvalid(item.period)}
             className={cn(
               'h-8 text-[12px] tabular-nums',
-              isPeriodInvalid(item.period) && 'border-red-500 focus-visible:ring-red-500',
+              FLUSH_INPUT_CLASS,
+              isPeriodInvalid(item.period) && 'ring-1 ring-inset ring-red-500',
             )}
           />
         ),
@@ -257,7 +293,7 @@ export function BudgetLineEditor({ submissionId, lines, readonly = false, onSave
             value={item.amount}
             onChange={(v) => onUpdate('amount', String(v))}
             ariaLabel="Nominal anggaran"
-            className="h-8 text-right text-[12px]"
+            className={cn('h-8 text-right text-[12px]', FLUSH_INPUT_CLASS)}
           />
         ),
     },
@@ -289,6 +325,15 @@ export function BudgetLineEditor({ submissionId, lines, readonly = false, onSave
             <td />
           </tr>
         )}
+      />
+
+      <AccountPickerDialog
+        open={pickerRow !== null}
+        onClose={() => setPickerRow(null)}
+        onConfirm={(accounts) => {
+          if (pickerRow !== null) applyPickedAccounts(pickerRow, accounts)
+          setPickerRow(null)
+        }}
       />
 
       {!readonly && (

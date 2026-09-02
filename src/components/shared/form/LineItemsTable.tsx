@@ -16,6 +16,18 @@ function fieldMatchesColumn(field: string, columnId: string): boolean {
   return field === columnId || field.startsWith(`${columnId}_`) || columnId.startsWith(`${field}_`)
 }
 
+/**
+ * Style input "flush" untuk kontrol di dalam sel tabel `bordered` — tanpa
+ * border/rounded sendiri, sehingga barisnya terbaca sebagai satu grid
+ * spreadsheet alih-alih deretan kotak input yang saling bertumpuk bordernya.
+ *
+ * Tinggal di sini (bukan di tiap halaman) supaya semua form line item memakai
+ * definisi yang sama; sebelumnya konstanta ini disalin per halaman dan mulai
+ * lepas sinkron.
+ */
+export const FLUSH_INPUT_CLASS =
+  'rounded-none border-0 bg-transparent px-2 focus:shadow-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#5c9ead]/40'
+
 export interface LineItemColumn<T> {
   id: string
   header: string
@@ -52,11 +64,17 @@ interface LineItemsTableProps<T> {
    */
   errors?: LineItemErrorMap
   /**
-   * Tambahkan garis pembatas vertikal antar kolom, membuat tabel terbaca
-   * sebagai satu grid bordered utuh (gaya spreadsheet) alih-alih sel kosong
-   * berisi input yang masing-masing punya border/rounded sendiri. Dipakai
-   * bersama input "flush" (`border-0 rounded-none`) di kolom pemanggil —
-   * tanpa itu tabel akan punya dua border yang tumpang tindih.
+   * Garis pembatas vertikal antar kolom, sehingga tabel terbaca sebagai satu
+   * grid spreadsheet alih-alih deretan kotak input yang masing-masing punya
+   * border/rounded sendiri.
+   *
+   * DEFAULT `true`. Gaya ini dulunya opt-in per halaman, dan akibatnya dua form
+   * sejenis yang memakai komponen yang sama (Penerimaan Kas vs Pengeluaran Kas)
+   * tampil berbeda — yang satu ikut, yang lain lupa. Sekarang komponen yang
+   * memutuskan tampilan, bukan tiap pemanggil.
+   *
+   * Kontrol di dalam sel wajib memakai `FLUSH_INPUT_CLASS` (atau prop `flush`
+   * untuk `SearchableSelect`) — tanpa itu border sel dan border input bertumpuk.
    */
   bordered?: boolean
   /**
@@ -85,7 +103,7 @@ export function LineItemsTable<T>({
   emptyLabel = 'Belum ada item',
   currency = 'IDR',
   errors,
-  bordered = false,
+  bordered = true,
   footer,
 }: LineItemsTableProps<T>) {
   const columnCount = columns.length + (getSubtotal ? 3 : 2)
@@ -226,12 +244,15 @@ export function LineItemsTable<T>({
         </table>
       </div>
 
+      {/* Baris aksi diberi latar dan garis atas sendiri supaya batas bawah tabel
+          terbaca — tanpa itu tombolnya melayang di area putih yang sama dengan
+          badan tabel dan tabelnya tampak tidak punya ujung. */}
       {!isReadOnly && onAdd && (
         <Button
           type="button"
           variant="ghost"
           onClick={onAdd}
-          className="h-10 w-full justify-start rounded-none px-3 text-[13px] font-medium text-[#5c9ead] hover:text-[#326273]"
+          className="h-10 w-full justify-start rounded-none border-t border-[#d9e2e5] bg-[#f8fafc] px-3 text-[13px] font-medium text-[#5c9ead] hover:bg-[#eef2f5] hover:text-[#326273]"
         >
           <Plus className="h-3.5 w-3.5" />
           {addLabel}

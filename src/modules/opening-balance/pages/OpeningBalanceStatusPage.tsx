@@ -1,13 +1,17 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Upload } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { useToast } from '@/hooks/useToast'
 import { formatCurrency, cn } from '@/lib/utils'
 import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
 import { useImportPresetStore } from '@/modules/imports/stores/useImportPresetStore'
+import { useFiscalYearStatus } from '@/modules/accounting/hooks/useFiscalYear'
 import { useOBStatus, useOBMutations } from '../hooks/useOpeningBalance'
 import type { OBBatchStatus } from '../types/openingBalance.types'
 import { getApiErrorMessage } from '@/lib/apiError'
@@ -27,6 +31,19 @@ export default function OpeningBalanceStatusPage() {
   const { data, isLoading } = useOBStatus()
   const { createBatch } = useOBMutations()
   const openTab = useOpenPrimaryTab()
+  const { data: fiscalYearData } = useFiscalYearStatus()
+
+  /**
+   * Default tanggal saldo awal = awal tahun fiskal aktif, sama dengan jalur
+   * impor (OpeningBalanceImportCommitter::defaultOpeningDate()). Sebelumnya
+   * halaman ini mengirim tanggal HARI INI tanpa bisa diubah user -- saldo awal
+   * bertanggal tengah bulan berjalan hampir selalu salah, ia harus berdiri di
+   * batas periode. Hari ini tetap dipakai kalau tahun fiskal belum terbaca,
+   * tapi kini user melihat tanggalnya dan bisa membetulkannya sebelum mulai.
+   */
+  const fiscalYearStart = fiscalYearData?.data?.active_fiscal_year?.start_date ?? null
+  const [openingDate, setOpeningDate] = useState('')
+  const effectiveOpeningDate = openingDate || fiscalYearStart || new Date().toISOString().slice(0, 10)
 
   /**
    * Halaman impor hidup di modul Master Data, jadi tab primernya didaftarkan
@@ -50,7 +67,7 @@ export default function OpeningBalanceStatusPage() {
 
   const handleStart = async () => {
     try {
-      const res = await createBatch.mutateAsync({ opening_date: new Date().toISOString().slice(0, 10) })
+      const res = await createBatch.mutateAsync({ opening_date: effectiveOpeningDate })
       toast.success('Batch saldo awal dibuat.')
       navigate(`/opening-balance/${res.data.id}`)
     } catch (startError) { toast.error(getApiErrorMessage(startError, 'Gagal membuat batch saldo awal.')) }
@@ -75,6 +92,19 @@ export default function OpeningBalanceStatusPage() {
             <p className="text-[14px] font-semibold text-[#24323a]">Belum ada saldo awal</p>
             <p className="mt-1 text-[13px] text-[#64748b]">Mulai input saldo awal untuk menetapkan posisi keuangan awal perusahaan.</p>
             <PermissionGuard permission="opening_balance.manage" fallback={null}>
+              <div className="mx-auto mt-5 max-w-xs text-left">
+                <Label htmlFor="opening-balance-date" className="text-[12px] text-[#334155]">Tanggal saldo awal</Label>
+                <Input
+                  id="opening-balance-date"
+                  type="date"
+                  value={effectiveOpeningDate}
+                  onChange={(event) => setOpeningDate(event.target.value)}
+                  className="mt-1 h-9 text-[13px] tabular-nums"
+                />
+                <p className="mt-1 text-[11px] text-[#64748b]">
+                  Posisi keuangan diukur pada tanggal ini. Isi dengan batas periode — biasanya awal tahun fiskal, bukan tanggal hari ini.
+                </p>
+              </div>
               <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                 <Button type="button" onClick={() => void handleStart()} disabled={createBatch.isPending} className="h-9 bg-[#e39774] px-6 text-[13px] hover:bg-[#d4845e]">
                   {createBatch.isPending ? 'Membuat...' : 'Mulai Input Saldo Awal'}

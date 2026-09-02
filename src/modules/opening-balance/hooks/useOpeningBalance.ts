@@ -24,6 +24,7 @@ export function useOBMutations() {
   }
   return {
     createBatch: useMutation({ mutationFn: (p: CreateOBBatchPayload) => openingBalanceApi.store(p), onSuccess: () => inv() }),
+    updateBatch: useMutation({ mutationFn: ({ batchId, payload }: { batchId: number; payload: Partial<CreateOBBatchPayload> }) => openingBalanceApi.update(batchId, payload), onSuccess: (_, { batchId }) => inv(batchId) }),
     replaceLines: useMutation({ mutationFn: ({ batchId, lines }: { batchId: number; lines: OBLinePayload[] }) => openingBalanceApi.replaceLines(batchId, lines), onSuccess: (_, { batchId }) => inv(batchId) }),
     validate: useMutation({ mutationFn: (batchId: number) => openingBalanceApi.validate(batchId), onSuccess: (_, batchId) => inv(batchId) }),
     post: useMutation({ mutationFn: (batchId: number) => openingBalanceApi.post(batchId), onSuccess: (_, batchId) => inv(batchId) }),

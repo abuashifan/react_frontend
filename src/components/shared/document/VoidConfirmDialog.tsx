@@ -19,6 +19,21 @@ interface VoidConfirmDialogProps {
   onConfirm: (reason: string) => void
   documentNumber: string
   isLoading?: boolean
+  /**
+   * Override teks untuk aksi yang memakai dialog "alasan wajib" yang sama tapi
+   * BUKAN void -- mis. buka kembali saldo awal, yang membatalkan jurnal
+   * pembukanya lalu mengembalikan batch ke status bisa-diubah. Tanpa ini
+   * dialognya berkata "Void Dokumen ... tidak dapat dibatalkan", dan user wajar
+   * menyimpulkan dokumennya hangus. Semua props di bawah opsional; tanpa
+   * override, dialognya tetap dialog void seperti sebelumnya.
+   */
+  title?: string
+  description?: string
+  warning?: string
+  reasonLabel?: string
+  reasonPlaceholder?: string
+  confirmLabel?: string
+  loadingLabel?: string
 }
 
 const MIN_REASON_LENGTH = 10
@@ -30,6 +45,13 @@ export function VoidConfirmDialog({
   onConfirm,
   documentNumber,
   isLoading,
+  title = 'Void Dokumen',
+  description = `Anda akan membatalkan ${documentNumber}.`,
+  warning = 'Tindakan ini tidak dapat dibatalkan.',
+  reasonLabel = 'Alasan void',
+  reasonPlaceholder = 'Masukkan alasan void...',
+  confirmLabel = 'Void Dokumen',
+  loadingLabel = 'Memvoid...',
 }: VoidConfirmDialogProps) {
   const [reason, setReason] = useState('')
   const isValid = reason.trim().length >= MIN_REASON_LENGTH
@@ -52,28 +74,28 @@ export function VoidConfirmDialog({
           <div className="flex items-center gap-2.5">
             <TriangleAlert className="h-5 w-5 text-[#f59e0b]" />
             <AlertDialogTitle className="text-[16px] font-semibold text-[#24323a]">
-              Void Dokumen
+              {title}
             </AlertDialogTitle>
           </div>
           <AlertDialogDescription className="pt-1 text-left">
             <span className="block text-[14px] text-[#64748b]">
-              Anda akan membatalkan {documentNumber}.
+              {description}
             </span>
             <span className="mt-1 block text-[13px] text-[#94a3b8]">
-              Tindakan ini tidak dapat dibatalkan.
+              {warning}
             </span>
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div>
           <label htmlFor="void-confirm-reason" className="mb-1.5 block text-[11px] font-semibold uppercase text-[#64748b]">
-            Alasan void <span className="text-[#ef4444]">*</span>
+            {reasonLabel} <span className="text-[#ef4444]">*</span>
           </label>
           <Textarea
             id="void-confirm-reason"
             value={reason}
             onChange={(event) => setReason(event.target.value)}
-            placeholder="Masukkan alasan void..."
+            placeholder={reasonPlaceholder}
             disabled={isLoading}
             className={cn(
               'min-h-[88px] resize-y border-[#d9e2e5] text-[13px] focus-visible:ring-[#5c9ead]/30',
@@ -105,7 +127,7 @@ export function VoidConfirmDialog({
             className="h-8 bg-[#dc2626] px-4 text-[13px] text-white hover:bg-[#b91c1c]"
           >
             {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {isLoading ? 'Memvoid...' : 'Void Dokumen'}
+            {isLoading ? loadingLabel : confirmLabel}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

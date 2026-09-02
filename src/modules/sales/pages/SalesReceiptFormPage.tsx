@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
-import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
+import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/components/shared/form/LineItemsTable'
+import { AmountInput } from '@/components/shared/form/AmountInput'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
@@ -194,14 +195,7 @@ function SalesReceiptFormPageContent() {
         isReadOnly ? (
           <span className="text-[12px] tabular-nums">{formatCurrency(item.amount)}</span>
         ) : (
-          <Input
-            type="number"
-            value={item.amount}
-            onChange={(e) => onUpdate('amount', Number(e.target.value))}
-            min={0}
-            max={item.balance_due}
-            className="h-8 text-right text-[12px] tabular-nums"
-          />
+          <AmountInput value={item.amount} onChange={(v) => onUpdate('amount', v)} decimals={2} ariaLabel="amount" className={cn(FLUSH_INPUT_CLASS, 'text-right')} />
         ),
     },
   ]

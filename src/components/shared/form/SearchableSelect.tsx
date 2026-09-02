@@ -14,6 +14,12 @@ interface SearchableSelectBaseProps {
   triggerAriaLabel?: string
   size?: 'sm' | 'md'
   selectedOptions?: SelectOption<number>[]
+  /**
+   * Varian untuk sel `LineItemsTable` bermode `bordered`: trigger tampil tanpa
+   * border/rounded/background sendiri supaya menyatu dengan grid tabel.
+   * Tanpa ini, sel tabel dan border trigger saling bertumpuk.
+   */
+  flush?: boolean
 }
 
 interface SearchableSelectSingleProps extends SearchableSelectBaseProps {
@@ -47,6 +53,7 @@ export function SearchableSelect({
   triggerAriaLabel,
   size = 'md',
   selectedOptions = [],
+  flush = false,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -193,11 +200,17 @@ export function SearchableSelect({
             aria-haspopup="listbox"
             aria-label={triggerAriaLabel ?? label ?? placeholder}
             className={cn(
-              'flex w-full items-center justify-between rounded-md border bg-white px-2.5 text-left',
-              'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5c9ead]/30',
-              size === 'sm' ? 'h-[30px] text-[12px]' : 'h-[34px] lg:h-9 text-[13px] lg:text-sm',
-              error ? 'border-red-400 focus-visible:ring-red-500/20' : 'border-[#d9e2e5] hover:border-[#5c9ead]',
-              disabled && 'cursor-not-allowed bg-[#f8fbfc] text-[#94a3b8] opacity-60',
+              'flex w-full items-center justify-between text-left transition-colors focus-visible:outline-none',
+              flush
+                ? 'h-8 rounded-none border-0 bg-transparent px-2 text-[12px] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#5c9ead]/40'
+                : [
+                    'rounded-md border bg-white px-2.5 focus-visible:ring-2 focus-visible:ring-[#5c9ead]/30',
+                    size === 'sm' ? 'h-[30px] text-[12px]' : 'h-[34px] lg:h-9 text-[13px] lg:text-sm',
+                    error ? 'border-red-400 focus-visible:ring-red-500/20' : 'border-[#d9e2e5] hover:border-[#5c9ead]',
+                  ],
+              flush && !disabled && 'hover:bg-[#f8fbfc]',
+              flush && error && 'ring-1 ring-inset ring-red-400',
+              disabled && (flush ? 'cursor-not-allowed text-[#94a3b8]' : 'cursor-not-allowed bg-[#f8fbfc] text-[#94a3b8] opacity-60'),
             )}
             onKeyDown={handleKeyDown}
           >

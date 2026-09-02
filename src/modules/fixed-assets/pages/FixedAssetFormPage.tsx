@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import type { Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -24,6 +24,7 @@ import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { proyekApi } from '@/modules/master-data/services/proyekApi'
 import { fixedAssetCategoryApi } from '../services/fixedAssetCategoryApi'
+import { useFixedAssetCategories } from '../hooks/useFixedAssetCategories'
 import { useFixedAsset } from '../hooks/useFixedAssetList'
 import { useFixedAssetMutations } from '../hooks/useFixedAssetMutations'
 import {
@@ -71,6 +72,62 @@ function StatusBadge({ status }: { status: FixedAssetStatus }) {
       {STATUS_LABEL[status] ?? status}
     </span>
   )
+}
+
+/** Tahun dan bulan (0-11) dari string 'YYYY-MM-DD', atau null kalau bukan tanggal. */
+function parseYearMonth(value: string): { year: number; month: number } | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim())
+  if (!match) return null
+
+  return { year: Number(match[1]), month: Number(match[2]) - 1 }
+}
+
+/**
+ * Estimasi akumulasi penyusutan aset warisan per tanggal saldo awal.
+ *
+ * Cermin dari `OpeningAccumulatedDepreciation` di backend
+ * (app/Modules/FixedAssets/Support/) — kedua sisi HARUS memberi angka yang
+ * sama, karena yang ditampilkan di sini adalah angka yang akan dibukukan
+ * jurnal pembuka kalau user membiarkannya.
+ *
+ * Penyusutan dimulai satu bulan setelah tanggal mulai pakai, dan bulan yang
+ * dihitung berhenti tepat sebelum bulan tanggal saldo awal — bulan itu sendiri
+ * sudah masuk jadwal penyusutan ke depan.
+ */
+function estimateOpeningAccumulated(input: {
+  cost: number
+  salvage: number
+  lifeYears: number | null
+  serviceStartDate: string
+  openingDate: string
+}): { months: number; monthly: number; amount: number } | null {
+  const { cost, salvage, lifeYears, serviceStartDate, openingDate } = input
+
+  if (!lifeYears || lifeYears <= 0 || !serviceStartDate || !openingDate) return null
+
+  // Tahun/bulan diambil dari teksnya, bukan lewat `new Date(...)`: string
+  // 'YYYY-MM-DD' diparse sebagai tengah malam UTC, lalu `getMonth()` membacanya
+  // di zona waktu lokal — di zona negatif, tanggal 1 mundur ke bulan sebelumnya
+  // dan seluruh estimasi meleset satu bulan.
+  const start = parseYearMonth(serviceStartDate)
+  const opening = parseYearMonth(openingDate)
+  if (start === null || opening === null) return null
+
+  // Bulan penyusutan pertama = bulan setelah tanggal mulai pakai.
+  const firstPeriodIndex = start.year * 12 + start.month + 1
+  const openingMonthIndex = opening.year * 12 + opening.month
+  const months = Math.max(0, openingMonthIndex - firstPeriodIndex)
+
+  const basis = Math.round((cost - Math.min(salvage, cost)) * 100) / 100
+  if (basis <= 0) return { months, monthly: 0, amount: 0 }
+
+  const monthly = basis / (lifeYears * 12)
+
+  return {
+    months,
+    monthly: Math.round(monthly * 100) / 100,
+    amount: Math.round(Math.min(monthly * months, basis) * 100) / 100,
+  }
 }
 
 function mapAssetToForm(asset?: FixedAsset | null): FixedAssetFormValues {
@@ -174,6 +231,58 @@ function FixedAssetFormPageContent() {
   // `source_type` tidak punya input sendiri — centang di bawah yang menyetelnya.
   const markAsOpening = watch('source_type') === 'opening_import'
 
+  /*
+   * Akumulasi penyusutan aset saldo awal dihitungkan sistem, bukan diketik
+   * manual — tapi angkanya tetap boleh ditimpa. Pembukuan lama klien belum
+   * tentu garis lurus (saldo menurun, penyusutan yang sempat dihentikan,
+   * revaluasi), dan angka di neraca merekalah yang benar, bukan rumus kita.
+   *
+   * Backend memakai aturan yang sama: kolom yang dikirim kosong berarti
+   * "hitungkan", dan hitungannya baru final saat batch saldo awal diposting —
+   * di situ tanggalnya sudah pasti. Yang ditampilkan di sini perkiraan dengan
+   * tanggal batch yang sedang berjalan.
+   */
+  const accumulatedTouched = useRef(false)
+  const { data: categoriesResponse } = useFixedAssetCategories()
+  const categoryId = watch('fixed_asset_category_id')
+  const usefulLifeYears = watch('useful_life_years')
+  const acquisitionCost = watch('acquisition_cost')
+  const salvageValue = watch('salvage_value')
+  const serviceStartDate = watch('service_start_date')
+  const acquisitionDate = watch('acquisition_date')
+
+  const selectedCategory = useMemo(
+    () => (categoriesResponse?.data ?? []).find((category) => category.id === Number(categoryId)) ?? null,
+    [categoriesResponse, categoryId],
+  )
+
+  const openingEstimate = useMemo(() => {
+    if (!markAsOpening) return null
+
+    return estimateOpeningAccumulated({
+      cost: Number(acquisitionCost ?? 0),
+      salvage: Number(salvageValue ?? 0),
+      lifeYears: Number(usefulLifeYears ?? 0) || selectedCategory?.default_useful_life_years || null,
+      serviceStartDate: serviceStartDate || acquisitionDate || '',
+      openingDate: obBatch?.opening_date ?? new Date().toISOString().slice(0, 10),
+    })
+  }, [
+    markAsOpening,
+    acquisitionCost,
+    salvageValue,
+    usefulLifeYears,
+    selectedCategory,
+    serviceStartDate,
+    acquisitionDate,
+    obBatch,
+  ])
+
+  useEffect(() => {
+    if (!markAsOpening || accumulatedTouched.current || openingEstimate === null) return
+
+    setValue('accumulated_depreciation', openingEstimate.amount)
+  }, [markAsOpening, openingEstimate, setValue])
+
   // Halaman ini tidak memakai `usePersistentFormDraft`, jadi pelacaknya dipasang
   // langsung — tanpa ini, Tutup Database/Keluar tidak tahu ada isian di sini.
   // Hanya form utama: dialog Kapitalisasi/Pelepasan bersifat modal, tidak bisa
@@ -255,6 +364,15 @@ function FixedAssetFormPageContent() {
     handleSubmit,
     save: async (values, creating) => {
       const payload = cleanForm(values)
+
+      // Angka hasil hitungan sistem yang tidak disentuh user sengaja dikirim
+      // sebagai null, bukan sebagai angkanya. Perkiraan di layar memakai
+      // tanggal batch yang ada SEKARANG; kalau batchnya belum dibuat atau
+      // tanggalnya masih berubah, angka itu keburu basi. Null berarti
+      // "hitungkan saat posting", ketika tanggalnya sudah pasti.
+      if (payload.source_type === 'opening_import' && !accumulatedTouched.current) {
+        payload.accumulated_depreciation = null
+      }
       if (creating) await mutations.create.mutateAsync(payload)
       else if (assetId) await mutations.update.mutateAsync({ id: assetId, payload })
     },
@@ -447,6 +565,8 @@ function FixedAssetFormPageContent() {
                     onChange={(event) => {
                       const checked = event.target.checked
                       setValue('source_type', checked ? 'opening_import' : '')
+                      // Mencentang ulang berarti minta dihitungkan lagi dari awal.
+                      accumulatedTouched.current = false
                       if (!checked) setValue('accumulated_depreciation', 0)
                     }}
                   />
@@ -462,12 +582,48 @@ function FixedAssetFormPageContent() {
                       Akumulasi Penyusutan s/d Tanggal Saldo Awal
                     </Label>
                     <Input
-                      {...register('accumulated_depreciation')}
+                      {...register('accumulated_depreciation', {
+                        onChange: () => {
+                          accumulatedTouched.current = true
+                        },
+                      })}
                       type="number"
                       min="0"
                       className={cn('h-9 text-[13px] tabular-nums', fieldErrorClass(errors.accumulated_depreciation))}
                     />
                     <FieldError message={errors.accumulated_depreciation?.message} />
+                    {openingEstimate !== null && (
+                      <div className="flex items-start justify-between gap-2 rounded-md border border-[#d9e2e5] bg-white px-2.5 py-2">
+                        <p className="text-[11px] text-[#64748b]">
+                          Dihitung sistem:{' '}
+                          <span className="tabular-nums text-[#24323a]">
+                            {openingEstimate.months} bulan × {formatCurrency(openingEstimate.monthly)}
+                          </span>{' '}
+                          ={' '}
+                          <span className="font-semibold tabular-nums text-[#24323a]">
+                            {formatCurrency(openingEstimate.amount)}
+                          </span>
+                          <br />
+                          Garis lurus sampai{' '}
+                          {obBatch
+                            ? formatDate(obBatch.opening_date)
+                            : 'tanggal hari ini (batch saldo awal belum dibuat)'}
+                          . Angkanya dihitung ulang saat batch saldo awal diposting. Timpa kalau pembukuan
+                          lama memakai metode lain.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-7 shrink-0 px-2 text-[11px]"
+                          onClick={() => {
+                            accumulatedTouched.current = false
+                            setValue('accumulated_depreciation', openingEstimate.amount)
+                          }}
+                        >
+                          Hitung ulang
+                        </Button>
+                      </div>
+                    )}
                     <p className="text-[11px] text-[#64748b]">
                       Aset ini tidak dikapitalisasi manual. Ia aktif otomatis — beserta jadwal penyusutan sisa
                       umurnya — saat batch saldo awal diposting.

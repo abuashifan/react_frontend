@@ -35,13 +35,16 @@ export const importsApi = {
    * SETIAP respons lewat `normalizeApiResponse()` -- itu merusak Blob (bukan
    * JSON) jadi objek kosong. Pola yang sama dipakai unduhan e-Faktur di
    * `reportsApi`: lewat axios mentah, header otentikasi dipasang manual.
+   *
+   * Templatnya .xlsx supaya langsung terbuka di Excel tanpa dialog impor teks;
+   * berkas yang sama bisa diisi lalu diunggah balik apa adanya.
    */
   async downloadTemplate(profile: string): Promise<void> {
     const { token, activeCompanyId } = useAuthStore.getState()
     const response = await axios.get<Blob>(`${import.meta.env.VITE_API_BASE_URL}/api/imports/templates/${profile}`, {
       responseType: 'blob',
       headers: {
-        Accept: 'text/csv',
+        Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(activeCompanyId ? { 'X-Company-ID': String(activeCompanyId) } : {}),
       },
@@ -50,7 +53,7 @@ export const importsApi = {
     const url = URL.createObjectURL(response.data)
     const link = document.createElement('a')
     link.href = url
-    link.download = `template-${profile}.csv`
+    link.download = `template-${profile}.xlsx`
     document.body.appendChild(link)
     link.click()
     link.remove()

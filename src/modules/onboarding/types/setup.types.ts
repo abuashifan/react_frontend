@@ -57,10 +57,26 @@ export interface SetupGate {
   initial_setup_available: boolean
 }
 
+/**
+ * Gerbang urutan "aset tetap awal dulu, saldo awal belakangan" -- lihat
+ * SetupWizardService::openingFixedAssetsGate(). `settled` adalah satu-satunya
+ * field yang perlu dibaca UI: ia sudah menggabungkan modul aktif, jumlah aset
+ * ber-source_type `opening_import`, dan konfirmasi "tidak punya aset tetap
+ * awal". Aturan yang sama ditegakkan di jalur impor oleh
+ * OpeningBalanceImportCommitter, jadi UI tidak boleh menyimpulkan sendiri.
+ */
+export interface OpeningFixedAssetsGate {
+  module_enabled: boolean
+  imported_count: number
+  confirmed_none: boolean
+  settled: boolean
+}
+
 export interface SetupStatus {
   state: SetupState
   steps: SetupStep[]
   gate: SetupGate
+  opening_fixed_assets: OpeningFixedAssetsGate
 }
 
 /** Kontrak `/api/setup/coa-templates` -- lihat CoaTemplateService::templates(). */

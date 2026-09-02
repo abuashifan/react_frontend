@@ -45,9 +45,22 @@ export interface OBStatus {
   has_posted_or_locked_batch: boolean
 }
 
+// Backend mengirim objek, bukan string: `OpeningBalanceBatchService::error()`
+// mengembalikan {code, message, metadata?}. Sebelumnya di-tipe `string[]`,
+// sehingga <li>{e}</li> merender objek dan React melempar "Objects are not
+// valid as a React child" — dialog Preview mati persis saat ia paling
+// dibutuhkan, yaitu ketika ada blocking error yang harus dibaca user.
+export interface OBBlockingError {
+  code: string
+  message: string
+  metadata?: Record<string, unknown> | null
+}
+
 export interface OBValidation {
   valid: boolean
-  errors: string[]
+  errors: OBBlockingError[]
+  // `warnings` tetap string[]: ia datang dari OpeningBalanceValidator yang
+  // memformat 'LINE_<idx>:<pesan>', bukan lewat error().
   warnings: string[]
 }
 
@@ -58,8 +71,18 @@ export interface OBPreview {
   total_credit: number
   difference: number
   validation: OBValidation
-  blocking_errors: string[]
+  blocking_errors: OBBlockingError[]
   warnings: string[]
+}
+
+// POST /opening-balance/batches/{batch}/validate — backend mengembalikan
+// {valid, batch, preview}, bukan OBBatch telanjang. `valid: false` tetap
+// datang sebagai HTTP 200, jadi pemanggil WAJIB membaca field ini; kalau
+// hanya mengandalkan throw, validasi gagal akan tampak seperti sukses.
+export interface OBValidateResult {
+  valid: boolean
+  batch: OBBatch
+  preview: OBPreview
 }
 
 export interface CreateOBBatchPayload {

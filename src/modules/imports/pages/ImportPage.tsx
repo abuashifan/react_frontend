@@ -252,7 +252,13 @@ export default function ImportPage() {
             <h2 className="text-[14px] font-semibold text-[#24323a] mb-1">1. Pilih Profil &amp; Unggah Berkas</h2>
             <p className="text-[12px] text-[#64748b] mb-4">
               Unduh templat dulu supaya header kolomnya sudah benar -- pemetaan kolom otomatis terisi kalau templatnya
-              dipakai apa adanya. Format .csv atau .xlsx, maksimal 1.000 baris.
+              dipakai apa adanya. Templatnya berkas Excel (.xlsx), tinggal diisi lalu diunggah balik; berkas .csv juga
+              tetap diterima. Maksimal 1.000 baris.
+            </p>
+            <p className="text-[12px] text-[#64748b] mb-4">
+              Isi sheet <strong>Data</strong> saja. Kolom yang harus cocok dengan master data sistem (kategori aset,
+              kode akun, departemen, proyek) sudah berisi dropdown -- pilih dari daftarnya, jangan diketik. Daftar
+              lengkapnya ada di sheet <strong>Referensi</strong> di berkas yang sama.
             </p>
 
             <div className="flex flex-col gap-3">
@@ -280,7 +286,7 @@ export default function ImportPage() {
                   className="h-8 w-fit gap-1.5 text-[12px]"
                   onClick={() => void importsApi.downloadTemplate(profile.key)}
                 >
-                  <Download className="w-3.5 h-3.5" /> Unduh Templat {profile.label}
+                  <Download className="w-3.5 h-3.5" /> Unduh Templat {profile.label} (.xlsx)
                 </Button>
               )}
 
@@ -410,11 +416,23 @@ export default function ImportPage() {
               </Badge>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 my-4 text-center">
+            <div className="grid grid-cols-4 gap-3 my-4 text-center">
               <SummaryTile label="Total Baris" value={batch.total_rows} />
               <SummaryTile label="Valid" value={batch.valid_rows} tone="success" />
               <SummaryTile label="Gagal" value={batch.failed_rows} tone="danger" />
+              <SummaryTile label="Peringatan" value={batch.warning_rows} tone="warning" />
             </div>
+
+            {batch.warning_rows > 0 && (
+              <div className="mb-4 rounded-md border border-[#FDE68A] bg-[#FFFBEB] p-3">
+                <p className="text-[12px] text-[#92400E]">
+                  <AlertTriangle className="w-3.5 h-3.5 inline mr-1" />
+                  {batch.warning_rows} baris punya peringatan. Baris ini <strong>tetap valid dan tetap
+                  di-commit</strong> — periksa kolom Peringatan di bawah, lalu perbaiki berkasnya dan unggah
+                  ulang kalau ada yang memang salah.
+                </p>
+              </div>
+            )}
 
             {batch.failed_rows > 0 && (
               <div className="mb-4 flex items-center justify-between rounded-md border border-[#FEE2E2] bg-[#FEF2F2] p-3">
@@ -467,6 +485,7 @@ export default function ImportPage() {
                     <th className="px-3 py-2 font-medium">Baris</th>
                     <th className="px-3 py-2 font-medium">Status</th>
                     <th className="px-3 py-2 font-medium">Galat</th>
+                    <th className="px-3 py-2 font-medium">Peringatan</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -478,18 +497,15 @@ export default function ImportPage() {
                           {row.status}
                         </Badge>
                       </td>
-                      <td className="px-3 py-1.5 text-[#991B1B]">
-                        {row.errors
-                          ? Object.entries(row.errors)
-                              .flatMap(([, messages]) => messages)
-                              .join('; ')
-                          : '-'}
-                      </td>
+                      <td className="px-3 py-1.5 text-[#991B1B]">{joinMessages(row.errors)}</td>
+                      {/* Peringatan tidak menggagalkan baris — barisnya tetap
+                          ter-commit. Warnanya sengaja amber, bukan merah. */}
+                      <td className="px-3 py-1.5 text-[#92400E]">{joinMessages(row.warnings)}</td>
                     </tr>
                   ))}
                   {rows.length === 0 && !rowsFetching && (
                     <tr>
-                      <td colSpan={3} className="px-3 py-4 text-center text-[#94a3b8]">
+                      <td colSpan={4} className="px-3 py-4 text-center text-[#94a3b8]">
                         Belum ada baris.
                       </td>
                     </tr>
@@ -565,7 +581,19 @@ function Stepper({ step }: { step: Step }) {
   )
 }
 
-function SummaryTile({ label, value, tone }: { label: string; value: number; tone?: 'success' | 'danger' }) {
+/**
+ * Gabung galat/peringatan satu baris jadi satu kalimat. Bentuk datanya sama
+ * (field → daftar pesan), yang beda cuma warnanya di tabel.
+ */
+function joinMessages(messages: Record<string, string[]> | null): string {
+  if (!messages) return '-'
+
+  const flat = Object.values(messages).flat()
+
+  return flat.length > 0 ? flat.join('; ') : '-'
+}
+
+function SummaryTile({ label, value, tone }: { label: string; value: number; tone?: 'success' | 'danger' | 'warning' }) {
   return (
     <div className="rounded-md border border-[#e2e8f0] p-3">
       <p
@@ -573,6 +601,7 @@ function SummaryTile({ label, value, tone }: { label: string; value: number; ton
           'text-[20px] font-semibold tabular-nums',
           tone === 'success' && 'text-[#065F46]',
           tone === 'danger' && 'text-[#991B1B]',
+          tone === 'warning' && 'text-[#92400E]',
           !tone && 'text-[#24323a]',
         )}
       >

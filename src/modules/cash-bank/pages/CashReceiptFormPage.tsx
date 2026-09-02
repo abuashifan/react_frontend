@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormField } from '@/components/shared/form/FormField'
-import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
+import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/components/shared/form/LineItemsTable'
 import { AmountInput } from '@/components/shared/form/AmountInput'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
@@ -31,8 +31,6 @@ import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 interface EditableLine { account_id: number | null; account?: { id: number; code: string; name: string } | null; amount: number; description: string }
 const DEFAULT_LINE: EditableLine = { account_id: null, account: null, amount: 0, description: '' }
 
-/** Style input "flush" — tanpa border/rounded sendiri, menyatu dengan sel tabel `bordered`. */
-const FLUSH_INPUT_CLASS = 'rounded-none border-0 bg-transparent px-2 focus:shadow-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#5c9ead]/40'
 
 export default function CashReceiptFormPage() {
   const { id } = useParams()
@@ -317,7 +315,6 @@ function CashReceiptFormPageContent() {
             isReadOnly={!isEditable}
             addLabel="Tambah Baris"
             emptyLabel="Belum ada baris alokasi"
-            bordered
           />
 
           {/* Catatan dan ringkasan jumlah disandingkan. */}
