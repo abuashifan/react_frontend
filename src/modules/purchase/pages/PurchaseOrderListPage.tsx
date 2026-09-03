@@ -5,6 +5,7 @@ import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterS
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
 import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
+import { ListExportButton, type ExportColumn } from '@/components/shared/table/ListExportButton'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
@@ -12,12 +13,30 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { usePurchaseOrderList } from '../hooks/usePurchaseOrderList'
+import { purchaseOrderApi } from '../services/purchaseOrderApi'
+import { fromPurchaseOrderResponse } from '../services/purchaseOrderAdapter'
+import { toExcelDate } from '@/lib/exportXlsx'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import type { PurchaseOrder, PurchaseOrderStatus } from '../types/purchaseOrder.types'
 import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: PurchaseOrderStatus[] = ['draft', 'approved', 'confirmed', 'cancelled', 'closed']
+
+/**
+ * Kolom file ekspor: sama dengan kolom tabel, ditambah `ID` di depan.
+ * ID dibutuhkan supaya baris hasil ekspor bisa dicocokkan kembali dengan
+ * record di sistem (impor balik, rekonsiliasi manual, tiket dukungan).
+ */
+const EXPORT_COLUMNS: ExportColumn<PurchaseOrder>[] = [
+  { header: 'ID', value: (row) => row.id },
+  { header: 'Nomor PO', value: (row) => row.number },
+  { header: 'Nomor PR', value: (row) => row.purchase_request_number },
+  { header: 'Tanggal', value: (row) => toExcelDate(row.date), format: 'date' },
+  { header: 'Vendor', value: (row) => row.vendor?.name },
+  { header: 'Total', value: (row) => row.grand_total, format: 'currency' },
+  { header: 'Status', value: (row) => row.status },
+]
 
 export default function PurchaseOrderListPage() {
   const { openRecordTab } = useRecordTab()
@@ -36,14 +55,20 @@ export default function PurchaseOrderListPage() {
     setPage(0)
   }
 
-  const { data, isLoading, isFetching } = usePurchaseOrderList({
-    page: page + 1,
-    per_page: 25,
+  // Dipisah dari page/per_page supaya tombol ekspor memakai filter yang PERSIS
+  // sama dengan tabel.
+  const listParams = {
     search: search || undefined,
     status: filterStatus,
     vendor_id: filterVendor ?? undefined,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
+  }
+
+  const { data, isLoading, isFetching } = usePurchaseOrderList({
+    page: page + 1,
+    per_page: 25,
+    ...listParams,
   })
 
   const activeFilters = [filterStatus, filterVendor, dateRange.from, dateRange.to].filter(Boolean).length
@@ -113,11 +138,25 @@ export default function PurchaseOrderListPage() {
       breadcrumb={[{ label: 'Pembelian' }, { label: 'Purchase Order' }]}
       sidebar={sidebar}
       action={
-        <PermissionGuard permission="purchase.orders.create">
-          <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Purchase Order Baru', path: '/purchase/orders/create' })}>
-            <Plus className="mr-1 h-3.5 w-3.5" /> Buat PO
-          </Button>
-        </PermissionGuard>
+        <>
+          <ListExportButton
+            filename="purchase-order"
+            sheetName="Purchase Order"
+            columns={EXPORT_COLUMNS}
+            totalRows={data?.meta.total}
+            fetchPage={async (exportPage, exportPerPage) => {
+              const response = await purchaseOrderApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })
+              // Adapter yang sama dipakai hook daftarnya: endpoint mengirim bentuk MENTAH
+              // (nomor & nominal bernama lain, angka sebagai string), bukan bentuk UI.
+              return { ...response, data: response.data.map(fromPurchaseOrderResponse) }
+            }}
+          />
+          <PermissionGuard permission="purchase.orders.create">
+            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Purchase Order Baru', path: '/purchase/orders/create' })}>
+              <Plus className="mr-1 h-3.5 w-3.5" /> Buat PO
+            </Button>
+          </PermissionGuard>
+        </>
       }
     >
       <DataTable

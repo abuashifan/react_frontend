@@ -4,6 +4,7 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
 import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
+import { ListExportButton, type ExportColumn } from '@/components/shared/table/ListExportButton'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
@@ -15,12 +16,30 @@ import { formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { useGoodsReceiptList, useGoodsReceiptMutations } from '../hooks/useGoodsReceiptList'
+import { goodsReceiptApi } from '../services/goodsReceiptApi'
+import { fromGoodsReceiptResponse } from '../services/goodsReceiptAdapter'
+import { toExcelDate } from '@/lib/exportXlsx'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { GoodsReceipt, GoodsReceiptStatus } from '../types/goodsReceipt.types'
 import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: GoodsReceiptStatus[] = ['draft', 'received', 'partially_billed', 'void', 'cancelled']
+/**
+ * Kolom file ekspor: sama dengan kolom tabel, ditambah `ID` di depan.
+ * ID dibutuhkan supaya baris hasil ekspor bisa dicocokkan kembali dengan
+ * record di sistem (impor balik, rekonsiliasi manual, tiket dukungan).
+ */
+const EXPORT_COLUMNS: ExportColumn<GoodsReceipt>[] = [
+  { header: 'ID', value: (row) => row.id },
+  { header: 'Nomor GR', value: (row) => row.number },
+  { header: 'Nomor PO', value: (row) => row.purchase_order_number },
+  { header: 'Tanggal', value: (row) => toExcelDate(row.date), format: 'date' },
+  { header: 'Vendor', value: (row) => row.vendor?.name },
+  { header: 'Gudang', value: (row) => row.warehouse?.name },
+  { header: 'Status', value: (row) => row.status },
+]
+
 export default function GoodsReceiptListPage() {
   const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
@@ -44,14 +63,20 @@ export default function GoodsReceiptListPage() {
     setPage(0)
   }
 
-  const { data, isLoading, isFetching } = useGoodsReceiptList({
-    page: page + 1,
-    per_page: 25,
+  // Dipisah dari page/per_page supaya tombol ekspor memakai filter yang PERSIS
+  // sama dengan tabel.
+  const listParams = {
     search: search || undefined,
     vendor_id: filterVendor ?? undefined,
     status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
+  }
+
+  const { data, isLoading, isFetching } = useGoodsReceiptList({
+    page: page + 1,
+    per_page: 25,
+    ...listParams,
   })
 
   const rows = useMemo(() => data?.data ?? [], [data])
@@ -188,11 +213,25 @@ export default function GoodsReceiptListPage() {
         breadcrumb={[{ label: 'Pembelian' }, { label: 'Penerimaan Barang' }]}
         sidebar={sidebar}
         action={
-          <PermissionGuard permission="purchase.goods-receipts.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Penerimaan Baru', path: '/purchase/goods-receipts/create' })}>
-              <Plus className="mr-1 h-3.5 w-3.5" /> Buat GR
-            </Button>
-          </PermissionGuard>
+          <>
+            <ListExportButton
+              filename="penerimaan-barang"
+              sheetName="Penerimaan Barang"
+              columns={EXPORT_COLUMNS}
+              totalRows={data?.meta.total}
+              fetchPage={async (exportPage, exportPerPage) => {
+                const response = await goodsReceiptApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })
+                // Adapter yang sama dipakai hook daftarnya: endpoint mengirim bentuk MENTAH
+                // (nomor & tanggal bernama lain, angka sebagai string), bukan bentuk UI.
+                return { ...response, data: response.data.map(fromGoodsReceiptResponse) }
+              }}
+            />
+            <PermissionGuard permission="purchase.goods-receipts.create">
+              <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Penerimaan Baru', path: '/purchase/goods-receipts/create' })}>
+                <Plus className="mr-1 h-3.5 w-3.5" /> Buat GR
+              </Button>
+            </PermissionGuard>
+          </>
         }
       >
         <DataTable

@@ -5,17 +5,35 @@ import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterS
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
 import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
+import { ListExportButton, type ExportColumn } from '@/components/shared/table/ListExportButton'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { usePurchaseRequestList } from '../hooks/usePurchaseRequestList'
+import { purchaseRequestApi } from '../services/purchaseRequestApi'
+import { fromPurchaseRequestResponse } from '../services/purchaseRequestAdapter'
+import { toExcelDate } from '@/lib/exportXlsx'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import type { PurchaseRequest, PurchaseRequestStatus } from '../types/purchaseRequest.types'
 import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: PurchaseRequestStatus[] = ['draft', 'submitted', 'approved', 'rejected', 'cancelled', 'converted']
+
+/**
+ * Kolom file ekspor: sama dengan kolom tabel, ditambah `ID` di depan.
+ * ID dibutuhkan supaya baris hasil ekspor bisa dicocokkan kembali dengan
+ * record di sistem (impor balik, rekonsiliasi manual, tiket dukungan).
+ */
+const EXPORT_COLUMNS: ExportColumn<PurchaseRequest>[] = [
+  { header: 'ID', value: (row) => row.id },
+  { header: 'Nomor', value: (row) => row.number },
+  { header: 'Tanggal', value: (row) => toExcelDate(row.date), format: 'date' },
+  { header: 'Departemen', value: (row) => row.department?.name },
+  { header: 'Total Estimasi', value: (row) => row.total_estimated, format: 'currency' },
+  { header: 'Status', value: (row) => row.status },
+]
 
 export default function PurchaseRequestListPage() {
   const { openRecordTab } = useRecordTab()
@@ -33,13 +51,19 @@ export default function PurchaseRequestListPage() {
     setPage(0)
   }
 
-  const { data, isLoading, isFetching } = usePurchaseRequestList({
-    page: page + 1,
-    per_page: 25,
+  // Dipisah dari page/per_page supaya tombol ekspor memakai filter yang PERSIS
+  // sama dengan tabel.
+  const listParams = {
     search: search || undefined,
     status: filterStatus,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
+  }
+
+  const { data, isLoading, isFetching } = usePurchaseRequestList({
+    page: page + 1,
+    per_page: 25,
+    ...listParams,
   })
 
   const columns: ColumnDef<PurchaseRequest>[] = [
@@ -99,11 +123,25 @@ export default function PurchaseRequestListPage() {
       breadcrumb={[{ label: 'Pembelian' }, { label: 'Purchase Request' }]}
       sidebar={sidebar}
       action={
-        <PermissionGuard permission="purchase.requests.create">
-          <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Permintaan Baru', path: '/purchase/requests/create' })}>
-            <Plus className="mr-1 h-3.5 w-3.5" /> Buat PR
-          </Button>
-        </PermissionGuard>
+        <>
+          <ListExportButton
+            filename="permintaan-pembelian"
+            sheetName="Permintaan Pembelian"
+            columns={EXPORT_COLUMNS}
+            totalRows={data?.meta.total}
+            fetchPage={async (exportPage, exportPerPage) => {
+              const response = await purchaseRequestApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })
+              // Adapter yang sama dipakai hook daftarnya: endpoint mengirim bentuk MENTAH
+              // (nomor & nominal bernama lain, angka sebagai string), bukan bentuk UI.
+              return { ...response, data: response.data.map(fromPurchaseRequestResponse) }
+            }}
+          />
+          <PermissionGuard permission="purchase.requests.create">
+            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Permintaan Baru', path: '/purchase/requests/create' })}>
+              <Plus className="mr-1 h-3.5 w-3.5" /> Buat PR
+            </Button>
+          </PermissionGuard>
+        </>
       }
     >
       <DataTable

@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/shared/feedback/EmptyState'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
 import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
+import { ListExportButton, type ExportColumn } from '@/components/shared/table/ListExportButton'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
@@ -16,12 +17,33 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { useVendorBillList, useVendorBillMutations } from '../hooks/useVendorBillList'
+import { vendorBillApi } from '../services/vendorBillApi'
+import { fromVendorBillResponse } from '../services/vendorBillAdapter'
+import { toExcelDate } from '@/lib/exportXlsx'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { VendorBill, VendorBillStatus } from '../types/vendorBill.types'
 import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: VendorBillStatus[] = ['draft', 'approved', 'posted', 'partially_paid', 'paid', 'void']
+
+/**
+ * Kolom file ekspor: sama dengan kolom tabel, ditambah `ID` di depan.
+ * ID dibutuhkan supaya baris hasil ekspor bisa dicocokkan kembali dengan
+ * record di sistem (impor balik, rekonsiliasi manual, tiket dukungan).
+ */
+const EXPORT_COLUMNS: ExportColumn<VendorBill>[] = [
+  { header: 'ID', value: (row) => row.id },
+  { header: 'Nomor Bill', value: (row) => row.number },
+  { header: 'Tanggal', value: (row) => toExcelDate(row.date), format: 'date' },
+  { header: 'Jatuh Tempo', value: (row) => toExcelDate(row.due_date), format: 'date' },
+  { header: 'Vendor', value: (row) => row.vendor?.name },
+  { header: 'Nomor PO', value: (row) => row.purchase_order_number },
+  { header: 'Total', value: (row) => row.grand_total, format: 'currency' },
+  { header: 'Dibayar', value: (row) => row.paid_amount, format: 'currency' },
+  { header: 'Sisa', value: (row) => row.balance_due, format: 'currency' },
+  { header: 'Status', value: (row) => row.status },
+]
 
 export default function VendorBillListPage() {
   const { openRecordTab } = useRecordTab()
@@ -43,14 +65,20 @@ export default function VendorBillListPage() {
     setPage(0)
   }
 
-  const { data, isLoading, isFetching, isError, refetch } = useVendorBillList({
-    page: page + 1,
-    per_page: pageSize,
+  // Dipisah dari page/per_page supaya tombol ekspor memakai filter yang PERSIS
+  // sama dengan tabel.
+  const listParams = {
     search: search || undefined,
     status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
     vendor_id: filterVendor ?? undefined,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
+  }
+
+  const { data, isLoading, isFetching, isError, refetch } = useVendorBillList({
+    page: page + 1,
+    per_page: pageSize,
+    ...listParams,
   })
 
   const rows = data?.data ?? []
@@ -210,11 +238,25 @@ export default function VendorBillListPage() {
         breadcrumb={[{ label: 'Pembelian' }, { label: 'Tagihan' }]}
         sidebar={sidebar}
         action={
-          <PermissionGuard permission="purchase.bills.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Tagihan Baru', path: '/purchase/bills/create' })}>
-              <Plus className="mr-1 h-3.5 w-3.5" /> Buat Bill
-            </Button>
-          </PermissionGuard>
+          <>
+            <ListExportButton
+              filename="tagihan-vendor"
+              sheetName="Tagihan Vendor"
+              columns={EXPORT_COLUMNS}
+              totalRows={data?.meta.total}
+              fetchPage={async (exportPage, exportPerPage) => {
+                const response = await vendorBillApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })
+                // Adapter yang sama dipakai hook daftarnya: endpoint mengirim bentuk MENTAH
+                // (nomor & nominal bernama lain, angka sebagai string), bukan bentuk UI.
+                return { ...response, data: response.data.map(fromVendorBillResponse) }
+              }}
+            />
+            <PermissionGuard permission="purchase.bills.create">
+              <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Tagihan Baru', path: '/purchase/bills/create' })}>
+                <Plus className="mr-1 h-3.5 w-3.5" /> Buat Bill
+              </Button>
+            </PermissionGuard>
+          </>
         }
       >
         {isError ? (

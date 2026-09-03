@@ -4,6 +4,7 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
 import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
+import { ListExportButton, type ExportColumn } from '@/components/shared/table/ListExportButton'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,8 @@ import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { useSalesInvoiceList, useSalesInvoiceMutations } from '../hooks/useSalesInvoiceList'
+import { salesInvoiceApi } from '../services/salesInvoiceApi'
+import { toExcelDate } from '@/lib/exportXlsx'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { SalesInvoice, SalesInvoiceStatus } from '../types/salesInvoice.types'
@@ -26,6 +29,26 @@ function isOverdue(invoice: SalesInvoice): boolean {
   if (invoice.balance_due <= 0) return false
   return new Date(invoice.due_date) < new Date()
 }
+
+/**
+ * Kolom file ekspor: sama dengan kolom tabel, ditambah `ID` di depan.
+ * ID dibutuhkan supaya baris hasil ekspor bisa dicocokkan kembali dengan
+ * record di sistem (impor balik, rekonsiliasi manual, tiket dukungan).
+ */
+const EXPORT_COLUMNS: ExportColumn<SalesInvoice>[] = [
+  { header: 'ID', value: (row) => row.id },
+  { header: 'Nomor', value: (row) => row.number },
+  { header: 'Tanggal', value: (row) => toExcelDate(row.date), format: 'date' },
+  { header: 'Customer', value: (row) => row.customer?.name },
+  { header: 'Jatuh Tempo', value: (row) => toExcelDate(row.due_date), format: 'date' },
+  { header: 'Total', value: (row) => row.grand_total, format: 'currency' },
+  { header: 'Dibayar', value: (row) => row.paid_amount, format: 'currency' },
+  { header: 'Sisa', value: (row) => row.balance_due, format: 'currency' },
+  { header: 'Status', value: (row) => row.status },
+  // Kolom tabel menandai jatuh tempo lewat warna teks; warna tidak ikut ke file,
+  // jadi statusnya dijadikan kolom sendiri supaya tetap terbaca di Excel.
+  { header: 'Terlambat', value: (row) => (isOverdue(row) ? 'Ya' : 'Tidak') },
+]
 
 export default function SalesInvoiceListPage() {
   const { openRecordTab } = useRecordTab()
@@ -49,14 +72,20 @@ export default function SalesInvoiceListPage() {
   }
   const { void: voidInvoice } = useSalesInvoiceMutations()
 
-  const { data, isLoading, isFetching } = useSalesInvoiceList({
-    page: page + 1,
-    per_page: 25,
+  // Dipisah dari page/per_page supaya tombol ekspor memakai filter yang PERSIS
+  // sama dengan tabel.
+  const listParams = {
     search: search || undefined,
     customer_id: filterCustomer ?? undefined,
     status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
+  }
+
+  const { data, isLoading, isFetching } = useSalesInvoiceList({
+    page: page + 1,
+    per_page: 25,
+    ...listParams,
   })
 
   const rows = useMemo(() => data?.data ?? [], [data])
@@ -237,14 +266,23 @@ export default function SalesInvoiceListPage() {
         breadcrumb={[{ label: 'Sales' }, { label: 'Invoice Penjualan' }]}
         sidebar={sidebar}
         action={
-          <PermissionGuard permission="sales.invoices.create">
-            <Button
-              className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]"
-              onClick={() => openRecordTab({ label: 'Invoice Baru', path: '/sales/invoices/create' })}
-            >
-              <Plus className="mr-1 h-3.5 w-3.5" /> Buat Invoice
-            </Button>
-          </PermissionGuard>
+          <>
+            <ListExportButton
+              filename="invoice-penjualan"
+              sheetName="Invoice Penjualan"
+              columns={EXPORT_COLUMNS}
+              totalRows={data?.meta.total}
+              fetchPage={(exportPage, exportPerPage) => salesInvoiceApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}
+            />
+            <PermissionGuard permission="sales.invoices.create">
+              <Button
+                className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]"
+                onClick={() => openRecordTab({ label: 'Invoice Baru', path: '/sales/invoices/create' })}
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" /> Buat Invoice
+              </Button>
+            </PermissionGuard>
+          </>
         }
       >
         <DataTable

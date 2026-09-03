@@ -6,6 +6,7 @@ import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterS
 import { SingleCheckboxFilter } from '@/components/shared/filter/SingleCheckboxFilter'
 import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
+import { ListExportButton, type ExportColumn } from '@/components/shared/table/ListExportButton'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { ActiveStatusBadge } from '@/components/shared/badge/ActiveStatusBadge'
 import { Button } from '@/components/ui/button'
@@ -14,6 +15,7 @@ import { useToast } from '@/hooks/useToast'
 import { getBulkFailureDetail } from '@/lib/apiError'
 import { useProdukList, useProdukMutations } from '../hooks/useProdukList'
 import { kategoriProdukApi } from '../services/kategoriProdukApi'
+import { produkApi } from '../services/produkApi'
 import type { Produk } from '../types/produk.types'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 
@@ -21,6 +23,21 @@ const STATUS_OPTIONS: { value: boolean | undefined; label: string }[] = [
   { value: true, label: 'Aktif' },
   { value: false, label: 'Nonaktif' },
   { value: undefined, label: 'Semua' },
+]
+
+/**
+ * Kolom file ekspor: sama dengan kolom tabel, ditambah `ID` di depan.
+ * ID dibutuhkan supaya baris hasil ekspor bisa dicocokkan kembali dengan
+ * record di sistem (impor balik, rekonsiliasi manual, tiket dukungan).
+ */
+const EXPORT_COLUMNS: ExportColumn<Produk>[] = [
+  { header: 'ID', value: (row) => row.id },
+  { header: 'Kode', value: (row) => row.product_code },
+  { header: 'Nama Produk', value: (row) => row.product_name },
+  { header: 'Tipe', value: (row) => row.product_type },
+  { header: 'Kategori', value: (row) => row.category?.name },
+  { header: 'Satuan', value: (row) => row.unit?.code },
+  { header: 'Status', value: (row) => (row.is_active ? 'Aktif' : 'Nonaktif') },
 ]
 
 const columns: ColumnDef<Produk>[] = [
@@ -73,12 +90,19 @@ export default function ProdukListPage() {
   const [filterActive, setFilterActive] = useState<boolean | undefined>(true)
   const [selectedRows, setSelectedRows] = useState<string[]>([])
   const [search, setSearch] = useState('')
-  const { data, isLoading, isFetching } = useProdukList({
-    page,
-    per_page: perPage,
+  // Dipisah dari page/per_page supaya tombol ekspor memakai filter yang PERSIS
+  // sama dengan tabel -- termasuk `is_active`, jadi produk nonaktif ikut
+  // terekspor hanya kalau memang sedang ditampilkan.
+  const listParams = {
     product_category_id: filterCategoryId ?? undefined,
     is_active: filterActive,
     search: search || undefined,
+  }
+
+  const { data, isLoading, isFetching } = useProdukList({
+    page,
+    per_page: perPage,
+    ...listParams,
   })
 
   // Setiap perubahan filter mengembalikan ke halaman 1 dan mengosongkan
@@ -183,14 +207,23 @@ export default function ProdukListPage() {
       breadcrumb={[{ label: 'Master Data' }, { label: 'Produk' }]}
       sidebar={sidebar}
       action={
-        <PermissionGuard permission="master-data.products.create">
-          <Button
-            className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]"
-            onClick={() => openRecordTab({ label: 'Produk Baru', path: '/master-data/products/create' })}
-          >
-            <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Produk
-          </Button>
-        </PermissionGuard>
+        <>
+          <ListExportButton
+            filename="produk"
+            sheetName="Produk"
+            columns={EXPORT_COLUMNS}
+            totalRows={data?.meta.total}
+            fetchPage={(exportPage, exportPerPage) => produkApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}
+          />
+          <PermissionGuard permission="master-data.products.create">
+            <Button
+              className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]"
+              onClick={() => openRecordTab({ label: 'Produk Baru', path: '/master-data/products/create' })}
+            >
+              <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Produk
+            </Button>
+          </PermissionGuard>
+        </>
       }
     >
       <DataTable

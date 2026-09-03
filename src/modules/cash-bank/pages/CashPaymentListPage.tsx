@@ -3,6 +3,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar } from '@/components/shared/layout/FilterSidebar'
 import { DataTable } from '@/components/shared/table/DataTable'
+import { ListExportButton, type ExportColumn } from '@/components/shared/table/ListExportButton'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
@@ -15,11 +16,30 @@ import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { useListSort } from '@/hooks/useListSort'
 import { useCashPaymentList, useCashPaymentMutations } from '../hooks/useCashBankList'
+import { cashPaymentApi } from '../services/cashBankApi'
+import { toExcelDate } from '@/lib/exportXlsx'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { CashPayment, CashBankStatus } from '../types/cashBank.types'
 import { useRecordTab } from '@/hooks/useRecordTab'
 
 const STATUSES: CashBankStatus[] = ['draft', 'posted', 'void']
+/**
+ * Kolom file ekspor: sama dengan kolom tabel, ditambah `ID` di depan.
+ * ID dibutuhkan supaya baris hasil ekspor bisa dicocokkan kembali dengan
+ * record di sistem (impor balik, rekonsiliasi manual, tiket dukungan).
+ */
+const EXPORT_COLUMNS: ExportColumn<CashPayment>[] = [
+  { header: 'ID', value: (row) => row.id },
+  { header: 'Nomor', value: (row) => row.number },
+  { header: 'Tanggal', value: (row) => toExcelDate(row.payment_date), format: 'date' },
+  { header: 'Akun Kas/Bank', value: (row) => row.cash_bank_account?.name },
+  { header: 'Kontak', value: (row) => row.contact?.name },
+  { header: 'Catatan', value: (row) => row.notes },
+  { header: 'Jumlah', value: (row) => row.amount, format: 'currency' },
+  { header: 'Status', value: (row) => row.status },
+  { header: 'Dibuat Oleh', value: (row) => row.created_by_name },
+]
+
 export default function CashPaymentListPage() {
   const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
@@ -47,14 +67,20 @@ export default function CashPaymentListPage() {
     setSelectedRows([])
   }
 
-  const { data, isLoading, isFetching } = useCashPaymentList({
-    page: page + 1,
-    per_page: 25,
+  // Dipisah dari page/per_page supaya tombol ekspor memakai filter DAN urutan
+  // yang persis sama dengan tabel.
+  const listParams = {
     search: search || undefined,
     status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
     ...sortParams,
+  }
+
+  const { data, isLoading, isFetching } = useCashPaymentList({
+    page: page + 1,
+    per_page: 25,
+    ...listParams,
   })
   const rows = useMemo(() => data?.data ?? [], [data])
 
@@ -203,11 +229,20 @@ export default function CashPaymentListPage() {
         breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Pengeluaran Kas' }]}
         sidebar={sidebar}
         action={
-          <PermissionGuard permission="cash_bank.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Pengeluaran Baru', path: '/cash-bank/cash-payments/create' })}>
-              <Plus className="mr-1 h-3.5 w-3.5" /> Buat Pengeluaran
-            </Button>
-          </PermissionGuard>
+          <>
+            <ListExportButton
+              filename="pengeluaran-kas"
+              sheetName="Pengeluaran Kas"
+              columns={EXPORT_COLUMNS}
+              totalRows={data?.meta.total}
+              fetchPage={(exportPage, exportPerPage) => cashPaymentApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}
+            />
+            <PermissionGuard permission="cash_bank.create">
+              <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Pengeluaran Baru', path: '/cash-bank/cash-payments/create' })}>
+                <Plus className="mr-1 h-3.5 w-3.5" /> Buat Pengeluaran
+              </Button>
+            </PermissionGuard>
+          </>
         }
       >
         <DataTable

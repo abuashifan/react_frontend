@@ -6,6 +6,7 @@ import { FilterSidebar } from '@/components/shared/layout/FilterSidebar'
 import { SingleCheckboxFilter } from '@/components/shared/filter/SingleCheckboxFilter'
 import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
+import { ListExportButton, type ExportColumn } from '@/components/shared/table/ListExportButton'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { ActiveStatusBadge } from '@/components/shared/badge/ActiveStatusBadge'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/useToast'
 import { getBulkFailureDetail } from '@/lib/apiError'
 import { useKontakList, useKontakMutations } from '../hooks/useKontakList'
+import { kontakApi } from '../services/kontakApi'
 import type { Kontak, KontakType } from '../types/kontak.types'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 
@@ -40,6 +42,21 @@ function getKontakTypeLabel(kontak: Kontak): string {
   }
   return '-'
 }
+
+/**
+ * Kolom file ekspor: sama dengan kolom tabel, ditambah `ID` di depan.
+ * ID dibutuhkan supaya baris hasil ekspor bisa dicocokkan kembali dengan
+ * record di sistem (impor balik, rekonsiliasi manual, tiket dukungan).
+ */
+const EXPORT_COLUMNS: ExportColumn<Kontak>[] = [
+  { header: 'ID', value: (row) => row.id },
+  { header: 'Kode', value: (row) => row.contact_code },
+  { header: 'Nama', value: (row) => row.name },
+  { header: 'Tipe', value: (row) => getKontakTypeLabel(row) },
+  { header: 'Telepon', value: (row) => row.phone },
+  { header: 'Email', value: (row) => row.email },
+  { header: 'Status', value: (row) => (row.is_active ? 'Aktif' : 'Nonaktif') },
+]
 
 const columns: ColumnDef<Kontak>[] = [
   {
@@ -96,13 +113,20 @@ export default function KontakListPage() {
   const [selectedRows, setSelectedRows] = useState<string[]>([])
   const [search, setSearch] = useState('')
   const [prevSearch, setPrevSearch] = useState('')
-  const { data, isLoading, isFetching } = useKontakList({
-    page,
-    per_page: perPage,
+  // Dipisah dari page/per_page supaya tombol ekspor memakai filter yang PERSIS
+  // sama dengan tabel -- termasuk `is_active`, jadi kontak nonaktif ikut
+  // terekspor hanya kalau memang sedang ditampilkan.
+  const listParams = {
     is_customer: filterType === 'customer' || filterType === 'both' ? true : undefined,
     is_supplier: filterType === 'supplier' || filterType === 'both' ? true : undefined,
     is_active: filterActive,
     search: search || undefined,
+  }
+
+  const { data, isLoading, isFetching } = useKontakList({
+    page,
+    per_page: perPage,
+    ...listParams,
   })
 
   if (search !== prevSearch) {
@@ -194,14 +218,23 @@ export default function KontakListPage() {
       breadcrumb={[{ label: 'Master Data' }, { label: 'Kontak' }]}
       sidebar={sidebar}
       action={
-        <PermissionGuard permission="master-data.contacts.create">
-          <Button
-            className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]"
-            onClick={() => openRecordTab({ label: 'Kontak Baru', path: '/master-data/contacts/create' })}
-          >
-            <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Kontak
-          </Button>
-        </PermissionGuard>
+        <>
+          <ListExportButton
+            filename="kontak"
+            sheetName="Kontak"
+            columns={EXPORT_COLUMNS}
+            totalRows={data?.meta.total}
+            fetchPage={(exportPage, exportPerPage) => kontakApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}
+          />
+          <PermissionGuard permission="master-data.contacts.create">
+            <Button
+              className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]"
+              onClick={() => openRecordTab({ label: 'Kontak Baru', path: '/master-data/contacts/create' })}
+            >
+              <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Kontak
+            </Button>
+          </PermissionGuard>
+        </>
       }
     >
       <DataTable
