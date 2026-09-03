@@ -6,10 +6,10 @@ import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { TablePagination } from '@/components/shared/table/TablePagination'
 import type { PaginationState } from '@/components/shared/table/TablePagination'
-import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
-import { exportCsv } from '@/lib/exportCsv'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelNumber } from '@/lib/exportXlsx'
 import { useReportParams } from '../hooks/useReportParams'
 
 const today = new Date().toISOString().slice(0, 10)
@@ -62,20 +62,14 @@ export default function PurchaseByVendorReportPage() {
           <>
             {allRows.length > 0 && (
               <div className="flex justify-end">
-                <Button
+                <ReportExportButton
                   variant="outline"
-                  size="sm"
-                  className="text-[12px]"
-                  onClick={() =>
-                    exportCsv(
-                      `pembelian-per-supplier-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
-                      ['Supplier', 'Jumlah Tagihan', 'Subtotal', 'Pajak', 'Total'],
-                      allRows.map((r) => [r.vendor_name, r.bill_count, r.subtotal, r.tax, r.total]),
-                    )
-                  }
-                >
-                  Export CSV
-                </Button>
+                  filename={`pembelian-per-supplier-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}`}
+                  sheetName="Pembelian per Supplier"
+                  headers={['Supplier', 'Jumlah Tagihan', 'Subtotal', 'Pajak', 'Total']}
+                  rows={() => allRows.map((r) => [r.vendor_name, toExcelNumber(r.bill_count), toExcelNumber(r.subtotal), toExcelNumber(r.tax), toExcelNumber(r.total)])}
+                  formats={['text', 'number', 'currency', 'currency', 'currency']}
+                />
               </div>
             )}
 

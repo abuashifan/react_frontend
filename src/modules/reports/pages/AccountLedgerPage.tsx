@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { ReportError } from '../components/ReportError'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelDate, toExcelNumber } from '@/lib/exportXlsx'
 import { reportsApi } from '../services/reportsApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
@@ -103,7 +105,51 @@ export default function AccountLedgerPage() {
               <SearchableSelect value={projectId} onChange={(val) => setProjectId(val)} onSearch={searchProject} placeholder="Semua proyek" size="sm" />
             </div>
           </div>
-          <div className="mt-3 flex justify-end">
+          <div className="mt-3 flex justify-end gap-2">
+            {/*
+              Yang diekspor adalah baris yang BENAR-BENAR dimuat. Saat backend
+              memotong hasil (`report.truncated`), spanduk peringatan di bawah
+              filter tetap tampil — jadi user tahu file ikut terpotong dan harus
+              mempersempit rentang tanggal.
+            */}
+            {!isLoading && !isError && report && (
+              <ReportExportButton
+                variant="outline"
+                filename={`buku-besar-akun-${report.account.account_code}-${activeQuery?.params.start_date ?? ''}-${activeQuery?.params.end_date ?? ''}`}
+                sheetName="Buku Besar per Akun"
+                headers={['Tanggal', 'No Jurnal', 'Keterangan', 'Referensi', 'Debet', 'Kredit', 'Saldo']}
+                rows={() => [
+                  [
+                    toExcelDate(activeQuery?.params.start_date),
+                    '',
+                    'Saldo Awal',
+                    '',
+                    toExcelNumber(report.opening_balance.debit),
+                    toExcelNumber(report.opening_balance.credit),
+                    toExcelNumber(report.opening_balance.balance),
+                  ],
+                  ...report.lines.map((line) => [
+                    toExcelDate(line.journal_date),
+                    line.journal_number,
+                    line.description ?? '',
+                    line.source_number ?? '',
+                    toExcelNumber(line.debit),
+                    toExcelNumber(line.credit),
+                    toExcelNumber(line.running_balance),
+                  ]),
+                  [
+                    toExcelDate(activeQuery?.params.end_date),
+                    '',
+                    'Saldo Akhir',
+                    '',
+                    toExcelNumber(report.period_totals.debit),
+                    toExcelNumber(report.period_totals.credit),
+                    toExcelNumber(report.ending_balance),
+                  ],
+                ]}
+                formats={['date', 'text', 'text', 'text', 'currency', 'currency', 'currency']}
+              />
+            )}
             <Button
               type="button"
               size="sm"

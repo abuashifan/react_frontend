@@ -9,7 +9,7 @@ import { FormField } from '@/components/shared/form/FormField'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { cn, formatCurrency } from '@/lib/utils'
-import { exportCsv } from '@/lib/exportCsv'
+import { exportXlsx, toExcelNumber } from '@/lib/exportXlsx'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { proyekApi } from '@/modules/master-data/services/proyekApi'
 import { BudgetPeriodSelect } from '../components/BudgetPeriodSelect'
@@ -200,19 +200,21 @@ function BudgetAnalysisPageContent() {
 
   const handleExport = () => {
     if (!result) return
-    exportCsv(
-      `analisis-anggaran-${result.period.name}.csv`,
+    exportXlsx(
+      `analisis-anggaran-${result.period.name}.xlsx`,
+      'Analisis Anggaran',
       ['Keterangan', 'Arah', 'Anggaran', 'Realisasi', varianceLabel, 'Selisih %', 'Serapan %', 'Status'],
       rows.map((row) => [
         rowLabel(row),
         row.direction,
-        row.budget_amount,
-        row.actual_amount,
-        row.variance,
-        row.variance_pct ?? '',
-        row.utilization_pct ?? '',
+        toExcelNumber(row.budget_amount),
+        toExcelNumber(row.actual_amount),
+        toExcelNumber(row.variance),
+        toExcelNumber(row.variance_pct),
+        toExcelNumber(row.utilization_pct),
         row.state,
       ]),
+      ['text', 'text', 'currency', 'currency', 'currency', 'number', 'number', 'text'],
     )
   }
 

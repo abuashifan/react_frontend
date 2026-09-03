@@ -5,6 +5,8 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { useProjectTransactions } from '../hooks/useProjectFinancials'
+import { ReportExportButton } from '@/modules/reports/components/ReportExportButton'
+import { toExcelDate, toExcelNumber } from '@/lib/exportXlsx'
 import type { BudgetParams } from '../types/budget.types'
 
 /**
@@ -60,10 +62,32 @@ export function ProjectTransactionsTable({
         </div>
 
         {result && (
-          <div className="ml-auto flex gap-4 text-[12px]">
+          <div className="ml-auto flex items-center gap-4 text-[12px]">
             <Total label="Pendapatan" value={result.totals.revenue} />
             <Total label="Biaya" value={result.totals.cost} />
             <Total label="Net" value={result.totals.net} strong />
+            {/* Ikut filter Arah & Akun yang aktif — sumbernya `result` yang sama
+                dengan tabel di bawah. Kalau backend memotong hasil, spanduk
+                `truncated` di bawah tetap tampil. */}
+            {result.lines.length > 0 && (
+              <ReportExportButton
+                variant="outline"
+                filename={`transaksi-project-${projectId ?? ''}`}
+                sheetName="Transaksi Project"
+                headers={['Tanggal', 'No Jurnal', 'Kode Akun', 'Akun', 'Keterangan', 'Sumber', 'Arah', 'Jumlah']}
+                rows={() => result.lines.map((line) => [
+                  toExcelDate(line.journal_date),
+                  line.journal_number,
+                  line.account_code,
+                  line.account_name,
+                  line.description ?? '',
+                  line.source_number ?? '',
+                  line.direction,
+                  toExcelNumber(line.amount),
+                ])}
+                formats={['date', 'text', 'text', 'text', 'text', 'text', 'text', 'currency']}
+              />
+            )}
           </div>
         )}
       </div>

@@ -1,4 +1,3 @@
-import { Download } from 'lucide-react'
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -6,13 +5,13 @@ import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { ReportPrintToolbar } from '../components/ReportPrintToolbar'
-import { ReportToolButton } from '../components/ReportToolButton'
 import { ReportPrintDocument } from '../components/ReportPrintDocument'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { exportCsv } from '@/lib/exportCsv'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelNumber, type XlsxCell, type XlsxFormat } from '@/lib/exportXlsx'
 import { SaveReportButton } from '../components/SaveReportButton'
-import type { ColumnConfig } from '../types/reports.types'
+import type { ColumnConfig, TrialBalanceAccount } from '../types/reports.types'
 import { useReportParams } from '../hooks/useReportParams'
 import { useReportFilterSummary } from '../hooks/useReportFilterSummary'
 
@@ -31,11 +30,31 @@ const TB_COLUMNS: ColumnConfig[] = [
   { key: 'ending_credit', label: 'Kredit Akhir' },
 ]
 
+/**
+ * Cara mengambil nilai tiap kolom untuk file ekspor.
+ *
+ * Dipisah dari JSX tabel supaya file mengikuti kolom yang SEDANG dicentang user
+ * — versi CSV lama selalu menulis kedelapan kolom apa pun pilihannya, sehingga
+ * file tidak pernah cocok dengan yang dilihat di layar.
+ */
+const TB_EXPORT: Record<string, { format: XlsxFormat; value: (a: TrialBalanceAccount) => XlsxCell }> = {
+  account_code: { format: 'text', value: (a) => a.account_code },
+  account_name: { format: 'text', value: (a) => a.account_name },
+  opening_debit: { format: 'currency', value: (a) => toExcelNumber(a.opening_debit) },
+  opening_credit: { format: 'currency', value: (a) => toExcelNumber(a.opening_credit) },
+  period_debit: { format: 'currency', value: (a) => toExcelNumber(a.period_debit) },
+  period_credit: { format: 'currency', value: (a) => toExcelNumber(a.period_credit) },
+  ending_debit: { format: 'currency', value: (a) => toExcelNumber(a.ending_debit) },
+  ending_credit: { format: 'currency', value: (a) => toExcelNumber(a.ending_credit) },
+}
+
 export default function TrialBalancePage() {
   const { params, setParams, activeParams, setActiveParams, showFilter, setShowFilter } = useReportParams({ start_date: firstOfMonth, end_date: today })
   const filterSummary = useReportFilterSummary(activeParams)
   const [visibleColumns, setVisibleColumns] = useState<string[]>(TB_COLUMNS.map((c) => c.key))
   const showCol = (key: string) => visibleColumns.includes(key)
+  // Urutan kolom ekspor mengikuti TB_COLUMNS, bukan urutan klik user di modal.
+  const exportColumns = TB_COLUMNS.filter((c) => visibleColumns.includes(c.key))
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['reports', 'trial-balance', activeParams],
@@ -59,11 +78,13 @@ export default function TrialBalancePage() {
         <>
           <SaveReportButton reportKey="trial-balance" params={activeParams} />
           {allAccounts.length > 0 && (
-            <ReportToolButton icon={Download} label="Export CSV" onClick={() => exportCsv(
-                `neraca-saldo-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
-                ['Kode', 'Akun', 'Debit Awal', 'Kredit Awal', 'Debit Periode', 'Kredit Periode', 'Debit Akhir', 'Kredit Akhir'],
-                allAccounts.map((a) => [a.account_code, a.account_name, a.opening_debit, a.opening_credit, a.period_debit, a.period_credit, a.ending_debit, a.ending_credit])
-              )} />
+            <ReportExportButton
+              filename={`neraca-saldo-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}`}
+              sheetName="Neraca Saldo"
+              headers={exportColumns.map((c) => c.label)}
+              rows={() => allAccounts.map((a) => exportColumns.map((c) => TB_EXPORT[c.key].value(a)))}
+              formats={exportColumns.map((c) => TB_EXPORT[c.key].format)}
+            />
           )}
         </>
       }

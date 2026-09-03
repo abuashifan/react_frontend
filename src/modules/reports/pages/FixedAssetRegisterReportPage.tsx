@@ -4,6 +4,8 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { ReportError } from '../components/ReportError'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelDate, toExcelNumber } from '@/lib/exportXlsx'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 
@@ -49,6 +51,26 @@ export default function FixedAssetRegisterReportPage() {
             >
               {isLoading ? 'Memuat...' : 'Tampilkan'}
             </Button>
+            {activeQuery && !isLoading && !isError && rows.length > 0 && (
+              <ReportExportButton
+                variant="outline"
+                filename={`daftar-aktiva-tetap-${activeQuery.as_of_period}`}
+                sheetName="Daftar Aktiva Tetap"
+                headers={['No. Aset', 'Nama Aset', 'Kategori', 'Departemen', 'Tgl. Perolehan', 'Harga Perolehan', 'Akum. Penyusutan', 'Nilai Buku', 'Status']}
+                rows={() => rows.map((row) => [
+                  row.asset_number,
+                  row.asset_name,
+                  row.category ?? '',
+                  row.department ?? '',
+                  toExcelDate(row.acquisition_date),
+                  toExcelNumber(row.acquisition_cost),
+                  toExcelNumber(row.accumulated_depreciation_until_period),
+                  toExcelNumber(row.net_book_value_as_of_period),
+                  row.status,
+                ])}
+                formats={['text', 'text', 'text', 'text', 'date', 'currency', 'currency', 'currency', 'text']}
+              />
+            )}
           </div>
         </div>
 

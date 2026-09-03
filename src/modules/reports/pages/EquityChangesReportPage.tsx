@@ -1,15 +1,14 @@
-import { Download } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { ReportPrintToolbar } from '../components/ReportPrintToolbar'
-import { ReportToolButton } from '../components/ReportToolButton'
 import { ReportPrintDocument } from '../components/ReportPrintDocument'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { exportCsv } from '@/lib/exportCsv'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelNumber } from '@/lib/exportXlsx'
 import { useReportParams } from '../hooks/useReportParams'
 import { useReportFilterSummary } from '../hooks/useReportFilterSummary'
 
@@ -35,11 +34,13 @@ export default function EquityChangesReportPage() {
   const tools = !isLoading && !isError && report ? (
     <ReportPrintToolbar
       extra={rows.length > 0 && (
-        <ReportToolButton icon={Download} label="Export CSV" onClick={() => exportCsv(
-            `perubahan-ekuitas-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
-            ['Akun', 'Saldo Awal', 'Pergerakan', 'Saldo Akhir'],
-            rows.map((r) => [r.account_name, r.opening_balance, r.movement, r.closing_balance])
-          )} />
+        <ReportExportButton
+          filename={`perubahan-ekuitas-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}`}
+          sheetName="Perubahan Ekuitas"
+          headers={['Akun', 'Saldo Awal', 'Pergerakan', 'Saldo Akhir']}
+          rows={() => rows.map((r) => [r.account_name, toExcelNumber(r.opening_balance), toExcelNumber(r.movement), toExcelNumber(r.closing_balance)])}
+          formats={['text', 'currency', 'currency', 'currency']}
+        />
       )}
     />
   ) : undefined

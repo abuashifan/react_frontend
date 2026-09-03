@@ -1,16 +1,15 @@
-import { Download } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { ReportPrintToolbar } from '../components/ReportPrintToolbar'
-import { ReportToolButton } from '../components/ReportToolButton'
 import { ReportPrintDocument } from '../components/ReportPrintDocument'
 import { ReportPrintSection } from '../components/ReportPrintSection'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { exportCsv } from '@/lib/exportCsv'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelNumber, type XlsxCell } from '@/lib/exportXlsx'
 import { SaveReportButton } from '../components/SaveReportButton'
 import { useReportParams } from '../hooks/useReportParams'
 import { useReportFilterSummary } from '../hooks/useReportFilterSummary'
@@ -37,12 +36,27 @@ export default function BalanceSheetPage() {
         <>
           <SaveReportButton reportKey="balance-sheet" params={activeParams} />
           {sections.length > 0 && (
-            <ReportToolButton icon={Download} label="Export CSV" onClick={() => {
-                const rows = sections.flatMap((s) =>
-                  s.accounts.map((a) => [s.label, a.account_code ?? '', a.account_name, a.amount])
-                )
-                exportCsv(`neraca-${activeParams?.as_of_date ?? ''}.csv`, ['Seksi', 'Kode', 'Akun', 'Jumlah'], rows)
-              }} />
+            <ReportExportButton
+              filename={`neraca-${activeParams?.as_of_date ?? ''}`}
+              sheetName="Neraca"
+              headers={['Seksi', 'Kode', 'Akun', 'Jumlah']}
+              rows={() => {
+                // Subtotal seksi dan total besar ikut ditulis supaya file
+                // terbaca sama dengan cetakannya. Tanpa itu penerima file harus
+                // menjumlah sendiri, dan selisih pembulatan sekecil apa pun
+                // membuat angkanya beda dengan yang ditandatangani.
+                const rows: XlsxCell[][] = sections.flatMap((s) => [
+                  ...s.accounts.map((a) => [s.label, a.account_code ?? '', a.account_name, toExcelNumber(a.amount)]),
+                  [s.label, '', `Total ${s.label}`, toExcelNumber(s.total)],
+                ])
+                rows.push(['', '', 'Total Aset', toExcelNumber(totals.total_assets)])
+                rows.push(['', '', 'Total Kewajiban', toExcelNumber(totals.total_liabilities)])
+                rows.push(['', '', 'Total Ekuitas', toExcelNumber(totals.total_equity)])
+                rows.push(['', '', 'Total Kewajiban dan Ekuitas', toExcelNumber(totals.total_liabilities_and_equity)])
+                return rows
+              }}
+              formats={['text', 'text', 'text', 'currency']}
+            />
           )}
         </>
       }

@@ -287,6 +287,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____table/
 | | | | |____BulkActionBar.tsx
 | | | | |____DataTable.tsx
+| | | | |____ListExportButton.tsx
 | | | | |____TablePagination.tsx
 | | | | |____tableSort.ts
 | | |____ui/
@@ -338,7 +339,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____companyScope.ts
 | | |____companySession.ts
 | | |____constants.ts
-| | |____exportCsv.ts
+| | |____exportXlsx.ts
 | | |____formDraftStorage.ts
 | | |____upgradeToast.tsx
 | | |____utils.ts
@@ -410,6 +411,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____ProjectTransactionsTable.tsx
 | | | |____constants/
 | | | | |____analysisPresets.ts
+| | | | |____cashBudgetSections.ts
 | | | |____hooks/
 | | | | |____useBudgetAnalysis.ts
 | | | | |____useBudgetSubmissions.ts
@@ -709,6 +711,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____ReportPrintToolbar.tsx
 | | | | |____ReportPrintDocument.tsx
 | | | | |____ReportPrintSection.tsx
+| | | | |____ReportExportButton.tsx
 | | | |____constants/
 | | | | |____reportCategories.ts
 | | | | |____reportDomainIcons.ts
@@ -902,6 +905,9 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | `components/shared/table/tableSort.ts` | Tipe `SortState` + siklus asc→desc→default dan mapping ke `sort_by`/`sort_direction` | `DataTable`, `useListSort` |
 | `hooks/useListSort.ts` | State sorting halaman daftar; hasilnya disebar ke params query | `DataTable.sort` / `onSortChange` |
 | `hooks/useBulkVoid.ts` | Alur void massal: saring dokumen eligible, konfirmasi, `allSettled`, rangkuman toast | `BulkActionBar`, `VoidConfirmDialog` |
+| `lib/exportXlsx.ts` | Penulis .xlsx satu-sheet tanpa dependency (ZIP store + SpreadsheetML); `toExcelDate()`/`toExcelNumber()` menormalkan nilai backend jadi tanggal & angka asli | `ListExportButton`, `ReportExportButton`, `BudgetAnalysisPage` |
+| `components/shared/table/ListExportButton.tsx` | Tombol "Export" halaman daftar: mengambil SELURUH baris hasil filter aktif (paging 100/permintaan, batas 10.000) lalu menulisnya ke .xlsx | Semua halaman list yang punya ekspor |
+| `modules/reports/components/ReportExportButton.tsx` | Tombol "Export Excel" modul Laporan: laporan sudah memegang seluruh barisnya di memori, jadi baris tinggal diratakan — tanpa paging ulang. Menggantikan `lib/exportCsv.ts` yang sudah dihapus | Semua halaman laporan, plus Anggaran & Project |
 | `components/shared/form/AmountInput.tsx` | Input uang dengan pemisah ribuan id-ID; pengganti `<Input type="number">` untuk nominal | `LineItemsTable`, form transaksi |
 | `components/shared/form/FormField.tsx` | Label + kontrol + slot error dengan kepadatan seragam | Semua form |
 | `modules/master-data/components/AccountPickerDialog.tsx` | Dialog pemilih akun (filter No Akun/Nama Akun, checkbox, multi-pilih) | Form jurnal — memilih N akun mengisi N baris |

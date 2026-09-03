@@ -1,15 +1,14 @@
-import { Download } from 'lucide-react'
 import { Fragment, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { PeriodSelector } from '../components/PeriodSelector'
 import { ReportError } from '../components/ReportError'
 import { ReportPrintToolbar } from '../components/ReportPrintToolbar'
-import { ReportToolButton } from '../components/ReportToolButton'
 import { ReportPrintDocument } from '../components/ReportPrintDocument'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
-import { exportCsv } from '@/lib/exportCsv'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelNumber, type XlsxCell, type XlsxFormat } from '@/lib/exportXlsx'
 import type { MultiPeriodInput } from '../types/reports.types'
 
 export default function BalanceSheetMultiPeriodPage() {
@@ -30,11 +29,16 @@ export default function BalanceSheetMultiPeriodPage() {
   const tools = !isLoading && !isError && report && cols.length > 0 ? (
     <ReportPrintToolbar
       extra={
-        <ReportToolButton icon={Download} label="Export CSV" onClick={() => exportCsv(
-            'neraca-multi-periode.csv',
-            ['Akun', ...cols.map((c) => c.label)],
-            sections.flatMap((s) => s.rows.map((r) => [r.account_name, ...r.values]))
-          )} />
+        <ReportExportButton
+          filename="neraca-multi-periode"
+          sheetName="Neraca Multi-Periode"
+          headers={['Akun', ...cols.map((c) => c.label)]}
+          rows={() => sections.flatMap((s): XlsxCell[][] => [
+            ...s.rows.map((r) => [r.account_name, ...r.values.map(toExcelNumber)]),
+            [`Total ${s.label}`, ...s.totals.map(toExcelNumber)],
+          ])}
+          formats={['text', ...cols.map((): XlsxFormat => 'currency')]}
+        />
       }
     />
   ) : undefined

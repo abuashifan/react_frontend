@@ -9,6 +9,8 @@ import { formatCurrency } from '@/lib/utils'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { proyekApi } from '@/modules/master-data/services/proyekApi'
 import { BudgetPeriodSelect } from '../components/BudgetPeriodSelect'
+import { ReportExportButton } from '@/modules/reports/components/ReportExportButton'
+import { toExcelNumber } from '@/lib/exportXlsx'
 import { budgetApi } from '../services/budgetApi'
 import type { BudgetParams } from '../types/budget.types'
 
@@ -74,6 +76,41 @@ export default function BudgetComparisonPage() {
       <Button size="sm" onClick={handleSubmit} disabled={!periodId || isLoading}>
         {isLoading ? 'Memuat...' : 'Tampilkan'}
       </Button>
+
+      {/*
+        `budget_amount`, `actual_amount`, dan `variance` datang sebagai STRING
+        dari Laravel (kolom decimal) — di layar sudah di-`parseFloat`, dan
+        `toExcelNumber` melakukan hal yang sama untuk selnya.
+      */}
+      {result && result.rows.length > 0 && (
+        <ReportExportButton
+          variant="outline"
+          filename={`realisasi-vs-anggaran-${result.period.name}`}
+          sheetName="Realisasi vs Anggaran"
+          headers={['Kode Akun', 'Akun', 'Anggaran', 'Realisasi', 'Selisih', 'Selisih %', 'Over Budget']}
+          rows={() => [
+            ...result.rows.map((row) => [
+              row.account_code ?? '',
+              row.account_name ?? '',
+              toExcelNumber(row.budget_amount),
+              toExcelNumber(row.actual_amount),
+              toExcelNumber(row.variance),
+              toExcelNumber(row.variance_pct),
+              row.over_budget ? 'Ya' : 'Tidak',
+            ]),
+            [
+              '',
+              'Total',
+              toExcelNumber(result.totals.budget_amount),
+              toExcelNumber(result.totals.actual_amount),
+              toExcelNumber(result.totals.variance),
+              null,
+              '',
+            ],
+          ]}
+          formats={['text', 'text', 'currency', 'currency', 'currency', 'number', 'text']}
+        />
+      )}
     </div>
   )
 

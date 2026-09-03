@@ -6,10 +6,10 @@ import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { TablePagination } from '@/components/shared/table/TablePagination'
 import type { PaginationState } from '@/components/shared/table/TablePagination'
-import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
-import { exportCsv } from '@/lib/exportCsv'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelDate, toExcelNumber } from '@/lib/exportXlsx'
 import { useReportParams } from '../hooks/useReportParams'
 
 const today = new Date().toISOString().slice(0, 10)
@@ -59,18 +59,14 @@ export default function ArOutstandingReportPage() {
           <>
             {allRows.length > 0 && (
               <div className="flex justify-end">
-                <Button
+                <ReportExportButton
                   variant="outline"
-                  size="sm"
-                  className="text-[12px]"
-                  onClick={() => exportCsv(
-                    `faktur-belum-lunas-${activeParams?.as_of_date ?? today}.csv`,
-                    ['No. Faktur', 'Tgl. Faktur', 'Jatuh Tempo', 'Pelanggan', 'Total', 'Terbayar', 'Sisa', 'Hari Lewat Jatuh Tempo'],
-                    allRows.map((r) => [r.invoice_number, r.invoice_date ?? '', r.due_date ?? '', r.customer_name, r.grand_total, r.paid_amount, r.balance_due, daysOverdue(r.due_date)]),
-                  )}
-                >
-                  Export CSV
-                </Button>
+                  filename={`faktur-belum-lunas-${activeParams?.as_of_date ?? today}`}
+                  sheetName="Faktur Belum Lunas"
+                  headers={['No. Faktur', 'Tgl. Faktur', 'Jatuh Tempo', 'Pelanggan', 'Total', 'Terbayar', 'Sisa', 'Hari Lewat Jatuh Tempo']}
+                  rows={() => allRows.map((r) => [r.invoice_number, toExcelDate(r.invoice_date ?? ''), toExcelDate(r.due_date ?? ''), r.customer_name, toExcelNumber(r.grand_total), toExcelNumber(r.paid_amount), toExcelNumber(r.balance_due), toExcelNumber(daysOverdue(r.due_date))])}
+                  formats={['text', 'date', 'date', 'text', 'currency', 'currency', 'currency', 'number']}
+                />
               </div>
             )}
 

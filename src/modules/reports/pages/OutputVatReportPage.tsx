@@ -6,10 +6,10 @@ import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { TablePagination } from '@/components/shared/table/TablePagination'
 import type { PaginationState } from '@/components/shared/table/TablePagination'
-import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
-import { exportCsv } from '@/lib/exportCsv'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelDate, toExcelNumber } from '@/lib/exportXlsx'
 import { useReportParams } from '../hooks/useReportParams'
 
 const today = new Date().toISOString().slice(0, 10)
@@ -48,13 +48,14 @@ export default function OutputVatReportPage() {
 
         {!isLoading && !isError && report && rows.length > 0 && (
           <div className="flex justify-end">
-            <Button variant="outline" size="sm" className="text-[12px]"
-              onClick={() => exportCsv(
-                `ppn-keluaran-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
-                ['No Faktur', 'Tanggal', 'Pelanggan', 'DPP', 'PPN', 'Total'],
-                rows.map((r) => [r.invoice_number, r.invoice_date, r.customer_name ?? '', r.dpp, r.ppn, r.total])
-              )}
-            >Export CSV</Button>
+            <ReportExportButton
+              variant="outline"
+              filename={`ppn-keluaran-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}`}
+              sheetName="PPN Keluaran"
+              headers={['No Faktur', 'Tanggal', 'Pelanggan', 'DPP', 'PPN', 'Total']}
+              rows={() => rows.map((r) => [r.invoice_number, toExcelDate(r.invoice_date), r.customer_name ?? '', toExcelNumber(r.dpp), toExcelNumber(r.ppn), toExcelNumber(r.total)])}
+              formats={['text', 'date', 'text', 'currency', 'currency', 'currency']}
+            />
           </div>
         )}
 

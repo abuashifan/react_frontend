@@ -6,10 +6,10 @@ import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { TablePagination } from '@/components/shared/table/TablePagination'
 import type { PaginationState } from '@/components/shared/table/TablePagination'
-import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
-import { exportCsv } from '@/lib/exportCsv'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelNumber } from '@/lib/exportXlsx'
 import { useReportParams } from '../hooks/useReportParams'
 
 const today = new Date().toISOString().slice(0, 10)
@@ -53,18 +53,14 @@ export default function ApVendorSummaryPage() {
           <>
             {allRows.length > 0 && (
               <div className="flex justify-end">
-                <Button
+                <ReportExportButton
                   variant="outline"
-                  size="sm"
-                  className="text-[12px]"
-                  onClick={() => exportCsv(
-                    `ringkasan-hutang-${activeParams?.as_of_date ?? today}.csv`,
-                    ['Supplier', 'Debit', 'Kredit', 'Saldo Hutang', 'Deposit Belum Dialokasikan', 'Net Exposure'],
-                    allRows.map((r) => [r.vendor_name, r.debit, r.credit, r.balance, r.unapplied_deposit_total, r.net_vendor_exposure]),
-                  )}
-                >
-                  Export CSV
-                </Button>
+                  filename={`ringkasan-hutang-${activeParams?.as_of_date ?? today}`}
+                  sheetName="Ringkasan Supplier"
+                  headers={['Supplier', 'Debit', 'Kredit', 'Saldo Hutang', 'Deposit Belum Dialokasikan', 'Net Exposure']}
+                  rows={() => allRows.map((r) => [r.vendor_name, toExcelNumber(r.debit), toExcelNumber(r.credit), toExcelNumber(r.balance), toExcelNumber(r.unapplied_deposit_total), toExcelNumber(r.net_vendor_exposure)])}
+                  formats={['text', 'currency', 'currency', 'currency', 'currency', 'currency']}
+                />
               </div>
             )}
 

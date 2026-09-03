@@ -4,6 +4,8 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelDate, toExcelNumber } from '@/lib/exportXlsx'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -50,6 +52,87 @@ export default function StockReportPage() {
   const refetch = tab === 'balance' ? refetchBalance : tab === 'movement' ? refetchMovement : refetchCard
 
   const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false) }
+
+  /**
+   * Satu tombol ekspor per tab — ketiga tab punya kolom yang sama sekali
+   * berbeda, jadi tidak bisa dilayani satu definisi kolom.
+   */
+  const exportButton = (() => {
+    if (isLoading || isError) return null
+
+    if (tab === 'balance' && balanceData?.data.length) {
+      return (
+        <ReportExportButton
+          variant="outline"
+          filename={`saldo-stok-${activeParams?.end_date ?? today}`}
+          sheetName="Saldo Stok"
+          headers={['Kode', 'Produk', 'Gudang', 'Qty', 'Satuan', 'Harga Rata-rata', 'Nilai']}
+          rows={() => balanceData.data.map((line) => [
+            line.product_code,
+            line.product_name,
+            line.warehouse_name,
+            toExcelNumber(line.qty_on_hand),
+            line.unit,
+            toExcelNumber(line.avg_cost),
+            toExcelNumber(line.total_value),
+          ])}
+          formats={['text', 'text', 'text', 'number', 'text', 'currency', 'currency']}
+        />
+      )
+    }
+
+    if (tab === 'movement' && movData?.data.length) {
+      return (
+        <ReportExportButton
+          variant="outline"
+          filename={`mutasi-stok-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}`}
+          sheetName="Mutasi Stok"
+          headers={['Tanggal', 'No. Dokumen', 'Tipe', 'Produk', 'Gudang', 'Masuk', 'Keluar', 'Nilai']}
+          rows={() => movData.data.map((line) => [
+            toExcelDate(line.date),
+            line.movement_number,
+            line.movement_type.replace(/_/g, ' '),
+            line.product_name,
+            line.warehouse_name,
+            toExcelNumber(line.qty_in),
+            toExcelNumber(line.qty_out),
+            toExcelNumber(line.total_cost),
+          ])}
+          formats={['date', 'text', 'text', 'text', 'text', 'number', 'number', 'currency']}
+        />
+      )
+    }
+
+    if (tab === 'stock_card' && cardData?.data.lines.length) {
+      const card = cardData.data
+      return (
+        <ReportExportButton
+          variant="outline"
+          filename={`kartu-stok-${card.product_code}-${cardParams?.start_date ?? ''}-${cardParams?.end_date ?? ''}`}
+          sheetName="Kartu Stok"
+          headers={['Tanggal', 'Referensi', 'Keterangan', 'Masuk', 'Keluar', 'Saldo', 'Harga Satuan', 'Nilai']}
+          rows={() => [
+            // Saldo awal kartu stok hanya tampil di kepala halaman; tanpa baris
+            // ini, angka Saldo di file mulai dari tengah dan tidak bisa ditelusuri.
+            [toExcelDate(cardParams?.start_date), '', 'Saldo Awal', null, null, toExcelNumber(card.opening_qty), null, toExcelNumber(card.opening_cost)],
+            ...card.lines.map((line) => [
+              toExcelDate(line.date),
+              line.reference,
+              line.description,
+              toExcelNumber(line.qty_in),
+              toExcelNumber(line.qty_out),
+              toExcelNumber(line.qty_balance),
+              toExcelNumber(line.unit_cost),
+              toExcelNumber(line.total_cost),
+            ]),
+          ]}
+          formats={['date', 'text', 'text', 'number', 'number', 'number', 'currency', 'currency']}
+        />
+      )
+    }
+
+    return null
+  })()
   const handleCardSubmit = () => {
     const id = parseInt(cardProductId, 10)
     if (!id) return
@@ -75,6 +158,7 @@ export default function StockReportPage() {
               {TAB_LABELS[t]}
             </button>
           ))}
+          <div className="ml-auto">{exportButton}</div>
         </div>
 
         {tab !== 'stock_card' && showFilter && (

@@ -10,7 +10,8 @@ import type { PaginationState } from '@/components/shared/table/TablePagination'
 import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
-import { exportCsv } from '@/lib/exportCsv'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelDate, toExcelNumber } from '@/lib/exportXlsx'
 import type { JournalSource, ReportParams } from '../types/reports.types'
 import { useReportParams } from '../hooks/useReportParams'
 
@@ -100,18 +101,14 @@ export default function JournalListReportPage() {
 
         {!isLoading && !isError && report && allRows.length > 0 && (
           <div className="flex justify-end">
-            <Button
+            <ReportExportButton
               variant="outline"
-              size="sm"
-              className="text-[12px]"
-              onClick={() => exportCsv(
-                `jurnal-${source}-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
-                ['No Jurnal', 'Tanggal', 'Deskripsi', 'Sumber', 'No Sumber', 'Debit', 'Kredit'],
-                allRows.map((r) => [r.journal_number, r.journal_date, r.description ?? '', r.source_module ?? '', r.source_number ?? '', r.total_debit, r.total_credit])
-              )}
-            >
-              Export CSV
-            </Button>
+              filename={`jurnal-${source}-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}`}
+              sheetName="Jurnal"
+              headers={['No Jurnal', 'Tanggal', 'Deskripsi', 'Sumber', 'No Sumber', 'Debit', 'Kredit']}
+              rows={() => allRows.map((r) => [r.journal_number, toExcelDate(r.journal_date), r.description ?? '', r.source_module ?? '', r.source_number ?? '', toExcelNumber(r.total_debit), toExcelNumber(r.total_credit)])}
+              formats={['text', 'date', 'text', 'text', 'text', 'currency', 'currency']}
+            />
           </div>
         )}
 

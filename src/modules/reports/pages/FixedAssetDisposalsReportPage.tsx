@@ -4,6 +4,8 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelDate, toExcelNumber } from '@/lib/exportXlsx'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import { useReportParams } from '../hooks/useReportParams'
@@ -36,10 +38,29 @@ export default function FixedAssetDisposalsReportPage() {
     setShowFilter(false)
   }
 
+  const exportButton = activeQuery && !isLoading && !isError && rows.length > 0 ? (
+    <ReportExportButton
+      filename={`pelepasan-aktiva-tetap-${params.start_date ?? ''}-${params.end_date ?? ''}`}
+      sheetName="Pelepasan Aktiva Tetap"
+      headers={['Tgl. Pelepasan', 'No. Aset', 'Nama Aset', 'Tipe', 'Harga Jual', 'Nilai Buku', 'Laba/Rugi', 'Status']}
+      rows={() => rows.map((row) => [
+        toExcelDate(row.disposal_date),
+        row.asset?.asset_number ?? '',
+        row.asset?.name ?? '',
+        row.disposal_type,
+        toExcelNumber(row.sale_price),
+        toExcelNumber(row.book_value_at_disposal),
+        toExcelNumber(row.gain_loss),
+        row.status,
+      ])}
+      formats={['date', 'text', 'text', 'text', 'currency', 'currency', 'currency', 'text']}
+    />
+  ) : undefined
+
   return (
     <WorkspaceLayout
       hideHeader
-      toolbar={activeQuery ? <ReportCompactBar params={params} onOpenModal={() => setShowFilter(true)} mode="range" /> : undefined}
+      toolbar={activeQuery ? <ReportCompactBar params={params} onOpenModal={() => setShowFilter(true)} mode="range" actions={exportButton} /> : undefined}
     >
       <div className="space-y-4">
         <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)}
