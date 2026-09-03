@@ -8,6 +8,7 @@ import {
   usePaymentTermsList,
   usePaymentTermsMutations,
 } from '@/modules/master-data/hooks/useSimpleLists'
+import { usePermission } from '@/hooks/usePermission'
 import { useToast } from '@/hooks/useToast'
 
 /**
@@ -48,9 +49,18 @@ interface Props {
  * pindah ke step lain (mis. buka halaman Saldo Awal lalu kembali) membuat
  * OnboardingPage remount dan daftarnya terlihat kosong lagi padahal datanya
  * masih ada -- user jadi mengira harus mengisi ulang semuanya.
+ *
+ * "Hapus" di step ini memanggil endpoint `deactivate`, bukan hard delete:
+ * backend master data memang tidak punya rute DELETE (lihat
+ * MasterData/Routes/api.php) karena baris ini bisa sudah dirujuk transaksi.
+ * Efeknya sama seperti yang diharapkan user di wizard -- daftar di sini
+ * memfilter `is_active: true`, jadi item yang dihapus langsung hilang dan
+ * tidak lagi muncul sebagai pilihan di form transaksi. Teks konfirmasi
+ * menyebutkan hal ini supaya tidak terkesan data ikut terhapus permanen.
  */
 export function Step4MasterData({ onComplete, onBack }: Props) {
   const { toast } = useToast()
+  const { can } = usePermission()
 
   const gudangQuery = useGudangList({ is_active: true, per_page: 50 })
   const gudangMutations = useGudangMutations()
@@ -59,9 +69,29 @@ export function Step4MasterData({ onComplete, onBack }: Props) {
   const paymentTermsQuery = usePaymentTermsList({ is_active: true, per_page: 50 })
   const paymentTermsMutations = usePaymentTermsMutations()
 
-  const warehouses: QuickAddItem[] = (gudangQuery.data?.data ?? []).map((g) => ({ id: g.id, name: g.name }))
-  const units: QuickAddItem[] = (satuanQuery.data?.data ?? []).map((u) => ({ id: u.id, name: u.name }))
-  const paymentTerms: QuickAddItem[] = (paymentTermsQuery.data?.data ?? []).map((p) => ({ id: p.id, name: p.name }))
+  const warehouses: QuickAddItem[] = (gudangQuery.data?.data ?? []).map((g) => ({
+    id: g.id,
+    name: g.name,
+    values: { name: g.name, address: g.address ?? '' },
+    // Backend menolak menonaktifkan gudang default
+    // (CANNOT_DEACTIVATE_DEFAULT_WAREHOUSE), jadi tombolnya dimatikan di sini
+    // lengkap dengan jalan keluarnya.
+    deleteBlockedReason: g.is_default
+      ? 'Gudang default tidak bisa dihapus. Tetapkan gudang lain sebagai default lewat Master Data → Gudang terlebih dahulu.'
+      : undefined,
+  }))
+  const units: QuickAddItem[] = (satuanQuery.data?.data ?? []).map((u) => ({
+    id: u.id,
+    name: u.name,
+    sublabel: u.code,
+    values: { name: u.name, code: u.code },
+  }))
+  const paymentTerms: QuickAddItem[] = (paymentTermsQuery.data?.data ?? []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    sublabel: `${p.days} hari`,
+    values: { name: p.name, days: p.days },
+  }))
 
   const canContinue = warehouses.length >= 1 && units.length >= 1 && paymentTerms.length >= 1
 
@@ -76,6 +106,22 @@ export function Step4MasterData({ onComplete, onBack }: Props) {
     return { id: res.data.id, name: res.data.name }
   }
 
+  // `code` sengaja tidak ikut dikirim saat edit: kode dibuat otomatis di
+  // quick-add dan tidak pernah ditampilkan, jadi mengubah nama tidak boleh
+  // ikut mengubah kode yang mungkin sudah dipakai referensi lain.
+  const handleEditWarehouse = async (id: number, data: Record<string, string | number>) => {
+    const res = await gudangMutations.update.mutateAsync({
+      id,
+      payload: { name: String(data.name), address: data.address ? String(data.address) : '' },
+    })
+    toast.success(`Gudang "${res.data.name}" berhasil diperbarui.`)
+  }
+
+  const handleDeleteWarehouse = async (item: QuickAddItem) => {
+    await gudangMutations.deactivate.mutateAsync(item.id)
+    toast.success(`Gudang "${item.name}" dihapus dari daftar.`)
+  }
+
   const handleAddUnit = async (data: Record<string, string | number>): Promise<QuickAddItem> => {
     // precision (jumlah desimal) tidak ditanyakan di quick-add -- default 0
     // (satuan hitung bulat, sama seperti default form Satuan penuh), bisa
@@ -85,6 +131,19 @@ export function Step4MasterData({ onComplete, onBack }: Props) {
     return { id: res.data.id, name: res.data.name }
   }
 
+  const handleEditUnit = async (id: number, data: Record<string, string | number>) => {
+    const res = await satuanMutations.update.mutateAsync({
+      id,
+      payload: { name: String(data.name), code: String(data.code) },
+    })
+    toast.success(`Satuan "${res.data.name}" berhasil diperbarui.`)
+  }
+
+  const handleDeleteUnit = async (item: QuickAddItem) => {
+    await satuanMutations.deactivate.mutateAsync(item.id)
+    toast.success(`Satuan "${item.name}" dihapus dari daftar.`)
+  }
+
   const handleAddPaymentTerm = async (data: Record<string, string | number>): Promise<QuickAddItem> => {
     const name = String(data.name)
     const res = await paymentTermsMutations.create.mutateAsync({ code: autoCode(name), name, days: Number(data.days) })
@@ -92,11 +151,25 @@ export function Step4MasterData({ onComplete, onBack }: Props) {
     return { id: res.data.id, name: res.data.name }
   }
 
+  const handleEditPaymentTerm = async (id: number, data: Record<string, string | number>) => {
+    const res = await paymentTermsMutations.update.mutateAsync({
+      id,
+      payload: { name: String(data.name), days: Number(data.days) },
+    })
+    toast.success(`Syarat pembayaran "${res.data.name}" berhasil diperbarui.`)
+  }
+
+  const handleDeletePaymentTerm = async (item: QuickAddItem) => {
+    await paymentTermsMutations.deactivate.mutateAsync(item.id)
+    toast.success(`Syarat pembayaran "${item.name}" dihapus dari daftar.`)
+  }
+
   return (
     <div className="space-y-4">
       <p className="text-[13px] text-[#64748b]">
         Tambahkan data dasar yang diperlukan sebelum bisa melakukan transaksi.
-        Minimal satu per kategori.
+        Minimal satu per kategori. Item yang salah ketik bisa diubah, yang
+        kelebihan bisa dihapus.
       </p>
 
       <MasterDataQuickAdd
@@ -109,6 +182,9 @@ export function Step4MasterData({ onComplete, onBack }: Props) {
         ]}
         items={warehouses}
         onAdd={handleAddWarehouse}
+        onEdit={can('warehouses.edit') ? handleEditWarehouse : undefined}
+        onDelete={can('warehouses.deactivate') ? handleDeleteWarehouse : undefined}
+        deleteNote="dan tidak lagi muncul sebagai pilihan gudang di transaksi. Gudang dinonaktifkan, bukan dihapus permanen — data yang sudah memakainya tetap utuh dan gudang bisa diaktifkan lagi lewat Master Data → Gudang."
       />
 
       <MasterDataQuickAdd
@@ -121,6 +197,9 @@ export function Step4MasterData({ onComplete, onBack }: Props) {
         ]}
         items={units}
         onAdd={handleAddUnit}
+        onEdit={can('units.edit') ? handleEditUnit : undefined}
+        onDelete={can('units.deactivate') ? handleDeleteUnit : undefined}
+        deleteNote="dan tidak lagi muncul sebagai pilihan satuan di form produk. Satuan dinonaktifkan, bukan dihapus permanen — produk yang sudah memakainya tetap utuh dan satuan bisa diaktifkan lagi lewat Master Data → Satuan."
       />
 
       <MasterDataQuickAdd
@@ -133,6 +212,9 @@ export function Step4MasterData({ onComplete, onBack }: Props) {
         ]}
         items={paymentTerms}
         onAdd={handleAddPaymentTerm}
+        onEdit={can('payment_terms.edit') ? handleEditPaymentTerm : undefined}
+        onDelete={can('payment_terms.deactivate') ? handleDeletePaymentTerm : undefined}
+        deleteNote="dan tidak lagi muncul sebagai pilihan di faktur maupun tagihan. Syarat pembayaran dinonaktifkan, bukan dihapus permanen — dokumen yang sudah memakainya tetap utuh dan bisa diaktifkan lagi lewat Master Data → Syarat Pembayaran."
       />
 
       {!canContinue && (
