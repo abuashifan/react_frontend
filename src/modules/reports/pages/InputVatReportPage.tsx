@@ -6,10 +6,10 @@ import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { TablePagination } from '@/components/shared/table/TablePagination'
 import type { PaginationState } from '@/components/shared/table/TablePagination'
-import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
-import { exportCsv } from '@/lib/exportCsv'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelDate, toExcelNumber } from '@/lib/exportXlsx'
 import { useReportParams } from '../hooks/useReportParams'
 
 const today = new Date().toISOString().slice(0, 10)
@@ -48,13 +48,14 @@ export default function InputVatReportPage() {
 
         {!isLoading && !isError && report && rows.length > 0 && (
           <div className="flex justify-end">
-            <Button variant="outline" size="sm" className="text-[12px]"
-              onClick={() => exportCsv(
-                `ppn-masukan-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
-                ['No Bill', 'No Faktur Pajak', 'Tanggal', 'Pemasok', 'DPP', 'PPN', 'Total'],
-                rows.map((r) => [r.bill_number, r.vendor_invoice_number ?? '', r.bill_date, r.vendor_name ?? '', r.dpp, r.ppn, r.total])
-              )}
-            >Export CSV</Button>
+            <ReportExportButton
+              variant="outline"
+              filename={`ppn-masukan-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}`}
+              sheetName="PPN Masukan"
+              headers={['No Bill', 'No Faktur Pajak', 'Tanggal', 'Pemasok', 'DPP', 'PPN', 'Total']}
+              rows={() => rows.map((r) => [r.bill_number, r.vendor_invoice_number ?? '', toExcelDate(r.bill_date), r.vendor_name ?? '', toExcelNumber(r.dpp), toExcelNumber(r.ppn), toExcelNumber(r.total)])}
+              formats={['text', 'text', 'date', 'text', 'currency', 'currency', 'currency']}
+            />
           </div>
         )}
 

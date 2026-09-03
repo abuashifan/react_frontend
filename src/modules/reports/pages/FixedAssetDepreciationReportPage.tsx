@@ -4,6 +4,8 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { ReportError } from '../components/ReportError'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelNumber } from '@/lib/exportXlsx'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 
@@ -95,6 +97,42 @@ export default function FixedAssetDepreciationReportPage() {
             >
               {isLoading ? 'Memuat...' : 'Tampilkan'}
             </Button>
+            {/* Dua mode laporan = dua bentuk baris; `report.mode` yang memilih. */}
+            {report && report.lines.length > 0 && (report.mode === 'detail' ? (
+              <ReportExportButton
+                variant="outline"
+                filename={`penyusutan-aktiva-tetap-${activeQuery?.period_from ?? ''}-${activeQuery?.period_to ?? ''}`}
+                sheetName="Penyusutan Aktiva Tetap"
+                headers={['Periode', 'No. Aset', 'Nama Aset', 'Kategori', 'Penyusutan', 'Akum. s.d. Periode', 'Nilai Buku', 'Status']}
+                rows={() => report.lines.map((line) => [
+                  line.period,
+                  line.asset_number ?? '',
+                  line.asset_name ?? '',
+                  line.category ?? '',
+                  toExcelNumber(line.depreciation_amount),
+                  toExcelNumber(line.accumulated_depreciation_after),
+                  toExcelNumber(line.net_book_value_after),
+                  line.status,
+                ])}
+                formats={['text', 'text', 'text', 'text', 'currency', 'currency', 'currency', 'text']}
+              />
+            ) : (
+              <ReportExportButton
+                variant="outline"
+                filename={`penyusutan-aktiva-tetap-tahunan-${activeQuery?.period_from ?? ''}-${activeQuery?.period_to ?? ''}`}
+                sheetName="Penyusutan Tahunan"
+                headers={['Tahun', 'No. Aset', 'Nama Aset', 'Total Penyusutan', 'Akum. Akhir Tahun', 'Nilai Buku Akhir Tahun']}
+                rows={() => report.lines.map((line) => [
+                  line.year,
+                  line.asset_number ?? '',
+                  line.asset_name ?? '',
+                  toExcelNumber(line.depreciation_year_total),
+                  toExcelNumber(line.accumulated_depreciation_end_of_year),
+                  toExcelNumber(line.net_book_value_end_of_year),
+                ])}
+                formats={['text', 'text', 'text', 'currency', 'currency', 'currency']}
+              />
+            ))}
           </div>
         </div>
 

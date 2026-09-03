@@ -3,6 +3,8 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelNumber } from '@/lib/exportXlsx'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import { useReportParams } from '../hooks/useReportParams'
@@ -16,10 +18,40 @@ export default function ApAgingReportPage() {
   const report = data?.data
   const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false) }
 
+  // Baris total ikut diekspor supaya angka di file sama persis dengan cetakannya.
+  const tools = !isLoading && !isError && report && report.lines.length > 0 ? (
+    <ReportExportButton
+      filename={`ap-aging-${activeParams?.as_of_date ?? today}`}
+      sheetName="AP Aging"
+      headers={['Supplier', 'Belum Jatuh Tempo', '1-30 Hari', '31-60 Hari', '61-90 Hari', '>90 Hari', 'Total']}
+      rows={() => [
+        ...report.lines.map((line) => [
+          line.contact_name,
+          toExcelNumber(line.buckets.current),
+          toExcelNumber(line.buckets.days_1_30),
+          toExcelNumber(line.buckets.days_31_60),
+          toExcelNumber(line.buckets.days_61_90),
+          toExcelNumber(line.buckets.days_over_90),
+          toExcelNumber(line.buckets.total),
+        ]),
+        [
+          'Total',
+          toExcelNumber(report.totals.current),
+          toExcelNumber(report.totals.days_1_30),
+          toExcelNumber(report.totals.days_31_60),
+          toExcelNumber(report.totals.days_61_90),
+          toExcelNumber(report.totals.days_over_90),
+          toExcelNumber(report.totals.total),
+        ],
+      ]}
+      formats={['text', 'currency', 'currency', 'currency', 'currency', 'currency', 'currency']}
+    />
+  ) : undefined
+
   return (
     <WorkspaceLayout
       hideHeader
-      toolbar={<ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} mode="as_of_date" filterSummary={activeParams?.vendor_id ? 'Pemasok difilter' : undefined} />}
+      toolbar={<ReportCompactBar params={activeParams ?? params} onOpenModal={() => setShowFilter(true)} mode="as_of_date" filterSummary={activeParams?.vendor_id ? 'Pemasok difilter' : undefined} actions={tools} />}
     >
       <div className="space-y-4">
         {showFilter && <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} mode="as_of_date" isLoading={isLoading} contextFilters={{ vendor: true }} />}

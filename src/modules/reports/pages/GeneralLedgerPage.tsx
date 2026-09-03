@@ -10,9 +10,10 @@ import type { PaginationState } from '@/components/shared/table/TablePagination'
 import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
-import { exportCsv } from '@/lib/exportCsv'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelDate, toExcelNumber, type XlsxCell, type XlsxFormat } from '@/lib/exportXlsx'
 import { SaveReportButton } from '../components/SaveReportButton'
-import type { ColumnConfig } from '../types/reports.types'
+import type { ColumnConfig, GeneralLedgerAccountSummary, GeneralLedgerDetailAccount } from '../types/reports.types'
 import { useReportParams } from '../hooks/useReportParams'
 
 const today = new Date().toISOString().slice(0, 10)
@@ -28,6 +29,46 @@ const SUMMARY_COLUMNS: ColumnConfig[] = [
   { key: 'ending_balance', label: 'Saldo Akhir' },
 ]
 
+/** Nilai tiap kolom ringkasan untuk file ekspor — lihat catatan di TrialBalancePage. */
+const SUMMARY_EXPORT: Record<string, { format: XlsxFormat; value: (a: GeneralLedgerAccountSummary) => XlsxCell }> = {
+  account_code: { format: 'text', value: (a) => a.account_code },
+  account_name: { format: 'text', value: (a) => a.account_name },
+  opening_balance: { format: 'currency', value: (a) => toExcelNumber(a.opening_balance) },
+  period_debit: { format: 'currency', value: (a) => toExcelNumber(a.period_debit) },
+  period_credit: { format: 'currency', value: (a) => toExcelNumber(a.period_credit) },
+  ending_balance: { format: 'currency', value: (a) => toExcelNumber(a.ending_balance) },
+}
+
+const DETAIL_HEADERS = ['Kode', 'Akun', 'No Jurnal', 'Tanggal', 'Deskripsi', 'Debit', 'Kredit', 'Saldo Berjalan']
+const DETAIL_FORMATS: XlsxFormat[] = ['text', 'text', 'text', 'date', 'text', 'currency', 'currency', 'currency']
+
+/**
+ * Ratakan mode rincian jadi satu tabel: tiap baris jurnal membawa kode & nama
+ * akunnya sendiri, diapit baris Saldo Awal dan Saldo Akhir persis seperti di
+ * layar. Kode akun diulang di tiap baris — itu yang membuat file bisa
+ * langsung di-pivot atau difilter per akun di Excel.
+ *
+ * Versi CSV sebelumnya mengekspor `accounts` level akun saja untuk KEDUA mode,
+ * jadi baris jurnal — satu-satunya alasan membuka mode rincian — tidak pernah
+ * ikut terbawa.
+ */
+function flattenDetail(accounts: GeneralLedgerDetailAccount[]): XlsxCell[][] {
+  return accounts.flatMap((a) => [
+    [a.account_code, a.account_name, '', null, 'Saldo Awal', null, null, toExcelNumber(a.opening_balance)],
+    ...a.lines.map((l) => [
+      a.account_code,
+      a.account_name,
+      l.journal_number,
+      toExcelDate(l.journal_date),
+      l.description ?? '',
+      toExcelNumber(l.debit),
+      toExcelNumber(l.credit),
+      toExcelNumber(l.running_balance),
+    ]),
+    [a.account_code, a.account_name, '', null, 'Saldo Akhir', null, null, toExcelNumber(a.ending_balance)],
+  ])
+}
+
 type LedgerMode = 'summary' | 'detail'
 
 export default function GeneralLedgerPage() {
@@ -36,6 +77,8 @@ export default function GeneralLedgerPage() {
   const [mode, setMode] = useState<LedgerMode>(searchParams.get('mode') === 'detail' ? 'detail' : 'summary')
   const [visibleColumns, setVisibleColumns] = useState<string[]>(SUMMARY_COLUMNS.map((c) => c.key))
   const showCol = (key: string) => visibleColumns.includes(key)
+  // Urutan kolom ekspor mengikuti SUMMARY_COLUMNS, bukan urutan klik user.
+  const exportColumns = SUMMARY_COLUMNS.filter((c) => visibleColumns.includes(c.key))
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
 
   // Dua query terpisah agar jalur ringkasan (rentan crash historis A13-232) tetap utuh
@@ -101,20 +144,25 @@ export default function GeneralLedgerPage() {
                   {!isLoading && !isError && hasReport && (
                     <>
                       <SaveReportButton reportKey={mode === 'detail' ? 'general-ledger-detail' : 'general-ledger'} params={activeParams} />
-                      {accounts.length > 0 && (
-                        <Button
+                      {accounts.length > 0 && (mode === 'detail' ? (
+                        <ReportExportButton
                           variant="outline"
-                          size="sm"
-                          className="h-7 text-[12px]"
-                          onClick={() => exportCsv(
-                            `buku-besar-${mode}-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
-                            ['Kode', 'Akun', 'Saldo Awal', 'Debit Periode', 'Kredit Periode', 'Saldo Akhir'],
-                            accounts.map((a) => [a.account_code, a.account_name, a.opening_balance, a.period_debit, a.period_credit, a.ending_balance])
-                          )}
-                        >
-                          Export CSV
-                        </Button>
-                      )}
+                          filename={`buku-besar-rincian-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}`}
+                          sheetName="Buku Besar Rincian"
+                          headers={DETAIL_HEADERS}
+                          rows={() => flattenDetail(detailAccounts)}
+                          formats={DETAIL_FORMATS}
+                        />
+                      ) : (
+                        <ReportExportButton
+                          variant="outline"
+                          filename={`buku-besar-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}`}
+                          sheetName="Buku Besar"
+                          headers={exportColumns.map((c) => c.label)}
+                          rows={() => summaryAccounts.map((a) => exportColumns.map((c) => SUMMARY_EXPORT[c.key].value(a)))}
+                          formats={exportColumns.map((c) => SUMMARY_EXPORT[c.key].format)}
+                        />
+                      ))}
                     </>
                   )}
                 </>

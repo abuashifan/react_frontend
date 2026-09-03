@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { exportCsv } from '@/lib/exportCsv'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelNumber } from '@/lib/exportXlsx'
 import type { ReportParams } from '../types/reports.types'
 
 export default function OpnameWorksheetReportPage() {
@@ -70,18 +71,14 @@ export default function OpnameWorksheetReportPage() {
                 </p>
               </div>
               {rows.length > 0 && (
-                <Button
+                <ReportExportButton
                   variant="outline"
-                  size="sm"
-                  className="text-[12px]"
-                  onClick={() => exportCsv(
-                    `kertas-kerja-opname-${opname.opname_number}.csv`,
-                    ['Kode', 'Produk', 'Gudang', 'Satuan', 'Qty Sistem', 'Qty Fisik', 'Selisih Qty', 'Harga Rata-rata', 'Selisih Nilai'],
-                    rows.map((r) => [r.product_code, r.product_name, r.warehouse_name, r.unit_name, r.system_quantity, r.physical_quantity ?? '', r.difference_quantity, r.average_cost, r.difference_value])
-                  )}
-                >
-                  Export CSV
-                </Button>
+                  filename={`kertas-kerja-opname-${opname.opname_number}`}
+                  sheetName="Kertas Kerja Opname"
+                  headers={['Kode', 'Produk', 'Gudang', 'Satuan', 'Qty Sistem', 'Qty Fisik', 'Selisih Qty', 'Harga Rata-rata', 'Selisih Nilai']}
+                  rows={() => rows.map((r) => [r.product_code, r.product_name, r.warehouse_name, r.unit_name, toExcelNumber(r.system_quantity), toExcelNumber(r.physical_quantity ?? ''), toExcelNumber(r.difference_quantity), toExcelNumber(r.average_cost), toExcelNumber(r.difference_value)])}
+                  formats={['text', 'text', 'text', 'text', 'number', 'number', 'number', 'currency', 'currency']}
+                />
               )}
             </div>
 

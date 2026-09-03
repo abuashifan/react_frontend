@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { ReportError } from '../components/ReportError'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelDate, toExcelNumber } from '@/lib/exportXlsx'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import type { CashBankAccount } from '../types/reports.types'
@@ -111,6 +113,36 @@ export default function CashBankStatementPage() {
             >
               {isLoading ? 'Memuat...' : 'Tampilkan'}
             </Button>
+            {report && (
+              <ReportExportButton
+                variant="outline"
+                filename={`mutasi-rekening-${report.account.account_code}-${report.filter.start_date ?? ''}-${report.filter.end_date ?? ''}`}
+                sheetName="Mutasi Rekening"
+                headers={['Tanggal', 'No. Jurnal', 'Keterangan', 'Sumber', 'Debit', 'Kredit', 'Saldo']}
+                rows={() => [
+                  [toExcelDate(report.filter.start_date), '', 'Saldo Awal', '', null, null, toExcelNumber(report.opening_balance)],
+                  ...report.lines.map((line) => [
+                    toExcelDate(line.journal_date),
+                    line.journal_number,
+                    line.description ?? '',
+                    line.source_number ?? '',
+                    toExcelNumber(line.debit),
+                    toExcelNumber(line.credit),
+                    toExcelNumber(line.running_balance),
+                  ]),
+                  [
+                    toExcelDate(report.filter.end_date),
+                    '',
+                    'Saldo Akhir',
+                    '',
+                    toExcelNumber(report.period_totals.debit),
+                    toExcelNumber(report.period_totals.credit),
+                    toExcelNumber(report.ending_balance),
+                  ],
+                ]}
+                formats={['date', 'text', 'text', 'text', 'currency', 'currency', 'currency']}
+              />
+            )}
           </div>
         </div>
 

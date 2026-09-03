@@ -1,12 +1,7 @@
 import { Info } from 'lucide-react'
 import { cn, formatCurrency } from '@/lib/utils'
+import { SECTION_LABELS } from '../constants/cashBudgetSections'
 import type { CashBudget } from '../types/budget.types'
-
-const SECTION_LABELS: Record<string, string> = {
-  operating: 'Operasi',
-  investing: 'Investasi',
-  financing: 'Pendanaan',
-}
 
 /**
  * Penyajian Cash Budget — dipakai `CashBudgetPage` (seluruh perusahaan) dan tab

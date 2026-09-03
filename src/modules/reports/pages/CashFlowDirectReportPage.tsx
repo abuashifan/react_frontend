@@ -1,4 +1,3 @@
-import { Download } from 'lucide-react'
 import { Fragment } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
@@ -6,11 +5,11 @@ import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { ReportPrintToolbar } from '../components/ReportPrintToolbar'
-import { ReportToolButton } from '../components/ReportToolButton'
 import { ReportPrintDocument } from '../components/ReportPrintDocument'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { exportCsv } from '@/lib/exportCsv'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelNumber } from '@/lib/exportXlsx'
 import { useReportParams } from '../hooks/useReportParams'
 import { useReportFilterSummary } from '../hooks/useReportFilterSummary'
 
@@ -36,11 +35,13 @@ export default function CashFlowDirectReportPage() {
   const tools = !isLoading && !isError && report && !report.no_cash_accounts && summary ? (
     <ReportPrintToolbar
       extra={sections.length > 0 && (
-        <ReportToolButton icon={Download} label="Export CSV" onClick={() => exportCsv(
-            `arus-kas-langsung-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`,
-            ['Aktivitas', 'Akun', 'Kas Masuk', 'Kas Keluar', 'Bersih'],
-            sections.flatMap((s) => s.lines.map((l) => [s.label, l.account_name, l.cash_in, l.cash_out, l.net]))
-          )} />
+        <ReportExportButton
+          filename={`arus-kas-langsung-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}`}
+          sheetName="Arus Kas Langsung"
+          headers={['Aktivitas', 'Akun', 'Kas Masuk', 'Kas Keluar', 'Bersih']}
+          rows={() => sections.flatMap((s) => s.lines.map((l) => [s.label, l.account_name, toExcelNumber(l.cash_in), toExcelNumber(l.cash_out), toExcelNumber(l.net)]))}
+          formats={['text', 'text', 'currency', 'currency', 'currency']}
+        />
       )}
     />
   ) : undefined

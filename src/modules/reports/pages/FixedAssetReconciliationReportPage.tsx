@@ -4,6 +4,8 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { ReportError } from '../components/ReportError'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelNumber } from '@/lib/exportXlsx'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 
@@ -72,6 +74,21 @@ export default function FixedAssetReconciliationReportPage() {
             >
               {isLoading ? 'Memuat...' : 'Tampilkan'}
             </Button>
+            {report && rows.length > 0 && (
+              <ReportExportButton
+                variant="outline"
+                filename={`rekonsiliasi-aktiva-tetap-${activeQuery?.as_of_period ?? ''}`}
+                sheetName="Rekonsiliasi Aktiva Tetap"
+                headers={['Komponen', 'Register Aset', 'Buku Besar (GL)', 'Selisih']}
+                rows={() => rows.map((row) => [
+                  row.label,
+                  toExcelNumber(row.register),
+                  toExcelNumber(row.gl),
+                  toExcelNumber(row.diff),
+                ])}
+                formats={['text', 'currency', 'currency', 'currency']}
+              />
+            )}
           </div>
         </div>
 

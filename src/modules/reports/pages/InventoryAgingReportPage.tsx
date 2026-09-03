@@ -6,10 +6,10 @@ import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { TablePagination } from '@/components/shared/table/TablePagination'
 import type { PaginationState } from '@/components/shared/table/TablePagination'
-import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
-import { exportCsv } from '@/lib/exportCsv'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelNumber } from '@/lib/exportXlsx'
 import type { ReportParams } from '../types/reports.types'
 import { useReportParams } from '../hooks/useReportParams'
 
@@ -74,18 +74,14 @@ export default function InventoryAgingReportPage() {
 
         {!isLoading && !isError && report && allRows.length > 0 && (
           <div className="flex justify-end">
-            <Button
+            <ReportExportButton
               variant="outline"
-              size="sm"
-              className="text-[12px]"
-              onClick={() => exportCsv(
-                `umur-persediaan-${report.as_of_date}.csv`,
-                ['Kode', 'Produk', 'Gudang', 'Qty', 'Umur (hari)', '0-30', '31-60', '61-90', '>90', 'Total Nilai'],
-                allRows.map((r) => [r.product_code, r.product_name, r.warehouse_name, r.quantity_on_hand, r.age_days, r.buckets.days_0_30, r.buckets.days_31_60, r.buckets.days_61_90, r.buckets.days_over_90, r.total_value])
-              )}
-            >
-              Export CSV
-            </Button>
+              filename={`umur-persediaan-${report.as_of_date}`}
+              sheetName="Umur Persediaan"
+              headers={['Kode', 'Produk', 'Gudang', 'Qty', 'Umur (hari)', '0-30', '31-60', '61-90', '>90', 'Total Nilai']}
+              rows={() => allRows.map((r) => [r.product_code, r.product_name, r.warehouse_name, toExcelNumber(r.quantity_on_hand), toExcelNumber(r.age_days), toExcelNumber(r.buckets.days_0_30), toExcelNumber(r.buckets.days_31_60), toExcelNumber(r.buckets.days_61_90), toExcelNumber(r.buckets.days_over_90), toExcelNumber(r.total_value)])}
+              formats={['text', 'text', 'text', 'number', 'number', 'currency', 'currency', 'currency', 'currency', 'currency']}
+            />
           </div>
         )}
 

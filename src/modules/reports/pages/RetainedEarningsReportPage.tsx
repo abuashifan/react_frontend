@@ -5,6 +5,8 @@ import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { ReportPrintToolbar } from '../components/ReportPrintToolbar'
 import { ReportPrintDocument } from '../components/ReportPrintDocument'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelNumber } from '@/lib/exportXlsx'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useReportParams } from '../hooks/useReportParams'
@@ -27,7 +29,23 @@ export default function RetainedEarningsReportPage() {
   const paramLabel = `${activeParams?.start_date ? formatDate(activeParams.start_date) : '-'} — ${activeParams?.end_date ? formatDate(activeParams.end_date) : '-'}`
 
   // Alat laporan menempel di filter bar supaya tidak memakai baris toolbar sendiri.
-  const tools = !isLoading && !isError && report ? <ReportPrintToolbar /> : undefined
+  const tools = !isLoading && !isError && report ? (
+    <ReportPrintToolbar
+      extra={
+        <ReportExportButton
+          filename={`laba-ditahan-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}`}
+          sheetName="Laba Ditahan"
+          headers={['Keterangan', 'Jumlah']}
+          rows={() => [
+            ['Laba Ditahan Awal Periode', toExcelNumber(report.beginning_retained_earnings)],
+            ['Laba / Rugi Periode Berjalan', toExcelNumber(report.net_income)],
+            ['Laba Ditahan Akhir Periode', toExcelNumber(report.ending_retained_earnings)],
+          ]}
+          formats={['text', 'currency']}
+        />
+      }
+    />
+  ) : undefined
 
   return (
     <WorkspaceLayout

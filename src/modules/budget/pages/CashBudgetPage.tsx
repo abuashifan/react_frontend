@@ -3,6 +3,9 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { BudgetPeriodSelect } from '../components/BudgetPeriodSelect'
 import { CashBudgetView } from '../components/CashBudgetView'
+import { SECTION_LABELS } from '../constants/cashBudgetSections'
+import { ReportExportButton } from '@/modules/reports/components/ReportExportButton'
+import { toExcelNumber } from '@/lib/exportXlsx'
 import { useCashBudget } from '../hooks/useCashBudget'
 import type { BudgetParams } from '../types/budget.types'
 
@@ -37,6 +40,34 @@ export default function CashBudgetPage() {
       >
         {isLoading ? 'Memuat...' : 'Tampilkan'}
       </Button>
+
+      {/*
+        Sheet-nya diratakan jadi Bagian · Keterangan · Anggaran · Realisasi.
+        Kas masuk dan keluar realisasi per klasifikasi ikut ditulis meski di
+        layar hanya Net-nya yang muat — angkanya sudah ada di respons, dan
+        menyembunyikannya di file justru memaksa orang menghitung ulang.
+      */}
+      {cash && (
+        <ReportExportButton
+          variant="outline"
+          filename={`cash-budget-${cash.period.name}`}
+          sheetName="Cash Budget"
+          headers={['Bagian', 'Keterangan', 'Anggaran', 'Realisasi']}
+          rows={() => [
+            ['Ringkasan', 'Saldo Awal Kas', toExcelNumber(cash.beginning_cash), toExcelNumber(cash.beginning_cash)],
+            ['Ringkasan', 'Kas Masuk', toExcelNumber(cash.budgeted.inflow), toExcelNumber(cash.actual.inflow)],
+            ['Ringkasan', 'Kas Keluar', toExcelNumber(cash.budgeted.outflow), toExcelNumber(cash.actual.outflow)],
+            ['Ringkasan', 'Arus Kas Bersih', toExcelNumber(cash.budgeted.net), toExcelNumber(cash.actual.net)],
+            ['Ringkasan', 'Saldo Akhir Kas', toExcelNumber(cash.budgeted.ending_cash), toExcelNumber(cash.actual.ending_cash)],
+            ...cash.sections.flatMap((section) => [
+              [SECTION_LABELS[section.section] ?? section.section, 'Kas Masuk', toExcelNumber(section.budgeted_inflow), toExcelNumber(section.actual_inflow)],
+              [SECTION_LABELS[section.section] ?? section.section, 'Kas Keluar', toExcelNumber(section.budgeted_outflow), toExcelNumber(section.actual_outflow)],
+              [SECTION_LABELS[section.section] ?? section.section, 'Net', toExcelNumber(section.budgeted_net), toExcelNumber(section.actual_net)],
+            ]),
+          ]}
+          formats={['text', 'text', 'currency', 'currency']}
+        />
+      )}
     </div>
   )
 

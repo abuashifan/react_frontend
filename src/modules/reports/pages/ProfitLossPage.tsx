@@ -1,16 +1,15 @@
-import { Download } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { ReportPrintToolbar } from '../components/ReportPrintToolbar'
-import { ReportToolButton } from '../components/ReportToolButton'
 import { ReportPrintDocument } from '../components/ReportPrintDocument'
 import { ReportPrintSection } from '../components/ReportPrintSection'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { exportCsv } from '@/lib/exportCsv'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelNumber, type XlsxCell } from '@/lib/exportXlsx'
 import { SaveReportButton } from '../components/SaveReportButton'
 import { useReportParams } from '../hooks/useReportParams'
 import { useReportFilterSummary } from '../hooks/useReportFilterSummary'
@@ -36,13 +35,21 @@ export default function ProfitLossPage() {
         <>
           <SaveReportButton reportKey="profit-loss" params={activeParams} />
           {sections.length > 0 && (
-            <ReportToolButton icon={Download} label="Export CSV" onClick={() => {
-                const rows = sections.flatMap((s) =>
-                  s.accounts.map((a) => [s.label, a.account_code ?? '', a.account_name, a.amount])
-                )
-                rows.push(['', '', net >= 0 ? 'Laba Bersih' : 'Rugi Bersih', net])
-                exportCsv(`laba-rugi-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}.csv`, ['Seksi', 'Kode', 'Akun', 'Jumlah'], rows)
-              }} />
+            <ReportExportButton
+              filename={`laba-rugi-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}`}
+              sheetName="Laba Rugi"
+              headers={['Seksi', 'Kode', 'Akun', 'Jumlah']}
+              rows={() => {
+                // Subtotal per seksi ikut ditulis — lihat alasannya di Neraca.
+                const rows: XlsxCell[][] = sections.flatMap((s) => [
+                  ...s.accounts.map((a) => [s.label, a.account_code ?? '', a.account_name, toExcelNumber(a.amount)]),
+                  [s.label, '', `Total ${s.label}`, toExcelNumber(s.total)],
+                ])
+                rows.push(['', '', net >= 0 ? 'Laba Bersih' : 'Rugi Bersih', toExcelNumber(net)])
+                return rows
+              }}
+              formats={['text', 'text', 'text', 'currency']}
+            />
           )}
         </>
       }

@@ -4,6 +4,8 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelDate, toExcelNumber } from '@/lib/exportXlsx'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import type { ReconciliationReport, GrniReconciliationReport, DepositReconciliationReport } from '../types/reports.types'
@@ -231,6 +233,90 @@ export default function ReconciliationPage() {
 
   const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false) }
 
+  /**
+   * Enam tab rekonsiliasi memakai tiga bentuk tabel yang berbeda (subledger vs
+   * GL, GRNI, deposit), jadi kolom ekspornya ditentukan per bentuk — bukan per
+   * tab.
+   */
+  const exportButton = (() => {
+    if (isLoading || isError) return null
+    const suffix = activeParams?.as_of_date ?? today
+
+    if (isSubledgerType && subData?.data) {
+      const report = subData.data
+      return (
+        <ReportExportButton
+          variant="outline"
+          filename={`rekonsiliasi-${activeType}-${suffix}`}
+          sheetName={RECON_LABELS[activeType]}
+          headers={['Kode', 'Akun', 'Saldo Buku Besar', 'Saldo Subledger', 'Selisih']}
+          rows={() => [
+            ...report.lines.map((line) => [
+              line.account_code,
+              line.account_name,
+              toExcelNumber(line.gl_balance),
+              toExcelNumber(line.subledger_balance),
+              toExcelNumber(line.difference),
+            ]),
+            ['', 'Total', toExcelNumber(report.total_gl), toExcelNumber(report.total_subledger), toExcelNumber(report.total_difference)],
+          ]}
+          formats={['text', 'text', 'currency', 'currency', 'currency']}
+        />
+      )
+    }
+
+    if (isGrniType && grniData?.data.data.length) {
+      const rows = grniData.data.data
+      return (
+        <ReportExportButton
+          variant="outline"
+          filename={`rekonsiliasi-grni-${suffix}`}
+          sheetName="GRNI"
+          headers={['No Penerimaan', 'Tanggal', 'Pemasok', 'Produk', 'Qty Diterima', 'Qty Ditagih', 'Qty Outstanding', 'Estimasi Nilai', 'Saldo GL', 'Selisih', 'Status']}
+          rows={() => rows.map((r) => [
+            r.receipt_number,
+            toExcelDate(r.receipt_date),
+            r.vendor_name ?? '',
+            r.product_name ?? '',
+            toExcelNumber(r.received_quantity),
+            toExcelNumber(r.billed_quantity),
+            toExcelNumber(r.outstanding_quantity),
+            toExcelNumber(r.estimated_outstanding_amount),
+            toExcelNumber(r.grni_gl_balance_related),
+            toExcelNumber(r.difference),
+            r.status,
+          ])}
+          formats={['text', 'date', 'text', 'text', 'number', 'number', 'number', 'currency', 'currency', 'currency', 'text']}
+        />
+      )
+    }
+
+    const deposits = activeType === 'customer_deposits' ? custData?.data : vendData?.data
+    if (!isSubledgerType && !isGrniType && deposits?.data.length) {
+      const contactLabel = activeType === 'customer_deposits' ? 'Pelanggan' : 'Pemasok'
+      return (
+        <ReportExportButton
+          variant="outline"
+          filename={`rekonsiliasi-${activeType.replace(/_/g, '-')}-${suffix}`}
+          sheetName={RECON_LABELS[activeType]}
+          headers={['No Deposit', 'Tanggal', contactLabel, 'Jumlah', 'Dialokasikan', 'Sisa', 'Status']}
+          rows={() => deposits.data.map((r) => [
+            r.deposit_number,
+            toExcelDate(r.deposit_date),
+            r.contact_name ?? r.contact_number,
+            toExcelNumber(r.amount),
+            toExcelNumber(r.allocated_amount),
+            toExcelNumber(r.remaining_amount),
+            DEPOSIT_STATUS_LABEL[r.status] ?? r.status,
+          ])}
+          formats={['text', 'date', 'text', 'currency', 'currency', 'currency', 'text']}
+        />
+      )
+    }
+
+    return null
+  })()
+
   return (
     <WorkspaceLayout
       hideHeader
@@ -250,6 +336,7 @@ export default function ReconciliationPage() {
               {RECON_LABELS[t]}
             </button>
           ))}
+          <div className="ml-auto">{exportButton}</div>
         </div>
 
         {showFilter && <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} mode="as_of_date" isLoading={isLoading} extras={{ only_difference: true }} />}

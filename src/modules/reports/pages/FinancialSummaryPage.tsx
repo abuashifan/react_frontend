@@ -5,6 +5,8 @@ import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
 import { ReportPrintToolbar } from '../components/ReportPrintToolbar'
 import { ReportPrintDocument } from '../components/ReportPrintDocument'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelNumber } from '@/lib/exportXlsx'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useReportParams } from '../hooks/useReportParams'
@@ -31,7 +33,30 @@ export default function FinancialSummaryPage() {
   const paramLabel = `${activeParams?.start_date ? formatDate(activeParams.start_date) : '-'} — ${activeParams?.end_date ? formatDate(activeParams.end_date) : '-'}`
 
   // Alat laporan menempel di filter bar supaya tidak memakai baris toolbar sendiri.
-  const tools = !isLoading && !isError && report ? <ReportPrintToolbar /> : undefined
+  const tools = !isLoading && !isError && report ? (
+    <ReportPrintToolbar
+      extra={
+        <ReportExportButton
+          filename={`ringkasan-keuangan-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}`}
+          sheetName="Ringkasan Keuangan"
+          headers={['Kelompok', 'Indikator', 'Jumlah']}
+          rows={() => [
+            ['Posisi Keuangan', 'Total Aset', toExcelNumber(report.balance_sheet.total_assets)],
+            ['Posisi Keuangan', 'Total Kewajiban', toExcelNumber(report.balance_sheet.total_liabilities)],
+            ['Posisi Keuangan', 'Total Ekuitas', toExcelNumber(report.balance_sheet.total_equity)],
+            ['Posisi Keuangan', 'Laba/Rugi Tahun Berjalan', toExcelNumber(report.balance_sheet.current_year_profit_or_loss)],
+            ['Kinerja Periode', 'Laba/Rugi Bersih', toExcelNumber(report.profit_loss.net_profit_or_loss)],
+            ['Kinerja Periode', 'Arus Kas Bersih', toExcelNumber(report.cash_flow.cash_in - report.cash_flow.cash_out)],
+            ['Kas', 'Saldo Kas Awal', toExcelNumber(report.cash_flow.opening_cash_balance)],
+            ['Kas', 'Kas Masuk', toExcelNumber(report.cash_flow.cash_in)],
+            ['Kas', 'Kas Keluar', toExcelNumber(report.cash_flow.cash_out)],
+            ['Kas', 'Saldo Kas Akhir', toExcelNumber(report.cash_flow.ending_cash_balance)],
+          ]}
+          formats={['text', 'text', 'currency']}
+        />
+      }
+    />
+  ) : undefined
 
   return (
     <WorkspaceLayout

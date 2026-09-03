@@ -4,6 +4,8 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { ReportParameterModal } from '../components/ReportParameterModal'
 import { ReportCompactBar } from '../components/ReportCompactBar'
 import { ReportError } from '../components/ReportError'
+import { ReportExportButton } from '../components/ReportExportButton'
+import { toExcelNumber } from '@/lib/exportXlsx'
 import { reportsApi } from '../services/reportsApi'
 import { formatCurrency } from '@/lib/utils'
 import { useReportParams } from '../hooks/useReportParams'
@@ -25,6 +27,55 @@ export default function InventoryAnalysisPage() {
   const refetch = tab === 'valuation' ? refetchVal : tab === 'low_stock' ? refetchLow : refetchNeg
   const handleSubmit = () => { setActiveParams({ ...params }); setShowFilter(false) }
 
+  // Satu tombol per tab: valuasi punya kolom nilai, dua tab lainnya kolom stok.
+  const exportButton = (() => {
+    if (isLoading || isError) return null
+
+    if (tab === 'valuation' && valData?.data.length) {
+      return (
+        <ReportExportButton
+          variant="outline"
+          filename={`valuasi-inventori-${activeParams?.as_of_date ?? today}`}
+          sheetName="Valuasi Inventori"
+          headers={['Kode', 'Produk', 'Satuan', 'Qty', 'Harga Rata-rata', 'Nilai']}
+          rows={() => valData.data.map((line) => [
+            line.product_code,
+            line.product_name,
+            line.unit,
+            toExcelNumber(line.qty_on_hand),
+            toExcelNumber(line.avg_cost),
+            toExcelNumber(line.total_value),
+          ])}
+          formats={['text', 'text', 'text', 'number', 'currency', 'currency']}
+        />
+      )
+    }
+
+    const stockRows = tab === 'low_stock' ? lowData?.data : negData?.data
+    if (tab !== 'valuation' && stockRows?.length) {
+      const isLow = tab === 'low_stock'
+      return (
+        <ReportExportButton
+          variant="outline"
+          filename={`${isLow ? 'stok-rendah' : 'stok-negatif'}-${activeParams?.as_of_date ?? today}`}
+          sheetName={isLow ? 'Stok Rendah' : 'Stok Negatif'}
+          headers={['Kode', 'Produk', 'Gudang', 'Qty Tersedia', ...(isLow ? ['Stok Minimum'] : []), 'Satuan']}
+          rows={() => stockRows.map((line) => [
+            line.product_code,
+            line.product_name,
+            line.warehouse_name,
+            toExcelNumber(line.qty_on_hand),
+            ...(isLow ? [toExcelNumber(line.min_stock)] : []),
+            line.unit,
+          ])}
+          formats={['text', 'text', 'text', 'number', ...(isLow ? ['number' as const] : []), 'text']}
+        />
+      )
+    }
+
+    return null
+  })()
+
   return (
     <WorkspaceLayout
       hideHeader
@@ -35,6 +86,7 @@ export default function InventoryAnalysisPage() {
           {(['valuation', 'low_stock', 'negative_stock'] as AnalysisTab[]).map((t) => (
             <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`rounded-full px-3 py-1 text-[12px] font-medium transition-colors ${tab === t ? 'bg-[#5c9ead] text-white' : 'bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]'}`}>{TAB_LABELS[t]}</button>
           ))}
+          <div className="ml-auto">{exportButton}</div>
         </div>
         {showFilter && <ReportParameterModal open={showFilter} onClose={() => setShowFilter(false)} params={params} onChange={(p) => setParams((prev) => ({ ...prev, ...p }))} onSubmit={handleSubmit} mode="as_of_date" isLoading={isLoading} />}
         {isLoading && <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat laporan...</div>}
