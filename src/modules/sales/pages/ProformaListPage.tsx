@@ -5,6 +5,7 @@ import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterS
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
 import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
+import { ListExportButton, type ExportColumn } from '@/components/shared/table/ListExportButton'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
@@ -13,11 +14,28 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { useProformaList } from '../hooks/useProformaList'
+import { proformaApi } from '../services/proformaApi'
+import { toExcelDate } from '@/lib/exportXlsx'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import type { ProformaInvoice, ProformaStatus } from '../types/proforma.types'
 
 const STATUSES: ProformaStatus[] = ['draft', 'issued', 'accepted', 'cancelled', 'converted']
+
+/**
+ * Kolom file ekspor: sama dengan kolom tabel, ditambah `ID` di depan.
+ * ID dibutuhkan supaya baris hasil ekspor bisa dicocokkan kembali dengan
+ * record di sistem (impor balik, rekonsiliasi manual, tiket dukungan).
+ */
+const EXPORT_COLUMNS: ExportColumn<ProformaInvoice>[] = [
+  { header: 'ID', value: (row) => row.id },
+  { header: 'Nomor', value: (row) => row.number },
+  { header: 'Tanggal', value: (row) => toExcelDate(row.date), format: 'date' },
+  { header: 'Customer', value: (row) => row.customer?.name },
+  { header: 'Sales Order', value: (row) => row.sales_order_number },
+  { header: 'Total', value: (row) => row.grand_total, format: 'currency' },
+  { header: 'Status', value: (row) => row.status },
+]
 
 export default function ProformaListPage() {
   const { openRecordTab } = useRecordTab()
@@ -35,14 +53,20 @@ export default function ProformaListPage() {
     setPage(0)
   }
 
-  const { data, isLoading, isFetching } = useProformaList({
-    page: page + 1,
-    per_page: 25,
+  // Dipisah dari page/per_page supaya tombol ekspor memakai filter yang PERSIS
+  // sama dengan tabel.
+  const listParams = {
     search: search || undefined,
     status: filterStatus,
     customer_id: filterCustomer ?? undefined,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
+  }
+
+  const { data, isLoading, isFetching } = useProformaList({
+    page: page + 1,
+    per_page: 25,
+    ...listParams,
   })
 
   const activeFilters = [filterStatus, filterCustomer, dateRange.from, dateRange.to].filter(Boolean).length
@@ -117,11 +141,20 @@ export default function ProformaListPage() {
       breadcrumb={[{ label: 'Sales' }, { label: 'Proforma Invoice' }]}
       sidebar={sidebar}
       action={
-        <PermissionGuard permission="sales.proformas.create">
-          <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => openRecordTab({ label: 'Proforma Baru', path: '/sales/proformas/create' })}>
-            <Plus className="w-3.5 h-3.5 mr-1" /> Buat Proforma
-          </Button>
-        </PermissionGuard>
+        <>
+          <ListExportButton
+            filename="proforma"
+            sheetName="Proforma"
+            columns={EXPORT_COLUMNS}
+            totalRows={data?.meta.total}
+            fetchPage={(exportPage, exportPerPage) => proformaApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}
+          />
+          <PermissionGuard permission="sales.proformas.create">
+            <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => openRecordTab({ label: 'Proforma Baru', path: '/sales/proformas/create' })}>
+              <Plus className="w-3.5 h-3.5 mr-1" /> Buat Proforma
+            </Button>
+          </PermissionGuard>
+        </>
       }
     >
       <DataTable

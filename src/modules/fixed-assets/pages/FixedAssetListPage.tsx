@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Plus, Upload } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { DataTable } from '@/components/shared/table/DataTable'
+import { ListExportButton, type ExportColumn } from '@/components/shared/table/ListExportButton'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,8 @@ import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
 import { useImportPresetStore } from '@/modules/imports/stores/useImportPresetStore'
 import { fixedAssetCategoryApi } from '../services/fixedAssetCategoryApi'
 import { useFixedAssetList } from '../hooks/useFixedAssetList'
+import { fixedAssetApi } from '../services/fixedAssetApi'
+import { toExcelDate, toExcelNumber } from '@/lib/exportXlsx'
 import type { ColumnDef, PaginationState } from '@/components/shared/table/DataTable'
 import type { FixedAsset, FixedAssetClass, FixedAssetStatus } from '../types/fixedAsset.types'
 
@@ -41,6 +44,27 @@ function StatusBadge({ status }: { status: FixedAssetStatus }) {
   )
 }
 
+/**
+ * Kolom file ekspor: sama dengan kolom tabel, ditambah `ID` di depan.
+ * ID dibutuhkan supaya baris hasil ekspor bisa dicocokkan kembali dengan
+ * record di sistem (impor balik, rekonsiliasi manual, tiket dukungan).
+ *
+ * Nominal dilewatkan `toExcelNumber()` karena kolom `decimal` aktiva tetap
+ * bertipe `AmountValue` (`number | string | null`) -- string mentah akan masuk
+ * Excel sebagai teks dan tidak bisa dijumlahkan.
+ */
+const EXPORT_COLUMNS: ExportColumn<FixedAsset>[] = [
+  { header: 'ID', value: (row) => row.id },
+  { header: 'Kode Aktiva', value: (row) => row.asset_number ?? row.number ?? `FA-${row.id}` },
+  { header: 'Nama', value: (row) => row.name },
+  { header: 'Kategori', value: (row) => row.category?.name },
+  { header: 'Tgl Perolehan', value: (row) => toExcelDate(row.acquisition_date), format: 'date' },
+  { header: 'Nilai Perolehan', value: (row) => toExcelNumber(row.acquisition_cost), format: 'currency' },
+  { header: 'Akum Dep', value: (row) => toExcelNumber(row.accumulated_depreciation), format: 'currency' },
+  { header: 'Nilai Buku', value: (row) => toExcelNumber(row.net_book_value), format: 'currency' },
+  { header: 'Status', value: (row) => STATUS_LABEL[row.status] ?? row.status },
+]
+
 export default function FixedAssetListPage() {
   const { openRecordTab } = useRecordTab()
   const openTab = useOpenPrimaryTab()
@@ -66,14 +90,20 @@ export default function FixedAssetListPage() {
   const [status, setStatus] = useState<FixedAssetStatus | ''>('')
   const [assetClass, setAssetClass] = useState<FixedAssetClass | ''>('')
 
-  const params = useMemo(() => ({
-    page: pagination.pageIndex + 1,
-    per_page: pagination.pageSize,
+  // Dipisah dari page/per_page supaya tombol ekspor memakai filter yang PERSIS
+  // sama dengan tabel.
+  const listParams = useMemo(() => ({
     search,
     category_id: categoryId,
     status,
     asset_class: assetClass,
-  }), [assetClass, categoryId, pagination.pageIndex, pagination.pageSize, search, status])
+  }), [assetClass, categoryId, search, status])
+
+  const params = useMemo(() => ({
+    page: pagination.pageIndex + 1,
+    per_page: pagination.pageSize,
+    ...listParams,
+  }), [listParams, pagination.pageIndex, pagination.pageSize])
 
   const { data, isLoading, isFetching } = useFixedAssetList(params)
   const rows = data?.data ?? []
@@ -180,6 +210,27 @@ export default function FixedAssetListPage() {
       sidebar={sidebar}
       action={
         <div className="flex items-center gap-2">
+          <ListExportButton
+            filename="aktiva-tetap"
+            sheetName="Aktiva Tetap"
+            columns={EXPORT_COLUMNS}
+            totalRows={data?.meta && typeof data.meta.total === 'number' ? data.meta.total : undefined}
+            fetchPage={async (exportPage, exportPerPage) => {
+              const response = await fixedAssetApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })
+              // `fixedAssetApi.list()` mengembalikan `ApiResponse`, bukan
+              // `PaginatedResponse` -- `meta`-nya bertipe lepas, jadi field
+              // paginasi yang dibutuhkan tombol ekspor dibaca dan dikonversi
+              // di sini, bukan dianggap sudah bertipe benar.
+              const meta = response.meta ?? {}
+              return {
+                data: response.data ?? [],
+                meta: {
+                  last_page: typeof meta.last_page === 'number' ? meta.last_page : 1,
+                  total: typeof meta.total === 'number' ? meta.total : undefined,
+                },
+              }
+            }}
+          />
           <PermissionGuard permission="fixed_assets.opening_import">
             <Button
               variant="outline"

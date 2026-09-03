@@ -5,6 +5,7 @@ import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterS
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
 import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
+import { ListExportButton, type ExportColumn } from '@/components/shared/table/ListExportButton'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
@@ -13,11 +14,28 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { useQuotationList } from '../hooks/useQuotationList'
+import { quotationApi } from '../services/quotationApi'
+import { toExcelDate } from '@/lib/exportXlsx'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import type { SalesQuotation } from '../types/quotation.types'
 import type { QuotationStatus } from '../types/quotation.types'
 const STATUSES: QuotationStatus[] = ['draft', 'sent', 'approved', 'accepted', 'rejected', 'cancelled', 'converted']
+
+/**
+ * Kolom file ekspor: sama dengan kolom tabel, ditambah `ID` di depan.
+ * ID dibutuhkan supaya baris hasil ekspor bisa dicocokkan kembali dengan
+ * record di sistem (impor balik, rekonsiliasi manual, tiket dukungan).
+ */
+const EXPORT_COLUMNS: ExportColumn<SalesQuotation>[] = [
+  { header: 'ID', value: (row) => row.id },
+  { header: 'Nomor', value: (row) => row.number },
+  { header: 'Tanggal', value: (row) => toExcelDate(row.date), format: 'date' },
+  { header: 'Customer', value: (row) => row.customer?.name },
+  { header: 'Exp. Date', value: (row) => toExcelDate(row.expiry_date), format: 'date' },
+  { header: 'Total', value: (row) => row.grand_total, format: 'currency' },
+  { header: 'Status', value: (row) => row.status },
+]
 
 export default function QuotationListPage() {
   const { openRecordTab } = useRecordTab()
@@ -35,14 +53,20 @@ export default function QuotationListPage() {
     setPage(0)
   }
 
-  const { data, isLoading, isFetching } = useQuotationList({
-    page: page + 1,
-    per_page: 25,
+  // Dipisah dari page/per_page supaya tombol ekspor memakai filter yang PERSIS
+  // sama dengan tabel.
+  const listParams = {
     search: search || undefined,
     status: filterStatus,
     customer_id: filterCustomer ?? undefined,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
+  }
+
+  const { data, isLoading, isFetching } = useQuotationList({
+    page: page + 1,
+    per_page: 25,
+    ...listParams,
   })
 
   const activeFilters = [filterStatus, filterCustomer, dateRange.from, dateRange.to].filter(Boolean).length
@@ -126,11 +150,20 @@ export default function QuotationListPage() {
       breadcrumb={[{ label: 'Sales' }, { label: 'Quotation' }]}
       sidebar={sidebar}
       action={
-        <PermissionGuard permission="sales.quotations.create">
-          <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => openRecordTab({ label: 'Quotation Baru', path: '/sales/quotations/create' })}>
-            <Plus className="w-3.5 h-3.5 mr-1" /> Buat Quotation
-          </Button>
-        </PermissionGuard>
+        <>
+          <ListExportButton
+            filename="penawaran"
+            sheetName="Penawaran"
+            columns={EXPORT_COLUMNS}
+            totalRows={data?.meta.total}
+            fetchPage={(exportPage, exportPerPage) => quotationApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}
+          />
+          <PermissionGuard permission="sales.quotations.create">
+            <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => openRecordTab({ label: 'Quotation Baru', path: '/sales/quotations/create' })}>
+              <Plus className="w-3.5 h-3.5 mr-1" /> Buat Quotation
+            </Button>
+          </PermissionGuard>
+        </>
       }
     >
       <DataTable

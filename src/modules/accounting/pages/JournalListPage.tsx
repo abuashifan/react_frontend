@@ -7,6 +7,7 @@ import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFil
 import { MultiSelectModalFilter } from '@/components/shared/filter/MultiSelectModalFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
 import { DataTable } from '@/components/shared/table/DataTable'
+import { ListExportButton, type ExportColumn } from '@/components/shared/table/ListExportButton'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
@@ -14,6 +15,8 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { useListSort } from '@/hooks/useListSort'
 import { useBulkVoid } from '@/hooks/useBulkVoid'
 import { useJournalEntryList, useJournalEntryMutations } from '../hooks/useJournalEntryList'
+import { journalEntryApi } from '../services/journalEntryApi'
+import { toExcelDate } from '@/lib/exportXlsx'
 import { JOURNAL_SOURCE_TYPE_GROUPS } from '../constants/journalSourceTypes'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { JournalSourceType } from '../constants/journalSourceTypes'
@@ -42,6 +45,26 @@ function journalAmount(entry: JournalEntry): number | undefined {
   }
   return undefined
 }
+
+/**
+ * Kolom file ekspor: sama dengan kolom tabel, ditambah `ID` di depan.
+ * ID dibutuhkan supaya baris hasil ekspor bisa dicocokkan kembali dengan
+ * record di sistem (impor balik, rekonsiliasi manual, tiket dukungan).
+ */
+const EXPORT_COLUMNS: ExportColumn<JournalEntry>[] = [
+  { header: 'ID', value: (row) => row.id },
+  { header: 'Tanggal', value: (row) => toExcelDate(row.journal_date), format: 'date' },
+  { header: 'Nomor Jurnal', value: (row) => row.journal_number },
+  { header: 'Deskripsi', value: (row) => row.description },
+  { header: 'Nilai Jurnal', value: (row) => journalAmount(row), format: 'currency' },
+  // Status tidak jadi kolom tabel (disaring lewat sidebar), tapi WAJIB ada di
+  // file: tanpa itu jurnal draft dan void tidak bisa dibedakan dari yang
+  // sudah diposting, dan penjumlahan di Excel akan salah tanpa disadari.
+  { header: 'Status', value: (row) => row.status },
+  { header: 'Jenis Jurnal', value: (row) => row.source_type },
+  { header: 'Nomor Sumber', value: (row) => row.source_number },
+  { header: 'Dibuat Oleh', value: (row) => row.created_by_name },
+]
 
 export default function JournalListPage() {
   const { openRecordTab } = useRecordTab()
@@ -73,15 +96,21 @@ export default function JournalListPage() {
     setSelectedRows([])
   }
 
-  const { data, isLoading, isFetching } = useJournalEntryList({
-    page: page + 1,
-    per_page: 25,
+  // Dipisah dari page/per_page supaya tombol ekspor memakai filter DAN urutan
+  // yang persis sama dengan tabel.
+  const listParams = {
     search: search || undefined,
     status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
     source_type: filterSourceTypes.length > 0 ? filterSourceTypes.join(',') : undefined,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
     ...sortParams,
+  }
+
+  const { data, isLoading, isFetching } = useJournalEntryList({
+    page: page + 1,
+    per_page: 25,
+    ...listParams,
   })
 
   const rows = useMemo(() => data?.data ?? [], [data])
@@ -245,11 +274,20 @@ export default function JournalListPage() {
         breadcrumb={[{ label: 'Akuntansi' }, { label: 'Jurnal Umum' }]}
         sidebar={sidebar}
         action={
-          <PermissionGuard permission="journal.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Jurnal Baru', path: '/accounting/journals/create' })}>
-              <Plus className="mr-1 h-3.5 w-3.5" /> Buat Jurnal
-            </Button>
-          </PermissionGuard>
+          <>
+            <ListExportButton
+              filename="jurnal-umum"
+              sheetName="Jurnal Umum"
+              columns={EXPORT_COLUMNS}
+              totalRows={data?.meta.total}
+              fetchPage={(exportPage, exportPerPage) => journalEntryApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}
+            />
+            <PermissionGuard permission="journal.create">
+              <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Jurnal Baru', path: '/accounting/journals/create' })}>
+                <Plus className="mr-1 h-3.5 w-3.5" /> Buat Jurnal
+              </Button>
+            </PermissionGuard>
+          </>
         }
       >
         <DataTable

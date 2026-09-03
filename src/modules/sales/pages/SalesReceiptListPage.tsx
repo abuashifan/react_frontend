@@ -4,6 +4,7 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { FilterSidebar, FilterSection } from '@/components/shared/layout/FilterSidebar'
 import { ListSearchBar } from '@/components/shared/filter/ListSearchBar'
 import { DataTable } from '@/components/shared/table/DataTable'
+import { ListExportButton, type ExportColumn } from '@/components/shared/table/ListExportButton'
 import { DocumentStatusBadge } from '@/components/shared/document/DocumentStatusBadge'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Button } from '@/components/ui/button'
@@ -16,11 +17,28 @@ import { useRecordTab } from '@/hooks/useRecordTab'
 import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { useSalesReceiptList, useSalesReceiptMutations } from '../hooks/useSalesReceiptList'
+import { salesReceiptApi } from '../services/salesReceiptApi'
+import { toExcelDate } from '@/lib/exportXlsx'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { BulkAction, ColumnDef } from '@/components/shared/table/DataTable'
 import type { SalesReceipt, SalesReceiptStatus } from '../types/salesReceipt.types'
 
 const STATUSES: SalesReceiptStatus[] = ['draft', 'posted', 'void']
+/**
+ * Kolom file ekspor: sama dengan kolom tabel, ditambah `ID` di depan.
+ * ID dibutuhkan supaya baris hasil ekspor bisa dicocokkan kembali dengan
+ * record di sistem (impor balik, rekonsiliasi manual, tiket dukungan).
+ */
+const EXPORT_COLUMNS: ExportColumn<SalesReceipt>[] = [
+  { header: 'ID', value: (row) => row.id },
+  { header: 'Nomor', value: (row) => row.number },
+  { header: 'Tanggal', value: (row) => toExcelDate(row.date), format: 'date' },
+  { header: 'Customer', value: (row) => row.customer?.name },
+  { header: 'Akun', value: (row) => row.cash_bank_account?.name },
+  { header: 'Jumlah', value: (row) => row.amount, format: 'currency' },
+  { header: 'Status', value: (row) => row.status },
+]
+
 export default function SalesReceiptListPage() {
   const { openRecordTab } = useRecordTab()
   const { toast } = useToast()
@@ -43,14 +61,20 @@ export default function SalesReceiptListPage() {
   }
   const { void: voidReceipt } = useSalesReceiptMutations()
 
-  const { data, isLoading, isFetching } = useSalesReceiptList({
-    page: page + 1,
-    per_page: 25,
+  // Dipisah dari page/per_page supaya tombol ekspor memakai filter yang PERSIS
+  // sama dengan tabel.
+  const listParams = {
     search: search || undefined,
     customer_id: filterCustomer ?? undefined,
     status: filterStatuses.length > 0 ? filterStatuses.join(',') : undefined,
     date_from: dateRange.from || undefined,
     date_to: dateRange.to || undefined,
+  }
+
+  const { data, isLoading, isFetching } = useSalesReceiptList({
+    page: page + 1,
+    per_page: 25,
+    ...listParams,
   })
 
   const rows = useMemo(() => data?.data ?? [], [data])
@@ -200,11 +224,20 @@ export default function SalesReceiptListPage() {
         breadcrumb={[{ label: 'Sales' }, { label: 'Penerimaan' }]}
         sidebar={sidebar}
         action={
-          <PermissionGuard permission="sales.receipts.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Penerimaan Baru', path: '/sales/receipts/create' })}>
-              <Plus className="mr-1 h-3.5 w-3.5" /> Catat Penerimaan
-            </Button>
-          </PermissionGuard>
+          <>
+            <ListExportButton
+              filename="penerimaan-penjualan"
+              sheetName="Penerimaan"
+              columns={EXPORT_COLUMNS}
+              totalRows={data?.meta.total}
+              fetchPage={(exportPage, exportPerPage) => salesReceiptApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}
+            />
+            <PermissionGuard permission="sales.receipts.create">
+              <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Penerimaan Baru', path: '/sales/receipts/create' })}>
+                <Plus className="mr-1 h-3.5 w-3.5" /> Catat Penerimaan
+              </Button>
+            </PermissionGuard>
+          </>
         }
       >
         <DataTable
