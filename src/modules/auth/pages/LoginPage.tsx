@@ -69,12 +69,10 @@ export function LoginPage() {
     }
 
     /*
-     * Backend punya TIGA alasan berbeda untuk 403 di sini — akun tidak aktif,
-     * akun admin aplikasi yang salah pintu masuk, dan larangan lain — dan
-     * masing-masing sudah membawa pesannya sendiri. Sebelumnya semuanya
-     * ditimpa "Akun Anda telah dinonaktifkan", sehingga admin aplikasi yang
-     * cuma salah halaman diberi tahu akunnya mati: keterangan yang salah, dan
-     * menyembunyikan satu-satunya petunjuk jalan keluarnya.
+     * Pesan backend dipakai apa adanya kalau ada. Sebelumnya SETIAP 403 ditimpa
+     * "Akun Anda telah dinonaktifkan", sehingga akun yang sebenarnya cuma tidak
+     * aktif sementara, atau ditolak karena alasan lain, sama-sama diberi
+     * keterangan yang belum tentu benar. Yang generik tinggal jadi cadangan.
      */
     if (error.status === 403 || error.code === 'FORBIDDEN') {
       toast.error(error.message || 'Akun Anda telah dinonaktifkan. Hubungi administrator.')
