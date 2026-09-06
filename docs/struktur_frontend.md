@@ -465,6 +465,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____KpiCards.tsx
 | | | | |____PendingDocumentAlerts.tsx
 | | | | |____RecentActivity.tsx
+| | | | |____OpeningBalanceAlert.tsx
 | | | | |____SalesPurchaseChart.tsx
 | | | |____hooks/
 | | | | |____useDashboardData.ts
@@ -632,7 +633,6 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____hooks/
 | | | | |____useOpeningBalance.ts
 | | | |____pages/
-| | | | |____OpeningBalanceBatchPage.tsx
 | | | | |____OpeningBalanceStatusPage.tsx
 | | | |____routes.tsx
 | | | |____services/

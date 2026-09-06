@@ -8,6 +8,7 @@ import { PendingDocumentAlerts } from '../components/PendingDocumentAlerts'
 import { SalesPurchaseChart } from '../components/SalesPurchaseChart'
 import { CashFlowChart } from '../components/CashFlowChart'
 import { RecentActivity } from '../components/RecentActivity'
+import { OpeningBalanceAlert } from '../components/OpeningBalanceAlert'
 
 export default function DashboardPage() {
   const { summary, pending, chart, activities } = useDashboardData()
@@ -38,6 +39,11 @@ export default function DashboardPage() {
             </Button>
           </section>
         ) : null}
+
+        {/* Saldo awal yang belum tuntas — diam sendiri kalau sudah beres. */}
+        <PermissionGuard permission="opening_balance.view" fallback={null}>
+          <OpeningBalanceAlert />
+        </PermissionGuard>
 
         {/* KPI Cards */}
         <KpiCards summary={summary.data?.data} isLoading={summary.isLoading} isUnavailable={summaryUnavailable} />

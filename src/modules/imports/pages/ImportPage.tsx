@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, CheckCircle2, Download, FileDown, Info, Upload, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Download, FileDown, Info, Undo2, Upload, XCircle } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { TablePagination } from '@/components/shared/table/TablePagination'
+import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
+import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
 import { getApiErrorMessage, getApiValidationErrors } from '@/lib/apiError'
 import { cn } from '@/lib/utils'
 import { importsApi } from '../services/importsApi'
-import { useImportBatch, useImportMutations, useImportProfiles, useImportRows } from '../hooks/useImports'
+import { useImportBatch, useImportHistory, useImportMutations, useImportProfiles, useImportRows } from '../hooks/useImports'
 import { useImportPresetStore } from '../stores/useImportPresetStore'
-import type { ActiveBatchExistsMeta, DuplicateFileWarningMeta, ImportProfile } from '../types/imports.types'
+import type { ActiveBatchExistsMeta, DuplicateFileWarningMeta, ImportBatch, ImportProfile } from '../types/imports.types'
 import type { ApiError } from '@/types/api.types'
 
 type Step = 'upload' | 'mapping' | 'preview'
@@ -27,7 +29,11 @@ const STATUS_LABELS: Record<string, string> = {
   committing: 'Sedang commit',
   completed: 'Selesai',
   failed: 'Gagal',
+  reverted: 'Dibatalkan',
 }
+
+/** Profil yang commit-nya punya lawan (backend: interface `RevertsImport`). */
+const REVERTIBLE_PROFILES = ['opening_balance', 'fixed_asset_opening']
 
 /**
  * Alur: pilih profil + unggah → petakan kolom → pratinjau & commit.
@@ -105,7 +111,7 @@ export default function ImportPage() {
 
   const { data: rowsResponse, isFetching: rowsFetching } = useImportRows(step === 'preview' ? activeUuid : null, rowsPage)
 
-  const { upload, mapping, commit, cancel } = useImportMutations()
+  const { upload, mapping, commit, cancel, revert } = useImportMutations()
   const busy = upload.isPending || mapping.isPending || commit.isPending || cancel.isPending
 
   const reset = () => {
@@ -225,6 +231,16 @@ export default function ImportPage() {
     }
   }
 
+  const doRevert = async (uuid: string, reason: string) => {
+    try {
+      await revert.mutateAsync({ uuid, reason })
+      toast.success('Impor dibatalkan — datanya sudah ditarik kembali.')
+      if (uuid === activeUuid) reset()
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal membatalkan impor.'))
+    }
+  }
+
   const doDownloadErrorLog = async () => {
     if (!activeUuid) return
     try {
@@ -291,19 +307,29 @@ export default function ImportPage() {
               )}
 
               {/*
-                Urutan aset tetap → saldo awal itu wajib, bukan saran: harga
-                perolehan dan akumulasi penyusutan aset awal dihitung otomatis
-                jadi baris saldo awal, dan baris manual dengan akun yang sama
-                ditolak. Salah urutan menghasilkan galat neraca yang jauh dari
-                penyebabnya, jadi satu kalimat di sini jauh lebih murah.
+                Sejak Fase 8 tidak ada urutan wajib antara dua profil ini, dan
+                itu justru yang perlu dikatakan — pesan sebelumnya menyuruh
+                sebaliknya, jadi user yang pernah membacanya akan menahan diri
+                tanpa alasan.
               */}
               {profileKey === 'opening_balance' && (
                 <div className="flex gap-2 rounded-md border border-[#bfdbfe] bg-[#eff6ff] p-3 text-[12px] text-[#1e40af]">
                   <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <p>
-                    Impor <strong>Aset Tetap Awal</strong> lebih dulu kalau perusahaan ini punya aset tetap.
-                    Harga perolehan dan akumulasi penyusutannya otomatis jadi baris saldo awal, jadi
-                    akun-akun itu <strong>jangan</strong> dimasukkan ke berkas ini.
+                    Berkas ini mengisi <strong>saldo akun</strong> — termasuk akun aset tetap. Selisihnya
+                    otomatis jatuh ke akun perantara, jadi berkasnya tidak perlu seimbang dan boleh dicicil.
+                    Impor aset tetap terpisah dan urutannya bebas.
+                  </p>
+                </div>
+              )}
+
+              {profileKey === 'fixed_asset_opening' && (
+                <div className="flex gap-2 rounded-md border border-[#bfdbfe] bg-[#eff6ff] p-3 text-[12px] text-[#1e40af]">
+                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <p>
+                    Berkas ini mendaftarkan <strong>kartu aset</strong> saja dan tidak membuat jurnal apa pun —
+                    nilainya masuk buku besar lewat berkas saldo awal. Boleh sebagian: daftarkan yang sudah
+                    pasti, sisanya menyusul.
                   </p>
                 </div>
               )}
@@ -545,8 +571,159 @@ export default function ImportPage() {
             </div>
           </section>
         )}
+
+        {isDone && batch && batch.committed_rows > 0 && <NextStepPanel profile={batch.profile} />}
+
+        <ImportHistory
+          onRevert={(uuid, reason) => doRevert(uuid, reason)}
+          reverting={revert.isPending}
+          canRevert={can('imports.revert')}
+        />
       </div>
     </WorkspaceLayout>
+  )
+}
+
+/**
+ * Apa yang harus dikerjakan user setelah commit selesai.
+ *
+ * Keluhan yang memicu Fase 8, harfiah: *"Aku sudah import aset tetap, langkah
+ * selanjutnya tidak jelas harus bagaimana."* Layar ini dulu berhenti di
+ * "Impor Berkas Lain" dan tidak pernah menyebut ke mana hasilnya pergi.
+ */
+function NextStepPanel({ profile }: { profile: string }) {
+  const openTab = useOpenPrimaryTab()
+
+  if (!REVERTIBLE_PROFILES.includes(profile)) return null
+
+  const openBoard = () =>
+    openTab({
+      id: 'opening-balance',
+      menuKey: 'opening-balance',
+      label: 'Saldo Awal',
+      module: 'accounting',
+      path: '/opening-balance',
+    })
+
+  return (
+    <section className="rounded-lg border border-[#bfdbfe] bg-[#eff6ff] p-5">
+      <h2 className="text-[14px] font-semibold text-[#1e40af]">Langkah selanjutnya</h2>
+      <ul className="mt-2 list-inside list-disc space-y-1 text-[12px] text-[#1e40af]">
+        {profile === 'opening_balance' ? (
+          <>
+            <li>Berkas ini sudah jadi satu jurnal pembuka. Selisihnya ada di akun perantara.</li>
+            <li>Masih ada saldo akun lain? Impor berkas berikutnya — boleh dicicil.</li>
+            <li>Kalau semuanya sudah masuk, tutup perantaranya ke ekuitas di papan Saldo Awal.</li>
+          </>
+        ) : (
+          <>
+            <li>Kartu aset sudah terdaftar dan aktif, beserta jadwal penyusutannya.</li>
+            <li>Nilainya belum ada di buku besar — itu masuk lewat berkas saldo awal.</li>
+            <li>Papan Saldo Awal menunjukkan apakah saldo akunnya sudah sama dengan kartu aset.</li>
+          </>
+        )}
+      </ul>
+      <Button type="button" className="mt-3 h-9 bg-[#5c9ead] text-[13px] hover:bg-[#4a8a9b]" onClick={openBoard}>
+        Buka Papan Saldo Awal
+      </Button>
+    </section>
+  )
+}
+
+/**
+ * Riwayat impor + pembatalannya.
+ *
+ * Sampai Fase 7 tidak ada rute daftar sama sekali: UUID batch cuma hidup di
+ * state halaman ini, jadi batch yang sudah selesai tidak punya layar tempat ia
+ * bisa dibuka lagi — apalagi dibatalkan.
+ */
+function ImportHistory({
+  onRevert,
+  reverting,
+  canRevert,
+}: {
+  onRevert: (uuid: string, reason: string) => void
+  reverting: boolean
+  canRevert: boolean
+}) {
+  const [page, setPage] = useState(1)
+  const { data } = useImportHistory(page)
+  const [target, setTarget] = useState<ImportBatch | null>(null)
+
+  const batches = data?.data ?? []
+  if (batches.length === 0) return null
+
+  return (
+    <section className="bg-white border border-[#d9e2e5] rounded-lg p-5">
+      <h2 className="text-[14px] font-semibold text-[#24323a]">Riwayat Impor</h2>
+
+      <div className="mt-3 overflow-x-auto rounded-md border border-[#e2e8f0]">
+        <table className="w-full text-[12px]">
+          <thead>
+            <tr className="bg-[#f8fafc] text-left text-[#64748b]">
+              <th className="px-3 py-2 font-medium">Berkas</th>
+              <th className="px-3 py-2 font-medium">Profil</th>
+              <th className="px-3 py-2 font-medium">Status</th>
+              <th className="px-3 py-2 text-right font-medium">Ter-commit</th>
+              <th className="px-3 py-2 text-right font-medium">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {batches.map((item) => (
+              <tr key={item.uuid} className="border-t border-[#f1f5f9]">
+                <td className="px-3 py-2 text-[#334155]">{item.original_filename}</td>
+                <td className="px-3 py-2 text-[#64748b]">{item.profile}</td>
+                <td className="px-3 py-2">
+                  <Badge className={cn('text-[10px] px-1.5 py-0', statusBadgeClass(item.status))}>
+                    {STATUS_LABELS[item.status] ?? item.status}
+                  </Badge>
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-[#334155]">{item.committed_rows}</td>
+                <td className="px-3 py-2 text-right">
+                  {canRevert && item.status === 'completed' && REVERTIBLE_PROFILES.includes(item.profile) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1 text-[11px]"
+                      onClick={() => setTarget(item)}
+                    >
+                      <Undo2 className="h-3 w-3" /> Batalkan Impor
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {data && data.meta.last_page > 1 && (
+        <div className="mt-2">
+          <TablePagination
+            pagination={{ pageIndex: page - 1, pageSize: 25 }}
+            totalRows={data.meta.total}
+            onChange={(state) => setPage(state.pageIndex + 1)}
+          />
+        </div>
+      )}
+
+      <VoidConfirmDialog
+        isOpen={target !== null}
+        onClose={() => setTarget(null)}
+        onConfirm={(reason) => {
+          if (target) onRevert(target.uuid, reason)
+          setTarget(null)
+        }}
+        documentNumber={target?.original_filename ?? ''}
+        isLoading={reverting}
+        title="Batalkan Impor"
+        description={`Seluruh data yang masuk dari ${target?.original_filename ?? ''} akan ditarik kembali.`}
+        warning="Jurnal pembuka di-void; kartu aset dihapus. Riwayat impornya tetap tersimpan."
+        confirmLabel="Batalkan Impor"
+        loadingLabel="Membatalkan..."
+      />
+    </section>
   )
 }
 

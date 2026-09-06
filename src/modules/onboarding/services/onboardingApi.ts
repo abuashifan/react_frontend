@@ -12,7 +12,7 @@ export const setupApi = {
   getSteps: () => http.get<unknown, ApiResponse<SetupStatus>>('/setup/steps'),
   updateCurrentStep: (step: string, openingDate?: string) =>
     http.patch<unknown, ApiResponse<Record<string, unknown>>>('/setup/current-step', { current_step: step, opening_date: openingDate }),
-  validateStep: (step: string, data?: { opening_date?: string; confirm_no_opening_fixed_assets?: boolean; confirm_opening_balance_skipped?: boolean }) =>
+  validateStep: (step: string, data?: { opening_date?: string }) =>
     http.post<unknown, ApiResponse<Record<string, unknown>>>('/setup/validate-step', { step, ...data }),
   validateAll: () => http.post<unknown, ApiResponse<{ valid: boolean; results: Record<string, unknown> }>>('/setup/validate-all'),
   getOpeningBalancePreview: () => http.get<unknown, ApiResponse<Record<string, unknown>>>('/setup/opening-balance/preview'),

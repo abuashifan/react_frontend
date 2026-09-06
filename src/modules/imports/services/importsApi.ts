@@ -30,6 +30,16 @@ export const importsApi = {
 
   cancel: (uuid: string) => http.delete<unknown, ApiResponse<null>>(`/imports/${uuid}`),
 
+  /** Riwayat impor. Tanpa ini, batch lama tidak punya layar tempat ia bisa dibuka lagi. */
+  list: (page: number, perPage = 25, profile?: string) =>
+    http.get<unknown, PaginatedResponse<ImportBatch>>('/imports', {
+      params: { page, per_page: perPage, ...(profile ? { profile } : {}) },
+    }),
+
+  /** Kebalikan commit: dokumen yang dihasilkan batch ini ditarik kembali. */
+  revert: (uuid: string, reason: string) =>
+    http.post<unknown, ApiResponse<ImportBatch>>(`/imports/${uuid}/revert`, { reason }),
+
   /**
    * Endpoint templat butuh Bearer token, dan interceptor `http` menormalkan
    * SETIAP respons lewat `normalizeApiResponse()` -- itu merusak Blob (bukan

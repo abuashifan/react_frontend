@@ -1,55 +1,44 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Upload } from 'lucide-react'
+import { Upload, AlertTriangle, CheckCircle2, Ban } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
+import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { useToast } from '@/hooks/useToast'
 import { formatCurrency, cn } from '@/lib/utils'
 import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
 import { useImportPresetStore } from '@/modules/imports/stores/useImportPresetStore'
-import { useFiscalYearStatus } from '@/modules/accounting/hooks/useFiscalYear'
-import { useOBStatus, useOBMutations } from '../hooks/useOpeningBalance'
-import type { OBBatchStatus } from '../types/openingBalance.types'
 import { getApiErrorMessage } from '@/lib/apiError'
+import { useOBStatus, useOBMutations } from '../hooks/useOpeningBalance'
+import type { OBJournalSummary, OBStatus } from '../types/openingBalance.types'
 
-const STATUS_BADGE: Record<OBBatchStatus, { label: string; className: string }> = {
-  draft: { label: 'Draft', className: 'bg-[#FEF3C7] text-[#92400E] hover:bg-[#FEF3C7]' },
-  reopened: { label: 'Dibuka Kembali', className: 'bg-[#FEF3C7] text-[#92400E] hover:bg-[#FEF3C7]' },
-  validated: { label: 'Tervalidasi', className: 'bg-[#DBEAFE] text-[#1E40AF] hover:bg-[#DBEAFE]' },
-  posted: { label: 'Diposting', className: 'bg-[#D1FAE5] text-[#065F46] hover:bg-[#D1FAE5]' },
-  locked: { label: 'Dikunci', className: 'bg-[#E0E7FF] text-[#3730A3] hover:bg-[#E0E7FF]' },
-  voided: { label: 'Dibatalkan', className: 'bg-[#F1F5F9] text-[#64748b] hover:bg-[#F1F5F9]' },
-}
-
+/**
+ * Papan pemantau Saldo Awal — Fase 8.
+ *
+ * Menggantikan editor baris + Validasi + Posting + Kunci + Buka Kembali. Saldo
+ * awal bukan lagi dokumen yang harus diselesaikan sekali duduk: ia kumpulan
+ * jurnal yang boleh dicicil, dan halaman ini cuma menjawab tiga pertanyaan —
+ * sudah masuk apa saja, berapa yang belum diakui sebagai ekuitas, dan apakah
+ * kartu aset sudah sama dengan buku besarnya.
+ */
 export default function OpeningBalanceStatusPage() {
-  const navigate = useNavigate()
   const { toast } = useToast()
   const { data, isLoading } = useOBStatus()
-  const { createBatch } = useOBMutations()
+  const { setOpeningDate, closeClearing, voidJournal } = useOBMutations()
   const openTab = useOpenPrimaryTab()
-  const { data: fiscalYearData } = useFiscalYearStatus()
 
-  /**
-   * Default tanggal saldo awal = awal tahun fiskal aktif, sama dengan jalur
-   * impor (OpeningBalanceImportCommitter::defaultOpeningDate()). Sebelumnya
-   * halaman ini mengirim tanggal HARI INI tanpa bisa diubah user -- saldo awal
-   * bertanggal tengah bulan berjalan hampir selalu salah, ia harus berdiri di
-   * batas periode. Hari ini tetap dipakai kalau tahun fiskal belum terbaca,
-   * tapi kini user melihat tanggalnya dan bisa membetulkannya sebelum mulai.
-   */
-  const fiscalYearStart = fiscalYearData?.data?.active_fiscal_year?.start_date ?? null
-  const [openingDate, setOpeningDate] = useState('')
-  const effectiveOpeningDate = openingDate || fiscalYearStart || new Date().toISOString().slice(0, 10)
+  const [dateDraft, setDateDraft] = useState('')
+  const [voidTarget, setVoidTarget] = useState<OBJournalSummary | null>(null)
+
+  const status = data?.data
 
   /**
    * Halaman impor hidup di modul Master Data, jadi tab primernya didaftarkan
-   * dulu -- AppShell mengarahkan router ke tab aktif saat mount, sehingga
-   * navigate() telanjang akan dipantulkan balik. Pola yang sama dipakai
-   * Step5OpeningBalance saat membuka halaman ini.
+   * dulu — AppShell mengarahkan router ke tab aktif saat mount, sehingga
+   * navigate() telanjang akan dipantulkan balik.
    */
   const openImport = (profile: string) => {
     useImportPresetStore.getState().requestProfile(profile)
@@ -62,18 +51,38 @@ export default function OpeningBalanceStatusPage() {
     })
   }
 
-  const status = data?.data
-  const batch = status?.batch ?? null
-
-  const handleStart = async () => {
+  const handleSaveDate = async () => {
+    if (!dateDraft) return
     try {
-      const res = await createBatch.mutateAsync({ opening_date: effectiveOpeningDate })
-      toast.success('Batch saldo awal dibuat.')
-      navigate(`/opening-balance/${res.data.id}`)
-    } catch (startError) { toast.error(getApiErrorMessage(startError, 'Gagal membuat batch saldo awal.')) }
+      await setOpeningDate.mutateAsync(dateDraft)
+      toast.success('Tanggal saldo awal disimpan.')
+      setDateDraft('')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan tanggal saldo awal.'))
+    }
   }
 
-  if (isLoading) {
+  const handleClose = async () => {
+    try {
+      await closeClearing.mutateAsync({})
+      toast.success('Saldo perantara ditutup ke ekuitas.')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal menutup saldo perantara.'))
+    }
+  }
+
+  const handleVoid = async (reason: string) => {
+    if (!voidTarget) return
+    try {
+      await voidJournal.mutateAsync({ journalId: voidTarget.id, reason })
+      toast.success(`Jurnal ${voidTarget.journal_number} dibatalkan.`)
+      setVoidTarget(null)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal membatalkan jurnal.'))
+    }
+  }
+
+  if (isLoading || !status) {
     return (
       <WorkspaceLayout title="Saldo Awal" breadcrumb={[{ label: 'Akuntansi' }, { label: 'Saldo Awal' }]}>
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat...</div>
@@ -81,76 +90,264 @@ export default function OpeningBalanceStatusPage() {
     )
   }
 
-  const hasBatch = !!batch && status?.status !== 'not_started'
-  const badge = batch ? STATUS_BADGE[batch.status] : null
-
   return (
     <WorkspaceLayout title="Saldo Awal" breadcrumb={[{ label: 'Akuntansi' }, { label: 'Saldo Awal' }]}>
-      <div className="max-w-2xl">
-        {!hasBatch ? (
-          <div className="rounded-lg border border-[#e2e8f0] bg-white p-8 text-center">
-            <p className="text-[14px] font-semibold text-[#24323a]">Belum ada saldo awal</p>
-            <p className="mt-1 text-[13px] text-[#64748b]">Mulai input saldo awal untuk menetapkan posisi keuangan awal perusahaan.</p>
-            <PermissionGuard permission="opening_balance.manage" fallback={null}>
-              <div className="mx-auto mt-5 max-w-xs text-left">
-                <Label htmlFor="opening-balance-date" className="text-[12px] text-[#334155]">Tanggal saldo awal</Label>
-                <Input
-                  id="opening-balance-date"
-                  type="date"
-                  value={effectiveOpeningDate}
-                  onChange={(event) => setOpeningDate(event.target.value)}
-                  className="mt-1 h-9 text-[13px] tabular-nums"
-                />
-                <p className="mt-1 text-[11px] text-[#64748b]">
-                  Posisi keuangan diukur pada tanggal ini. Isi dengan batas periode — biasanya awal tahun fiskal, bukan tanggal hari ini.
-                </p>
-              </div>
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                <Button type="button" onClick={() => void handleStart()} disabled={createBatch.isPending} className="h-9 bg-[#e39774] px-6 text-[13px] hover:bg-[#d4845e]">
-                  {createBatch.isPending ? 'Membuat...' : 'Mulai Input Saldo Awal'}
-                </Button>
-                <Button type="button" variant="outline" className="h-9 gap-1.5 px-5 text-[13px]" onClick={() => openImport('opening_balance')}>
-                  <Upload className="h-3.5 w-3.5" /> Impor dari Berkas
-                </Button>
-              </div>
-            </PermissionGuard>
-          </div>
-        ) : (
-          <div className="space-y-4 rounded-lg border border-[#e2e8f0] bg-white p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[13px] font-semibold text-[#24323a]">{batch.batch_number}</p>
-                <p className="text-[11px] text-[#64748b]">Tanggal: {batch.opening_date}</p>
-              </div>
-              {badge && <Badge className={cn('text-[11px] px-2 py-0.5 rounded-full', badge.className)}>{badge.label}</Badge>}
-            </div>
-
-            <div className="space-y-1 rounded-md border border-[#e2e8f0] bg-[#f8fafc] p-3 text-[12px]">
-              <div className="flex justify-between"><span className="text-[#64748b]">Total Debit</span><span className="tabular-nums font-medium">{formatCurrency(batch.total_debit)}</span></div>
-              <div className="flex justify-between"><span className="text-[#64748b]">Total Kredit</span><span className="tabular-nums font-medium">{formatCurrency(batch.total_credit)}</span></div>
-              <div className="flex justify-between border-t border-[#e2e8f0] pt-1">
-                <span className="font-semibold text-[#334155]">Selisih</span>
-                <span className={cn('tabular-nums font-semibold', Math.abs(batch.difference) < 0.01 ? 'text-green-700' : 'text-red-600')}>{formatCurrency(batch.difference)}</span>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" onClick={() => navigate(`/opening-balance/${batch.id}`)} className="h-9 bg-[#5c9ead] px-5 text-[13px] hover:bg-[#4a8a9b]">
-                {batch.status === 'draft' || batch.status === 'reopened' ? 'Lanjutkan Input' : 'Lihat Detail'}
-              </Button>
-              {/* Impor hanya mungkin selama batch masih bisa diubah — backend
-                  menolaknya begitu diposting/dikunci. */}
-              {(batch.status === 'draft' || batch.status === 'reopened') && (
-                <PermissionGuard permission="opening_balance.manage" fallback={null}>
-                  <Button type="button" variant="outline" className="h-9 gap-1.5 px-5 text-[13px]" onClick={() => openImport('opening_balance')}>
-                    <Upload className="h-3.5 w-3.5" /> Impor dari Berkas
-                  </Button>
-                </PermissionGuard>
-              )}
-            </div>
-          </div>
+      <div className="max-w-4xl space-y-4">
+        {!status.ready && (
+          <Notice tone="warning">
+            Pemetaan akun saldo awal belum lengkap. Terapkan Daftar Akun lebih dulu di wizard Setup,
+            lalu petakan akun perantara dan ekuitas di Pengaturan → Pemetaan Akun.
+          </Notice>
         )}
+
+        <ClearingCard status={status} onClose={() => void handleClose()} closing={closeClearing.isPending} />
+
+        <section className="rounded-lg border border-[#e2e8f0] bg-white p-5">
+          <h2 className="text-[14px] font-semibold text-[#24323a]">Tanggal Saldo Awal</h2>
+          <p className="mt-1 text-[12px] text-[#64748b]">
+            Posisi keuangan diukur pada tanggal ini, dan akumulasi penyusutan aset warisan dihitung
+            per tanggal ini juga. Isi dengan batas periode — biasanya awal tahun fiskal.
+          </p>
+
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <div className="w-52">
+              <Label htmlFor="ob-date" className="text-[12px] text-[#334155]">Tanggal</Label>
+              <Input
+                id="ob-date"
+                type="date"
+                value={dateDraft || status.opening_date}
+                disabled={status.opening_date_locked}
+                onChange={(event) => setDateDraft(event.target.value)}
+                className="mt-1 h-9 text-[13px] tabular-nums"
+              />
+            </div>
+            {status.opening_date_locked ? (
+              <p className="pb-2 text-[11px] text-[#64748b]">
+                Terkunci — sudah ada jurnal pembuka bertanggal ini. Batalkan jurnalnya dulu kalau tanggalnya salah.
+              </p>
+            ) : (
+              <PermissionGuard permission="opening_balance.manage" fallback={null}>
+                <Button
+                  type="button"
+                  onClick={() => void handleSaveDate()}
+                  disabled={!dateDraft || setOpeningDate.isPending}
+                  className="h-9 bg-[#5c9ead] px-5 text-[13px] hover:bg-[#4a8a9b]"
+                >
+                  {setOpeningDate.isPending ? 'Menyimpan...' : 'Simpan'}
+                </Button>
+              </PermissionGuard>
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-[#e2e8f0] bg-white p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-[14px] font-semibold text-[#24323a]">Jurnal Pembuka</h2>
+              <p className="mt-1 text-[12px] text-[#64748b]">
+                Berkas boleh dicicil — kas hari ini, piutang besok. Tiap berkas jadi satu jurnal yang
+                bisa dibatalkan sendiri.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" className="h-9 gap-1.5 text-[13px]" onClick={() => openImport('opening_balance')}>
+                <Upload className="h-3.5 w-3.5" /> Impor Saldo Akun
+              </Button>
+              <Button type="button" variant="outline" className="h-9 gap-1.5 text-[13px]" onClick={() => openImport('fixed_asset_opening')}>
+                <Upload className="h-3.5 w-3.5" /> Impor Aset Tetap
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-4 overflow-x-auto rounded-md border border-[#e2e8f0]">
+            <table className="w-full text-[12px]">
+              <thead>
+                <tr className="bg-[#f8fafc] text-left text-[#64748b]">
+                  <th className="px-3 py-2 font-medium">Nomor</th>
+                  <th className="px-3 py-2 font-medium">Tanggal</th>
+                  <th className="px-3 py-2 font-medium">Keterangan</th>
+                  <th className="px-3 py-2 text-right font-medium">Nilai</th>
+                  <th className="px-3 py-2 text-right font-medium">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {status.journals.map((journal) => (
+                  <tr key={journal.id} className="border-t border-[#f1f5f9]">
+                    <td className="px-3 py-2 font-medium text-[#334155]">
+                      {journal.journal_number}
+                      {journal.role === 'clearing_close' && (
+                        <Badge className="ml-2 bg-[#E0E7FF] px-1.5 py-0 text-[10px] text-[#3730A3] hover:bg-[#E0E7FF]">
+                          penutup
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 tabular-nums text-[#64748b]">{journal.journal_date}</td>
+                    <td className="px-3 py-2 text-[#64748b]">{journal.description}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-[#334155]">{formatCurrency(journal.total_debit)}</td>
+                    <td className="px-3 py-2 text-right">
+                      <PermissionGuard permission="opening_balance.reopen" fallback={null}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 gap-1 text-[11px]"
+                          onClick={() => setVoidTarget(journal)}
+                        >
+                          <Ban className="h-3 w-3" /> Batalkan
+                        </Button>
+                      </PermissionGuard>
+                    </td>
+                  </tr>
+                ))}
+                {status.journals.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-6 text-center text-[#94a3b8]">
+                      Belum ada jurnal pembuka. Mulai dengan mengimpor berkas neraca saldo lama.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <ReconciliationCard status={status} onImportAssets={() => openImport('fixed_asset_opening')} />
       </div>
+
+      <VoidConfirmDialog
+        isOpen={voidTarget !== null}
+        onClose={() => setVoidTarget(null)}
+        onConfirm={(reason) => void handleVoid(reason)}
+        documentNumber={voidTarget?.journal_number ?? ''}
+        isLoading={voidJournal.isPending}
+        title="Batalkan Jurnal Pembuka"
+        description={`Jurnal ${voidTarget?.journal_number ?? ''} akan dibatalkan dan saldo perantara kembali seperti sebelum berkas ini masuk.`}
+        warning="Jurnal lain tidak ikut terpengaruh."
+      />
     </WorkspaceLayout>
+  )
+}
+
+function ClearingCard({ status, onClose, closing }: { status: OBStatus; onClose: () => void; closing: boolean }) {
+  const balance = status.clearing_balance
+  const settled = Math.abs(balance) < 0.01
+
+  return (
+    <section className="rounded-lg border border-[#e2e8f0] bg-white p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="text-[14px] font-semibold text-[#24323a]">
+            {status.clearing_account
+              ? `${status.clearing_account.account_code} ${status.clearing_account.account_name}`
+              : 'Saldo Awal (Perantara)'}
+          </h2>
+          <p className="mt-1 max-w-lg text-[12px] text-[#64748b]">
+            Setiap jurnal pembuka berlawanan dengan akun ini, jadi saldonya adalah{' '}
+            <strong>ekuitas pembuka yang belum diakui</strong> — aset dikurangi liabilitas. Tutup ke
+            {' '}{status.equity_account ? `${status.equity_account.account_code} ${status.equity_account.account_name}` : 'akun ekuitas'} kalau angkanya sudah benar.
+          </p>
+        </div>
+        <div className="text-right">
+          <p className={cn('text-[26px] font-semibold tabular-nums', settled ? 'text-green-700' : 'text-[#24323a]')}>
+            {formatCurrency(Math.abs(balance))}
+          </p>
+          <p className="text-[11px] text-[#64748b]">
+            {settled ? 'Sudah nol — neraca pembuka selesai' : balance > 0 ? 'saldo debit' : 'saldo kredit'}
+          </p>
+        </div>
+      </div>
+
+      {!settled && status.journal_count > 0 && (
+        <PermissionGuard permission="opening_balance.post" fallback={null}>
+          <Button
+            type="button"
+            onClick={onClose}
+            disabled={closing}
+            className="mt-4 h-9 bg-[#e39774] px-5 text-[13px] hover:bg-[#d4845e]"
+          >
+            {closing ? 'Menutup...' : 'Tutup ke Ekuitas'}
+          </Button>
+        </PermissionGuard>
+      )}
+
+      {settled && status.journal_count > 0 && (
+        <p className="mt-3 flex items-center gap-1.5 text-[12px] text-green-700">
+          <CheckCircle2 className="h-3.5 w-3.5" /> Seluruh saldo awal sudah diakui sebagai ekuitas.
+        </p>
+      )}
+    </section>
+  )
+}
+
+function ReconciliationCard({ status, onImportAssets }: { status: OBStatus; onImportAssets: () => void }) {
+  const reconciliation = status.fixed_asset_reconciliation
+
+  if (!reconciliation.enabled || reconciliation.rows.length === 0) return null
+
+  return (
+    <section className="rounded-lg border border-[#e2e8f0] bg-white p-5">
+      <h2 className="text-[14px] font-semibold text-[#24323a]">Kartu Aset vs Buku Besar</h2>
+      <p className="mt-1 max-w-2xl text-[12px] text-[#64748b]">
+        Selisih di sini <strong>bukan galat</strong>. Pendaftaran aset boleh sebagian — tanah bisa
+        berdiri di beberapa lokasi sementara yang terdaftar baru satu. Lanjutkan pendaftarannya kapan
+        saja, atau betulkan saldo akunnya kalau memang keliru.
+      </p>
+
+      <div className="mt-3 overflow-x-auto rounded-md border border-[#e2e8f0]">
+        <table className="w-full text-[12px]">
+          <thead>
+            <tr className="bg-[#f8fafc] text-left text-[#64748b]">
+              <th className="px-3 py-2 font-medium">Akun</th>
+              <th className="px-3 py-2 text-right font-medium">Buku Besar</th>
+              <th className="px-3 py-2 text-right font-medium">Kartu Aset</th>
+              <th className="px-3 py-2 text-right font-medium">Selisih</th>
+            </tr>
+          </thead>
+          <tbody>
+            {reconciliation.rows.map((row) => (
+              <tr key={`${row.account_id}-${row.kind}`} className="border-t border-[#f1f5f9]">
+                <td className="px-3 py-2 text-[#334155]">
+                  {row.account_code} {row.account_name}
+                  <span className="ml-1.5 text-[10px] text-[#94a3b8]">
+                    {row.kind === 'cost' ? 'harga perolehan' : 'akumulasi'}
+                  </span>
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(row.gl_amount)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(row.register_amount)}</td>
+                <td className={cn('px-3 py-2 text-right tabular-nums font-medium', Math.abs(row.difference) < 0.01 ? 'text-green-700' : 'text-[#92400E]')}>
+                  {formatCurrency(row.difference)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {reconciliation.has_difference && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-[#FDE68A] bg-[#FFFBEB] p-3">
+          <p className="text-[12px] text-[#92400E]">
+            <AlertTriangle className="mr-1 inline h-3.5 w-3.5" />
+            Ada akun aset tetap yang saldonya belum sama dengan kartu aset terdaftar.
+          </p>
+          <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 text-[11px]" onClick={onImportAssets}>
+            <Upload className="h-3.5 w-3.5" /> Daftarkan Aset Lagi
+          </Button>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function Notice({ tone, children }: { tone: 'warning'; children: React.ReactNode }) {
+  return (
+    <div
+      className={cn(
+        'rounded-md border p-3 text-[12px]',
+        tone === 'warning' && 'border-[#FDE68A] bg-[#FFFBEB] text-[#92400E]',
+      )}
+    >
+      <AlertTriangle className="mr-1 inline h-3.5 w-3.5" />
+      {children}
+    </div>
   )
 }

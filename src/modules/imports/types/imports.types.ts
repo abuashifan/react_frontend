@@ -8,8 +8,10 @@ export type ImportBatchStatus =
   | 'committing'
   | 'completed'
   | 'failed'
+  /** Fase 8 — commit-nya sudah ditarik kembali; batchnya disimpan sebagai riwayat. */
+  | 'reverted'
 
-export type ImportRowStatus = 'pending' | 'valid' | 'invalid' | 'committed' | 'failed'
+export type ImportRowStatus = 'pending' | 'valid' | 'invalid' | 'committed' | 'failed' | 'reverted'
 
 export interface ImportProfile {
   key: string

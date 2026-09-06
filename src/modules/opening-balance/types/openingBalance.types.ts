@@ -1,100 +1,69 @@
-// Opening Balance — mengikuti backend aktual (OpeningBalanceController + OpeningBalanceBatchService).
-// Phase 11 — spec-29.
+// Saldo awal — Fase 8.
+//
+// Tidak ada lagi batch, status dokumen, maupun baris yang bisa diedit di sini.
+// Saldo awal adalah kumpulan jurnal biasa bersumber `opening_balance`, dan yang
+// tersisa untuk ditampilkan cuma: tanggalnya, saldo akun perantara, daftar
+// jurnalnya, dan rekonsiliasi register aset terhadap buku besar.
 
-// `reopened` sempat hilang di sini padahal backend memakainya: reopen()
-// menyetel status ke 'reopened', dan `editable()` menerima draft ATAU
-// reopened. Tanpa anggota ini, kode frontend yang mengecek batch bisa
-// diubah selalu meleset untuk batch yang baru dibuka kembali.
-export type OBBatchStatus = 'draft' | 'reopened' | 'validated' | 'posted' | 'locked' | 'voided'
-
-export interface OBLine {
-  id?: number
-  account_id: number
-  account_code?: string | null
-  account_name?: string | null
-  account?: { id: number; account_code: string; account_name: string } | null
-  debit?: number | null
-  credit?: number | null
-  description?: string | null
-  is_system_generated?: boolean
+export interface OBAccountRef {
+  id: number
+  account_code: string
+  account_name: string
 }
 
-export interface OBBatch {
+export interface OBJournalSummary {
   id: number
-  batch_number: string
-  opening_date: string
-  status: OBBatchStatus
-  description?: string | null
+  journal_number: string
+  journal_date: string | null
+  description: string | null
+  status: string
   total_debit: number
-  total_credit: number
+  line_count: number
+  /** `clearing_close` untuk jurnal penutup, `entry` untuk sisanya. */
+  role: string
+}
+
+export interface OBReconciliationRow {
+  account_id: number
+  account_code: string | null
+  account_name: string | null
+  kind: 'cost' | 'accumulated'
+  /** Total dari kartu aset yang terdaftar. */
+  register_amount: number
+  /** Saldo akun yang sama di buku besar. */
+  gl_amount: number
   difference: number
-  journal_entry_id?: number | null
-  validated_at?: string | null
-  posted_at?: string | null
-  locked_at?: string | null
-  reopened_at?: string | null
-  lines?: OBLine[]
-  created_at: string
-  updated_at?: string
+}
+
+export interface OBReconciliation {
+  enabled: boolean
+  asset_count?: number
+  rows: OBReconciliationRow[]
+  has_difference: boolean
 }
 
 // GET /opening-balance/status
 export interface OBStatus {
-  status: 'not_started' | OBBatchStatus
-  batch: OBBatch | null
-  has_posted_or_locked_batch: boolean
-}
-
-// Backend mengirim objek, bukan string: `OpeningBalanceBatchService::error()`
-// mengembalikan {code, message, metadata?}. Sebelumnya di-tipe `string[]`,
-// sehingga <li>{e}</li> merender objek dan React melempar "Objects are not
-// valid as a React child" — dialog Preview mati persis saat ia paling
-// dibutuhkan, yaitu ketika ada blocking error yang harus dibaca user.
-export interface OBBlockingError {
-  code: string
-  message: string
-  metadata?: Record<string, unknown> | null
-}
-
-export interface OBValidation {
-  valid: boolean
-  errors: OBBlockingError[]
-  // `warnings` tetap string[]: ia datang dari OpeningBalanceValidator yang
-  // memformat 'LINE_<idx>:<pesan>', bukan lewat error().
-  warnings: string[]
-}
-
-// GET /opening-balance/batches/{batch}/preview
-export interface OBPreview {
-  batch: OBBatch
-  total_debit: number
-  total_credit: number
-  difference: number
-  validation: OBValidation
-  blocking_errors: OBBlockingError[]
-  warnings: string[]
-}
-
-// POST /opening-balance/batches/{batch}/validate — backend mengembalikan
-// {valid, batch, preview}, bukan OBBatch telanjang. `valid: false` tetap
-// datang sebagai HTTP 200, jadi pemanggil WAJIB membaca field ini; kalau
-// hanya mengandalkan throw, validasi gagal akan tampak seperti sukses.
-export interface OBValidateResult {
-  valid: boolean
-  batch: OBBatch
-  preview: OBPreview
-}
-
-export interface CreateOBBatchPayload {
   opening_date: string
-  fiscal_year?: number | null
-  type?: string
-  description?: string | null
+  opening_date_locked: boolean
+  /** false selama pemetaan akun perantara/ekuitas belum ada. */
+  ready: boolean
+  clearing_account: OBAccountRef | null
+  equity_account: OBAccountRef | null
+  /** Positif = saldo debit, negatif = saldo kredit. Nol = neraca pembuka selesai. */
+  clearing_balance: number
+  is_complete: boolean
+  journal_count: number
+  journals: OBJournalSummary[]
+  fixed_asset_reconciliation: OBReconciliation
 }
 
-export interface OBLinePayload {
+export interface OBCloseTarget {
   account_id: number
-  debit?: number | null
-  credit?: number | null
+  amount: number
+}
+
+export interface OBClosePayload {
   description?: string | null
+  targets?: OBCloseTarget[] | null
 }

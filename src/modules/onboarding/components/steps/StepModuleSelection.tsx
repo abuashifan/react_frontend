@@ -29,9 +29,9 @@ interface Props {
  * Langkah `module_selection` — salah satu step canonical backend
  * (SetupWizardService::$steps) yang sebelumnya tidak punya UI di wizard.
  *
- * Pilihan modul di sini menentukan langkah berikutnya: `opening_fixed_assets`
- * hanya wajib bila Aktiva Tetap diaktifkan, dan account mapping hanya menuntut
- * mapping milik modul yang aktif.
+ * Pilihan modul di sini menentukan isi langkah berikutnya: tautan impor aset
+ * tetap hanya muncul bila Aktiva Tetap diaktifkan, dan account mapping hanya
+ * menuntut mapping milik modul yang aktif.
  */
 export function StepModuleSelection({ onComplete, onBack }: Props) {
   const { toast } = useToast()

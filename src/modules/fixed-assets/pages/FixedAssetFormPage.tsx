@@ -196,24 +196,22 @@ function FixedAssetFormPageContent() {
   // Aset saldo awal TIDAK boleh dikapitalisasi manual: harga perolehannya sudah
   // dibukukan jurnal saldo awal, jadi kapitalisasi normal akan membukukannya
   // dua kali. Backend menolaknya (FIXED_ASSET_OPENING_NOT_CAPITALIZABLE);
-  // tombolnya disembunyikan supaya user tidak menabraknya lebih dulu. Aset ini
-  // aktif otomatis saat batch saldo awalnya diposting.
+  // tombolnya disembunyikan supaya user tidak menabraknya lebih dulu. Nilai aset
+  // ini masuk buku besar lewat impor saldo awal, seperti akun lain.
   const canCapitalize = !isCreate && status === 'draft' && !isOpeningAsset
   const canDispose = !isCreate && ['active', 'capitalized', 'partially_disposed', 'fully_depreciated'].includes(status)
 
   /**
-   * Penandaan "aset saldo awal" hanya ditawarkan selama ada batch saldo awal
-   * yang masih bisa diisi. Kalau selalu tersedia, cepat atau lambat ada yang
-   * mencentangnya untuk aset yang baru dibeli — dan biaya aset itu tidak akan
-   * pernah masuk buku besar, karena ia menunggu posting yang sudah lewat.
+   * Penandaan "aset saldo awal" ditawarkan selama neraca pembukanya belum
+   * ditutup ke ekuitas. Setelah ditutup, aset yang dicentang sebagai saldo awal
+   * akan menggantung: nilainya tidak pernah dibukukan karena berkas saldo
+   * awalnya sudah selesai.
    *
    * `isSuccess` wajib dicek: user tanpa izin `opening_balance.view` mendapat
-   * query gagal, dan `data` undefined tidak boleh diartikan "belum ada batch".
+   * query gagal, dan `data` undefined tidak boleh diartikan "boleh".
    */
   const { data: obStatus, isSuccess: obStatusLoaded } = useOBStatus()
-  const obBatch = obStatus?.data.batch ?? null
-  const canMarkAsOpening =
-    isCreate && obStatusLoaded && (obBatch === null || obBatch.status === 'draft' || obBatch.status === 'reopened')
+  const canMarkAsOpening = isCreate && obStatusLoaded && !(obStatus?.data.is_complete ?? false)
 
   const {
     control,
@@ -264,7 +262,7 @@ function FixedAssetFormPageContent() {
       salvage: Number(salvageValue ?? 0),
       lifeYears: Number(usefulLifeYears ?? 0) || selectedCategory?.default_useful_life_years || null,
       serviceStartDate: serviceStartDate || acquisitionDate || '',
-      openingDate: obBatch?.opening_date ?? new Date().toISOString().slice(0, 10),
+      openingDate: obStatus?.data.opening_date ?? new Date().toISOString().slice(0, 10),
     })
   }, [
     markAsOpening,
@@ -274,7 +272,7 @@ function FixedAssetFormPageContent() {
     selectedCategory,
     serviceStartDate,
     acquisitionDate,
-    obBatch,
+    obStatus,
   ])
 
   useEffect(() => {
@@ -605,11 +603,9 @@ function FixedAssetFormPageContent() {
                           </span>
                           <br />
                           Garis lurus sampai{' '}
-                          {obBatch
-                            ? formatDate(obBatch.opening_date)
-                            : 'tanggal hari ini (batch saldo awal belum dibuat)'}
-                          . Angkanya dihitung ulang saat batch saldo awal diposting. Timpa kalau pembukuan
-                          lama memakai metode lain.
+                          {obStatus ? formatDate(obStatus.data.opening_date) : 'tanggal saldo awal'}
+                          . Angkanya dihitung ulang saat aset diaktifkan. Timpa kalau pembukuan lama
+                          memakai metode lain.
                         </p>
                         <Button
                           type="button"
