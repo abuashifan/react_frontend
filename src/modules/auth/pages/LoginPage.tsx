@@ -137,11 +137,11 @@ export function LoginPage() {
       const companies = companiesResponse.data
       setCompanies(companies)
 
-      if (companies.length === 0) {
-        toast.error('Akun Anda belum memiliki akses perusahaan.')
-        return
-      }
-
+      // Akun tanpa perusahaan bukan login yang gagal — itu keadaan normal user
+      // yang baru dibuat. Halaman pilih perusahaan sudah merender
+      // `AddCompanyCard` meski daftarnya kosong, jadi ke sanalah tempatnya
+      // membuat perusahaan pertama. Menahannya di layar login membuat akunnya
+      // terautentikasi tapi tidak punya jalan ke mana pun.
       if (companies.length === 1) {
         await activateCompany(companies[0])
       } else {
