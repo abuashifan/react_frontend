@@ -20,6 +20,12 @@ export interface ImportProfile {
   fields: string[]
   headers: string[]
   required_fields: string[]
+  /**
+   * Field yang isinya nilai uang — pratinjau impor memformat selnya sebagai
+   * mata uang. Ditentukan backend (`config/imports.php`), bukan ditebak dari
+   * isi sel: kode akun '1100' juga angka, tapi ia bukan seribu seratus rupiah.
+   */
+  money_fields: string[]
 }
 
 export interface ImportBatch {
@@ -41,6 +47,19 @@ export interface ImportBatch {
   created_by: number | null
   created_at: string | null
   updated_at: string | null
+}
+
+/**
+ * Satu batch beserta header berkasnya — jawaban `GET /imports/{uuid}`.
+ *
+ * `headers` tidak ada di riwayat (daftar batch) karena ia dibaca dari berkas,
+ * bukan dari tabel. Ia ada di sini supaya batch yang ditinggalkan sebelum
+ * di-commit masih bisa dibuka kembali setelah halaman di-reload — layar
+ * pemetaan butuh daftar header untuk bisa digambar sama sekali.
+ */
+export interface ImportBatchDetail extends ImportBatch {
+  headers: string[]
+  suggested_column_map: Record<string, string>
 }
 
 export interface ImportRow {
@@ -67,6 +86,15 @@ export interface UploadImportResponse {
   batch: ImportBatch
   headers: string[]
   duplicate_file: { uuid: string; status: string; uploaded_at: string } | null
+  /**
+   * Pemetaan kolom yang sudah disimpulkan backend dari header berkas
+   * (`ImportBatchService::guessColumnMap()`). Field → nama header di berkas.
+   */
+  suggested_column_map: Record<string, string>
+  /** Field wajib yang headernya tidak terbaca — sisa pekerjaan manual. */
+  unmapped_required_fields: string[]
+  /** true saat seluruh field wajib terpetakan: layar pemetaan bisa dilewati. */
+  auto_mapped: boolean
 }
 
 export interface DuplicateFileWarningMeta {

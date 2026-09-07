@@ -1,20 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, CheckCircle2, Download, FileDown, Info, Undo2, Upload, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Download, FileDown, Info, PlayCircle, Trash2, Undo2, Upload, XCircle } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
-import { TablePagination } from '@/components/shared/table/TablePagination'
+import { DataTable } from '@/components/shared/table/DataTable'
+import type { ColumnDef } from '@/components/shared/table/DataTable'
+import { ConfirmDialog } from '@/components/shared/document/ConfirmDialog'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
 import { getApiErrorMessage, getApiValidationErrors } from '@/lib/apiError'
-import { cn } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 import { importsApi } from '../services/importsApi'
 import { useImportBatch, useImportHistory, useImportMutations, useImportProfiles, useImportRows } from '../hooks/useImports'
 import { useImportPresetStore } from '../stores/useImportPresetStore'
-import type { ActiveBatchExistsMeta, DuplicateFileWarningMeta, ImportBatch, ImportProfile } from '../types/imports.types'
+import type { ActiveBatchExistsMeta, DuplicateFileWarningMeta, ImportBatch, ImportProfile, ImportRow } from '../types/imports.types'
 import type { ApiError } from '@/types/api.types'
 
 type Step = 'upload' | 'mapping' | 'preview'
@@ -36,6 +38,13 @@ const STATUS_LABELS: Record<string, string> = {
 const REVERTIBLE_PROFILES = ['opening_balance', 'fixed_asset_opening']
 
 /**
+ * Status yang datanya BELUM masuk ke buku: batchnya boleh dilanjutkan atau
+ * dibuang begitu saja. `committing` sengaja tidak termasuk — backend menolak
+ * membatalkan batch yang jobnya sedang jalan.
+ */
+const RESUMABLE_STATUSES = ['draft', 'validating', 'previewed', 'failed']
+
+/**
  * Alur: pilih profil + unggah → petakan kolom → pratinjau & commit.
  * Satu halaman dengan state langkah lokal -- bukan wizard multi-rute, supaya
  * batch yang sedang berjalan (satu batch aktif per perusahaan) selalu
@@ -54,6 +63,7 @@ export default function ImportPage() {
   const [duplicateWarning, setDuplicateWarning] = useState<DuplicateFileWarningMeta['duplicate'] | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [rowsPage, setRowsPage] = useState(1)
+  const [autoMappedNotice, setAutoMappedNotice] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { data: profilesResponse, isLoading: profilesLoading } = useImportProfiles()
@@ -124,6 +134,7 @@ export default function ImportPage() {
     setDuplicateWarning(null)
     setUploadError(null)
     setRowsPage(1)
+    setAutoMappedNotice(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -134,10 +145,39 @@ export default function ImportPage() {
 
     try {
       const res = await upload.mutateAsync({ profile: profile.key, file, confirmDuplicateFile })
-      setActiveUuid(res.data.batch.uuid)
-      setUploadHeaders(res.data.headers)
-      setColumnMap(autoMapColumns(profile, res.data.headers))
+      const { batch: uploaded, headers, suggested_column_map: suggested, auto_mapped: autoMapped } = res.data
+
+      setActiveUuid(uploaded.uuid)
+      setUploadHeaders(headers)
+      setColumnMap(suggested)
       setDuplicateWarning(null)
+
+      /*
+       * Berkas yang headernya sudah dikenal tidak perlu layar pemetaan sama
+       * sekali — jawabannya sudah pasti, dan memintanya lagi cuma menyuruh user
+       * mengetik ulang apa yang sudah diketahui sistem. Layar itu kini hanya
+       * muncul untuk berkas yang memang belum bisa disimpulkan.
+       */
+      if (autoMapped) {
+        try {
+          await mapping.mutateAsync({ uuid: uploaded.uuid, columnMap: suggested })
+          setAutoMappedNotice(true)
+          setStep('preview')
+
+          return
+        } catch {
+          // Tebakannya ditolak backend — jatuh ke layar pemetaan, bukan ke
+          // penanganan galat unggah di bawah: berkasnya sudah masuk, yang
+          // gagal cuma langkah sesudahnya.
+          toast.error('Kolom tidak bisa dipetakan otomatis. Periksa pemetaannya.')
+          setAutoMappedNotice(false)
+          setStep('mapping')
+
+          return
+        }
+      }
+
+      setAutoMappedNotice(false)
       setStep('mapping')
     } catch (error) {
       const apiError = error as ApiError
@@ -149,10 +189,11 @@ export default function ImportPage() {
 
       if (apiError.code === 'IMPORT_ACTIVE_BATCH_EXISTS') {
         const meta = apiError.meta as unknown as ActiveBatchExistsMeta
-        toast.error('Masih ada batch impor aktif. Lanjutkan atau batalkan batch itu dulu.')
+        toast.error('Masih ada batch impor aktif. Lanjutkan atau buang batch itu dulu.')
         if (meta?.batch_uuid) {
-          setActiveUuid(meta.batch_uuid)
-          setStep(meta.status === 'previewed' ? 'preview' : 'mapping')
+          // Lewat resumeBatch, bukan setActiveUuid langsung: tanpa profil dan
+          // header yang ikut terpasang, layar pemetaan tidak merender apa pun.
+          await resumeBatch({ uuid: meta.batch_uuid } as ImportBatch)
         }
         return
       }
@@ -231,6 +272,50 @@ export default function ImportPage() {
     }
   }
 
+  /**
+   * Buka lagi batch yang ditinggalkan — Fase 8.
+   *
+   * UUID batch cuma hidup di state halaman ini, jadi satu reload sebelum commit
+   * membuatnya yatim: ia tampil di riwayat tapi tidak punya layar. Lebih buruk
+   * lagi kalau statusnya `previewed`, karena batch aktif memblokir unggahan
+   * berikutnya — menu impor terkunci tanpa jalan keluar.
+   *
+   * `headers` dan pemetaan diambil ulang dari backend (`show()`), bukan dari
+   * baris riwayat: riwayat tidak membawa header berkas.
+   */
+  const resumeBatch = async (item: ImportBatch) => {
+    try {
+      const { data: detail } = await importsApi.show(item.uuid)
+
+      setProfileKey(detail.profile)
+      setActiveUuid(detail.uuid)
+      setUploadHeaders(detail.headers)
+      setColumnMap(detail.column_map ?? detail.suggested_column_map)
+      setFile(null)
+      setUploadError(null)
+      setDuplicateWarning(null)
+      setAutoMappedNotice(false)
+      setRowsPage(1)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+
+      // `draft` berarti pemetaan belum pernah disimpan — satu-satunya status
+      // yang masih butuh layar pemetaan. Sisanya sudah punya baris tervalidasi.
+      setStep(detail.status === 'draft' ? 'mapping' : 'preview')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal membuka batch impor.'))
+    }
+  }
+
+  const doDiscard = async (uuid: string) => {
+    try {
+      await cancel.mutateAsync(uuid)
+      toast.success('Batch impor dibuang.')
+      if (uuid === activeUuid) reset()
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal membuang batch.'))
+    }
+  }
+
   const doRevert = async (uuid: string, reason: string) => {
     try {
       await revert.mutateAsync({ uuid, reason })
@@ -251,6 +336,83 @@ export default function ImportPage() {
   }
 
   const rows = rowsResponse?.data ?? []
+
+  // Kolom pratinjau = kolom berkasnya sendiri, bukan ringkasan hasil validasi.
+  // Tanpa isinya, layar ini cuma daftar nomor baris: tidak ada cara melihat
+  // APA yang salah pada baris yang ditandai, apalagi membandingkannya dengan
+  // berkas asli. Header diambil dari berkas; kalau berkasnya sudah tidak
+  // terbaca, dari kunci baris mentah yang tersimpan di basis data.
+  const fileHeaders =
+    batch?.headers && batch.headers.length > 0 ? batch.headers : Object.keys(rows[0]?.raw ?? {})
+
+  // Profil batch, bukan `profile` dari dropdown: setelah commit selesai user
+  // bisa mengganti pilihan dropdown sementara pratinjau lama masih terbuka.
+  const batchProfile = profiles.find((p: ImportProfile) => p.key === batch?.profile) ?? null
+
+  // Field uang diterjemahkan jadi header berkas lewat `column_map` (field →
+  // header), supaya sel tahu ia kolom uang atau bukan tanpa menebak dari isinya.
+  const moneyHeaders = new Set(
+    (batchProfile?.money_fields ?? [])
+      .map((field) => (batch?.column_map ?? {})[field])
+      .filter((header): header is string => typeof header === 'string' && header !== ''),
+  )
+
+  const previewColumns: ColumnDef<ImportRow>[] = [
+    {
+      id: '_row_number',
+      header: 'Baris',
+      cell: ({ original }) => <span className="tabular-nums text-[#94a3b8]">{original.row_number}</span>,
+      meta: { className: 'w-14' },
+    },
+    ...fileHeaders.map((header): ColumnDef<ImportRow> => {
+      const isMoney = moneyHeaders.has(header)
+
+      return {
+        id: `col:${header}`,
+        header,
+        // Nilai uang diformat sebagai mata uang, sisanya ditampilkan apa adanya.
+        // Memformat setiap sel yang kebetulan angka justru merusak data: kode
+        // akun '1100' bukan seribu seratus rupiah, dan '01/07/2024' bukan angka.
+        cell: ({ original }) => {
+          const value = original.raw?.[header] ?? ''
+
+          return isMoney && value.trim() !== '' ? formatCurrency(value) : value
+        },
+        meta: { className: isMoney ? 'text-right tabular-nums whitespace-nowrap' : 'whitespace-nowrap' },
+      }
+    }),
+    {
+      id: '_status',
+      header: 'Status',
+      cell: ({ original }) => (
+        <Badge className={cn('text-[10px] px-1.5 py-0', rowStatusBadgeClass(original.status))}>
+          {original.status}
+        </Badge>
+      ),
+    },
+    {
+      id: '_notes',
+      header: 'Keterangan',
+      // Galat dan peringatan berbagi satu kolom: keduanya jarang terisi
+      // sekaligus, dan dua kolom yang hampir selalu kosong mendesak data
+      // berkasnya keluar layar. Peringatan tidak menggagalkan baris — barisnya
+      // tetap ter-commit — jadi warnanya amber, bukan merah.
+      cell: ({ original }) => {
+        const errors = joinMessages(original.errors)
+        const warnings = joinMessages(original.warnings)
+
+        if (errors === '' && warnings === '') return <span className="text-[#cbd5e1]">—</span>
+
+        return (
+          <div className="min-w-[200px]">
+            {errors !== '' && <p className="text-[#991B1B]">{errors}</p>}
+            {warnings !== '' && <p className="text-[#92400E]">{warnings}</p>}
+          </div>
+        )
+      },
+    },
+  ]
+
   const canCommit = (batch?.valid_rows ?? 0) > 0 && batch?.status === 'previewed' && can('imports.commit')
   const isDone = batch?.status === 'completed' || batch?.status === 'failed'
   const isCommitting = batch?.status === 'committing'
@@ -388,8 +550,8 @@ export default function ImportPage() {
           <section className="bg-white border border-[#d9e2e5] rounded-lg p-5">
             <h2 className="text-[14px] font-semibold text-[#24323a] mb-1">2. Petakan Kolom</h2>
             <p className="text-[12px] text-[#64748b] mb-4">
-              Cocokkan setiap field dengan header di berkas Anda. Field bertanda <span className="text-red-500">*</span>{' '}
-              wajib dipetakan.
+              Kolom yang headernya dikenali sudah terisi sendiri — layar ini cuma muncul karena ada yang
+              belum. Lengkapi sisanya; field bertanda <span className="text-red-500">*</span> wajib dipetakan.
             </p>
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -442,6 +604,26 @@ export default function ImportPage() {
               </Badge>
             </div>
 
+            {autoMappedNotice && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-[#bfdbfe] bg-[#eff6ff] p-3">
+                <p className="text-[12px] text-[#1e40af]">
+                  <Info className="mr-1 inline h-3.5 w-3.5" />
+                  Kolom berkas dikenali otomatis, jadi langkah pemetaan dilewati.
+                </p>
+                {/* Tebakan tetap bisa salah untuk berkas yang kolomnya mirip —
+                    jalan keluarnya harus ada, dan harus terlihat. */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-[11px]"
+                  onClick={() => setStep('mapping')}
+                >
+                  Ubah Pemetaan
+                </Button>
+              </div>
+            )}
+
             <div className="grid grid-cols-4 gap-3 my-4 text-center">
               <SummaryTile label="Total Baris" value={batch.total_rows} />
               <SummaryTile label="Valid" value={batch.valid_rows} tone="success" />
@@ -454,7 +636,7 @@ export default function ImportPage() {
                 <p className="text-[12px] text-[#92400E]">
                   <AlertTriangle className="w-3.5 h-3.5 inline mr-1" />
                   {batch.warning_rows} baris punya peringatan. Baris ini <strong>tetap valid dan tetap
-                  di-commit</strong> — periksa kolom Peringatan di bawah, lalu perbaiki berkasnya dan unggah
+                  di-commit</strong> — periksa kolom Keterangan di bawah, lalu perbaiki berkasnya dan unggah
                   ulang kalau ada yang memang salah.
                 </p>
               </div>
@@ -504,51 +686,16 @@ export default function ImportPage() {
               </div>
             )}
 
-            <div className="overflow-x-auto rounded-md border border-[#e2e8f0]">
-              <table className="w-full text-[12px]">
-                <thead>
-                  <tr className="bg-[#f8fafc] text-left text-[#64748b]">
-                    <th className="px-3 py-2 font-medium">Baris</th>
-                    <th className="px-3 py-2 font-medium">Status</th>
-                    <th className="px-3 py-2 font-medium">Galat</th>
-                    <th className="px-3 py-2 font-medium">Peringatan</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <tr key={row.id} className="border-t border-[#f1f5f9]">
-                      <td className="px-3 py-1.5 tabular-nums">{row.row_number}</td>
-                      <td className="px-3 py-1.5">
-                        <Badge className={cn('text-[10px] px-1.5 py-0', rowStatusBadgeClass(row.status))}>
-                          {row.status}
-                        </Badge>
-                      </td>
-                      <td className="px-3 py-1.5 text-[#991B1B]">{joinMessages(row.errors)}</td>
-                      {/* Peringatan tidak menggagalkan baris — barisnya tetap
-                          ter-commit. Warnanya sengaja amber, bukan merah. */}
-                      <td className="px-3 py-1.5 text-[#92400E]">{joinMessages(row.warnings)}</td>
-                    </tr>
-                  ))}
-                  {rows.length === 0 && !rowsFetching && (
-                    <tr>
-                      <td colSpan={4} className="px-3 py-4 text-center text-[#94a3b8]">
-                        Belum ada baris.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {rowsResponse && (
-              <div className="mt-2">
-                <TablePagination
-                  pagination={{ pageIndex: rowsPage - 1, pageSize: 50 }}
-                  totalRows={rowsResponse.meta.total}
-                  onChange={(state) => setRowsPage(state.pageIndex + 1)}
-                />
-              </div>
-            )}
+            <DataTable
+              data={rows}
+              columns={previewColumns}
+              totalRows={rowsResponse?.meta.total ?? 0}
+              isFetching={rowsFetching}
+              pagination={{ pageIndex: rowsPage - 1, pageSize: 50 }}
+              onPaginationChange={(state) => setRowsPage(state.pageIndex + 1)}
+              emptyTitle="Belum ada baris"
+              emptyDescription="Baris berkas muncul di sini setelah pemetaan kolom divalidasi."
+            />
 
             <div className="flex justify-between mt-5">
               <Button type="button" variant="outline" className="h-9 text-[13px]" disabled={busy || isDone || isCommitting} onClick={() => void doCancel()}>
@@ -576,8 +723,13 @@ export default function ImportPage() {
 
         <ImportHistory
           onRevert={(uuid, reason) => doRevert(uuid, reason)}
+          onResume={(item) => void resumeBatch(item)}
+          onDiscard={(uuid) => void doDiscard(uuid)}
           reverting={revert.isPending}
+          discarding={cancel.isPending}
           canRevert={can('imports.revert')}
+          canCancel={can('imports.cancel')}
+          activeUuid={activeUuid}
         />
       </div>
     </WorkspaceLayout>
@@ -639,74 +791,141 @@ function NextStepPanel({ profile }: { profile: string }) {
  */
 function ImportHistory({
   onRevert,
+  onResume,
+  onDiscard,
   reverting,
+  discarding,
   canRevert,
+  canCancel,
+  activeUuid,
 }: {
   onRevert: (uuid: string, reason: string) => void
+  onResume: (item: ImportBatch) => void
+  onDiscard: (uuid: string) => void
   reverting: boolean
+  discarding: boolean
   canRevert: boolean
+  canCancel: boolean
+  activeUuid: string | null
 }) {
   const [page, setPage] = useState(1)
   const { data } = useImportHistory(page)
   const [target, setTarget] = useState<ImportBatch | null>(null)
+  const [discardTarget, setDiscardTarget] = useState<ImportBatch | null>(null)
 
   const batches = data?.data ?? []
   if (batches.length === 0) return null
+
+  const historyColumns: ColumnDef<ImportBatch>[] = [
+    {
+      id: 'original_filename',
+      header: 'Berkas',
+      cell: ({ original }) => <span className="text-[#334155]">{original.original_filename}</span>,
+    },
+    {
+      id: 'profile',
+      header: 'Profil',
+      cell: ({ original }) => <span className="text-[#64748b]">{original.profile}</span>,
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      cell: ({ original }) => (
+        <Badge className={cn('text-[10px] px-1.5 py-0', statusBadgeClass(original.status))}>
+          {STATUS_LABELS[original.status] ?? original.status}
+        </Badge>
+      ),
+    },
+    {
+      id: 'committed_rows',
+      header: 'Ter-commit',
+      cell: ({ original }) => original.committed_rows,
+      meta: { className: 'text-right tabular-nums', headerClassName: 'text-right' },
+    },
+    {
+      id: '_actions',
+      header: 'Aksi',
+      meta: { className: 'text-right', headerClassName: 'text-right' },
+      cell: ({ original }) => (
+        <div className="flex justify-end gap-1.5">
+          {/* Batch yang belum di-commit: datanya belum masuk buku, jadi ia hanya
+              perlu diteruskan atau dibuang. Tanpa dua tombol ini, satu reload
+              sebelum commit meninggalkan batch yang tidak bisa disentuh dari
+              mana pun. */}
+          {RESUMABLE_STATUSES.includes(original.status) && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1 text-[11px]"
+                onClick={() => onResume(original)}
+              >
+                <PlayCircle className="h-3 w-3" />
+                {original.uuid === activeUuid ? 'Buka Lagi' : 'Lanjutkan'}
+              </Button>
+              {canCancel && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1 border-[#fecaca] text-[11px] text-[#b91c1c] hover:bg-[#fef2f2]"
+                  disabled={discarding}
+                  onClick={() => setDiscardTarget(original)}
+                >
+                  <Trash2 className="h-3 w-3" /> Buang
+                </Button>
+              )}
+            </>
+          )}
+
+          {canRevert && original.status === 'completed' && REVERTIBLE_PROFILES.includes(original.profile) && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 text-[11px]"
+              onClick={() => setTarget(original)}
+            >
+              <Undo2 className="h-3 w-3" /> Batalkan Impor
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ]
 
   return (
     <section className="bg-white border border-[#d9e2e5] rounded-lg p-5">
       <h2 className="text-[14px] font-semibold text-[#24323a]">Riwayat Impor</h2>
 
-      <div className="mt-3 overflow-x-auto rounded-md border border-[#e2e8f0]">
-        <table className="w-full text-[12px]">
-          <thead>
-            <tr className="bg-[#f8fafc] text-left text-[#64748b]">
-              <th className="px-3 py-2 font-medium">Berkas</th>
-              <th className="px-3 py-2 font-medium">Profil</th>
-              <th className="px-3 py-2 font-medium">Status</th>
-              <th className="px-3 py-2 text-right font-medium">Ter-commit</th>
-              <th className="px-3 py-2 text-right font-medium">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {batches.map((item) => (
-              <tr key={item.uuid} className="border-t border-[#f1f5f9]">
-                <td className="px-3 py-2 text-[#334155]">{item.original_filename}</td>
-                <td className="px-3 py-2 text-[#64748b]">{item.profile}</td>
-                <td className="px-3 py-2">
-                  <Badge className={cn('text-[10px] px-1.5 py-0', statusBadgeClass(item.status))}>
-                    {STATUS_LABELS[item.status] ?? item.status}
-                  </Badge>
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums text-[#334155]">{item.committed_rows}</td>
-                <td className="px-3 py-2 text-right">
-                  {canRevert && item.status === 'completed' && REVERTIBLE_PROFILES.includes(item.profile) && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-7 gap-1 text-[11px]"
-                      onClick={() => setTarget(item)}
-                    >
-                      <Undo2 className="h-3 w-3" /> Batalkan Impor
-                    </Button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="mt-3">
+        <DataTable
+          data={batches}
+          columns={historyColumns}
+          totalRows={data?.meta.total ?? 0}
+          pagination={{ pageIndex: page - 1, pageSize: 25 }}
+          onPaginationChange={(state) => setPage(state.pageIndex + 1)}
+          emptyTitle="Belum ada impor"
+        />
       </div>
 
-      {data && data.meta.last_page > 1 && (
-        <div className="mt-2">
-          <TablePagination
-            pagination={{ pageIndex: page - 1, pageSize: 25 }}
-            totalRows={data.meta.total}
-            onChange={(state) => setPage(state.pageIndex + 1)}
-          />
-        </div>
-      )}
+      {/* Dibuang, bukan di-void: tidak ada dokumen yang perlu ditarik kembali,
+          jadi alasannya pun tidak perlu diminta. */}
+      <ConfirmDialog
+        isOpen={discardTarget !== null}
+        onClose={() => setDiscardTarget(null)}
+        onConfirm={() => {
+          if (discardTarget) onDiscard(discardTarget.uuid)
+          setDiscardTarget(null)
+        }}
+        title="Buang Batch Impor"
+        description={`Berkas ${discardTarget?.original_filename ?? ''} dan barisnya dihapus. Belum ada data yang masuk ke buku, jadi tidak ada yang perlu ditarik kembali.`}
+        confirmLabel="Buang"
+        isLoading={discarding}
+        variant="destructive"
+        loadingLabel="Membuang..."
+      />
 
       <VoidConfirmDialog
         isOpen={target !== null}
@@ -763,11 +982,9 @@ function Stepper({ step }: { step: Step }) {
  * (field → daftar pesan), yang beda cuma warnanya di tabel.
  */
 function joinMessages(messages: Record<string, string[]> | null): string {
-  if (!messages) return '-'
+  if (!messages) return ''
 
-  const flat = Object.values(messages).flat()
-
-  return flat.length > 0 ? flat.join('; ') : '-'
+  return Object.values(messages).flat().join('; ')
 }
 
 function SummaryTile({ label, value, tone }: { label: string; value: number; tone?: 'success' | 'danger' | 'warning' }) {
@@ -801,20 +1018,3 @@ function rowStatusBadgeClass(status: string): string {
   return 'bg-[#F1F5F9] text-[#64748b] hover:bg-[#F1F5F9]'
 }
 
-/**
- * Kalau header berkas cocok PERSIS (tanpa memandang huruf besar/kecil)
- * dengan header templat, petakan otomatis -- jalur yang dipakai ~90% waktu
- * (rencana impor data, Fase 0 §"Pemetaan kolom"). Kalau tidak cocok, field
- * itu dibiarkan kosong untuk dipetakan manual.
- */
-function autoMapColumns(profile: ImportProfile, uploadedHeaders: string[]): Record<string, string> {
-  const map: Record<string, string> = {}
-
-  profile.fields.forEach((field, index) => {
-    const expectedHeader = profile.headers[index]
-    const match = uploadedHeaders.find((h) => h.trim().toLowerCase() === expectedHeader?.trim().toLowerCase())
-    if (match) map[field] = match
-  })
-
-  return map
-}

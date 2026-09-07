@@ -2,7 +2,7 @@ import axios from 'axios'
 import { http } from '@/services/http'
 import { useAuthStore } from '@/stores/useAuthStore'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
-import type { ImportBatch, ImportProfile, ImportRow, UploadImportResponse } from '../types/imports.types'
+import type { ImportBatch, ImportBatchDetail, ImportProfile, ImportRow, UploadImportResponse } from '../types/imports.types'
 
 export const importsApi = {
   profiles: () => http.get<unknown, ApiResponse<ImportProfile[]>>('/imports/profiles'),
@@ -21,7 +21,7 @@ export const importsApi = {
   mapping: (uuid: string, columnMap: Record<string, string>) =>
     http.patch<unknown, ApiResponse<ImportBatch>>(`/imports/${uuid}/mapping`, { column_map: columnMap }),
 
-  show: (uuid: string) => http.get<unknown, ApiResponse<ImportBatch>>(`/imports/${uuid}`),
+  show: (uuid: string) => http.get<unknown, ApiResponse<ImportBatchDetail>>(`/imports/${uuid}`),
 
   rows: (uuid: string, page: number, perPage = 50) =>
     http.get<unknown, PaginatedResponse<ImportRow>>(`/imports/${uuid}/rows`, { params: { page, per_page: perPage } }),
