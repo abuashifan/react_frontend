@@ -13,6 +13,9 @@ dist-ssr
 praproductions-docs/
 *.local
 
+# Pengaturan lokal. Nilai untuk deploy diisi di dashboard Vercel, bukan di sini.
+.env
+
 # Playwright output (artefak test, bukan source)
 test-results/
 playwright-report/
