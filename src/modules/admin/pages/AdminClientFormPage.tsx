@@ -171,14 +171,14 @@ export default function AdminClientFormPage() {
 
   const onCreate = async (values: CreateClientValues) => {
     try {
-      const response = await create.mutateAsync({
+      await create.mutateAsync({
         name: values.name,
         email: values.email,
         password: values.password,
         ...toProfilePayload(values),
       })
       toast.success('Akun client berhasil dibuat.')
-      navigate(`/admin/clients/${response.data.id}`, { replace: true })
+      navigate('/admin/clients', { replace: true })
     } catch (error) {
       applyApiValidationErrors(error, createForm.setError)
       toast.error(getApiErrorMessage(error, 'Gagal membuat akun client.'))
@@ -200,6 +200,7 @@ export default function AdminClientFormPage() {
         },
       })
       toast.success('Data client berhasil diperbarui.')
+      navigate('/admin/clients')
     } catch (error) {
       applyApiValidationErrors(error, editForm.setError)
       toast.error(getApiErrorMessage(error, 'Gagal memperbarui client.'))
