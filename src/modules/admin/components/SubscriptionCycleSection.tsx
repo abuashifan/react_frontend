@@ -5,8 +5,8 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage } from '@/lib/apiError'
 import { cn } from '@/lib/utils'
-import { useAdminPlans, useClientUserMutations } from '../hooks/useClientUsers'
-import type { AdminPlan, ClientUser } from '@/types/admin.types'
+import { useClientUserMutations } from '../hooks/useClientUsers'
+import type { ClientUser } from '@/types/admin.types'
 
 const STATE_LABELS: Record<ClientUser['subscription']['state'], string> = {
   none: 'Belum pernah berlangganan',
@@ -34,29 +34,38 @@ function formatDate(value: string | null): string {
 
 /**
  * Tab Siklus Langganan (Fase 3, skema tier §4d) — terpisah dari tab "Kuota
- * Paket" (`plan_id`, jumlah perusahaan/user): itu menentukan APA yang boleh
- * dipakai client, ini menentukan SAMPAI KAPAN. Dua sumbu yang berbeda.
+ * Paket": itu satu-satunya tempat memilih APA plan-nya (`plan_id`), ini cuma
+ * menentukan SAMPAI KAPAN (mulai/perpanjang siklus billing-nya).
+ *
+ * Sengaja TIDAK ada pemilih plan lagi di sini. Sebelumnya tab ini punya
+ * dropdown plan sendiri yang independen dari tab Kuota Paket — dua tempat
+ * yang sama-sama bisa mengubah `users.plan_id` gampang saling bertentangan
+ * (mis. Kuota Paket diisi Enterprise, tapi di sini malah pilih Pro). Sekarang
+ * mulai/perpanjang langganan selalu memakai plan yang SEDANG terpasang di
+ * client (diatur dari tab Kuota Paket) — satu sumber kebenaran untuk "plan
+ * yang mana", tab ini murni soal waktu.
  */
 export function SubscriptionCycleSection({ client }: { client: ClientUser }) {
   const { toast } = useToast()
-  const { data: plansResponse } = useAdminPlans()
-  const plans = plansResponse?.data ?? []
   const { subscribe, renew, unlock } = useClientUserMutations()
 
-  const [planId, setPlanId] = useState<string>('')
   const [cycle, setCycle] = useState<'monthly' | 'yearly'>('monthly')
 
   const { subscription } = client
   const locked = subscription.state === 'expired' || subscription.state === 'cancelled'
   const busy = subscribe.isPending || renew.isPending || unlock.isPending
+  const hasPlan = client.plan !== null
 
   const handleSubscribe = async () => {
-    if (!planId) {
-      toast.error('Pilih paket dulu.')
+    if (!client.plan) {
+      toast.error('Pilih paket dulu di tab Kuota Paket.')
       return
     }
     try {
-      await subscribe.mutateAsync({ id: client.id, payload: { plan_id: Number(planId), billing_cycle: cycle } })
+      await subscribe.mutateAsync({
+        id: client.id,
+        payload: { plan_id: client.plan.id, billing_cycle: cycle },
+      })
       toast.success('Langganan dimulai.')
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Gagal memulai langganan.'))
@@ -64,10 +73,18 @@ export function SubscriptionCycleSection({ client }: { client: ClientUser }) {
   }
 
   const handleRenew = async () => {
+    if (!client.plan) {
+      toast.error('Pilih paket dulu di tab Kuota Paket.')
+      return
+    }
     try {
+      // `plan_id` selalu dikirim (bukan dikosongkan) supaya perpanjangan
+      // memakai plan TERKINI dari tab Kuota Paket, bukan diam-diam
+      // melanjutkan plan lama dari langganan sebelumnya kalau keduanya
+      // sudah berbeda.
       await renew.mutateAsync({
         id: client.id,
-        payload: planId ? { plan_id: Number(planId), billing_cycle: cycle } : undefined,
+        payload: { plan_id: client.plan.id, billing_cycle: cycle },
       })
       toast.success('Langganan diperpanjang.')
     } catch (error) {
@@ -126,23 +143,22 @@ export function SubscriptionCycleSection({ client }: { client: ClientUser }) {
 
       <div className="border-t border-[#f1f5f9] pt-4">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-[#94a3b8] mb-2">
-          {subscription.state === 'none' ? 'Mulai Langganan' : 'Perpanjang / Ganti Paket'}
+          {subscription.state === 'none' ? 'Mulai Langganan' : 'Perpanjang'}
         </p>
+        {!hasPlan && (
+          <p className="text-[12px] text-[#991B1B] bg-[#FEE2E2] border border-[#FCA5A5] rounded-md px-3 py-2 mb-3">
+            Client ini belum punya paket. Pilih paket dulu di tab{' '}
+            <span className="font-semibold">Kuota Paket</span> sebelum memulai langganan.
+          </p>
+        )}
         <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
           <div className="flex flex-col gap-1 flex-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
-              Paket {subscription.state !== 'none' && '(kosongkan untuk lanjut paket sama)'}
+              Paket
             </Label>
-            <select className={selectClass} value={planId} onChange={(e) => setPlanId(e.target.value)}>
-              <option value="">
-                {subscription.state === 'none' ? 'Pilih paket' : 'Lanjut paket sekarang'}
-              </option>
-              {plans.map((plan: AdminPlan) => (
-                <option key={plan.id} value={String(plan.id)}>
-                  {plan.name}
-                </option>
-              ))}
-            </select>
+            <p className="h-9 flex items-center px-3 text-[13px] text-[#24323a] bg-[#f8fafc] border border-[#d9e2e5] rounded-md">
+              {client.plan?.name ?? '—'}
+            </p>
           </div>
           <div className="flex flex-col gap-1 sm:w-40">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
@@ -161,7 +177,7 @@ export function SubscriptionCycleSection({ client }: { client: ClientUser }) {
             <Button
               type="button"
               onClick={() => void handleSubscribe()}
-              disabled={busy}
+              disabled={busy || !hasPlan}
               className="h-9 bg-[#5c9ead] text-[13px] hover:bg-[#4a8a9b]"
             >
               {subscribe.isPending ? 'Memulai...' : 'Mulai Langganan'}
@@ -170,7 +186,7 @@ export function SubscriptionCycleSection({ client }: { client: ClientUser }) {
             <Button
               type="button"
               onClick={() => void handleRenew()}
-              disabled={busy}
+              disabled={busy || !hasPlan}
               className="h-9 bg-[#5c9ead] text-[13px] hover:bg-[#4a8a9b]"
             >
               {renew.isPending ? 'Memperpanjang...' : 'Perpanjang'}

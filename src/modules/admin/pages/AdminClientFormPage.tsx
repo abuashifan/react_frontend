@@ -432,7 +432,15 @@ export default function AdminClientFormPage() {
               </TabsContent>
 
               <TabsContent value="langganan" className="mt-0 grid gap-4 sm:grid-cols-2">
-                <Field label="Paket" error={errors.plan_id?.message}>
+                <Field
+                  label="Paket"
+                  error={errors.plan_id?.message}
+                  hint={
+                    isEdit
+                      ? 'Menentukan apa yang boleh dipakai client. Mulai/perpanjang siklus billing-nya ada di tab Siklus Langganan.'
+                      : undefined
+                  }
+                >
                   <select className={selectClass} {...register('plan_id')}>
                     <option value="">Tanpa paket</option>
                     {plans.map((plan) => (
