@@ -260,14 +260,14 @@ export default function AdminClientFormPage() {
 
   if (isEdit && isLoading) {
     return (
-      <div className="min-h-dvh bg-[#EFEFED] p-6">
+      <div className="h-dvh overflow-y-auto bg-[#EFEFED] p-6">
         <p className="text-[13px] text-[#64748b]">Memuat data client...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-dvh bg-[#EFEFED]">
+    <div className="h-dvh overflow-y-auto bg-[#EFEFED]">
       <div className="max-w-3xl mx-auto p-6">
         <button
           type="button"
