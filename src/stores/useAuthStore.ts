@@ -43,6 +43,16 @@ export const useAuthStore = create<AuthState>()(
           permissions: permissions.length > 0 ? permissions : user.permissions ?? [],
           permissionsLoaded: permissions.length > 0 || Array.isArray(user.permissions),
           companies,
+          // `activeCompanyId` sengaja direset di sini juga (bukan cuma di
+          // logout()/closeCompany()): field ini tersimpan permanen di
+          // localStorage lewat persist, jadi tanpa ini, login baru — akun
+          // lain di browser yang sama, atau sesi lama yang belum sempat
+          // logout — bisa mewarisi id perusahaan dari sesi sebelumnya.
+          // ProtectedRoute lalu menganggap sudah ada perusahaan aktif dan
+          // tidak pernah mengarahkan ke /select-company, padahal akun yang
+          // baru login ini belum tentu punya akses ke perusahaan itu sama
+          // sekali.
+          activeCompanyId: null,
           rememberMe,
         })
         if (!rememberMe) {
