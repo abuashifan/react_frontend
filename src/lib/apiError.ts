@@ -98,15 +98,15 @@ export function getApiErrorMessage(error: unknown, fallback = 'Terjadi kesalahan
   // fields."). Detail per field sudah tampil di bawah input lewat
   // `applyApiValidationErrors`, jadi toast cukup mengarahkan ke sana.
   //
-  // Kode VALIDATION_ERROR kini juga dikeluarkan interceptor http.ts untuk
-  // respons 422 tanpa kode eksplisit. Tetap tangani HTTP_422 dan status 422
-  // sebagai jaring pengaman — jangan sampai pesan mentah berbahasa Inggris
-  // lolos ke toast hanya karena bentuk kodenya berbeda.
-  if (
-    apiError?.code === 'VALIDATION_ERROR' ||
-    apiError?.code === 'HTTP_422' ||
-    apiError?.status === 422
-  ) {
+  // Sengaja dideteksi dari ADA-nya `errors` per field, bukan dari status/kode
+  // 422 saja: banyak error NON-validasi (kuota habis, tenant database
+  // bermasalah, langganan kedaluwarsa, dll) juga balas HTTP 422 dengan kode
+  // sendiri tapi TANPA field `errors`. Dulu status 422 saja sudah cukup
+  // memicu pesan generik ini, jadi pesan asli yang informatif dari backend
+  // ketutup — user melihat "Periksa kembali isian yang ditandai." padahal
+  // bahkan sedang tidak mengisi form apa pun.
+  const hasFieldErrors = isRecord(apiError?.errors) && Object.keys(apiError.errors).length > 0
+  if (hasFieldErrors) {
     return 'Periksa kembali isian yang ditandai.'
   }
 
