@@ -51,7 +51,7 @@ const TAB_FIELDS = {
   addons: ['extra_users'],
 } as const
 
-type TabKey = keyof typeof TAB_FIELDS | 'password' | 'siklus' | 'penyimpanan'
+type TabKey = keyof typeof TAB_FIELDS | 'password' | 'penyimpanan'
 
 const inputClass = 'h-9 text-[13px]'
 const selectClass =
@@ -292,7 +292,7 @@ export default function AdminClientFormPage() {
             {(
               [
                 ['detail', 'Detail Client'],
-                ['langganan', 'Kuota Paket'],
+                ['langganan', 'Paket & Langganan'],
                 ['addons', 'Add-ons'],
               ] as const
             ).map(([key, label]) => (
@@ -301,11 +301,6 @@ export default function AdminClientFormPage() {
                 {hasErrorIn(key) && <span className="ml-1.5 text-red-500">•</span>}
               </TabsTrigger>
             ))}
-            {isEdit && (
-              <TabsTrigger value="siklus" className={tabTriggerClass}>
-                Siklus Langganan
-              </TabsTrigger>
-            )}
             {isEdit && (
               <TabsTrigger value="penyimpanan" className={tabTriggerClass}>
                 Penyimpanan
@@ -437,7 +432,7 @@ export default function AdminClientFormPage() {
                   error={errors.plan_id?.message}
                   hint={
                     isEdit
-                      ? 'Menentukan apa yang boleh dipakai client. Mulai/perpanjang siklus billing-nya ada di tab Siklus Langganan.'
+                      ? 'Menentukan apa yang boleh dipakai client. Mulai/perpanjang siklus billing-nya di bawah.'
                       : undefined
                   }
                 >
@@ -518,6 +513,12 @@ export default function AdminClientFormPage() {
                     </>
                   )}
                 </p>
+
+                {/* Siklus langganan digabung ke tab ini (bukan tab sendiri)
+                    supaya plan dan billing cycle-nya diatur di satu layar —
+                    lihat catatan di SubscriptionCycleSection kenapa dua
+                    tempat terpisah dulu bisa saling bertentangan. */}
+                {isEdit && client && <SubscriptionCycleSection client={client} />}
               </TabsContent>
 
               <TabsContent value="addons" className="mt-0 grid gap-4 sm:grid-cols-2">
@@ -592,12 +593,6 @@ export default function AdminClientFormPage() {
               </div>
             )}
           </form>
-
-          {isEdit && client && (
-            <TabsContent value="siklus" className="mt-0">
-              <SubscriptionCycleSection client={client} />
-            </TabsContent>
-          )}
 
           {isEdit && clientId && (
             <TabsContent value="penyimpanan" className="mt-0">

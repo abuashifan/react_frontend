@@ -33,17 +33,18 @@ function formatDate(value: string | null): string {
 }
 
 /**
- * Tab Siklus Langganan (Fase 3, skema tier §4d) — terpisah dari tab "Kuota
- * Paket": itu satu-satunya tempat memilih APA plan-nya (`plan_id`), ini cuma
- * menentukan SAMPAI KAPAN (mulai/perpanjang siklus billing-nya).
+ * Bagian Siklus Langganan (Fase 3, skema tier §4d), ditempel langsung di
+ * bawah pemilih plan pada tab "Paket & Langganan" — satu layar, tidak perlu
+ * pindah tab. Plan dipilih di atas (`plan_id`); bagian ini cuma menentukan
+ * SAMPAI KAPAN (mulai/perpanjang siklus billing-nya).
  *
- * Sengaja TIDAK ada pemilih plan lagi di sini. Sebelumnya tab ini punya
- * dropdown plan sendiri yang independen dari tab Kuota Paket — dua tempat
- * yang sama-sama bisa mengubah `users.plan_id` gampang saling bertentangan
- * (mis. Kuota Paket diisi Enterprise, tapi di sini malah pilih Pro). Sekarang
- * mulai/perpanjang langganan selalu memakai plan yang SEDANG terpasang di
- * client (diatur dari tab Kuota Paket) — satu sumber kebenaran untuk "plan
- * yang mana", tab ini murni soal waktu.
+ * Sengaja TIDAK ada pemilih plan lagi di sini. Sebelumnya ini tab terpisah
+ * dengan dropdown plan sendiri yang independen dari plan di atas — dua
+ * tempat yang sama-sama bisa mengubah `users.plan_id` gampang saling
+ * bertentangan (mis. di atas diisi Enterprise, di sini malah pilih Pro).
+ * Sekarang mulai/perpanjang langganan selalu memakai plan yang SEDANG
+ * terpasang di client (dipilih di atas) — satu sumber kebenaran untuk "plan
+ * yang mana", bagian ini murni soal waktu.
  */
 export function SubscriptionCycleSection({ client }: { client: ClientUser }) {
   const { toast } = useToast()
@@ -58,7 +59,7 @@ export function SubscriptionCycleSection({ client }: { client: ClientUser }) {
 
   const handleSubscribe = async () => {
     if (!client.plan) {
-      toast.error('Pilih paket dulu di tab Kuota Paket.')
+      toast.error('Pilih paket dulu di bagian atas.')
       return
     }
     try {
@@ -74,12 +75,12 @@ export function SubscriptionCycleSection({ client }: { client: ClientUser }) {
 
   const handleRenew = async () => {
     if (!client.plan) {
-      toast.error('Pilih paket dulu di tab Kuota Paket.')
+      toast.error('Pilih paket dulu di bagian atas.')
       return
     }
     try {
       // `plan_id` selalu dikirim (bukan dikosongkan) supaya perpanjangan
-      // memakai plan TERKINI dari tab Kuota Paket, bukan diam-diam
+      // memakai plan TERKINI yang dipilih di atas, bukan diam-diam
       // melanjutkan plan lama dari langganan sebelumnya kalau keduanya
       // sudah berbeda.
       await renew.mutateAsync({
@@ -102,7 +103,7 @@ export function SubscriptionCycleSection({ client }: { client: ClientUser }) {
   }
 
   return (
-    <section className="bg-white border border-[#d9e2e5] rounded-lg p-5 mt-3 flex flex-col gap-5">
+    <section className="sm:col-span-2 border-t border-[#f1f5f9] pt-4 mt-1 flex flex-col gap-5">
       <div>
         <div className="flex items-center gap-2 mb-1">
           <h2 className="text-[14px] font-semibold text-[#24323a]">Siklus Langganan</h2>
@@ -147,8 +148,8 @@ export function SubscriptionCycleSection({ client }: { client: ClientUser }) {
         </p>
         {!hasPlan && (
           <p className="text-[12px] text-[#991B1B] bg-[#FEE2E2] border border-[#FCA5A5] rounded-md px-3 py-2 mb-3">
-            Client ini belum punya paket. Pilih paket dulu di tab{' '}
-            <span className="font-semibold">Kuota Paket</span> sebelum memulai langganan.
+            Client ini belum punya paket. Pilih paket dulu di bagian{' '}
+            <span className="font-semibold">Paket</span> di atas sebelum memulai langganan.
           </p>
         )}
         <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
