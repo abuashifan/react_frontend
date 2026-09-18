@@ -93,5 +93,27 @@ export function useClientUserMutations() {
     onSuccess: invalidate,
   })
 
-  return { create, update, updatePlan, resetPassword, subscribe, renew, unlock }
+  const deleteClient = useMutation({
+    mutationFn: ({ id, confirmEmail }: { id: number; confirmEmail: string }) =>
+      adminApi.deleteClient(id, confirmEmail),
+    onSuccess: invalidate,
+  })
+
+  const repairTenant = useMutation({
+    mutationFn: ({ clientId, companyId }: { clientId: number; companyId: number }) =>
+      adminApi.repairTenant(clientId, companyId),
+    onSuccess: invalidate,
+  })
+
+  return {
+    create,
+    update,
+    updatePlan,
+    resetPassword,
+    subscribe,
+    renew,
+    unlock,
+    deleteClient,
+    repairTenant,
+  }
 }

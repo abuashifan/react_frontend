@@ -10,6 +10,7 @@ import { APP_NAME } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { adminApi } from '../services/adminApi'
 import { useAdminPlans, useClientUsers, useDueSoonClients } from '../hooks/useClientUsers'
+import { DeleteClientDialog } from '../components/DeleteClientDialog'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
 import type { ClientUser } from '@/types/admin.types'
 
@@ -57,6 +58,7 @@ export default function AdminClientsPage() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
+  const [deletingClient, setDeletingClient] = useState<ClientUser | null>(null)
 
   const { data, isLoading, isFetching } = useClientUsers({
     page,
@@ -222,6 +224,22 @@ export default function AdminClientsPage() {
         <span className="tabular-nums">{formatDate(original.last_login_at)}</span>
       ),
     },
+    {
+      id: 'actions',
+      header: '',
+      size: 40,
+      cell: ({ original }) => (
+        <button
+          type="button"
+          onClick={() => setDeletingClient(original)}
+          aria-label={`Hapus ${original.name}`}
+          title="Hapus client permanen"
+          className="flex h-6 w-6 items-center justify-center rounded-md text-[#94a3b8] hover:bg-[#FEE2E2] hover:text-[#dc2626]"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      ),
+    },
   ]
 
   return (
@@ -339,6 +357,12 @@ export default function AdminClientsPage() {
           </p>
         </div>
       </div>
+
+      <DeleteClientDialog
+        client={deletingClient}
+        onClose={() => setDeletingClient(null)}
+        onDeleted={() => setDeletingClient(null)}
+      />
     </div>
   )
 }

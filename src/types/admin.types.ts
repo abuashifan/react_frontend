@@ -55,6 +55,8 @@ export interface ClientCompanyStorage {
   /** null berarti belum pernah diukur `storage:measure` — dianggap 0, bukan penuh. */
   measured_at: string | null
   near_limit: boolean
+  /** File SQLite tenant hilang (disk ephemeral tanpa persistent disk) walau baris tenant_databases masih ada. */
+  tenant_file_exists: boolean
 }
 
 export interface ClientDueSoonRow {

@@ -18,6 +18,7 @@ import { cn, fieldErrorClass } from '@/lib/utils'
 import { companyApi } from '../services/companyApi'
 import { createCompanySchema, type CreateCompanyValues } from '../schemas/companySchema'
 import type { Company } from '@/types/auth.types'
+import type { ApiError } from '@/types/api.types'
 
 interface CreateCompanyDialogProps {
   open: boolean
@@ -64,6 +65,21 @@ export function CreateCompanyDialog({ open, onOpenChange, onCreated }: CreateCom
       await onCreated(response.data)
     } catch (error) {
       applyApiValidationErrors(error, setError)
+
+      // Client dengan plan_id tertempel tapi belum pernah "Mulai Langganan"
+      // ditahan di sini (lihat CompanyController::store) — sama seperti
+      // SUBSCRIPTION_EXPIRED di LoginPage, arahkan ke WhatsApp langganan
+      // alih-alih cuma pesan tanpa jalan keluar.
+      const apiError = error as ApiError
+      if (apiError?.code === 'SUBSCRIPTION_REQUIRED') {
+        const renewalUrl = apiError.meta?.renewal_url
+        toast.error(getApiErrorMessage(error, 'Anda belum punya langganan aktif.'), {
+          actionUrl: typeof renewalUrl === 'string' ? renewalUrl : null,
+          actionLabel: 'Mulai Langganan via WhatsApp',
+        })
+        return
+      }
+
       toast.error(getApiErrorMessage(error, 'Gagal membuat perusahaan.'))
     }
   }

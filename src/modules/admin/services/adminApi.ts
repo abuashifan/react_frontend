@@ -77,6 +77,13 @@ export const adminApi = {
     })
   },
 
+  /** Hapus permanen — client dan seluruh perusahaan miliknya ikut hilang. Email harus diketik ulang persis. */
+  async deleteClient(id: number, confirmEmail: string): Promise<ApiResponse<null>> {
+    return adminHttp.delete<unknown, ApiResponse<null>>(`/admin/clients/${id}`, {
+      data: { confirm_email: confirmEmail },
+    })
+  },
+
   async resetClientPassword(id: number, password: string): Promise<void> {
     await adminHttp.post(`/admin/clients/${id}/reset-password`, { password })
   },
@@ -105,6 +112,13 @@ export const adminApi = {
 
   async clientStorage(id: number): Promise<ApiResponse<ClientCompanyStorage[]>> {
     return adminHttp.get<unknown, ApiResponse<ClientCompanyStorage[]>>(`/admin/clients/${id}/storage`)
+  },
+
+  /** Buat ulang tenant database sebuah company — dipakai saat file SQLite-nya hilang. Data lama tidak bisa dipulihkan. */
+  async repairTenant(clientId: number, companyId: number): Promise<ApiResponse<ClientCompanyStorage[]>> {
+    return adminHttp.post<unknown, ApiResponse<ClientCompanyStorage[]>>(
+      `/admin/clients/${clientId}/companies/${companyId}/repair-tenant`,
+    )
   },
 
   /** Perusahaan terhapus yang masih dalam masa pemulihan. */

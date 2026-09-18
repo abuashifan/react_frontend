@@ -247,7 +247,7 @@ export function DataTable<T extends { id: number | string }>({
                     {renderedColumns.map((col) => (
                       <td
                         key={col.id}
-                        onClick={col.id === '_select' ? (e) => e.stopPropagation() : undefined}
+                        onClick={col.id === '_select' || col.id === 'actions' ? (e) => e.stopPropagation() : undefined}
                         className={cn(
                           'px-3 py-2 text-[13px]',
                           col.meta?.sticky
