@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { FormSection } from '@/components/shared/form/FormSection'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { companyInfoSchema, type CompanyInfoValues } from '../../schemas/companyInfoSchema'
 import { setupApi } from '../../services/onboardingApi'
 import { companySettingsApi } from '@/modules/settings/services/companySettingsApi'
@@ -39,10 +40,18 @@ interface Props {
 export function Step1CompanyInfo({ defaultValues, onComplete }: Props) {
   const { toast } = useToast()
 
+  /*
+   * Nama perusahaan dibaca dari perusahaan aktif, bukan diminta ulang — lihat
+   * alasannya di companyInfoSchema. Daftar `companies` di store sudah terisi
+   * sejak login/pembuatan perusahaan, jadi tidak perlu request tambahan.
+   */
+  const companyName = useAuthStore(
+    (s) => s.companies.find((company) => company.id === s.activeCompanyId)?.name ?? null,
+  )
+
   const form = useForm<CompanyInfoValues>({
     resolver: zodResolver(companyInfoSchema),
     defaultValues: {
-      name: '',
       npwp: '',
       address: '',
       fiscal_year_start: '1',
@@ -54,8 +63,9 @@ export function Step1CompanyInfo({ defaultValues, onComplete }: Props) {
   const onSubmit = async (values: CompanyInfoValues) => {
     try {
       // Mata uang dasar disimpan via company accounting settings (endpoint nyata).
-      // Catatan: backend belum mengekspos update profil (nama/NPWP/alamat) & fiscal_year_start
-      // lewat setup wizard; field tersebut hanya dipakai untuk ringkasan wizard.
+      // Catatan: backend belum mengekspos update profil (NPWP/alamat) &
+      // fiscal_year_start lewat setup wizard; field tersebut hanya dipakai untuk
+      // ringkasan wizard.
       await companySettingsApi.updateAccounting({ base_currency: values.currency })
       // Tandai progres step di backend (best-effort). `opening_date` dititipkan di sini
       // karena tidak ada step lain di wizard yang mengirimnya sama sekali -- tanpa ini
@@ -76,21 +86,19 @@ export function Step1CompanyInfo({ defaultValues, onComplete }: Props) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <FormSection title="Informasi Dasar" columns={2}>
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nama Perusahaan <span className="text-red-500">*</span></FormLabel>
-                <FormControl>
-                  <Input placeholder="PT Seaside Escape" className="h-9 text-[13px]" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <div className="rounded-md border border-[#d9e2e5] bg-[#f8fbfc] px-3.5 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
+            Nama Perusahaan
+          </p>
+          <p className="mt-0.5 text-[15px] font-semibold text-[#24323a]">
+            {companyName ?? 'Perusahaan aktif'}
+          </p>
+          <p className="mt-1 text-[11px] text-[#94a3b8]">
+            Sudah diisi saat perusahaan dibuat — tidak perlu diketik ulang di sini.
+          </p>
+        </div>
 
+        <FormSection title="Informasi Dasar" columns={2}>
           <FormField
             control={form.control}
             name="npwp"
