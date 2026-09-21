@@ -116,30 +116,38 @@ function CompanyCard({ company, onClick, onDeleteClick, isLoading }: CompanyCard
 
 interface AddCompanyCardProps {
   onClick: () => void
+  onBlocked: (reason: string) => void
   disabled: boolean
   quota: CompanyQuota
 }
 
-function AddCompanyCard({ onClick, disabled, quota }: AddCompanyCardProps) {
+function AddCompanyCard({ onClick, onBlocked, disabled, quota }: AddCompanyCardProps) {
   const blocked = !quota.can_create
   const planLabel = quota.plan_name ?? 'Paket Anda'
+  const blockedReason =
+    `${planLabel} mencakup ${quota.limit} perusahaan dan Anda sudah memakai ${quota.used}. `
+    + 'Hapus perusahaan yang tidak terpakai lewat menu ⋮ pada kartunya, atau hubungi admin untuk menambah kuota.'
 
   return (
     <button
       type="button"
-      onClick={onClick}
-      disabled={disabled || blocked}
-      title={
-        blocked
-          ? `${planLabel} mencakup ${quota.limit} perusahaan dan Anda sudah memakai ${quota.used}.`
-          : undefined
-      }
+      /*
+       * Saat kuota habis tombol ini tetap BISA diklik, dan klik-nya menjelaskan
+       * kenapa. Sebelumnya ia `disabled` dengan alasan yang hanya ditaruh di
+       * atribut `title` — dan browser tidak pernah menampilkan tooltip pada
+       * elemen disabled, karena elemen disabled tidak menerima event mouse.
+       * Hasilnya user mengklik, tidak terjadi apa-apa, tanpa pesan apa pun.
+       */
+      onClick={blocked ? () => onBlocked(blockedReason) : onClick}
+      disabled={disabled}
+      aria-describedby={blocked ? 'add-company-blocked' : undefined}
       className={cn(
         'bg-white border border-dashed border-[#d9e2e5] rounded-lg p-5 [@media(max-height:620px)]:p-3',
         'cursor-pointer transition-all duration-150 text-left w-full',
         'hover:border-[#5c9ead] hover:shadow-md',
         'flex flex-col items-center text-center gap-3 [@media(max-height:620px)]:gap-2',
         'disabled:opacity-60 disabled:cursor-not-allowed',
+        blocked && 'opacity-60',
       )}
     >
       <div className="w-12 h-12 [@media(max-height:620px)]:w-9 [@media(max-height:620px)]:h-9 rounded-lg bg-[#EFF9FB] flex items-center justify-center">
@@ -147,8 +155,11 @@ function AddCompanyCard({ onClick, disabled, quota }: AddCompanyCardProps) {
       </div>
       <div>
         <p className="font-semibold text-[#24323a] text-sm leading-snug">Tambah Perusahaan</p>
-        <p className="text-[11px] text-[#64748b] mt-1">
-          {blocked ? `Kuota ${quota.used}/${quota.limit} terpakai` : 'Buat perusahaan baru'}
+        <p
+          id={blocked ? 'add-company-blocked' : undefined}
+          className={cn('text-[11px] mt-1', blocked ? 'text-[#b91c1c]' : 'text-[#64748b]')}
+        >
+          {blocked ? `Kuota penuh — ${quota.used}/${quota.limit} terpakai` : 'Buat perusahaan baru'}
         </p>
       </div>
     </button>
@@ -309,6 +320,7 @@ export function CompanyPickerPage() {
             ))}
             <AddCompanyCard
               onClick={() => setCreateOpen(true)}
+              onBlocked={(reason) => toast.error(reason)}
               disabled={loadingId !== null}
               quota={quota}
             />
