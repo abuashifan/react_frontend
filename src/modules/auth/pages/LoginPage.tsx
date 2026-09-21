@@ -13,6 +13,7 @@ import { useCompanyStore } from '@/stores/useCompanyStore'
 import { useToast } from '@/hooks/useToast'
 import { authApi } from '../services/authApi'
 import { companyApi } from '../services/companyApi'
+import { getApiErrorMessage } from '@/lib/apiError'
 import { loginSchema, type LoginFormInput, type LoginFormValues } from '../schemas/loginSchema'
 import { APP_NAME } from '@/lib/constants'
 import loginIllustration from '@/assets/illustrations/login-illustration.svg'
@@ -136,7 +137,24 @@ export function LoginPage() {
       // bisa membuat perusahaan pertamanya dari sana, sama seperti alur
       // client dengan lebih dari satu perusahaan.
       if (companies.length === 1) {
-        await activateCompany(companies[0])
+        // Membuka satu-satunya perusahaan secara otomatis adalah KEMUDAHAN,
+        // bukan bagian dari login. Kalau perusahaan itu tidak bisa dibuka —
+        // paling sering karena tenant database-nya hilang — user tetap sudah
+        // login dengan sah: tokennya sudah dipegang sejak `setAuth()` di atas.
+        //
+        // Tanpa penjagaan ini, kegagalan tadi jatuh ke `catch` login dan
+        // dilaporkan sebagai "Email atau password tidak sesuai" — menuduh
+        // kredensial yang sebenarnya benar, sekaligus mengurung user: dengan
+        // tepat satu perusahaan yang rusak, ia tidak pernah sampai ke halaman
+        // pilih perusahaan untuk membuat atau memilih yang lain.
+        try {
+          await activateCompany(companies[0])
+        } catch (activateError) {
+          toast.error(
+            getApiErrorMessage(activateError, 'Perusahaan Anda belum bisa dibuka.'),
+          )
+          navigate('/select-company', { replace: true })
+        }
       } else {
         navigate('/select-company', { replace: true })
       }
