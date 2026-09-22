@@ -3,7 +3,7 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { useAdminAuthStore } from '@/stores/useAdminAuthStore'
 import { AppShell } from '@/components/shared/layout/AppShell'
 import { hasPermission } from '@/hooks/usePermission'
-import { useSetupGate } from '@/modules/onboarding/hooks/useSetupStatus'
+import { useSetupGate, useSetupStatus } from '@/modules/onboarding/hooks/useSetupStatus'
 
 interface ProtectedRouteProps {
   permission?: string
@@ -74,10 +74,16 @@ export function PlatformAdminGuard({ children }: { children: React.ReactNode }) 
   return <>{children}</>
 }
 
-/** Lightweight guard for the onboarding route — requires auth but skips AppShell and onboarding check */
+/** Lightweight guard for the onboarding route — requires auth but skips AppShell */
 export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { token, activeCompanyId } = useAuthStore()
   const location = useLocation()
+  // Sengaja membaca data mentah, bukan useSetupGate(): gate itu menganggap
+  // setup selesai selama status belum diketahui, yang di sini akan mengusir
+  // user dari wizard setiap kali statusnya sedang dimuat. Yang dicari hanya
+  // jawaban pasti dari backend bahwa wizard sudah tidak berlaku -- tanpa ini
+  // perusahaan yang sudah finalized bisa terjebak di langkah 1 wizard.
+  const { data: setupStatus } = useSetupStatus()
 
   if (!token) {
     return <Navigate to="/login" state={{ from: location }} replace />
@@ -85,6 +91,10 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
 
   if (!activeCompanyId) {
     return <Navigate to="/select-company" replace />
+  }
+
+  if (setupStatus && !setupStatus.data.gate.initial_setup_available) {
+    return <Navigate to="/" replace />
   }
 
   return <>{children}</>
