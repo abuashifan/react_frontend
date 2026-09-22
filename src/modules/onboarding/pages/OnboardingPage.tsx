@@ -52,11 +52,15 @@ interface WizardState {
 /*
  * Urutan mengikuti step canonical backend (SetupWizardService::$steps).
  * Nomor langkah hidup di sini, bukan di nama file komponen.
+ *
+ * COA sebelum Modul: template COA mewakili jenis usaha dan membawa preset
+ * modulnya, jadi langkah Modul tinggal menampilkan hasil preset itu untuk
+ * disesuaikan. Mengubah urutan ini wajib menaikkan versi WIZARD_STATE_KEY.
  */
 const STEP_TITLES = [
   { number: 1, title: 'Informasi Perusahaan' },
-  { number: 2, title: 'Modul Aktif' },
-  { number: 3, title: 'Template COA' },
+  { number: 2, title: 'Template COA' },
+  { number: 3, title: 'Modul Aktif' },
   { number: 4, title: 'Account Mapping' },
   { number: 5, title: 'Master Data Dasar' },
   { number: 6, title: 'Opening Balance', subtitle: 'Opsional' },
@@ -206,13 +210,6 @@ export function OnboardingPage() {
             )}
 
             {state.currentStep === 2 && (
-              <StepModuleSelection
-                onComplete={() => markCompleted(2, 3)}
-                onBack={goBack}
-              />
-            )}
-
-            {state.currentStep === 3 && (
               <Step2TemplateCOA
                 currentTemplate={state.selectedTemplate}
                 mappingCompleted={state.mappingCompleted}
@@ -225,8 +222,17 @@ export function OnboardingPage() {
                     // Reset mapping if template changes
                     mappingCompleted: templateId === prev.selectedTemplate ? prev.mappingCompleted : false,
                   }))
-                  markCompleted(3, 4)
+                  markCompleted(2, 3)
                 }}
+                onBack={goBack}
+              />
+            )}
+
+            {state.currentStep === 3 && (
+              <StepModuleSelection
+                // Template Kosong tidak membawa preset, jadi tidak ada yang perlu dijelaskan.
+                templateLabel={state.selectedTemplate === 'blank' ? null : state.templateLabel}
+                onComplete={() => markCompleted(3, 4)}
                 onBack={goBack}
               />
             )}

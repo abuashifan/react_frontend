@@ -95,8 +95,8 @@ export function Step4MasterData({ onComplete, onBack }: Props) {
   return (
     <div className="space-y-4">
       <p className="text-[13px] text-[#64748b]">
-        Tambahkan data dasar yang diperlukan sebelum bisa melakukan transaksi.
-        Minimal satu per kategori.
+        Gudang Utama, satuan PCS, dan syarat pembayaran standar sudah disiapkan
+        otomatis. Tambahkan yang lain bila perlu, atau langsung lanjutkan.
       </p>
 
       <MasterDataQuickAdd

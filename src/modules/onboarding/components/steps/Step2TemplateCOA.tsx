@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,6 +19,7 @@ import { COA_TEMPLATES } from '../../constants'
 import { CoaTemplateModal } from '../CoaTemplateModal'
 import type { CoaTemplateAccountInput } from '../../types/setup.types'
 import { getApiErrorMessage } from '@/lib/apiError'
+import { COMPANY_SETTINGS_KEY } from '@/modules/settings/hooks/useCompanySettings'
 
 interface Props {
   currentTemplate: string | null
@@ -29,6 +30,7 @@ interface Props {
 
 export function Step2TemplateCOA({ currentTemplate, mappingCompleted, onComplete, onBack }: Props) {
   const { toast } = useToast()
+  const queryClient = useQueryClient()
   const [selected, setSelected] = useState<string | null>(currentTemplate)
   const [customAccounts, setCustomAccounts] = useState<CoaTemplateAccountInput[] | null>(null)
   const [previewModalOpen, setPreviewModalOpen] = useState(false)
@@ -75,6 +77,9 @@ export function Step2TemplateCOA({ currentTemplate, mappingCompleted, onComplete
         template_id: selected,
         accounts: customAccounts ?? selectedTemplateDef.accounts,
       })
+      // Backend menyesuaikan modul dengan jenis usaha template saat template
+      // berganti; tanpa ini langkah Modul menampilkan pilihan dari cache lama.
+      await queryClient.invalidateQueries({ queryKey: COMPANY_SETTINGS_KEY })
       try { await setupApi.validateStep('chart_of_accounts') } catch { /* progres non-blocking */ }
       onComplete(selected, selectedTemplateDef.label, (customAccounts ?? selectedTemplateDef.accounts).length)
     } catch (continueError) {
@@ -186,8 +191,8 @@ export function Step2TemplateCOA({ currentTemplate, mappingCompleted, onComplete
             <AlertDialogTitle>Ganti Template COA?</AlertDialogTitle>
             <AlertDialogDescription>
               Mengganti template COA akan mengganti ulang akun yang sudah dibuat dari template
-              sebelumnya dan mereset Account Mapping yang sudah Anda konfigurasi di Step
-              berikutnya. Lanjutkan?
+              sebelumnya, menyesuaikan ulang Modul Aktif dengan jenis usaha template baru, dan
+              mereset Account Mapping yang sudah Anda konfigurasi. Lanjutkan?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

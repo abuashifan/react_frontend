@@ -4,10 +4,10 @@ import type {
   CompanyAccountingSettings, CompanyModuleSettings, CompanyTransactionDefaults,
 } from '../types/settings.types'
 
-const COMPANY_KEY = ['settings', 'company']
+export const COMPANY_SETTINGS_KEY = ['settings', 'company']
 
 export function useCompanySettings() {
-  return useQuery({ queryKey: COMPANY_KEY, queryFn: companySettingsApi.get })
+  return useQuery({ queryKey: COMPANY_SETTINGS_KEY, queryFn: companySettingsApi.get })
 }
 
 export function useCompanyWorkflow() {
@@ -16,7 +16,7 @@ export function useCompanyWorkflow() {
 
 export function useCompanySettingsMutations() {
   const qc = useQueryClient()
-  const inv = () => void qc.invalidateQueries({ queryKey: COMPANY_KEY })
+  const inv = () => void qc.invalidateQueries({ queryKey: COMPANY_SETTINGS_KEY })
   return {
     updateAccounting: useMutation({ mutationFn: (p: Partial<CompanyAccountingSettings>) => companySettingsApi.updateAccounting(p), onSuccess: inv }),
     updateModules: useMutation({ mutationFn: (p: Partial<CompanyModuleSettings>) => companySettingsApi.updateModules(p), onSuccess: inv }),

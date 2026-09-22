@@ -21,6 +21,8 @@ const MODULE_LABELS: { key: keyof CompanyModuleSettings; label: string; hint: st
 ]
 
 interface Props {
+  /** Template COA pilihan di langkah sebelumnya -- sumber preset modul. */
+  templateLabel: string | null
   onComplete: () => void
   onBack: () => void
 }
@@ -32,8 +34,11 @@ interface Props {
  * Pilihan modul di sini menentukan langkah berikutnya: `opening_fixed_assets`
  * hanya wajib bila Aktiva Tetap diaktifkan, dan account mapping hanya menuntut
  * mapping milik modul yang aktif.
+ *
+ * Nilai awalnya sudah disesuaikan backend dengan jenis usaha template COA
+ * (mis. Jasa mematikan Persediaan) -- hanya titik awal, user bebas mengubahnya.
  */
-export function StepModuleSelection({ onComplete, onBack }: Props) {
+export function StepModuleSelection({ templateLabel, onComplete, onBack }: Props) {
   const { toast } = useToast()
   const { data, isLoading } = useCompanySettings()
   const { updateModules } = useCompanySettingsMutations()
@@ -81,6 +86,12 @@ export function StepModuleSelection({ onComplete, onBack }: Props) {
           Nyalakan hanya modul yang perusahaan Anda pakai. Pilihan ini bisa diubah nanti di
           Pengaturan → Perusahaan.
         </p>
+        {templateLabel && (
+          <p className="mt-2 rounded-md border border-[#d9e2e5] bg-[#f8fbfc] px-3 py-2 text-[12px] text-[#64748b]">
+            Modul sudah disesuaikan dengan jenis usaha <span className="font-medium text-[#24323a]">{templateLabel}</span>.
+            Nyalakan atau matikan sesuai kebutuhan Anda.
+          </p>
+        )}
       </div>
 
       <div className="grid gap-2 md:grid-cols-2">

@@ -5,8 +5,12 @@ type LucideIcon = FC<SVGProps<SVGSVGElement> & { size?: number | string; strokeW
 /**
  * Kunci sessionStorage untuk posisi langkah wizard. Dipakai OnboardingPage
  * (menyimpan/memulihkan) dan Step6Complete (membersihkan setelah finalize).
+ *
+ * Akhiran versi dinaikkan setiap kali urutan langkah berubah: state tersimpan
+ * mencatat NOMOR langkah, jadi state lama yang dibaca dengan urutan baru akan
+ * menandai langkah yang salah sebagai selesai. v2: COA dipindah sebelum Modul.
  */
-export const WIZARD_STATE_KEY = 'seaside-onboarding-wizard'
+export const WIZARD_STATE_KEY = 'seaside-onboarding-wizard-v2'
 
 // ─── Account Mapping ──────────────────────────────────────────────────────────
 
