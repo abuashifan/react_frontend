@@ -80,6 +80,10 @@ export function Step2TemplateCOA({ currentTemplate, mappingCompleted, onComplete
       // Backend menyesuaikan modul dengan jenis usaha template saat template
       // berganti; tanpa ini langkah Modul menampilkan pilihan dari cache lama.
       await queryClient.invalidateQueries({ queryKey: COMPANY_SETTINGS_KEY })
+      // Penerapan template juga mengisi Gudang Utama/PCS bila masih kosong --
+      // daftar yang sempat ter-cache kosong akan menyesatkan di langkah Master Data.
+      void queryClient.invalidateQueries({ queryKey: ['master-data-gudang'] })
+      void queryClient.invalidateQueries({ queryKey: ['master-data-satuan'] })
       try { await setupApi.validateStep('chart_of_accounts') } catch { /* progres non-blocking */ }
       onComplete(selected, selectedTemplateDef.label, (customAccounts ?? selectedTemplateDef.accounts).length)
     } catch (continueError) {
