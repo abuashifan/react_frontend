@@ -4,7 +4,10 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormField } from '@/components/shared/form/FormField'
-import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
+import type { Coa } from '@/modules/master-data/types/coa.types'
+import { AccountPickerDialog } from '@/modules/master-data/components/AccountPickerDialog'
+import { Search } from 'lucide-react'
+import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/components/shared/form/LineItemsTable'
 import { AmountInput } from '@/components/shared/form/AmountInput'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
@@ -48,6 +51,7 @@ function CashPaymentFormPageContent() {
   const { create, post, void: voidPayment } = useCashPaymentMutations()
   const { register, handleSubmit, control, getValues, setValue, watch, reset, setError, formState: { errors, isSubmitting } } = useForm<CashPaymentFormValues>({ resolver: zodResolver(cashPaymentSchema), defaultValues: { payment_date: new Date().toISOString().slice(0, 10) } })
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const [pickerRow, setPickerRow] = useState<number | null>(null)
   // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
   // ditolak ikut ditandai, bukan cuma toast.
   const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
@@ -113,10 +117,62 @@ function CashPaymentFormPageContent() {
   const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting.')) } }
   const handleVoid = async (reason: string) => { await voidPayment.mutateAsync({ id: Number(id), reason }); toast.success('Berhasil di-void.'); setVoidOpen(false) }
 
+  /**
+   * Centang beberapa akun di AccountPickerDialog = beberapa baris sekaligus.
+   * Baris yang sudah terisi akun lain tidak ditimpa — akun berikutnya
+   * disisipkan sebagai baris baru supaya nominal yang sudah diketik pada baris
+   * tersebut tidak ikut berpindah pasangan akunnya. Sama seperti
+   * `CashReceiptFormPage.applyPickedAccounts`.
+   */
+  const applyPickedAccounts = (startIndex: number, accounts: Coa[]) => {
+    if (accounts.length === 0) return
+
+    setLines((prev) => {
+      const next = [...prev]
+      accounts.forEach((account, offset) => {
+        const target = startIndex + offset
+        const picked = { id: account.id, code: account.account_code, name: account.account_name }
+
+        if (target < next.length) {
+          if (offset > 0 && next[target].account_id !== null) {
+            next.splice(target, 0, { ...DEFAULT_LINE, account_id: account.id, account: picked })
+            return
+          }
+          next[target] = { ...next[target], account_id: account.id, account: picked }
+          return
+        }
+
+        next.push({ ...DEFAULT_LINE, account_id: account.id, account: picked })
+      })
+      return next
+    })
+  }
+
   const columns: LineItemColumn<EditableLine>[] = [
-    { id: 'account', header: 'Akun Lawan', width: 200, render: ({ item, isReadOnly, onUpdate }) => <SearchableSelect value={item.account_id} onChange={(v, opt) => { onUpdate('account_id', v); onUpdate('account', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null) }} onSearch={coaApi.search} placeholder="Pilih akun..." disabled={isReadOnly} size="sm" selectedOptions={item.account ? [{ value: item.account.id, label: item.account.name, sublabel: item.account.code }] : []} /> },
-    { id: 'amount', header: 'Jumlah', width: 130, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <AmountInput value={item.amount} onChange={(v) => onUpdate('amount', v)} disabled={isReadOnly} decimals={2} ariaLabel="Jumlah" /> },
-    { id: 'description', header: 'Keterangan', width: 180, render: ({ item, isReadOnly, onUpdate }) => <Input value={item.description} onChange={(e) => onUpdate('description', e.target.value)} disabled={isReadOnly} placeholder="Keterangan..." className="h-8 text-[12px]" /> },
+    {
+      id: 'account', header: 'Akun Lawan', width: 200,
+      render: ({ item, index, isReadOnly }) => (
+        <button
+          type="button"
+          disabled={isReadOnly}
+          onClick={() => setPickerRow(index)}
+          className={cn(
+            'flex h-8 w-full items-center justify-between gap-1 text-left text-[12px]',
+            FLUSH_INPUT_CLASS,
+            'hover:bg-[#f8fbfc]',
+            isReadOnly && 'cursor-not-allowed text-[#94a3b8] hover:bg-transparent',
+            !item.account && !isReadOnly && 'text-[#94a3b8]',
+          )}
+        >
+          <span className="truncate" title={item.account?.name}>
+            {item.account?.name ?? 'Pilih akun...'}
+          </span>
+          <Search className="h-3.5 w-3.5 shrink-0 text-[#94a3b8]" />
+        </button>
+      ),
+    },
+    { id: 'amount', header: 'Jumlah', width: 130, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <AmountInput value={item.amount} onChange={(v) => onUpdate('amount', v)} disabled={isReadOnly} decimals={2} ariaLabel="Jumlah" className={cn(FLUSH_INPUT_CLASS, 'text-right')} /> },
+    { id: 'description', header: 'Keterangan', width: 180, render: ({ item, isReadOnly, onUpdate }) => <Input value={item.description} onChange={(e) => onUpdate('description', e.target.value)} disabled={isReadOnly} placeholder="Keterangan..." className={cn('h-8 text-[12px]', FLUSH_INPUT_CLASS)} /> },
   ]
 
   const actions: DocumentActionButton[] = []
@@ -223,6 +279,15 @@ function CashPaymentFormPageContent() {
           </div>
         </div>
       </FormLayout>
+      <AccountPickerDialog
+        open={pickerRow !== null}
+        onClose={() => setPickerRow(null)}
+        onConfirm={(accounts) => {
+          if (pickerRow !== null) applyPickedAccounts(pickerRow, accounts)
+          setPickerRow(null)
+        }}
+      />
+
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={payment?.number ?? ''} isLoading={voidPayment.isPending} />
     </>
   )

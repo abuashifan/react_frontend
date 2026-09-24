@@ -7,7 +7,7 @@ import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSaveActions } from '@/components/shared/layout/FormSaveActions'
 import { FormField } from '@/components/shared/form/FormField'
 import { AmountInput } from '@/components/shared/form/AmountInput'
-import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
+import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/components/shared/form/LineItemsTable'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { Input } from '@/components/ui/input'
 import { useRecordTab } from '@/hooks/useRecordTab'
@@ -39,10 +39,6 @@ interface AllocationLine {
 }
 
 const DEFAULT_LINE: AllocationLine = { department_id: null, amount: 0 }
-
-/** Style input "flush" — menyatu dengan sel tabel `bordered`, sama seperti CashReceiptFormPage. */
-const FLUSH_INPUT_CLASS =
-  'rounded-none border-0 bg-transparent px-2 focus:shadow-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#5c9ead]/40'
 
 const FORM_PATH = '/budget/periods/new'
 
@@ -160,6 +156,7 @@ export default function BudgetPeriodFormPage() {
           placeholder="Pilih departemen..."
           disabled={isReadOnly}
           size="sm"
+          flush
           selectedOptions={
             item.department_id && item.department_label
               ? [{ value: item.department_id, label: item.department_label }]
@@ -261,7 +258,6 @@ export default function BudgetPeriodFormPage() {
           }
           addLabel="Tambah Departemen"
           emptyLabel="Belum ada pagu departemen"
-          bordered
         />
 
         {/* Total pagu perusahaan tidak diinput — selalu jumlah baris di atas,

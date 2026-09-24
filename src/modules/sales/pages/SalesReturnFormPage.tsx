@@ -5,7 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { FormSummary } from '@/components/shared/form/FormSummary'
-import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
+import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/components/shared/form/LineItemsTable'
+import { AmountInput } from '@/components/shared/form/AmountInput'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { Input } from '@/components/ui/input'
@@ -181,6 +182,7 @@ function SalesReturnFormPageContent() {
       width: 200,
       render: ({ item, isReadOnly, onUpdate }) => (
         <SearchableSelect
+          flush
           value={item.product_id}
           onChange={(v, opt) => {
             onUpdate('product_id', v)
@@ -199,7 +201,7 @@ function SalesReturnFormPageContent() {
       header: 'Deskripsi',
       width: 200,
       render: ({ item, isReadOnly, onUpdate }) => (
-        <Input value={item.description} onChange={(e) => onUpdate('description', e.target.value)} disabled={isReadOnly} placeholder="Deskripsi..." className="h-8 text-[12px]" />
+        <Input value={item.description} onChange={(e) => onUpdate('description', e.target.value)} disabled={isReadOnly} placeholder="Deskripsi..." className={cn('h-8 text-[12px]', FLUSH_INPUT_CLASS)} />
       ),
     },
     {
@@ -208,7 +210,7 @@ function SalesReturnFormPageContent() {
       width: 80,
       align: 'right',
       render: ({ item, isReadOnly, onUpdate }) => (
-        <Input type="number" value={item.quantity} onChange={(e) => onUpdate('quantity', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} />
+        <AmountInput value={item.quantity} onChange={(v) => onUpdate('quantity', v)} disabled={isReadOnly} decimals={2} ariaLabel="quantity" className={cn(FLUSH_INPUT_CLASS, 'text-right')} />
       ),
     },
     {
@@ -217,7 +219,7 @@ function SalesReturnFormPageContent() {
       width: 120,
       align: 'right',
       render: ({ item, isReadOnly, onUpdate }) => (
-        <Input type="number" value={item.unit_price} onChange={(e) => onUpdate('unit_price', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} />
+        <AmountInput value={item.unit_price} onChange={(v) => onUpdate('unit_price', v)} disabled={isReadOnly} decimals={2} ariaLabel="unit_price" className={cn(FLUSH_INPUT_CLASS, 'text-right')} />
       ),
     },
   ]

@@ -69,8 +69,14 @@ export function LoginPage() {
       return
     }
 
+    /*
+     * Pesan backend dipakai apa adanya kalau ada. Sebelumnya SETIAP 403 ditimpa
+     * "Akun Anda telah dinonaktifkan", sehingga akun yang sebenarnya cuma tidak
+     * aktif sementara, atau ditolak karena alasan lain, sama-sama diberi
+     * keterangan yang belum tentu benar. Yang generik tinggal jadi cadangan.
+     */
     if (error.status === 403 || error.code === 'FORBIDDEN') {
-      toast.error('Akun Anda telah dinonaktifkan. Hubungi administrator.')
+      toast.error(error.message || 'Akun Anda telah dinonaktifkan. Hubungi administrator.')
       return
     }
 
@@ -132,10 +138,11 @@ export function LoginPage() {
       const companies = companiesResponse.data
       setCompanies(companies)
 
-      // Nol perusahaan bukan keadaan gagal — client baru memang belum
-      // pernah membuat satu pun. Kirim ke halaman pilih perusahaan supaya
-      // bisa membuat perusahaan pertamanya dari sana, sama seperti alur
-      // client dengan lebih dari satu perusahaan.
+      // Akun tanpa perusahaan bukan login yang gagal — itu keadaan normal user
+      // yang baru dibuat. Halaman pilih perusahaan sudah merender
+      // `AddCompanyCard` meski daftarnya kosong, jadi ke sanalah tempatnya
+      // membuat perusahaan pertama. Menahannya di layar login membuat akunnya
+      // terautentikasi tapi tidak punya jalan ke mana pun.
       if (companies.length === 1) {
         // Membuka satu-satunya perusahaan secara otomatis adalah KEMUDAHAN,
         // bukan bagian dari login. Kalau perusahaan itu tidak bisa dibuka —

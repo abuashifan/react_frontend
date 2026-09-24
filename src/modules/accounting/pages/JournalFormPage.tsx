@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormField } from '@/components/shared/form/FormField'
-import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
+import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/components/shared/form/LineItemsTable'
 import { AmountInput } from '@/components/shared/form/AmountInput'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
@@ -286,6 +286,7 @@ function JournalFormPageContent() {
           disabled={isReadOnly}
           decimals={2}
           ariaLabel="Debit"
+          className={cn(FLUSH_INPUT_CLASS, 'text-right')}
         />
       ),
     },
@@ -298,6 +299,7 @@ function JournalFormPageContent() {
           disabled={isReadOnly}
           decimals={2}
           ariaLabel="Kredit"
+          className={cn(FLUSH_INPUT_CLASS, 'text-right')}
         />
       ),
     },
@@ -306,7 +308,7 @@ function JournalFormPageContent() {
     {
       id: 'description', header: 'Keterangan', width: 200,
       render: ({ item, isReadOnly, onUpdate }) => (
-        <Input value={item.description} onChange={(e) => onUpdate('description', e.target.value)} disabled={isReadOnly} placeholder="Keterangan baris..." className="h-8 text-[12px]" />
+        <Input value={item.description} onChange={(e) => onUpdate('description', e.target.value)} disabled={isReadOnly} placeholder="Keterangan baris..." className={cn('h-8 text-[12px]', FLUSH_INPUT_CLASS)} />
       ),
     },
   ]

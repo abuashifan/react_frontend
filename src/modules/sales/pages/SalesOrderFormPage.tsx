@@ -5,7 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { FormSummary } from '@/components/shared/form/FormSummary'
-import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
+import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/components/shared/form/LineItemsTable'
+import { AmountInput } from '@/components/shared/form/AmountInput'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -223,6 +224,7 @@ function SalesOrderFormPageContent() {
       width: 200,
       render: ({ item, isReadOnly, onUpdate }) => (
         <SearchableSelect
+          flush
           value={item.product_id}
           onChange={(v, opt) => {
             onUpdate('product_id', v)
@@ -241,7 +243,7 @@ function SalesOrderFormPageContent() {
       header: 'Deskripsi',
       width: 180,
       render: ({ item, isReadOnly, onUpdate }) => (
-        <Input value={item.description} onChange={(e) => onUpdate('description', e.target.value)} disabled={isReadOnly} placeholder="Deskripsi..." className="h-8 text-[12px]" />
+        <Input value={item.description} onChange={(e) => onUpdate('description', e.target.value)} disabled={isReadOnly} placeholder="Deskripsi..." className={cn('h-8 text-[12px]', FLUSH_INPUT_CLASS)} />
       ),
     },
     {
@@ -250,7 +252,7 @@ function SalesOrderFormPageContent() {
       width: 80,
       align: 'right',
       render: ({ item, isReadOnly, onUpdate }) => (
-        <Input type="number" value={item.quantity} onChange={(e) => onUpdate('quantity', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} />
+        <AmountInput value={item.quantity} onChange={(v) => onUpdate('quantity', v)} disabled={isReadOnly} decimals={2} ariaLabel="quantity" className={cn(FLUSH_INPUT_CLASS, 'text-right')} />
       ),
     },
     {
@@ -259,7 +261,7 @@ function SalesOrderFormPageContent() {
       width: 120,
       align: 'right',
       render: ({ item, isReadOnly, onUpdate }) => (
-        <Input type="number" value={item.unit_price} onChange={(e) => onUpdate('unit_price', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} />
+        <AmountInput value={item.unit_price} onChange={(v) => onUpdate('unit_price', v)} disabled={isReadOnly} decimals={2} ariaLabel="unit_price" className={cn(FLUSH_INPUT_CLASS, 'text-right')} />
       ),
     },
     {
@@ -268,7 +270,7 @@ function SalesOrderFormPageContent() {
       width: 70,
       align: 'right',
       render: ({ item, isReadOnly, onUpdate }) => (
-        <Input type="number" value={item.discount_percent} onChange={(e) => onUpdate('discount_percent', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} max={100} />
+        <AmountInput value={item.discount_percent} onChange={(v) => onUpdate('discount_percent', v)} disabled={isReadOnly} decimals={2} ariaLabel="discount_percent" className={cn(FLUSH_INPUT_CLASS, 'text-right')} />
       ),
     },
     ...(showTracking ? [

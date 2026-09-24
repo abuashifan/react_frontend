@@ -34,13 +34,18 @@ export function Step6Complete({ summary, onBack }: Props) {
     try {
       // `finalize` melakukan validateAll secara internal; lempar 422 jika setup belum valid.
       await setupApi.finalize()
-      // Backend kini berstatus finalized. Status setup WAJIB benar-benar diambil
-      // ulang sebelum pindah halaman -- `invalidateQueries` tidak cukup: di
-      // halaman wizard tidak ada yang memantau query ini, jadi ia hanya
-      // ditandai usang tanpa diambil ulang, dan guard di `/` langsung memakai
-      // cache lama ("setup belum selesai") lalu memantulkan user kembali ke
-      // langkah 1 wizard.
-      await queryClient.refetchQueries({ queryKey: SETUP_STATUS_KEY })
+      // Backend kini berstatus finalized. Segarkan status setup supaya guard
+      // tidak memantulkan balik ke /onboarding dan menu setup-only hilang.
+      //
+      // `refetchType: 'all'` wajib -- halaman wizard ini tidak dibungkus
+      // AppShell, jadi query `setup/status` tidak sedang aktif diobservasi
+      // saat ini (default `invalidateQueries` hanya me-refetch query aktif).
+      // Tanpa ini, cache cuma ditandai stale tanpa benar-benar di-fetch ulang;
+      // begitu `navigate('/')` mount ProtectedRoute, `useSetupGate` sempat
+      // membaca data lama (initial_setup_available masih true) sebelum
+      // refetch selesai, dan guard langsung memantulkan balik ke /onboarding
+      // -- persis seperti wizard baru dimulai lagi.
+      await queryClient.invalidateQueries({ queryKey: SETUP_STATUS_KEY, refetchType: 'all' })
       // Wizard selesai — posisi langkah tidak perlu dipulihkan lagi.
       try { sessionStorage.removeItem(WIZARD_STATE_KEY) } catch { /* diabaikan */ }
       toast.success('Setup perusahaan selesai! Selamat datang di Seaside Escape ERP.')

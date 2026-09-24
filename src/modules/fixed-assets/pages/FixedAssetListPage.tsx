@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Upload } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { DataTable } from '@/components/shared/table/DataTable'
 import { ListExportButton, type ExportColumn } from '@/components/shared/table/ListExportButton'
@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import { useRecordTab } from '@/hooks/useRecordTab'
+import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
+import { useImportPresetStore } from '@/modules/imports/stores/useImportPresetStore'
 import { fixedAssetCategoryApi } from '../services/fixedAssetCategoryApi'
 import { useFixedAssetList } from '../hooks/useFixedAssetList'
 import { fixedAssetApi } from '../services/fixedAssetApi'
@@ -65,6 +67,23 @@ const EXPORT_COLUMNS: ExportColumn<FixedAsset>[] = [
 
 export default function FixedAssetListPage() {
   const { openRecordTab } = useRecordTab()
+  const openTab = useOpenPrimaryTab()
+
+  /**
+   * Shell ini state-only: cukup daftarkan/aktifkan tab primernya, AppShell yang
+   * mengarahkan router ke path tab itu. Profil yang dimaksud dititipkan lewat
+   * store karena query string akan tertimpa (lihat useImportPresetStore).
+   */
+  const openOpeningImport = () => {
+    useImportPresetStore.getState().requestProfile('fixed_asset_opening')
+    openTab({
+      id: 'master-data-import',
+      menuKey: 'import',
+      label: 'Impor Data',
+      module: 'master-data',
+      path: '/master-data/import',
+    })
+  }
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 25 })
   const [search, setSearch] = useState('')
   const [categoryId, setCategoryId] = useState<number | null>(null)
@@ -212,9 +231,16 @@ export default function FixedAssetListPage() {
               }
             }}
           />
-          {/* Tombol "Impor Aset Awal" sengaja belum ada di sini: pintu masuk
-              impor saldo awal datang dari commit lain di branch yang sama yang
-              belum ikut di-merge. */}
+          <PermissionGuard permission="fixed_assets.opening_import">
+            <Button
+              variant="outline"
+              className="h-8 px-3 text-[13px]"
+              onClick={openOpeningImport}
+            >
+              <Upload className="mr-1 h-3.5 w-3.5" />
+              Impor Aset Awal
+            </Button>
+          </PermissionGuard>
           <PermissionGuard permission="fixed_assets.create">
             <Button
               className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]"

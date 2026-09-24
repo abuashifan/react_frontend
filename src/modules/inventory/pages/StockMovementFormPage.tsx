@@ -4,7 +4,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
-import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
+import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/components/shared/form/LineItemsTable'
+import { AmountInput } from '@/components/shared/form/AmountInput'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { ConfirmDialog } from '@/components/shared/document/ConfirmDialog'
@@ -193,7 +194,8 @@ function StockMovementFormPageContent() {
       width: 200,
       render: ({ item, index, isReadOnly, onUpdate }) => (
         <div>
-          <SearchableSelect value={item.product_id} onChange={(v, opt) => { onUpdate('product_id', v); onUpdate('product', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null); setLineErrors((prev) => { const n = { ...prev }; delete n[index]; return n }) }} onSearch={produkApi.search} placeholder="Pilih produk..." disabled={isReadOnly} size="sm" selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []} />
+          <SearchableSelect
+          flush value={item.product_id} onChange={(v, opt) => { onUpdate('product_id', v); onUpdate('product', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null); setLineErrors((prev) => { const n = { ...prev }; delete n[index]; return n }) }} onSearch={produkApi.search} placeholder="Pilih produk..." disabled={isReadOnly} size="sm" selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []} />
           {lineErrors[index]?.product_id && <p className="mt-0.5 text-[10px] text-red-500">{lineErrors[index].product_id}</p>}
         </div>
       ),
@@ -204,7 +206,8 @@ function StockMovementFormPageContent() {
       width: 160,
       render: ({ item, index, isReadOnly, onUpdate }) => (
         <div>
-          <SearchableSelect value={item.warehouse_id} onChange={(v, opt) => { onUpdate('warehouse_id', v); onUpdate('warehouse', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null); setLineErrors((prev) => { const n = { ...prev }; delete n[index]; return n }) }} onSearch={gudangApi.search} placeholder="Pilih gudang..." disabled={isReadOnly} size="sm" selectedOptions={item.warehouse ? [{ value: item.warehouse.id, label: item.warehouse.name, sublabel: item.warehouse.code }] : []} />
+          <SearchableSelect
+          flush value={item.warehouse_id} onChange={(v, opt) => { onUpdate('warehouse_id', v); onUpdate('warehouse', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null); setLineErrors((prev) => { const n = { ...prev }; delete n[index]; return n }) }} onSearch={gudangApi.search} placeholder="Pilih gudang..." disabled={isReadOnly} size="sm" selectedOptions={item.warehouse ? [{ value: item.warehouse.id, label: item.warehouse.name, sublabel: item.warehouse.code }] : []} />
           {lineErrors[index]?.warehouse_id && <p className="mt-0.5 text-[10px] text-red-500">{lineErrors[index].warehouse_id}</p>}
         </div>
       ),
@@ -216,12 +219,12 @@ function StockMovementFormPageContent() {
       align: 'right',
       render: ({ item, index, isReadOnly, onUpdate }) => (
         <div>
-          <Input type="number" value={item.quantity} onChange={(e) => { onUpdate('quantity', Number(e.target.value)); setLineErrors((prev) => { const n = { ...prev }; if (n[index]) { const f = { ...n[index] }; delete f.quantity; n[index] = f } return n }) }} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} step="any" />
+          <AmountInput value={item.quantity} onChange={(v) => { onUpdate('quantity', v); setLineErrors((prev) => { const n = { ...prev }; if (n[index]) { const f = { ...n[index] }; delete f.quantity; n[index] = f } return n }) }} disabled={isReadOnly} decimals={2} ariaLabel="Qty" className={cn(FLUSH_INPUT_CLASS, 'text-right')} />
           {lineErrors[index]?.quantity && <p className="mt-0.5 text-[10px] text-red-500">{lineErrors[index].quantity}</p>}
         </div>
       ),
     },
-    { id: 'unit_cost', header: 'Harga Satuan', width: 120, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <Input type="number" value={item.unit_cost} onChange={(e) => onUpdate('unit_cost', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} /> },
+    { id: 'unit_cost', header: 'Harga Satuan', width: 120, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <AmountInput value={item.unit_cost} onChange={(v) => onUpdate('unit_cost', v)} disabled={isReadOnly} decimals={2} ariaLabel="unit_cost" className={cn(FLUSH_INPUT_CLASS, 'text-right')} /> },
   ]
 
   const actions: DocumentActionButton[] = []

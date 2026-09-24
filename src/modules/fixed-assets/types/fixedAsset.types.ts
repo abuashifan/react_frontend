@@ -161,6 +161,12 @@ export interface CreateFixedAssetPayload {
   useful_life_years?: UsefulLifeYears | null
   quantity?: number | null
   salvage_value?: number | null
+  /**
+   * Hanya relevan untuk aset saldo awal — aset yang sudah dimiliki (dan sudah
+   * menyusut) sebelum perusahaan memakai aplikasi ini. Aset yang dibeli lewat
+   * aplikasi selalu mulai dari 0 dan tidak mengirim field ini.
+   */
+  accumulated_depreciation?: number | null
   department_id?: number | null
   project_id?: number | null
   source_type?: string | null

@@ -20,6 +20,7 @@ const API_ERROR_MESSAGES_ID: Record<string, string> = {
   DUPLICATE_PROJECT_CODE: 'Kode proyek sudah digunakan. Gunakan kode lain.',
   DUPLICATE_UNIT_CODE: 'Kode satuan sudah digunakan. Gunakan kode lain.',
   DUPLICATE_WAREHOUSE_CODE: 'Kode gudang sudah digunakan. Gunakan kode lain.',
+  DUPLICATE_WAREHOUSE_NAME: 'Nama gudang sudah digunakan. Gunakan nama lain.',
   DOCUMENT_NUMBER_DUPLICATE: 'Nomor dokumen sudah digunakan.',
   ACCOUNT_HAS_ACTIVE_CHILDREN: 'Akun tidak bisa dinonaktifkan karena masih punya sub-akun aktif.',
   PRODUCT_HAS_STOCK: 'Produk tidak bisa dinonaktifkan karena stoknya belum nol. Habiskan atau sesuaikan stok lebih dulu.',

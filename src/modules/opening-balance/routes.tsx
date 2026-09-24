@@ -4,15 +4,14 @@ import type { RouteObject } from 'react-router-dom'
 import { ProtectedRoute } from '@/router/guards'
 
 const OpeningBalanceStatusPage = lazy(() => import('./pages/OpeningBalanceStatusPage'))
-const OpeningBalanceBatchPage = lazy(() => import('./pages/OpeningBalanceBatchPage'))
 
+/*
+ * Fase 8: rute detail batch hilang bersama modul batchnya. Yang tersisa satu
+ * papan pemantau — jurnal pembuka dibaca lewat modul Jurnal seperti jurnal lain.
+ */
 export const openingBalanceRoutes: RouteObject[] = [
   {
     path: '/opening-balance',
     element: <ProtectedRoute permission="opening_balance.view"><OpeningBalanceStatusPage /></ProtectedRoute>,
-  },
-  {
-    path: '/opening-balance/:batchId',
-    element: <ProtectedRoute permission="opening_balance.view"><OpeningBalanceBatchPage /></ProtectedRoute>,
   },
 ]

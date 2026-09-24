@@ -26,6 +26,7 @@ export const fixedAssetSchema = z.object({
   useful_life_years: usefulLife,
   quantity: optionalNumber,
   salvage_value: optionalNumber,
+  accumulated_depreciation: optionalNumber,
   department_id: optionalNumber,
   project_id: optionalNumber,
   source_type: z.string().nullable().optional(),
@@ -41,6 +42,20 @@ export const fixedAssetSchema = z.object({
 
   if (values.salvage_value !== null && values.salvage_value !== undefined && values.salvage_value > values.acquisition_cost) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['salvage_value'], message: 'Nilai residu tidak boleh melebihi nilai perolehan' })
+  }
+
+  // Cermin aturan backend (FixedAssetService::assetPayload). Tanpa ini nilai
+  // buku bisa negatif, dan itu baru ketahuan saat neraca saldo awal dihitung.
+  const accumulated = values.accumulated_depreciation
+  if (accumulated !== null && accumulated !== undefined) {
+    const basis = values.acquisition_cost - (values.salvage_value ?? 0)
+    if (accumulated > basis) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['accumulated_depreciation'],
+        message: 'Akumulasi penyusutan tidak boleh melebihi nilai perolehan dikurangi nilai residu',
+      })
+    }
   }
 })
 

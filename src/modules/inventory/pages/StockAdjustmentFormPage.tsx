@@ -4,7 +4,8 @@ import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
-import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
+import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/components/shared/form/LineItemsTable'
+import { AmountInput } from '@/components/shared/form/AmountInput'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { ConfirmDialog } from '@/components/shared/document/ConfirmDialog'
@@ -246,6 +247,7 @@ function StockAdjustmentFormPageContent() {
       render: ({ item, index, isReadOnly, onUpdate }) => (
         <div>
           <SearchableSelect
+          flush
             value={item.product_id}
             onChange={(v) => { onUpdate('product_id', v); setLineErrors((prev) => { const n = { ...prev }; if (n[index]) { const f = { ...n[index] }; delete f.product_id; n[index] = f } return n }) }}
             onSearch={produkApi.search}
@@ -263,6 +265,7 @@ function StockAdjustmentFormPageContent() {
       render: ({ item, index, isReadOnly, onUpdate }) => (
         <div>
           <SearchableSelect
+          flush
             value={item.warehouse_id}
             onChange={(v) => { onUpdate('warehouse_id', v); setLineErrors((prev) => { const n = { ...prev }; if (n[index]) { const f = { ...n[index] }; delete f.warehouse_id; n[index] = f } return n }) }}
             onSearch={gudangApi.search}
@@ -279,7 +282,7 @@ function StockAdjustmentFormPageContent() {
       id: 'adj_type', header: 'Tipe', width: 100,
       render: ({ item, isReadOnly, onUpdate }) => (
         <Select value={item.adjustment_type} onValueChange={(v) => onUpdate('adjustment_type', v as StockAdjustmentLineType)} disabled={isReadOnly}>
-          <SelectTrigger className="h-8 text-[12px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className={cn('h-8 text-[12px]', FLUSH_INPUT_CLASS)}><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="increase">Tambah</SelectItem>
             <SelectItem value="decrease">Kurang</SelectItem>
@@ -291,13 +294,13 @@ function StockAdjustmentFormPageContent() {
       id: 'quantity', header: 'Qty', width: 80, align: 'right',
       render: ({ item, index, isReadOnly, onUpdate }) => (
         <div>
-          <Input type="number" value={item.quantity} onChange={(e) => { onUpdate('quantity', Number(e.target.value)); setLineErrors((prev) => { const n = { ...prev }; if (n[index]) { const f = { ...n[index] }; delete f.quantity; n[index] = f } return n }) }} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} />
+          <AmountInput value={item.quantity} onChange={(v) => { onUpdate('quantity', v); setLineErrors((prev) => { const n = { ...prev }; if (n[index]) { const f = { ...n[index] }; delete f.quantity; n[index] = f } return n }) }} disabled={isReadOnly} decimals={2} ariaLabel="Qty" className={cn(FLUSH_INPUT_CLASS, 'text-right')} />
           {lineErrors[index]?.quantity && <p className="mt-0.5 text-[10px] text-red-500">{lineErrors[index].quantity}</p>}
         </div>
       ),
     },
-    { id: 'unit_cost', header: 'Harga', width: 110, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <Input type="number" value={item.unit_cost} onChange={(e) => onUpdate('unit_cost', Number(e.target.value))} disabled={isReadOnly} className="h-8 text-[12px] text-right" min={0} /> },
-    { id: 'reason', header: 'Alasan', width: 150, render: ({ item, isReadOnly, onUpdate }) => <Input value={item.reason} onChange={(e) => onUpdate('reason', e.target.value)} disabled={isReadOnly} placeholder="Alasan..." className="h-8 text-[12px]" /> },
+    { id: 'unit_cost', header: 'Harga', width: 110, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <AmountInput value={item.unit_cost} onChange={(v) => onUpdate('unit_cost', v)} disabled={isReadOnly} decimals={2} ariaLabel="unit_cost" className={cn(FLUSH_INPUT_CLASS, 'text-right')} /> },
+    { id: 'reason', header: 'Alasan', width: 150, render: ({ item, isReadOnly, onUpdate }) => <Input value={item.reason} onChange={(e) => onUpdate('reason', e.target.value)} disabled={isReadOnly} placeholder="Alasan..." className={cn('h-8 text-[12px]', FLUSH_INPUT_CLASS)} /> },
   ]
 
   const actions: DocumentActionButton[] = []

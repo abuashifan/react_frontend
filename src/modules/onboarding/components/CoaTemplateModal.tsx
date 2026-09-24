@@ -12,7 +12,8 @@ import {
 } from '@/components/ui/select'
 import { DataTable } from '@/components/shared/table/DataTable'
 import type { ColumnDef, PaginationState } from '@/components/shared/table/DataTable'
-import { LineItemsTable } from '@/components/shared/form/LineItemsTable'
+import { cn } from '@/lib/utils'
+import { LineItemsTable, FLUSH_INPUT_CLASS } from '@/components/shared/form/LineItemsTable'
 import type { CoaAccountType, CoaTemplateAccountInput, CoaTemplateDef } from '../types/setup.types'
 
 interface CoaTemplateModalProps {
@@ -177,7 +178,7 @@ export function CoaTemplateModal({ open, onClose, template, customAccounts, onSa
                     <Input
                       value={item.code}
                       onChange={(e) => onUpdate('code', e.target.value)}
-                      className="h-8 text-[12px]"
+                      className={cn('h-8 text-[12px]', FLUSH_INPUT_CLASS)}
                       placeholder="1100"
                     />
                   ),
@@ -190,7 +191,7 @@ export function CoaTemplateModal({ open, onClose, template, customAccounts, onSa
                     <Input
                       value={item.name}
                       onChange={(e) => onUpdate('name', e.target.value)}
-                      className="h-8 text-[12px]"
+                      className={cn('h-8 text-[12px]', FLUSH_INPUT_CLASS)}
                       placeholder="Nama akun"
                     />
                   ),
@@ -201,7 +202,7 @@ export function CoaTemplateModal({ open, onClose, template, customAccounts, onSa
                   width: 140,
                   render: ({ item, onUpdate }) => (
                     <Select value={item.type} onValueChange={(value) => onUpdate('type', value)}>
-                      <SelectTrigger className="h-8 text-[12px]">
+                      <SelectTrigger className={cn('h-8 text-[12px]', FLUSH_INPUT_CLASS)}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -225,7 +226,7 @@ export function CoaTemplateModal({ open, onClose, template, customAccounts, onSa
                         value={item.parent_code ?? '__none__'}
                         onValueChange={(value) => onUpdate('parent_code', value === '__none__' ? null : value)}
                       >
-                        <SelectTrigger className="h-8 text-[12px]">
+                        <SelectTrigger className={cn('h-8 text-[12px]', FLUSH_INPUT_CLASS)}>
                           <SelectValue placeholder="Tanpa induk" />
                         </SelectTrigger>
                         <SelectContent>
@@ -266,26 +267,26 @@ export function CoaTemplateModal({ open, onClose, template, customAccounts, onSa
           <div className="flex items-center gap-2">
             {mode === 'preview' ? (
               <>
-                <Button type="button" variant="outline" onClick={handleClose} className="h-8 px-4 text-[13px]">
+                <Button type="button" variant="outline" onClick={handleClose} className={cn('h-8 px-4 text-[13px]', FLUSH_INPUT_CLASS)}>
                   Tutup
                 </Button>
                 <Button
                   type="button"
                   onClick={() => setMode('edit')}
-                  className="h-8 bg-[#5c9ead] px-5 text-[13px] hover:bg-[#4a8a9b]"
+                  className={cn('h-8 bg-[#5c9ead] px-5 text-[13px] hover:bg-[#4a8a9b]', FLUSH_INPUT_CLASS)}
                 >
                   Edit
                 </Button>
               </>
             ) : (
               <>
-                <Button type="button" variant="outline" onClick={handleCancelEdit} className="h-8 px-4 text-[13px]">
+                <Button type="button" variant="outline" onClick={handleCancelEdit} className={cn('h-8 px-4 text-[13px]', FLUSH_INPUT_CLASS)}>
                   Batal
                 </Button>
                 <Button
                   type="button"
                   onClick={handleSaveEdit}
-                  className="h-8 bg-[#5c9ead] px-5 text-[13px] hover:bg-[#4a8a9b]"
+                  className={cn('h-8 bg-[#5c9ead] px-5 text-[13px] hover:bg-[#4a8a9b]', FLUSH_INPUT_CLASS)}
                 >
                   Simpan
                 </Button>

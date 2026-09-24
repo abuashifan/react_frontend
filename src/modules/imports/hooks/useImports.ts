@@ -32,10 +32,21 @@ export function useImportRows(uuid: string | null, page: number) {
   })
 }
 
+/** Riwayat impor, dibatasi ke satu profil kalau diminta. */
+export function useImportHistory(page: number, profile?: string) {
+  return useQuery({
+    queryKey: ['imports', 'history', page, profile ?? 'all'],
+    queryFn: () => importsApi.list(page, 25, profile),
+  })
+}
+
 export function useImportMutations() {
   const queryClient = useQueryClient()
   const invalidateBatch = (uuid?: string) => {
     void queryClient.invalidateQueries({ queryKey: ['imports', 'batch', uuid] })
+    void queryClient.invalidateQueries({ queryKey: ['imports', 'history'] })
+    // Profil saldo awal & aset tetap menulis ke papan pemantau Saldo Awal.
+    void queryClient.invalidateQueries({ queryKey: ['opening-balance'] })
   }
 
   return {
@@ -54,6 +65,11 @@ export function useImportMutations() {
     }),
     cancel: useMutation({
       mutationFn: (uuid: string) => importsApi.cancel(uuid),
+      onSuccess: (_, uuid) => invalidateBatch(uuid),
+    }),
+    revert: useMutation({
+      mutationFn: ({ uuid, reason }: { uuid: string; reason: string }) => importsApi.revert(uuid, reason),
+      onSuccess: (_, { uuid }) => invalidateBatch(uuid),
     }),
   }
 }

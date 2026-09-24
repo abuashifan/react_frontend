@@ -105,8 +105,6 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     label: 'Anggaran',
     path: '/budget',
     ribbonItems: [
-      { id: 'budget-dashboard', group: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/budget/dashboard', permission: 'budgets.view' },
-
       // Urutan mengikuti alur proses: pagu top-down (Tahap 1-2) dulu, baru
       // pengajuan RAB bottom-up (Tahap 4) — bukan urutan CRUD submission yang
       // jadi objek utama modul ini secara teknis.

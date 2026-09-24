@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
-import { LineItemsTable, type LineItemColumn } from '@/components/shared/form/LineItemsTable'
+import { AmountInput } from '@/components/shared/form/AmountInput'
+import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/components/shared/form/LineItemsTable'
 import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
@@ -116,12 +117,13 @@ function VendorPaymentFormPageContent() {
         isReadOnly ? (
           <span className="text-[12px] tabular-nums">{formatCurrency(item.amount)}</span>
         ) : (
-          <Input
-            type="number"
-            min={0}
+          <AmountInput
             value={item.amount}
-            onChange={(e) => onUpdate('amount', Number(e.target.value))}
-            className="h-8 text-right text-[12px] tabular-nums"
+            onChange={(v) => onUpdate('amount', v)}
+            
+            decimals={2}
+            ariaLabel="Jumlah"
+            className={cn(FLUSH_INPUT_CLASS, 'text-right')}
           />
         ),
     },

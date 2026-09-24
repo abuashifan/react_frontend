@@ -1,3 +1,5 @@
+import type { OBStatus } from '@/modules/opening-balance/types/openingBalance.types'
+
 /**
  * Kontrak `/api/setup/*` — lihat app/Modules/Setup/Services/SetupWizardService.php.
  * Backend adalah satu-satunya sumber kebenaran status setup awal perusahaan.
@@ -16,8 +18,7 @@ export type SetupStepKey =
   | 'accounting_settings'
   | 'chart_of_accounts'
   | 'account_mappings'
-  | 'opening_fixed_assets'
-  | 'opening_balance_preview'
+  | 'opening_balance'
   | 'final_review'
   | 'finalized'
 
@@ -57,10 +58,18 @@ export interface SetupGate {
   initial_setup_available: boolean
 }
 
+
+
 export interface SetupStatus {
   state: SetupState
   steps: SetupStep[]
   gate: SetupGate
+  /**
+   * Papan pemantau saldo awal, sumbernya sama persis dengan
+   * `GET /opening-balance/status` — supaya wizard dan halaman Saldo Awal tidak
+   * pernah berbeda pendapat.
+   */
+  opening_balance: OBStatus
 }
 
 /** Kontrak `/api/setup/coa-templates` -- lihat CoaTemplateService::templates(). */
