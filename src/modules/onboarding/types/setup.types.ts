@@ -91,3 +91,15 @@ export interface CoaTemplateDef {
   account_count: number
   accounts: CoaTemplateAccountInput[]
 }
+
+/** Kontrak `POST /setup/coa-templates/import` -- lihat CoaTemplateService::importFromFile(). */
+export interface CoaImportSkippedRow {
+  row: number | null
+  code: string | null
+  errors: string[]
+}
+
+export interface CoaImportResult {
+  accounts: CoaTemplateAccountInput[]
+  skipped: CoaImportSkippedRow[]
+}
