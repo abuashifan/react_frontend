@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check } from 'lucide-react'
+import { Check, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -17,9 +17,13 @@ import { setupApi } from '../../services/onboardingApi'
 import { useToast } from '@/hooks/useToast'
 import { COA_TEMPLATES } from '../../constants'
 import { CoaTemplateModal } from '../CoaTemplateModal'
+import { CoaImportDialog } from '../CoaImportDialog'
 import type { CoaTemplateAccountInput } from '../../types/setup.types'
 import { getApiErrorMessage } from '@/lib/apiError'
 import { COMPANY_SETTINGS_KEY } from '@/modules/settings/hooks/useCompanySettings'
+
+/** Template dasar dipakai saat COA berasal dari impor file -- sejalan dengan makna "blank": tidak menimpa modul yang sudah diatur user. */
+const IMPORT_BASE_TEMPLATE_ID = 'blank'
 
 interface Props {
   currentTemplate: string | null
@@ -34,8 +38,9 @@ export function Step2TemplateCOA({ currentTemplate, mappingCompleted, onComplete
   const [selected, setSelected] = useState<string | null>(currentTemplate)
   const [customAccounts, setCustomAccounts] = useState<CoaTemplateAccountInput[] | null>(null)
   const [previewModalOpen, setPreviewModalOpen] = useState(false)
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [pendingChange, setPendingChange] = useState<string | null>(null)
+  const [pendingChange, setPendingChange] = useState<{ id: string; accounts: CoaTemplateAccountInput[] | null } | null>(null)
 
   const templatesQuery = useQuery({
     queryKey: ['setup-coa-templates'],
@@ -45,25 +50,34 @@ export function Step2TemplateCOA({ currentTemplate, mappingCompleted, onComplete
   const templates = templatesQuery.data ?? []
   const selectedTemplateDef = templates.find((t) => t.id === selected)
 
+  /** Dipakai baik oleh klik card template maupun hasil impor file -- keduanya mengganti `selected` + `customAccounts`. */
+  const applySelection = (id: string, accounts: CoaTemplateAccountInput[] | null) => {
+    // Warn if mapping was already done -- ganti template mengganti ulang akun yang sudah dibuat.
+    if (mappingCompleted && currentTemplate && id !== currentTemplate) {
+      setPendingChange({ id, accounts })
+      return
+    }
+    setSelected(id)
+    setCustomAccounts(accounts)
+    setPreviewModalOpen(true)
+  }
+
   const handleSelect = (id: string) => {
     if (id === selected) {
       setPreviewModalOpen(true)
       return
     }
-    // Warn if mapping was already done -- ganti template mengganti ulang akun yang sudah dibuat.
-    if (mappingCompleted && currentTemplate && id !== currentTemplate) {
-      setPendingChange(id)
-      return
-    }
-    setSelected(id)
-    setCustomAccounts(null)
-    setPreviewModalOpen(true)
+    applySelection(id, null)
+  }
+
+  const handleImportComplete = (accounts: CoaTemplateAccountInput[]) => {
+    applySelection(IMPORT_BASE_TEMPLATE_ID, accounts)
   }
 
   const handleConfirmChange = () => {
     if (pendingChange) {
-      setSelected(pendingChange)
-      setCustomAccounts(null)
+      setSelected(pendingChange.id)
+      setCustomAccounts(pendingChange.accounts)
       setPreviewModalOpen(true)
       setPendingChange(null)
     }
@@ -159,11 +173,26 @@ export function Step2TemplateCOA({ currentTemplate, mappingCompleted, onComplete
         })}
       </div>
 
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setImportDialogOpen(true)}
+        className="h-9 w-fit gap-1.5 border-dashed text-[12px]"
+      >
+        <Upload className="w-3.5 h-3.5" /> Impor COA dari File (CSV/XLSX)
+      </Button>
+
       {selected && (
         <p className="text-[12px] text-[#64748b]">
           Klik card di atas kapan saja untuk membuka pratinjau akun lengkap dan mengeditnya.
         </p>
       )}
+
+      <CoaImportDialog
+        open={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        onImported={handleImportComplete}
+      />
 
       <CoaTemplateModal
         open={previewModalOpen}
