@@ -212,6 +212,7 @@ export function OnboardingPage() {
             {state.currentStep === 2 && (
               <Step2TemplateCOA
                 currentTemplate={state.selectedTemplate}
+                currentAccountCount={state.templateAccountCount}
                 mappingCompleted={state.mappingCompleted}
                 onComplete={(templateId, templateLabel, accountCount) => {
                   setState((prev) => ({
