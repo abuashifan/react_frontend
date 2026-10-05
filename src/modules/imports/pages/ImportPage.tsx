@@ -13,6 +13,7 @@ import { usePermission } from '@/hooks/usePermission'
 import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
 import { getApiErrorMessage, getApiValidationErrors } from '@/lib/apiError'
 import { cn, formatCurrency } from '@/lib/utils'
+import { ReturnToSetupBanner } from '@/modules/onboarding/components/ReturnToSetupBanner'
 import { importsApi } from '../services/importsApi'
 import { useImportBatch, useImportHistory, useImportMutations, useImportProfiles, useImportRows } from '../hooks/useImports'
 import { useImportPresetStore } from '../stores/useImportPresetStore'
@@ -423,6 +424,7 @@ export default function ImportPage() {
       breadcrumb={[{ label: 'Master Data' }, { label: 'Impor Data' }]}
     >
       <div className="max-w-3xl mx-auto p-6 flex flex-col gap-4">
+        <ReturnToSetupBanner />
         <Stepper step={step} />
 
         {step === 'upload' && (
