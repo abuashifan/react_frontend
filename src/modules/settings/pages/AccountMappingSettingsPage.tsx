@@ -1,10 +1,13 @@
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { Upload } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage } from '@/lib/apiError'
 import { useAccountMappings, useAccountMappingMutations } from '@/modules/master-data/hooks/useAccountMappings'
 import { AccountMappingGroupedFields } from '@/modules/master-data/components/AccountMappingGroupedFields'
+import { AccountMappingImportDialog } from '@/modules/master-data/components/AccountMappingImportDialog'
 
 /**
  * Sama persis dengan Step3AccountMapping di setup wizard -- keduanya memakai
@@ -16,8 +19,10 @@ export default function AccountMappingSettingsPage() {
   const { data, isLoading } = useAccountMappings()
   const { update } = useAccountMappingMutations()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
   const [saving, setSaving] = useState(false)
   const [overrides, setOverrides] = useState<Record<string, number | null>>({})
+  const [importOpen, setImportOpen] = useState(false)
 
   const mappings = data?.data ?? []
 
@@ -46,6 +51,26 @@ export default function AccountMappingSettingsPage() {
         <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-800">
           Perubahan pemetaan akun akan mempengaruhi entri jurnal otomatis untuk semua transaksi baru. Pastikan akun yang dipilih sudah benar sebelum menyimpan.
         </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setImportOpen(true)}
+          className="h-9 w-fit gap-1.5 border-dashed text-[12px]"
+        >
+          <Upload className="w-3.5 h-3.5" /> Impor dari File (CSV/XLSX)
+        </Button>
+
+        <AccountMappingImportDialog
+          open={importOpen}
+          onClose={() => setImportOpen(false)}
+          onApplied={() => {
+            // Hasil impor datang langsung dari server -- buang draft `overrides` lokal
+            // yang belum disimpan supaya tidak menimpa balik nilai yang baru diimpor.
+            setOverrides({})
+            void queryClient.invalidateQueries({ queryKey: ['master-data-account-mappings'] })
+          }}
+        />
 
         <AccountMappingGroupedFields
           mappings={mappings}

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, AlertTriangle } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAccountMappings } from '@/modules/master-data/hooks/useAccountMappings'
 import { accountMappingApi } from '@/modules/master-data/services/accountMappingApi'
 import { AccountMappingGroupedFields } from '@/modules/master-data/components/AccountMappingGroupedFields'
+import { AccountMappingImportDialog } from '@/modules/master-data/components/AccountMappingImportDialog'
 import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage } from '@/lib/apiError'
 
@@ -26,6 +27,7 @@ export function Step3AccountMapping({ onComplete, onBack }: Props) {
   const { data, isLoading, isError, refetch } = useAccountMappings()
   const [overrides, setOverrides] = useState<Record<string, number | null>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
 
   const mappings = data?.data ?? []
   const valueFor = (key: string, original: number | null): number | null =>
@@ -102,6 +104,24 @@ export function Step3AccountMapping({ onComplete, onBack }: Props) {
           </p>
         </div>
       )}
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setImportOpen(true)}
+        className="h-9 w-fit gap-1.5 border-dashed text-[12px]"
+      >
+        <Upload className="w-3.5 h-3.5" /> Impor dari File (CSV/XLSX)
+      </Button>
+
+      <AccountMappingImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onApplied={() => {
+          setOverrides({})
+          void qc.invalidateQueries({ queryKey: ['master-data-account-mappings'] })
+        }}
+      />
 
       <AccountMappingGroupedFields
         mappings={mappings}
