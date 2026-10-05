@@ -27,16 +27,22 @@ const IMPORT_BASE_TEMPLATE_ID = 'blank'
 
 interface Props {
   currentTemplate: string | null
+  /** Jumlah akun hasil penerapan sebelumnya -- dipakai ringkasan wizard saat Lanjutkan tanpa penerapan ulang. */
+  currentAccountCount: number
   mappingCompleted: boolean
   onComplete: (templateId: string, templateLabel: string, accountCount: number) => void
   onBack: () => void
 }
 
-export function Step2TemplateCOA({ currentTemplate, mappingCompleted, onComplete, onBack }: Props) {
+export function Step2TemplateCOA({ currentTemplate, currentAccountCount, mappingCompleted, onComplete, onBack }: Props) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [selected, setSelected] = useState<string | null>(currentTemplate)
   const [customAccounts, setCustomAccounts] = useState<CoaTemplateAccountInput[] | null>(null)
+  // `customAccounts` hidup di state lokal dan hilang saat user meninggalkan langkah ini, jadi
+  // "customAccounts null" tidak berarti "pakai template standar". `changed` yang membedakan:
+  // true hanya kalau user memilih template, mengedit, atau mengimpor di kunjungan ini.
+  const [changed, setChanged] = useState(false)
   const [previewModalOpen, setPreviewModalOpen] = useState(false)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -59,7 +65,15 @@ export function Step2TemplateCOA({ currentTemplate, mappingCompleted, onComplete
     }
     setSelected(id)
     setCustomAccounts(accounts)
+    setChanged(true)
     setPreviewModalOpen(true)
+  }
+
+  const handleSaveEdit = (accounts: CoaTemplateAccountInput[] | null) => {
+    const baseline = customAccounts ?? selectedTemplateDef?.accounts ?? []
+    if (JSON.stringify(accounts ?? []) === JSON.stringify(baseline)) return
+    setCustomAccounts(accounts)
+    setChanged(true)
   }
 
   const handleSelect = (id: string) => {
@@ -78,6 +92,7 @@ export function Step2TemplateCOA({ currentTemplate, mappingCompleted, onComplete
     if (pendingChange) {
       setSelected(pendingChange.id)
       setCustomAccounts(pendingChange.accounts)
+      setChanged(true)
       setPreviewModalOpen(true)
       setPendingChange(null)
     }
@@ -85,6 +100,17 @@ export function Step2TemplateCOA({ currentTemplate, mappingCompleted, onComplete
 
   const handleContinue = async () => {
     if (!selected || !selectedTemplateDef) return
+
+    // COA sudah pernah diterapkan dan tidak diubah di kunjungan ini: jangan terapkan ulang.
+    // Menerapkan ulang menghapus seluruh akun hasil penerapan sebelumnya (termasuk hasil impor
+    // file) lalu membuat ulang dari `selectedTemplateDef.accounts` -- kosong untuk template
+    // "Kosong" -- dan mapping yang menunjuk akun-akun itu ikut kosong (nullOnDelete).
+    if (!changed && currentTemplate !== null) {
+      try { await setupApi.validateStep('chart_of_accounts') } catch { /* progres non-blocking */ }
+      onComplete(selected, selectedTemplateDef.label, currentAccountCount)
+      return
+    }
+
     setIsSubmitting(true)
     try {
       await setupApi.applyCoaTemplate({
@@ -188,6 +214,14 @@ export function Step2TemplateCOA({ currentTemplate, mappingCompleted, onComplete
         </p>
       )}
 
+      {!changed && currentTemplate !== null && (
+        <div className="rounded-md border border-[#bfdbfe] bg-[#eff6ff] px-4 py-3 text-[12px] text-[#1e40af]">
+          Daftar akun sudah diterapkan (<span className="tabular-nums">{currentAccountCount}</span> akun).
+          Lanjutkan tidak mengubahnya. Pilih template lain, edit, atau impor ulang hanya bila ingin
+          menggantinya -- Pemetaan Akun akan disesuaikan ulang.
+        </div>
+      )}
+
       <CoaImportDialog
         open={importDialogOpen}
         onClose={() => setImportDialogOpen(false)}
@@ -199,7 +233,7 @@ export function Step2TemplateCOA({ currentTemplate, mappingCompleted, onComplete
         onClose={() => setPreviewModalOpen(false)}
         template={selectedTemplateDef}
         customAccounts={customAccounts}
-        onSave={setCustomAccounts}
+        onSave={handleSaveEdit}
       />
 
       {/* Navigation */}
