@@ -12,6 +12,7 @@ import { formatCurrency, cn } from '@/lib/utils'
 import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
 import { useImportPresetStore } from '@/modules/imports/stores/useImportPresetStore'
 import { getApiErrorMessage } from '@/lib/apiError'
+import { ReturnToSetupBanner } from '@/modules/onboarding/components/ReturnToSetupBanner'
 import { useOBStatus, useOBMutations } from '../hooks/useOpeningBalance'
 import type { OBJournalSummary, OBStatus } from '../types/openingBalance.types'
 
@@ -93,6 +94,8 @@ export default function OpeningBalanceStatusPage() {
   return (
     <WorkspaceLayout title="Saldo Awal" breadcrumb={[{ label: 'Akuntansi' }, { label: 'Saldo Awal' }]}>
       <div className="max-w-4xl space-y-4">
+        <ReturnToSetupBanner />
+
         {!status.ready && (
           <Notice tone="warning">
             Pemetaan akun saldo awal belum lengkap. Terapkan Daftar Akun lebih dulu di wizard Setup,
