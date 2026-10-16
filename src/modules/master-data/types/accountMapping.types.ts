@@ -29,3 +29,13 @@ export interface AccountMappingImportResult {
   skipped_count: number
   error_count: number
 }
+
+/** Kontrak `POST /master-data/account-mappings/reset-defaults` -- lihat AccountMappingStorageService::resetMappingsToDefaults(). */
+export interface AccountMappingResetResult {
+  summary: {
+    filled: number
+    empty: number
+    missing_required: string[]
+  }
+  mappings: AccountMapping[]
+}

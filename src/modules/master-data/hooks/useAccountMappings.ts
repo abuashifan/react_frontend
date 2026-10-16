@@ -18,5 +18,10 @@ export function useAccountMappingMutations() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['master-data-account-mappings'] }),
   })
 
-  return { update }
+  const resetDefaults = useMutation({
+    mutationFn: () => accountMappingApi.resetDefaults(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['master-data-account-mappings'] }),
+  })
+
+  return { update, resetDefaults }
 }
