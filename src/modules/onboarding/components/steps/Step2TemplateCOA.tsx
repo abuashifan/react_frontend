@@ -120,6 +120,9 @@ export function Step2TemplateCOA({ currentTemplate, currentAccountCount, mapping
       // Backend menyesuaikan modul dengan jenis usaha template saat template
       // berganti; tanpa ini langkah Modul menampilkan pilihan dari cache lama.
       await queryClient.invalidateQueries({ queryKey: COMPANY_SETTINGS_KEY })
+      // Penerapan COA menghapus akun lama lalu mengisi ulang pemetaan di server; tanpa ini
+      // langkah Pemetaan Akun menampilkan pemetaan lama dari cache (staleTime 30 detik).
+      void queryClient.invalidateQueries({ queryKey: ['master-data-account-mappings'] })
       // Penerapan template juga mengisi Gudang Utama/PCS bila masih kosong --
       // daftar yang sempat ter-cache kosong akan menyesatkan di langkah Master Data.
       void queryClient.invalidateQueries({ queryKey: ['master-data-gudang'] })

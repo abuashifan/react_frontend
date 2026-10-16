@@ -2,7 +2,12 @@ import axios from 'axios'
 import { http } from '@/services/http'
 import { useAuthStore } from '@/stores/useAuthStore'
 import type { ApiResponse } from '@/types/api.types'
-import type { AccountMapping, AccountMappingImportResult, UpdateAccountMappingPayload } from '../types/accountMapping.types'
+import type {
+  AccountMapping,
+  AccountMappingImportResult,
+  AccountMappingResetResult,
+  UpdateAccountMappingPayload,
+} from '../types/accountMapping.types'
 
 export const accountMappingApi = {
   list: () =>
@@ -10,6 +15,10 @@ export const accountMappingApi = {
 
   update: (key: string, payload: UpdateAccountMappingPayload) =>
     http.patch<unknown, ApiResponse<void>>(`/master-data/account-mappings/${key}`, payload),
+
+  /** Timpa SELURUH pemetaan dengan akun default hasil scan ulang COA saat ini (mapping manual ikut tertimpa). */
+  resetDefaults: () =>
+    http.post<unknown, ApiResponse<AccountMappingResetResult>>('/master-data/account-mappings/reset-defaults'),
 
   /** Terapkan berkas Mapping Key + Account Code lewat `updateMapping()` yang sama -- baris kosong dibiarkan, tidak menghapus mapping yang ada. */
   importFile: (file: File) => {

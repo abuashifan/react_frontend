@@ -8,6 +8,7 @@ import { getApiErrorMessage } from '@/lib/apiError'
 import { useAccountMappings, useAccountMappingMutations } from '@/modules/master-data/hooks/useAccountMappings'
 import { AccountMappingGroupedFields } from '@/modules/master-data/components/AccountMappingGroupedFields'
 import { AccountMappingImportDialog } from '@/modules/master-data/components/AccountMappingImportDialog'
+import { AccountMappingResetButton } from '@/modules/master-data/components/AccountMappingResetButton'
 
 /**
  * Sama persis dengan Step3AccountMapping di setup wizard -- keduanya memakai
@@ -52,14 +53,17 @@ export default function AccountMappingSettingsPage() {
           Perubahan pemetaan akun akan mempengaruhi entri jurnal otomatis untuk semua transaksi baru. Pastikan akun yang dipilih sudah benar sebelum menyimpan.
         </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setImportOpen(true)}
-          className="h-9 w-fit gap-1.5 border-dashed text-[12px]"
-        >
-          <Upload className="w-3.5 h-3.5" /> Impor dari File (CSV/XLSX)
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+            className="h-9 w-fit gap-1.5 border-dashed text-[12px]"
+          >
+            <Upload className="w-3.5 h-3.5" /> Impor dari File (CSV/XLSX)
+          </Button>
+          <AccountMappingResetButton onReset={() => setOverrides({})} />
+        </div>
 
         <AccountMappingImportDialog
           open={importOpen}

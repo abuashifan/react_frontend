@@ -6,6 +6,7 @@ import { useAccountMappings } from '@/modules/master-data/hooks/useAccountMappin
 import { accountMappingApi } from '@/modules/master-data/services/accountMappingApi'
 import { AccountMappingGroupedFields } from '@/modules/master-data/components/AccountMappingGroupedFields'
 import { AccountMappingImportDialog } from '@/modules/master-data/components/AccountMappingImportDialog'
+import { AccountMappingResetButton } from '@/modules/master-data/components/AccountMappingResetButton'
 import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage } from '@/lib/apiError'
 
@@ -105,14 +106,17 @@ export function Step3AccountMapping({ onComplete, onBack }: Props) {
         </div>
       )}
 
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => setImportOpen(true)}
-        className="h-9 w-fit gap-1.5 border-dashed text-[12px]"
-      >
-        <Upload className="w-3.5 h-3.5" /> Impor dari File (CSV/XLSX)
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setImportOpen(true)}
+          className="h-9 w-fit gap-1.5 border-dashed text-[12px]"
+        >
+          <Upload className="w-3.5 h-3.5" /> Impor dari File (CSV/XLSX)
+        </Button>
+        <AccountMappingResetButton onReset={() => setOverrides({})} />
+      </div>
 
       <AccountMappingImportDialog
         open={importOpen}

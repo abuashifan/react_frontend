@@ -549,6 +549,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____components/
 | | | | |____AccountMappingGroupedFields.tsx
 | | | | |____AccountMappingImportDialog.tsx
+| | | | |____AccountMappingResetButton.tsx
 | | | | |____AccountPickerDialog.tsx
 | | | |____constants/
 | | | | |____accountMapping.ts
@@ -916,6 +917,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | `modules/master-data/components/AccountPickerDialog.tsx` | Dialog pemilih akun (filter No Akun/Nama Akun, checkbox, multi-pilih) | Form jurnal — memilih N akun mengisi N baris |
 | `modules/master-data/components/AccountMappingGroupedFields.tsx` | Daftar field Account Mapping terkelompok per modul + `AccountPickerDialog` | Setup wizard (Step3AccountMapping) & Pengaturan → Pemetaan Akun (AccountMappingSettingsPage) — satu implementasi, kedua layar selalu identik |
 | `modules/master-data/components/AccountMappingImportDialog.tsx` | Impor Mapping Key + Account Code dari CSV/XLSX, terapkan langsung lewat `updateMapping()` per baris (baris kosong dibiarkan) | Sama seperti `AccountMappingGroupedFields` — dipakai di Step3AccountMapping & AccountMappingSettingsPage |
+| `modules/master-data/components/AccountMappingResetButton.tsx` | Tombol "Reset & Scan Ulang COA" + konfirmasi: `POST /master-data/account-mappings/reset-defaults` menimpa seluruh pemetaan dengan akun default (`default_account_codes`) yang ditemukan di COA saat ini; butuh `settings.company.edit` | Dipakai di Step3AccountMapping & AccountMappingSettingsPage |
 
 Kolom `DataTable` kini punya `sortable` + `sortKey`; `sortKey` wajib memakai nama field
 backend (allowlist `$listSortable` di service Laravel), bukan `id` kolom UI.
