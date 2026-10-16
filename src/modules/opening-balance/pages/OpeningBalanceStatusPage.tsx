@@ -25,6 +25,25 @@ import type { OBJournalSummary, OBStatus } from '../types/openingBalance.types'
  * sudah masuk apa saja, berapa yang belum diakui sebagai ekuitas, dan apakah
  * kartu aset sudah sama dengan buku besarnya.
  */
+
+/**
+ * Kartu aset boleh membawa sen (mis. akumulasi 436.401.671,41), sementara
+ * `formatCurrency` membulatkan ke rupiah -- selisih -0,41 lalu tampil "-Rp 0"
+ * berwarna selisih. Sen hanya ditampilkan kalau memang ada, dan nol tidak
+ * pernah bertanda minus.
+ */
+function formatReconAmount(value: number): string {
+  const cents = Math.round(value * 100)
+  if (cents === 0) return formatCurrency(0)
+  if (cents % 100 === 0) return formatCurrency(cents / 100)
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(cents / 100)
+}
+
 export default function OpeningBalanceStatusPage() {
   const { toast } = useToast()
   const { data, isLoading } = useOBStatus()
@@ -315,10 +334,10 @@ function ReconciliationCard({ status, onImportAssets }: { status: OBStatus; onIm
                     {row.kind === 'cost' ? 'harga perolehan' : 'akumulasi'}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(row.gl_amount)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(row.register_amount)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{formatReconAmount(row.gl_amount)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{formatReconAmount(row.register_amount)}</td>
                 <td className={cn('px-3 py-2 text-right tabular-nums font-medium', Math.abs(row.difference) < 0.01 ? 'text-green-700' : 'text-[#92400E]')}>
-                  {formatCurrency(row.difference)}
+                  {formatReconAmount(row.difference)}
                 </td>
               </tr>
             ))}
