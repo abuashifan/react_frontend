@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { setupApi } from '../services/onboardingApi'
 import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage } from '@/lib/apiError'
+import { SheetPicker } from '@/modules/imports/components/SheetPicker'
 import type { CoaImportResult, CoaTemplateAccountInput } from '../types/setup.types'
 
 interface CoaImportDialogProps {
@@ -26,14 +27,37 @@ export function CoaImportDialog({ open, onClose, onImported }: CoaImportDialogPr
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [result, setResult] = useState<CoaImportResult | null>(null)
+  // Sheet berkas .xlsx; `sheet` null = sheet pertama (bawaan backend).
+  const [sheets, setSheets] = useState<string[]>([])
+  const [sheet, setSheet] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const reset = () => {
     setFile(null)
     setResult(null)
+    setSheets([])
+    setSheet(null)
     setError(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  // Berkas .xlsx dengan banyak sheet: tawarkan pilihan sebelum dibaca. Gagal
+  // membaca daftar sheet bukan alasan memblokir -- backend tetap membaca sheet pertama.
+  const handleFileChange = async (selected: File | null) => {
+    setFile(selected)
+    setResult(null)
+    setError(null)
+    setSheets([])
+    setSheet(null)
+    if (!selected) return
+
+    try {
+      const response = await setupApi.listCoaImportSheets(selected)
+      if (fileInputRef.current?.files?.[0] === selected) setSheets(response.data.sheets)
+    } catch {
+      setSheets([])
+    }
   }
 
   const handleClose = () => {
@@ -46,7 +70,7 @@ export function CoaImportDialog({ open, onClose, onImported }: CoaImportDialogPr
     setIsUploading(true)
     setError(null)
     try {
-      const response = await setupApi.importCoaFile(file)
+      const response = await setupApi.importCoaFile(file, sheet)
       setResult(response.data)
       if (response.data.skipped.length > 0) {
         toast.error(`${response.data.skipped.length} baris dilewati -- lihat rinciannya di bawah.`)
@@ -93,10 +117,17 @@ export function CoaImportDialog({ open, onClose, onImported }: CoaImportDialogPr
               ref={fileInputRef}
               type="file"
               accept=".csv,.txt,.xlsx"
-              onChange={(e) => { setFile(e.target.files?.[0] ?? null); setResult(null); setError(null) }}
+              onChange={(e) => void handleFileChange(e.target.files?.[0] ?? null)}
               className="mt-1 block w-full text-[12px] text-[#64748b] file:mr-3 file:rounded-md file:border-0 file:bg-[#5c9ead] file:px-3 file:py-1.5 file:text-[12px] file:text-white hover:file:bg-[#4a8a9b]"
             />
           </div>
+
+          <SheetPicker
+            sheets={sheets}
+            value={sheet}
+            disabled={isUploading}
+            onChange={(name) => { setSheet(name); setResult(null); setError(null) }}
+          />
 
           {error && (
             <p className="flex items-center gap-1.5 text-[11px] text-red-500">
