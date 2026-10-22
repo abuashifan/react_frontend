@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { accountMappingApi } from '../services/accountMappingApi'
 import { getApiErrorMessage } from '@/lib/apiError'
+import { SheetPicker } from '@/modules/imports/components/SheetPicker'
 import type { AccountMappingImportResult } from '../types/accountMapping.types'
 
 interface AccountMappingImportDialogProps {
@@ -28,14 +29,37 @@ export function AccountMappingImportDialog({ open, onClose, onApplied }: Account
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [result, setResult] = useState<AccountMappingImportResult | null>(null)
+  // Sheet berkas .xlsx; `sheet` null = sheet pertama (bawaan backend).
+  const [sheets, setSheets] = useState<string[]>([])
+  const [sheet, setSheet] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const reset = () => {
     setFile(null)
     setResult(null)
+    setSheets([])
+    setSheet(null)
     setError(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  // Berkas .xlsx dengan banyak sheet: tawarkan pilihan SEBELUM diterapkan --
+  // impor di sini langsung mengubah pemetaan, jadi salah sheet tidak bisa dicoba lagi.
+  const handleFileChange = async (selected: File | null) => {
+    setFile(selected)
+    setResult(null)
+    setError(null)
+    setSheets([])
+    setSheet(null)
+    if (!selected) return
+
+    try {
+      const response = await accountMappingApi.listImportSheets(selected)
+      if (fileInputRef.current?.files?.[0] === selected) setSheets(response.data.sheets)
+    } catch {
+      setSheets([])
+    }
   }
 
   const handleClose = () => {
@@ -50,7 +74,7 @@ export function AccountMappingImportDialog({ open, onClose, onApplied }: Account
     setIsUploading(true)
     setError(null)
     try {
-      const response = await accountMappingApi.importFile(file)
+      const response = await accountMappingApi.importFile(file, sheet)
       setResult(response.data)
     } catch (uploadError) {
       setError(getApiErrorMessage(uploadError, 'Gagal membaca berkas. Pastikan formatnya CSV atau XLSX.'))
@@ -90,10 +114,17 @@ export function AccountMappingImportDialog({ open, onClose, onApplied }: Account
               ref={fileInputRef}
               type="file"
               accept=".csv,.txt,.xlsx"
-              onChange={(e) => { setFile(e.target.files?.[0] ?? null); setResult(null); setError(null) }}
+              onChange={(e) => void handleFileChange(e.target.files?.[0] ?? null)}
               className="mt-1 block w-full text-[12px] text-[#64748b] file:mr-3 file:rounded-md file:border-0 file:bg-[#5c9ead] file:px-3 file:py-1.5 file:text-[12px] file:text-white hover:file:bg-[#4a8a9b]"
             />
           </div>
+
+          <SheetPicker
+            sheets={sheets}
+            value={sheet}
+            disabled={isUploading}
+            onChange={(name) => { setSheet(name); setResult(null); setError(null) }}
+          />
 
           {error && (
             <p className="flex items-center gap-1.5 text-[11px] text-red-500">

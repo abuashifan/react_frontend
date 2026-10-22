@@ -21,11 +21,20 @@ export const accountMappingApi = {
     http.post<unknown, ApiResponse<AccountMappingResetResult>>('/master-data/account-mappings/reset-defaults'),
 
   /** Terapkan berkas Mapping Key + Account Code lewat `updateMapping()` yang sama -- baris kosong dibiarkan, tidak menghapus mapping yang ada. */
-  importFile: (file: File) => {
+  importFile: (file: File, sheet?: string | null) => {
+    const form = new FormData()
+    form.append('file', file)
+    if (sheet) form.append('sheet', sheet)
+
+    return http.post<unknown, ApiResponse<AccountMappingImportResult>>('/master-data/account-mappings/import', form)
+  },
+
+  /** Daftar sheet berkas yang baru dipilih (kosong untuk CSV) -- untuk dropdown pilihan sheet. */
+  listImportSheets: (file: File) => {
     const form = new FormData()
     form.append('file', file)
 
-    return http.post<unknown, ApiResponse<AccountMappingImportResult>>('/master-data/account-mappings/import', form)
+    return http.post<unknown, ApiResponse<{ sheets: string[] }>>('/master-data/account-mappings/import/sheets', form)
   },
 
   /**

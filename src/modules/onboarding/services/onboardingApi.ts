@@ -25,11 +25,20 @@ export const setupApi = {
     http.post<unknown, ApiResponse<unknown>>('/setup/coa-templates/apply', payload),
 
   /** Baca berkas COA milik user (CSV/XLSX) jadi draft akun -- belum disimpan, dipratinjau dulu. */
-  importCoaFile: (file: File) => {
+  importCoaFile: (file: File, sheet?: string | null) => {
+    const form = new FormData()
+    form.append('file', file)
+    if (sheet) form.append('sheet', sheet)
+
+    return http.post<unknown, ApiResponse<CoaImportResult>>('/setup/coa-templates/import', form)
+  },
+
+  /** Daftar sheet berkas COA yang baru dipilih (kosong untuk CSV) -- untuk dropdown pilihan sheet. */
+  listCoaImportSheets: (file: File) => {
     const form = new FormData()
     form.append('file', file)
 
-    return http.post<unknown, ApiResponse<CoaImportResult>>('/setup/coa-templates/import', form)
+    return http.post<unknown, ApiResponse<{ sheets: string[] }>>('/setup/coa-templates/import/sheets', form)
   },
 
   /**

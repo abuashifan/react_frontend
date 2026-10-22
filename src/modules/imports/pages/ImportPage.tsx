@@ -17,6 +17,7 @@ import { ReturnToSetupBanner } from '@/modules/onboarding/components/ReturnToSet
 import { importsApi } from '../services/importsApi'
 import { useImportBatch, useImportHistory, useImportMutations, useImportProfiles, useImportRows } from '../hooks/useImports'
 import { useImportPresetStore } from '../stores/useImportPresetStore'
+import { SheetPicker } from '../components/SheetPicker'
 import type { ActiveBatchExistsMeta, DuplicateFileWarningMeta, ImportBatch, ImportProfile, ImportRow } from '../types/imports.types'
 import type { ApiError } from '@/types/api.types'
 
@@ -1006,53 +1007,6 @@ function ImportHistory({
         loadingLabel="Membatalkan..."
       />
     </section>
-  )
-}
-
-/**
- * Pilihan sheet untuk berkas .xlsx berisi lebih dari satu sheet. Tidak
- * digambar sama sekali untuk CSV atau berkas satu sheet — tidak ada yang
- * bisa dipilih.
- */
-function SheetPicker({
-  sheets,
-  value,
-  disabled,
-  onChange,
-  className,
-}: {
-  sheets: string[]
-  value: string | null
-  disabled: boolean
-  onChange: (name: string) => void
-  className?: string
-}) {
-  if (sheets.length < 2) return null
-
-  const current = value ?? sheets[0]
-
-  return (
-    <div className={cn('mb-4 flex flex-col gap-1 rounded-md border border-[#e2e8f0] bg-[#f8fafc] p-3', className)}>
-      <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Sheet yang diimpor</Label>
-      <select
-        className={selectClass}
-        value={current}
-        disabled={disabled}
-        onChange={(e) => {
-          if (e.target.value !== current) onChange(e.target.value)
-        }}
-      >
-        {sheets.map((name, index) => (
-          <option key={name} value={name}>
-            {name}
-            {index === 0 ? ' (sheet pertama)' : ''}
-          </option>
-        ))}
-      </select>
-      <p className="text-[11px] text-[#64748b]">
-        Berkas ini punya {sheets.length} sheet. Mengganti sheet mengulang pemetaan kolom dan pratinjau.
-      </p>
-    </div>
   )
 }
 
