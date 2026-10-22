@@ -32,5 +32,6 @@ export function useSalesInvoiceMutations() {
     approve: useMutation({ mutationFn: (id: number) => salesInvoiceApi.approve(id), onSuccess: invalidate }),
     post: useMutation({ mutationFn: (id: number) => salesInvoiceApi.post(id), onSuccess: invalidate }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => salesInvoiceApi.void(id, reason), onSuccess: invalidate }),
+    remove: useMutation({ mutationFn: ({ id, reason }: { id: number; reason?: string }) => salesInvoiceApi.remove(id, reason), onSuccess: invalidate }),
   }
 }

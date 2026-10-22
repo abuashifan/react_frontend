@@ -42,4 +42,8 @@ export const salesInvoiceApi = {
 
   void: (id: number, reason: string) =>
     http.patch<unknown, ApiResponse<SalesInvoice>>(`/sales/invoices/${id}/void`, { reason }),
+
+  /** Hapus dokumen (mode lock/open). Draft dihapus permanen; yang sudah berefek di-void lalu disembunyikan. */
+  remove: (id: number, reason?: string) =>
+    http.delete<unknown, ApiResponse<null>>(`/sales/invoices/${id}`, { data: reason ? { reason } : {} }),
 }

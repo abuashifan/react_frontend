@@ -38,5 +38,7 @@ export function useVendorPaymentMutations() {
     create: useMutation({ mutationFn: (p: CreateVendorPaymentPayload) => vendorPaymentApi.create(p), onSuccess: invalidate }),
     post: useMutation({ mutationFn: (id: number) => vendorPaymentApi.post(id), onSuccess: invalidate }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => vendorPaymentApi.void(id, reason), onSuccess: invalidate }),
+    update: useMutation({ mutationFn: ({ id, payload }: { id: number; payload: CreateVendorPaymentPayload }) => vendorPaymentApi.update(id, payload), onSuccess: invalidate }),
+    remove: useMutation({ mutationFn: ({ id, reason }: { id: number; reason?: string }) => vendorPaymentApi.remove(id, reason), onSuccess: invalidate }),
   }
 }

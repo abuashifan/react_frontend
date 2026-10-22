@@ -37,5 +37,6 @@ export function useVendorBillMutations() {
     approve: useMutation({ mutationFn: (id: number) => vendorBillApi.approve(id), onSuccess: invalidate }),
     post: useMutation({ mutationFn: (id: number) => vendorBillApi.post(id), onSuccess: invalidate }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => vendorBillApi.void(id, reason), onSuccess: invalidate }),
+    remove: useMutation({ mutationFn: ({ id, reason }: { id: number; reason?: string }) => vendorBillApi.remove(id, reason), onSuccess: invalidate }),
   }
 }

@@ -16,6 +16,8 @@ export function useCashReceiptMutations() {
     create: useMutation({ mutationFn: (p: CreateCashReceiptPayload) => cashReceiptApi.create(p), onSuccess: inv }),
     post: useMutation({ mutationFn: (id: number) => cashReceiptApi.post(id), onSuccess: inv }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => cashReceiptApi.void(id, reason), onSuccess: inv }),
+    update: useMutation({ mutationFn: ({ id, payload }: { id: number; payload: CreateCashReceiptPayload }) => cashReceiptApi.update(id, payload), onSuccess: inv }),
+    remove: useMutation({ mutationFn: ({ id, reason }: { id: number; reason?: string }) => cashReceiptApi.remove(id, reason), onSuccess: inv }),
   }
 }
 
@@ -33,6 +35,8 @@ export function useCashPaymentMutations() {
     create: useMutation({ mutationFn: (p: CreateCashPaymentPayload) => cashPaymentApi.create(p), onSuccess: inv }),
     post: useMutation({ mutationFn: (id: number) => cashPaymentApi.post(id), onSuccess: inv }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => cashPaymentApi.void(id, reason), onSuccess: inv }),
+    update: useMutation({ mutationFn: ({ id, payload }: { id: number; payload: CreateCashPaymentPayload }) => cashPaymentApi.update(id, payload), onSuccess: inv }),
+    remove: useMutation({ mutationFn: ({ id, reason }: { id: number; reason?: string }) => cashPaymentApi.remove(id, reason), onSuccess: inv }),
   }
 }
 

@@ -32,4 +32,12 @@ export const salesReceiptApi = {
 
   void: (id: number, reason: string) =>
     http.patch<unknown, ApiResponse<SalesReceipt>>(`/sales/receipts/${id}/void`, { reason }),
+
+  /** Edit (mode lock/open): isian lengkap seperti buat baru; yang sudah posted diposting ulang. */
+  update: (id: number, payload: CreateSalesReceiptPayload) =>
+    http.patch<unknown, ApiResponse<SalesReceipt>>(`/sales/receipts/${id}`, payload),
+
+  /** Hapus dokumen (mode lock/open). Draft dihapus permanen; yang sudah berefek di-void lalu disembunyikan. */
+  remove: (id: number, reason?: string) =>
+    http.delete<unknown, ApiResponse<null>>(`/sales/receipts/${id}`, { data: reason ? { reason } : {} }),
 }

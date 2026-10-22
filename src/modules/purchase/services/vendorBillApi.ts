@@ -39,4 +39,8 @@ export const vendorBillApi = {
 
   void: (id: number, reason: string) =>
     http.patch<unknown, ApiResponse<RawVendorBill>>(`/purchase/bills/${id}/void`, { reason }),
+
+  /** Hapus dokumen (mode lock/open). Draft dihapus permanen; yang sudah berefek di-void lalu disembunyikan. */
+  remove: (id: number, reason?: string) =>
+    http.delete<unknown, ApiResponse<null>>(`/purchase/bills/${id}`, { data: reason ? { reason } : {} }),
 }

@@ -21,6 +21,12 @@ export const cashReceiptApi = {
     http.patch<unknown, ApiResponse<CashReceipt>>(`/cash-bank/cash-receipts/${id}/post`),
   void: (id: number, reason: string) =>
     http.patch<unknown, ApiResponse<CashReceipt>>(`/cash-bank/cash-receipts/${id}/void`, { reason }),
+  /** Edit (mode lock/open): isian lengkap seperti buat baru; yang sudah posted diposting ulang. */
+  update: (id: number, payload: CreateCashReceiptPayload) =>
+    http.patch<unknown, ApiResponse<CashReceipt>>(`/cash-bank/cash-receipts/${id}`, payload),
+  /** Hapus dokumen (mode lock/open). Draft dihapus permanen; yang sudah berefek di-void lalu disembunyikan. */
+  remove: (id: number, reason?: string) =>
+    http.delete<unknown, ApiResponse<null>>(`/cash-bank/cash-receipts/${id}`, { data: reason ? { reason } : {} }),
 }
 
 export const cashPaymentApi = {
@@ -37,6 +43,12 @@ export const cashPaymentApi = {
     http.patch<unknown, ApiResponse<CashPayment>>(`/cash-bank/cash-payments/${id}/post`),
   void: (id: number, reason: string) =>
     http.patch<unknown, ApiResponse<CashPayment>>(`/cash-bank/cash-payments/${id}/void`, { reason }),
+  /** Edit (mode lock/open): isian lengkap seperti buat baru; yang sudah posted diposting ulang. */
+  update: (id: number, payload: CreateCashPaymentPayload) =>
+    http.patch<unknown, ApiResponse<CashPayment>>(`/cash-bank/cash-payments/${id}`, payload),
+  /** Hapus dokumen (mode lock/open). Draft dihapus permanen; yang sudah berefek di-void lalu disembunyikan. */
+  remove: (id: number, reason?: string) =>
+    http.delete<unknown, ApiResponse<null>>(`/cash-bank/cash-payments/${id}`, { data: reason ? { reason } : {} }),
 }
 
 export const bankTransferApi = {

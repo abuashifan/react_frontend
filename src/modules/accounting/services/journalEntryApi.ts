@@ -33,4 +33,8 @@ export const journalEntryApi = {
 
   void: (id: number, reason: string) =>
     http.post<unknown, ApiResponse<JournalEntry>>(`/journals/${id}/void`, { reason }),
+
+  /** Hapus dokumen (mode lock/open). Draft dihapus permanen; yang sudah berefek di-void lalu disembunyikan. */
+  remove: (id: number, reason?: string) =>
+    http.delete<unknown, ApiResponse<null>>(`/journals/${id}`, { data: reason ? { reason } : {} }),
 }

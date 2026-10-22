@@ -11,12 +11,25 @@ import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage } from '@/lib/apiError'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { useCompanySettings, useCompanySettingsMutations } from '../hooks/useCompanySettings'
-import type { CompanyAccountingSettings, WorkflowMode } from '../types/settings.types'
+import type { CompanyAccountingSettings, TransactionEditMode, WorkflowMode } from '../types/settings.types'
 
 const WORKFLOW_OPTIONS: { value: WorkflowMode; label: string; hint: string }[] = [
   { value: 'simple_auto_post', label: 'Sederhana — Auto Post', hint: 'Dokumen langsung diposting tanpa draft.' },
   { value: 'draft_then_post', label: 'Draft lalu Post', hint: 'Buat draft, lalu posting manual.' },
   { value: 'draft_approve_post', label: 'Draft → Approve → Post', hint: 'Butuh approval sebelum posting.' },
+]
+
+const EDIT_MODE_OPTIONS: { value: TransactionEditMode; label: string; hint: string }[] = [
+  {
+    value: 'lock',
+    label: 'Lock — hanya draft',
+    hint: 'Hanya transaksi draft yang bisa diedit/dihapus, termasuk jurnal manual. Yang sudah diposting harus di-void dulu. Sales Order & Delivery Order tetap mengikuti aturannya sendiri.',
+  },
+  {
+    value: 'open',
+    label: 'Open — semua status',
+    hint: 'Transaksi yang sudah diposting juga bisa diedit/dihapus, selama tidak tertaut transaksi lain. Saat disimpan, jurnal lama di-void (tetap tersimpan sebagai jejak) lalu diposting ulang.',
+  },
 ]
 
 interface ToggleField { key: keyof CompanyAccountingSettings; label: string; hint?: string }
@@ -25,7 +38,6 @@ const BEHAVIOR_TOGGLES: ToggleField[] = [
   { key: 'auto_post_transactions', label: 'Posting Otomatis', hint: 'Dokumen langsung diposting tanpa approval manual.' },
   { key: 'approval_enabled', label: 'Approval Diperlukan', hint: 'Dokumen butuh approval sebelum posting.' },
   { key: 'allow_edit_transactions', label: 'Izinkan Edit Draft' },
-  { key: 'allow_edit_posted_transactions', label: 'Izinkan Edit Dokumen Terposting' },
   { key: 'allow_void_transactions', label: 'Izinkan Void' },
   { key: 'require_void_reason', label: 'Wajib Alasan Void' },
   { key: 'hide_voided_transactions', label: 'Sembunyikan Dokumen Void' },
@@ -66,7 +78,7 @@ export default function TransactionSettingsPage() {
         auto_post_transactions: acc.auto_post_transactions,
         approval_enabled: acc.approval_enabled,
         allow_edit_transactions: acc.allow_edit_transactions,
-        allow_edit_posted_transactions: acc.allow_edit_posted_transactions,
+        transaction_edit_mode: acc.transaction_edit_mode,
         allow_void_transactions: acc.allow_void_transactions,
         require_void_reason: acc.require_void_reason,
         hide_voided_transactions: acc.hide_voided_transactions,
@@ -100,6 +112,13 @@ export default function TransactionSettingsPage() {
               {WORKFLOW_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
             <p className="text-[11px] text-[#94a3b8]">{WORKFLOW_OPTIONS.find((o) => o.value === (acc.transaction_workflow_mode ?? 'draft_then_post'))?.hint}</p>
+          </div>
+          <div className="flex flex-col gap-1 md:col-span-2">
+            <Label htmlFor="transaction-settings-edit-mode" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Mode Ubah Transaksi</Label>
+            <select id="transaction-settings-edit-mode" value={acc.transaction_edit_mode ?? 'lock'} onChange={(e) => set('transaction_edit_mode', e.target.value as TransactionEditMode)} className="h-9 rounded-md border border-input bg-background px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-ring">
+              {EDIT_MODE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <p className="text-[11px] text-[#94a3b8]">{EDIT_MODE_OPTIONS.find((o) => o.value === (acc.transaction_edit_mode ?? 'lock'))?.hint}</p>
           </div>
         </FormSection>
 

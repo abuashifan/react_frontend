@@ -29,5 +29,6 @@ export function useJournalEntryMutations() {
     approve: useMutation({ mutationFn: (id: number) => journalEntryApi.approve(id), onSuccess: invalidate }),
     post: useMutation({ mutationFn: (id: number) => journalEntryApi.post(id), onSuccess: invalidate }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => journalEntryApi.void(id, reason), onSuccess: invalidate }),
+    remove: useMutation({ mutationFn: ({ id, reason }: { id: number; reason?: string }) => journalEntryApi.remove(id, reason), onSuccess: invalidate }),
   }
 }

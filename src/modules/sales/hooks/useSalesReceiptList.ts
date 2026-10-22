@@ -36,5 +36,7 @@ export function useSalesReceiptMutations() {
     create: useMutation({ mutationFn: (p: CreateSalesReceiptPayload) => salesReceiptApi.create(p), onSuccess: invalidate }),
     post: useMutation({ mutationFn: (id: number) => salesReceiptApi.post(id), onSuccess: invalidate }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => salesReceiptApi.void(id, reason), onSuccess: invalidate }),
+    update: useMutation({ mutationFn: ({ id, payload }: { id: number; payload: CreateSalesReceiptPayload }) => salesReceiptApi.update(id, payload), onSuccess: invalidate }),
+    remove: useMutation({ mutationFn: ({ id, reason }: { id: number; reason?: string }) => salesReceiptApi.remove(id, reason), onSuccess: invalidate }),
   }
 }

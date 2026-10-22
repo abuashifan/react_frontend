@@ -4,6 +4,8 @@
 export type RoundingMethod = 'half_up' | 'half_down' | 'bankers' | 'floor' | 'ceil'
 export type WorkflowMode = 'simple_auto_post' | 'draft_then_post' | 'draft_approve_post'
 export type UserPermissionMode = 'role_template' | 'manual_per_user'
+/** lock = hanya draft yang bisa diedit/dihapus; open = semua status, selama tidak tertaut transaksi lain. */
+export type TransactionEditMode = 'lock' | 'open'
 
 export interface CompanyAccountingSettings {
   base_currency?: string
@@ -15,6 +17,7 @@ export interface CompanyAccountingSettings {
   auto_post_transactions?: boolean
   allow_edit_transactions?: boolean
   allow_edit_posted_transactions?: boolean
+  transaction_edit_mode?: TransactionEditMode
   allow_void_transactions?: boolean
   hide_voided_transactions?: boolean
   require_void_reason?: boolean
@@ -56,4 +59,5 @@ export interface CompanyWorkflowSettings {
   auto_post_transactions: boolean
   approval_enabled: boolean
   allow_void_transactions: boolean
+  transaction_edit_mode: TransactionEditMode
 }
