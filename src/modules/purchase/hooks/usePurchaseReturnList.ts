@@ -30,5 +30,7 @@ export function usePurchaseReturnMutations() {
     approve: useMutation({ mutationFn: (id: number) => purchaseReturnApi.approve(id), onSuccess: invalidate }),
     post: useMutation({ mutationFn: (id: number) => purchaseReturnApi.post(id), onSuccess: invalidate }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => purchaseReturnApi.void(id, reason), onSuccess: invalidate }),
+    update: useMutation({ mutationFn: ({ id, payload }: { id: number; payload: CreatePurchaseReturnPayload }) => purchaseReturnApi.update(id, payload), onSuccess: invalidate }),
+    remove: useMutation({ mutationFn: ({ id, reason }: { id: number; reason?: string }) => purchaseReturnApi.remove(id, reason), onSuccess: invalidate }),
   }
 }

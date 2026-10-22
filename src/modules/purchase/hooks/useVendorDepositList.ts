@@ -29,6 +29,8 @@ export function useVendorDepositMutations() {
     create: useMutation({ mutationFn: (p: CreateVendorDepositPayload) => vendorDepositApi.create(p), onSuccess: invalidate }),
     post: useMutation({ mutationFn: (id: number) => vendorDepositApi.post(id), onSuccess: invalidate }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => vendorDepositApi.void(id, reason), onSuccess: invalidate }),
+    update: useMutation({ mutationFn: ({ id, payload }: { id: number; payload: CreateVendorDepositPayload }) => vendorDepositApi.update(id, payload), onSuccess: invalidate }),
+    remove: useMutation({ mutationFn: ({ id, reason }: { id: number; reason?: string }) => vendorDepositApi.remove(id, reason), onSuccess: invalidate }),
     refund: useMutation({ mutationFn: (id: number) => vendorDepositApi.refund(id), onSuccess: invalidate }),
   }
 }

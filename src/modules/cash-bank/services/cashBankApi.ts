@@ -65,6 +65,14 @@ export const bankTransferApi = {
     http.patch<unknown, ApiResponse<BankTransfer>>(`/cash-bank/bank-transfers/${id}/post`),
   void: (id: number, reason: string) =>
     http.patch<unknown, ApiResponse<BankTransfer>>(`/cash-bank/bank-transfers/${id}/void`, { reason }),
+
+  /** Edit (mode lock/open): isian lengkap seperti buat baru; yang sudah posted diposting ulang. */
+  update: (id: number, payload: CreateBankTransferPayload) =>
+    http.patch<unknown, ApiResponse<BankTransfer>>(`/cash-bank/bank-transfers/${id}`, payload),
+
+  /** Hapus dokumen (mode lock/open). Tanpa efek dihapus permanen; yang sudah berefek di-void lalu disembunyikan. */
+  remove: (id: number, reason?: string) =>
+    http.delete<unknown, ApiResponse<null>>(`/cash-bank/bank-transfers/${id}`, { data: reason ? { reason } : {} }),
 }
 
 // Backend hanya menyediakan: index, store, show, PATCH update, POST refresh-lines,

@@ -6,6 +6,9 @@ import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
+import { DeleteDocumentDialog } from '@/components/shared/document/DeleteDocumentDialog'
+import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionEditMode'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { ConfirmDialog } from '@/components/shared/document/ConfirmDialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -44,7 +47,9 @@ function StockOpnameFormPageContent() {
 
   const { data, isLoading } = useStockOpname(id ? Number(id) : undefined)
   const opname = data?.data
-  const { create, generateLines, updateLine, markCounted, finalize, void: voidOpname } = useStockOpnameMutations()
+  const { create, generateLines, updateLine, markCounted, finalize, void: voidOpname, remove, reopen } = useStockOpnameMutations()
+  const { canChange } = useTransactionEditMode()
+  const { closeRecordTab } = useRecordTab()
 
   const { register, handleSubmit, control, getValues, setValue, watch, reset, setError, formState: { errors, isSubmitting } } = useForm<StockOpnameFormValues>({
     resolver: zodResolver(stockOpnameSchema),
@@ -52,6 +57,7 @@ function StockOpnameFormPageContent() {
   })
 
   const [isVoidOpen, setVoidOpen] = useState(false)
+  const [isDeleteOpen, setDeleteOpen] = useState(false)
   const [isGenerateConfirmOpen, setGenerateConfirmOpen] = useState(false)
   const [isFinalizeConfirmOpen, setFinalizeConfirmOpen] = useState(false)
   const [lineInputs, setLineInputs] = useState<Record<number, { qty: string; reason: string }>>({})
@@ -153,7 +159,29 @@ function StockOpnameFormPageContent() {
 
   const existingLinesCount = opname?.lines?.length ?? 0
 
+  const handleReopen = async () => {
+    try {
+      await reopen.mutateAsync(Number(id))
+      toast.success('Stock opname dibuka kembali. Perbaiki hitungan, lalu finalize ulang.')
+    } catch (reopenError) { toast.error(getApiErrorMessage(reopenError, 'Gagal membuka kembali stock opname.')) }
+  }
+
+  const handleDelete = async (reason?: string) => {
+    try {
+      await remove.mutateAsync({ id: Number(id), reason })
+      toast.success('Stock opname berhasil dihapus.')
+      setDeleteOpen(false)
+      closeRecordTab(window.location.pathname, '/inventory/stock-opnames')
+    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus stock opname.')) }
+  }
+
   const actions: DocumentActionButton[] = []
+  if (!isCreate && canChange(opname?.status, ['draft', 'counted']) && can('inventory.opname.finalize')) {
+    if (can('inventory.opname.edit')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+  }
+  if (!isCreate && opname?.status === 'finalized' && canChange(opname?.status, ['draft', 'counted']) && can('inventory.opname.finalize')) {
+    actions.push({ id: 'reopen', label: 'Buka Kembali', variant: 'secondary', onClick: () => void handleReopen(), isLoading: reopen.isPending })
+  }
   if (isCreate && can('inventory.opname.create')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'primary', onClick: saveAndClose, isLoading: isSubmitting })
   }
@@ -340,6 +368,7 @@ function StockOpnameFormPageContent() {
         isLoading={finalize.isPending}
       />
 
+      <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={opname?.number ?? ''} hasEffects={!['draft', 'counted'].includes(opname?.status ?? 'draft')} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={opname?.number ?? ''} isLoading={voidOpname.isPending} />
     </>
   )

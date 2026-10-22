@@ -27,5 +27,7 @@ export function useStockMovementMutations() {
     create: useMutation({ mutationFn: (p: CreateStockMovementPayload) => stockMovementApi.create(p), onSuccess: invalidate }),
     post: useMutation({ mutationFn: (id: number) => stockMovementApi.post(id), onSuccess: invalidate }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => stockMovementApi.void(id, reason), onSuccess: invalidate }),
+    update: useMutation({ mutationFn: ({ id, payload }: { id: number; payload: CreateStockMovementPayload }) => stockMovementApi.update(id, payload), onSuccess: invalidate }),
+    remove: useMutation({ mutationFn: ({ id, reason }: { id: number; reason?: string }) => stockMovementApi.remove(id, reason), onSuccess: invalidate }),
   }
 }

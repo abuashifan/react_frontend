@@ -54,6 +54,8 @@ export function useBankTransferMutations() {
     create: useMutation({ mutationFn: (p: CreateBankTransferPayload) => bankTransferApi.create(p), onSuccess: inv }),
     post: useMutation({ mutationFn: (id: number) => bankTransferApi.post(id), onSuccess: inv }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => bankTransferApi.void(id, reason), onSuccess: inv }),
+    update: useMutation({ mutationFn: ({ id, payload }: { id: number; payload: CreateBankTransferPayload }) => bankTransferApi.update(id, payload), onSuccess: inv }),
+    remove: useMutation({ mutationFn: ({ id, reason }: { id: number; reason?: string }) => bankTransferApi.remove(id, reason), onSuccess: inv }),
   }
 }
 

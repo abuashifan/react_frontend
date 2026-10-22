@@ -8,6 +8,9 @@ import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/compon
 import { AmountInput } from '@/components/shared/form/AmountInput'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
+import { DeleteDocumentDialog } from '@/components/shared/document/DeleteDocumentDialog'
+import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionEditMode'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { ConfirmDialog } from '@/components/shared/document/ConfirmDialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -65,7 +68,9 @@ function StockMovementFormPageContent() {
 
   const { data, isLoading } = useStockMovement(id ? Number(id) : undefined)
   const movement = data?.data
-  const { create, post, void: voidMovement } = useStockMovementMutations()
+  const { create, post, void: voidMovement, remove, update } = useStockMovementMutations()
+  const { canChange } = useTransactionEditMode()
+  const { closeRecordTab } = useRecordTab()
 
   const { register, handleSubmit, setValue, watch, getValues, control, reset, setError, formState: { errors, isSubmitting } } = useForm<StockMovementFormValues>({
     resolver: zodResolver(stockMovementSchema),
@@ -79,11 +84,14 @@ function StockMovementFormPageContent() {
   // yang ditandai oleh LineItemsTable.
   const [apiLineErrors, setApiLineErrors] = useState<LineItemErrorMap>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
+  const [isDeleteOpen, setDeleteOpen] = useState(false)
+  // Mode open: dokumen yang sudah berefek dibuka untuk diedit lewat tombol Edit.
+  const [editing, setEditing] = useState(false)
   const [isPostConfirmOpen, setPostConfirmOpen] = useState(false)
 
   // Existing movement drafts are read-only — backend has no update endpoint for movements.
   const status = (movement?.status ?? 'draft') as DocumentStatus
-  const isEditable = isCreate
+  const isEditable = isCreate || movement?.status === 'draft' || editing
 
   useEffect(() => {
     if (movement) {
@@ -140,7 +148,7 @@ function StockMovementFormPageContent() {
     sequenceQueryKey: ['inventory', 'stock-movements', 'adjacent'],
     fetchAdjacent: async (recordId) => (await stockMovementApi.adjacent(recordId)).data,
     handleSubmit,
-    save: async (values) => {
+    save: async (values, creating) => {
       // Validasi baris milik form ini jalan sebelum request; melemparnya sebagai
       // FormValidationAbort menghentikan simpan sekaligus navigasi.
       if (lines.length === 0) {
@@ -158,9 +166,12 @@ function StockMovementFormPageContent() {
         quantity: l.quantity,
         unit_cost: l.unit_cost || null,
       }))
-      await create.mutateAsync({ ...values, movement_type: values.movement_type as StockMovementType, lines: linePayloads })
+      const payload = { ...values, movement_type: values.movement_type as StockMovementType, lines: linePayloads }
+      if (creating) await create.mutateAsync(payload)
+      else await update.mutateAsync({ id: Number(id), payload })
     },
     onSaved: () => {
+      setEditing(false)
       formDraft.clearDraft()
       setApiLineErrors({})
     },
@@ -227,8 +238,26 @@ function StockMovementFormPageContent() {
     { id: 'unit_cost', header: 'Harga Satuan', width: 120, align: 'right', render: ({ item, isReadOnly, onUpdate }) => <AmountInput value={item.unit_cost} onChange={(v) => onUpdate('unit_cost', v)} disabled={isReadOnly} decimals={2} ariaLabel="unit_cost" className={cn(FLUSH_INPUT_CLASS, 'text-right')} /> },
   ]
 
+  const handleDelete = async (reason?: string) => {
+    try {
+      await remove.mutateAsync({ id: Number(id), reason })
+      toast.success('Mutasi stok berhasil dihapus.')
+      setDeleteOpen(false)
+      closeRecordTab(window.location.pathname, '/inventory/stock-movements')
+    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus mutasi stok.')) }
+  }
+
   const actions: DocumentActionButton[] = []
-  if (isCreate && can('inventory.movements.create')) {
+  if (!isCreate && canChange(movement?.status) && can('inventory.movements.create')) {
+    if (movement?.status !== 'draft' && !editing) {
+      actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
+    }
+    if (can('inventory.movements.create')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+  }
+  if (editing) {
+    actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
+  }
+  if (isEditable && can(isCreate ? 'inventory.movements.create' : 'inventory.movements.create')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (isCreate && formDraft.isRestored) {
@@ -323,6 +352,7 @@ function StockMovementFormPageContent() {
         isLoading={post.isPending}
       />
 
+      <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={movement?.number ?? ''} hasEffects={!['draft'].includes(movement?.status ?? 'draft')} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={movement?.number ?? ''} isLoading={voidMovement.isPending} />
     </>
   )

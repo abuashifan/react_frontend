@@ -34,6 +34,14 @@ export const purchaseReturnApi = {
   post: (id: number) =>
     http.patch<unknown, ApiResponse<PurchaseReturn>>(`/purchase/returns/${id}/post`),
 
+  /** Edit draft / (mode open) yang sudah diposting -- backend memposting ulang. */
+  update: (id: number, payload: CreatePurchaseReturnPayload) =>
+    http.patch<unknown, ApiResponse<PurchaseReturn>>(`/purchase/returns/${id}`, payload),
+
   void: (id: number, reason: string) =>
     http.patch<unknown, ApiResponse<PurchaseReturn>>(`/purchase/returns/${id}/void`, { reason }),
+
+  /** Hapus dokumen (mode lock/open). Tanpa efek dihapus permanen; yang sudah berefek di-void lalu disembunyikan. */
+  remove: (id: number, reason?: string) =>
+    http.delete<unknown, ApiResponse<null>>(`/purchase/returns/${id}`, { data: reason ? { reason } : {} }),
 }

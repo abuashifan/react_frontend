@@ -7,6 +7,9 @@ import { FormField } from '@/components/shared/form/FormField'
 import { AmountInput } from '@/components/shared/form/AmountInput'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
+import { DeleteDocumentDialog } from '@/components/shared/document/DeleteDocumentDialog'
+import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionEditMode'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
@@ -40,14 +43,19 @@ function BankTransferFormPageContent() {
   const { can } = usePermission()
   const { data, isLoading } = useBankTransfer(id ? Number(id) : undefined)
   const transfer = data?.data
-  const { create, post, void: voidTransfer } = useBankTransferMutations()
+  const { create, post, void: voidTransfer, remove, update } = useBankTransferMutations()
+  const { canChange } = useTransactionEditMode()
+  const { closeRecordTab } = useRecordTab()
   const [isVoidOpen, setVoidOpen] = useState(false)
+  const [isDeleteOpen, setDeleteOpen] = useState(false)
+  // Mode open: dokumen yang sudah berefek dibuka untuk diedit lewat tombol Edit.
+  const [editing, setEditing] = useState(false)
   const { control, getValues, register, handleSubmit, setValue, reset, setError, formState: { errors, isSubmitting } } = useForm<BankTransferFormValues>({ resolver: zodResolver(bankTransferSchema), defaultValues: { transfer_date: new Date().toISOString().slice(0, 10) } })
   const fromAccountId = useWatch({ control, name: 'from_cash_bank_account_id' })
   const toAccountId = useWatch({ control, name: 'to_cash_bank_account_id' })
   const transferAmount = useWatch({ control, name: 'amount' })
   const status = (transfer?.status ?? 'draft') as DocumentStatus
-  const isEditable = isCreate
+  const isEditable = isCreate || transfer?.status === 'draft' || editing
 
   useEffect(() => {
     if (transfer) {
@@ -77,10 +85,15 @@ function BankTransferFormPageContent() {
     sequenceQueryKey: ['cash-bank', 'transfers', 'adjacent'],
     fetchAdjacent: async (recordId) => (await bankTransferApi.adjacent(recordId)).data,
     handleSubmit,
-    save: async (values) => {
-      await create.mutateAsync(values)
+    save: async (values, creating) => {
+      const payload = values
+      if (creating) await create.mutateAsync(payload)
+      else await update.mutateAsync({ id: Number(id), payload })
     },
-    onSaved: () => formDraft.clearDraft(),
+    onSaved: () => {
+      formDraft.clearDraft()
+      setEditing(false)
+    },
     successMessage: () => 'Transfer bank berhasil dibuat.',
     onError: (saveError) => {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
@@ -94,8 +107,26 @@ function BankTransferFormPageContent() {
   const handlePost = async () => { try { await post.mutateAsync(Number(id)); formDraft.clearDraft(); toast.success('Diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting.')) } }
   const handleVoid = async (reason: string) => { await voidTransfer.mutateAsync({ id: Number(id), reason }); formDraft.clearDraft(); toast.success('Berhasil di-void.'); setVoidOpen(false) }
 
+  const handleDelete = async (reason?: string) => {
+    try {
+      await remove.mutateAsync({ id: Number(id), reason })
+      toast.success('Transfer bank berhasil dihapus.')
+      setDeleteOpen(false)
+      closeRecordTab(window.location.pathname, '/cash-bank/bank-transfers')
+    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus transfer bank.')) }
+  }
+
   const actions: DocumentActionButton[] = []
-  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
+  if (!isCreate && canChange(transfer?.status) && can('cash_bank.edit')) {
+    if (transfer?.status !== 'draft' && !editing) {
+      actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
+    }
+    if (can('cash_bank.edit')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+  }
+  if (editing) {
+    actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
+  }
+  if (isEditable && can(isCreate ? 'cash_bank.create' : 'cash_bank.edit')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   if (isEditable && formDraft.isRestored) actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: handleDiscardDraft })
   if (!isCreate && transfer?.status === 'draft' && can('cash_bank.post')) actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
   if (!isCreate && transfer?.status === 'posted' && can('cash_bank.void')) actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
@@ -157,6 +188,7 @@ function BankTransferFormPageContent() {
           </FormField>
         </div>
       </FormLayout>
+      <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={transfer?.number ?? ''} hasEffects={!['draft'].includes(transfer?.status ?? 'draft')} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={transfer?.number ?? ''} isLoading={voidTransfer.isPending} />
     </>
   )

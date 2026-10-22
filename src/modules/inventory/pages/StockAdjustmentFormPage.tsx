@@ -8,6 +8,9 @@ import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/compon
 import { AmountInput } from '@/components/shared/form/AmountInput'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
+import { DeleteDocumentDialog } from '@/components/shared/document/DeleteDocumentDialog'
+import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionEditMode'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { ConfirmDialog } from '@/components/shared/document/ConfirmDialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -61,7 +64,9 @@ function StockAdjustmentFormPageContent() {
 
   const { data, isLoading } = useStockAdjustment(id ? Number(id) : undefined)
   const adj = data?.data
-  const { create, update, approve, post, void: voidAdj } = useStockAdjustmentMutations()
+  const { create, update, approve, post, void: voidAdj, remove } = useStockAdjustmentMutations()
+  const { canChange } = useTransactionEditMode()
+  const { closeRecordTab } = useRecordTab()
 
   const { control, getValues, register, handleSubmit, setValue, reset, setError, formState: { errors, isSubmitting } } = useForm<StockAdjustmentFormValues>({
     resolver: zodResolver(stockAdjustmentSchema),
@@ -78,11 +83,14 @@ function StockAdjustmentFormPageContent() {
   const [preloadedProducts, setPreloadedProducts] = useState<Map<number, SelectOption>>(new Map())
   const [preloadedWarehouses, setPreloadedWarehouses] = useState<Map<number, SelectOption>>(new Map())
   const [isVoidOpen, setVoidOpen] = useState(false)
+  const [isDeleteOpen, setDeleteOpen] = useState(false)
+  // Mode open: dokumen yang sudah berefek dibuka untuk diedit lewat tombol Edit.
+  const [editing, setEditing] = useState(false)
   const [isApproveConfirmOpen, setApproveConfirmOpen] = useState(false)
   const [isPostConfirmOpen, setPostConfirmOpen] = useState(false)
 
   const status = (adj?.status ?? 'draft') as DocumentStatus
-  const isEditable = isCreate || adj?.status === 'draft'
+  const isEditable = isCreate || adj?.status === 'draft' || editing
 
   useEffect(() => {
     if (adj) {
@@ -212,6 +220,7 @@ function StockAdjustmentFormPageContent() {
       else await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads } })
     },
     onSaved: () => {
+      setEditing(false)
       formDraft.clearDraft()
       setApiLineErrors({})
     },
@@ -303,7 +312,25 @@ function StockAdjustmentFormPageContent() {
     { id: 'reason', header: 'Alasan', width: 150, render: ({ item, isReadOnly, onUpdate }) => <Input value={item.reason} onChange={(e) => onUpdate('reason', e.target.value)} disabled={isReadOnly} placeholder="Alasan..." className={cn('h-8 text-[12px]', FLUSH_INPUT_CLASS)} /> },
   ]
 
+  const handleDelete = async (reason?: string) => {
+    try {
+      await remove.mutateAsync({ id: Number(id), reason })
+      toast.success('Penyesuaian stok berhasil dihapus.')
+      setDeleteOpen(false)
+      closeRecordTab(window.location.pathname, '/inventory/stock-adjustments')
+    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus penyesuaian stok.')) }
+  }
+
   const actions: DocumentActionButton[] = []
+  if (!isCreate && canChange(adj?.status) && can('inventory.adjustments.edit')) {
+    if (adj?.status !== 'draft' && !editing) {
+      actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
+    }
+    if (can('inventory.adjustments.edit')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+  }
+  if (editing) {
+    actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
+  }
   if (isEditable) {
     const savePerm = isCreate ? 'inventory.adjustments.create' : 'inventory.adjustments.edit'
     if (can(savePerm)) {
@@ -405,6 +432,7 @@ function StockAdjustmentFormPageContent() {
         isLoading={post.isPending}
       />
 
+      <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={adj?.number ?? ''} hasEffects={!['draft', 'approved'].includes(adj?.status ?? 'draft')} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={adj?.number ?? ''} isLoading={voidAdj.isPending} />
     </>
   )

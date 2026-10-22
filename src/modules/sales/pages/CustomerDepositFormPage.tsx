@@ -6,6 +6,9 @@ import { FormLayout } from '@/components/shared/layout/FormLayout'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
+import { DeleteDocumentDialog } from '@/components/shared/document/DeleteDocumentDialog'
+import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionEditMode'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -43,7 +46,9 @@ function CustomerDepositFormPageContent() {
 
   const { data, isLoading } = useCustomerDeposit(id ? Number(id) : undefined)
   const deposit = data?.data
-  const { create, post, void: voidDep } = useCustomerDepositMutations()
+  const { create, post, void: voidDep, remove, update } = useCustomerDepositMutations()
+  const { canChange } = useTransactionEditMode()
+  const { closeRecordTab } = useRecordTab()
 
   const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<CustomerDepositFormValues>({
     resolver: zodResolver(customerDepositSchema),
@@ -51,9 +56,12 @@ function CustomerDepositFormPageContent() {
   })
 
   const [isVoidOpen, setVoidOpen] = useState(false)
+  const [isDeleteOpen, setDeleteOpen] = useState(false)
+  // Mode open: dokumen yang sudah berefek dibuka untuk diedit lewat tombol Edit.
+  const [editing, setEditing] = useState(false)
 
   const status = (deposit?.status ?? 'draft') as DocumentStatus
-  const isEditable = isCreate
+  const isEditable = isCreate || deposit?.status === 'draft' || editing
 
   useEffect(() => {
     if (deposit) {
@@ -86,10 +94,15 @@ function CustomerDepositFormPageContent() {
     sequenceQueryKey: ['sales', 'customer-deposits', 'adjacent'],
     fetchAdjacent: async (recordId) => (await customerDepositApi.adjacent(recordId)).data,
     handleSubmit,
-    save: async (values) => {
-      await create.mutateAsync(values)
+    save: async (values, creating) => {
+      const payload = values
+      if (creating) await create.mutateAsync(payload)
+      else await update.mutateAsync({ id: Number(id), payload })
     },
-    onSaved: () => formDraft.clearDraft(),
+    onSaved: () => {
+      formDraft.clearDraft()
+      setEditing(false)
+    },
     successMessage: () => 'Deposit berhasil disimpan.',
     onError: (saveError) => {
       // Backend memvalidasi tanggal sebagai `deposit_date`, form memakai `date`.
@@ -115,8 +128,26 @@ function CustomerDepositFormPageContent() {
     setVoidOpen(false)
   }
 
+  const handleDelete = async (reason?: string) => {
+    try {
+      await remove.mutateAsync({ id: Number(id), reason })
+      toast.success('Deposit pelanggan berhasil dihapus.')
+      setDeleteOpen(false)
+      closeRecordTab(window.location.pathname, '/sales/customer-deposits')
+    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus deposit pelanggan.')) }
+  }
+
   const actions: DocumentActionButton[] = []
-  if (isCreate && can('sales.deposits.create')) {
+  if (!isCreate && canChange(deposit?.status) && can('sales.deposits.create')) {
+    if (deposit?.status !== 'draft' && !editing) {
+      actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
+    }
+    if (can('sales.deposits.create')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+  }
+  if (editing) {
+    actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
+  }
+  if (isEditable && can(isCreate ? 'sales.deposits.create' : 'sales.deposits.create')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
@@ -238,6 +269,7 @@ function CustomerDepositFormPageContent() {
         </div>
       </FormLayout>
 
+      <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={deposit?.number ?? ''} hasEffects={!['draft'].includes(deposit?.status ?? 'draft')} isLoading={remove.isPending} />
       <VoidConfirmDialog
         isOpen={isVoidOpen}
         onClose={() => setVoidOpen(false)}

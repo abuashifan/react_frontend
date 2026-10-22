@@ -35,4 +35,12 @@ export const stockOpnameApi = {
 
   void: (id: number, reason: string) =>
     http.patch<unknown, ApiResponse<StockOpname>>(`/inventory/stock-opnames/${id}/void`, { reason }),
+
+  /** Buka kembali opname final (mode open) supaya hitungannya bisa diperbaiki. */
+  reopen: (id: number) =>
+    http.patch<unknown, ApiResponse<StockOpname>>(`/inventory/stock-opnames/${id}/reopen`),
+
+  /** Hapus dokumen (mode lock/open). Tanpa efek dihapus permanen; yang sudah berefek di-void lalu disembunyikan. */
+  remove: (id: number, reason?: string) =>
+    http.delete<unknown, ApiResponse<null>>(`/inventory/stock-opnames/${id}`, { data: reason ? { reason } : {} }),
 }

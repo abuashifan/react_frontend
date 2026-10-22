@@ -39,4 +39,8 @@ export const salesReturnApi = {
 
   void: (id: number, reason: string) =>
     http.patch<unknown, ApiResponse<SalesReturn>>(`/sales/returns/${id}/void`, { reason }),
+
+  /** Hapus dokumen (mode lock/open). Tanpa efek dihapus permanen; yang sudah berefek di-void lalu disembunyikan. */
+  remove: (id: number, reason?: string) =>
+    http.delete<unknown, ApiResponse<null>>(`/sales/returns/${id}`, { data: reason ? { reason } : {} }),
 }

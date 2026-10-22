@@ -31,6 +31,14 @@ export const goodsReceiptApi = {
   cancel: (id: number) =>
     http.patch<unknown, ApiResponse<GoodsReceipt>>(`/purchase/goods-receipts/${id}/cancel`),
 
+  /** Edit draft / (mode open) yang sudah diposting -- backend memposting ulang. */
+  update: (id: number, payload: CreateGoodsReceiptPayload) =>
+    http.patch<unknown, ApiResponse<GoodsReceipt>>(`/purchase/goods-receipts/${id}`, payload),
+
   void: (id: number, reason: string) =>
     http.patch<unknown, ApiResponse<GoodsReceipt>>(`/purchase/goods-receipts/${id}/void`, { reason }),
+
+  /** Hapus dokumen (mode lock/open). Tanpa efek dihapus permanen; yang sudah berefek di-void lalu disembunyikan. */
+  remove: (id: number, reason?: string) =>
+    http.delete<unknown, ApiResponse<null>>(`/purchase/goods-receipts/${id}`, { data: reason ? { reason } : {} }),
 }

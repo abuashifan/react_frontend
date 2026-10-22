@@ -29,5 +29,6 @@ export function useStockAdjustmentMutations() {
     approve: useMutation({ mutationFn: (id: number) => stockAdjustmentApi.approve(id), onSuccess: invalidate }),
     post: useMutation({ mutationFn: (id: number) => stockAdjustmentApi.post(id), onSuccess: invalidate }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => stockAdjustmentApi.void(id, reason), onSuccess: invalidate }),
+    remove: useMutation({ mutationFn: ({ id, reason }: { id: number; reason?: string }) => stockAdjustmentApi.remove(id, reason), onSuccess: invalidate }),
   }
 }

@@ -37,5 +37,7 @@ export function useStockOpnameMutations() {
     markCounted: useMutation({ mutationFn: (id: number) => stockOpnameApi.markCounted(id), onSuccess: (_, id) => invalidate(id) }),
     finalize: useMutation({ mutationFn: (id: number) => stockOpnameApi.finalize(id), onSuccess: (_, id) => invalidate(id) }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => stockOpnameApi.void(id, reason), onSuccess: (_, { id }) => invalidate(id) }),
+    reopen: useMutation({ mutationFn: (id: number) => stockOpnameApi.reopen(id), onSuccess: (_, id) => invalidate(id) }),
+    remove: useMutation({ mutationFn: ({ id, reason }: { id: number; reason?: string }) => stockOpnameApi.remove(id, reason), onSuccess: (_, { id }) => invalidate(id) }),
   }
 }

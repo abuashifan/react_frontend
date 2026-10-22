@@ -30,5 +30,6 @@ export function useSalesReturnMutations() {
     approve: useMutation({ mutationFn: (id: number) => salesReturnApi.approve(id), onSuccess: invalidate }),
     post: useMutation({ mutationFn: (id: number) => salesReturnApi.post(id), onSuccess: invalidate }),
     void: useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => salesReturnApi.void(id, reason), onSuccess: invalidate }),
+    remove: useMutation({ mutationFn: ({ id, reason }: { id: number; reason?: string }) => salesReturnApi.remove(id, reason), onSuccess: invalidate }),
   }
 }

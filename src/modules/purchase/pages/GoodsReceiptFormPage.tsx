@@ -8,6 +8,9 @@ import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/compon
 import { AmountInput } from '@/components/shared/form/AmountInput'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
+import { DeleteDocumentDialog } from '@/components/shared/document/DeleteDocumentDialog'
+import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionEditMode'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -65,7 +68,9 @@ function GoodsReceiptFormPageContent() {
 
   const { data, isLoading } = useGoodsReceipt(id ? Number(id) : undefined)
   const gr = data?.data
-  const { create, receive, cancel, void: voidGr } = useGoodsReceiptMutations()
+  const { create, receive, cancel, void: voidGr, remove, update } = useGoodsReceiptMutations()
+  const { canChange } = useTransactionEditMode()
+  const { closeRecordTab } = useRecordTab()
 
   const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<GoodsReceiptFormValues>({
     resolver: zodResolver(goodsReceiptSchema),
@@ -80,9 +85,12 @@ function GoodsReceiptFormPageContent() {
 
   const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
+  const [isDeleteOpen, setDeleteOpen] = useState(false)
+  // Mode open: dokumen yang sudah berefek dibuka untuk diedit lewat tombol Edit.
+  const [editing, setEditing] = useState(false)
 
   const status = (gr?.status ?? 'draft') as DocumentStatus
-  const isEditable = isCreate || gr?.status === 'draft'
+  const isEditable = isCreate || gr?.status === 'draft' || editing
 
   useEffect(() => {
     if (gr) {
@@ -118,10 +126,13 @@ function GoodsReceiptFormPageContent() {
     sequenceQueryKey: ['purchase', 'goods-receipts', 'adjacent'],
     fetchAdjacent: async (recordId) => (await goodsReceiptApi.adjacent(recordId)).data,
     handleSubmit,
-    save: async (values) => {
-      await create.mutateAsync(toGoodsReceiptPayload(values, lines.map(toGoodsReceiptLine)))
+    save: async (values, creating) => {
+      const payload = toGoodsReceiptPayload(values, lines.map(toGoodsReceiptLine))
+      if (creating) await create.mutateAsync(payload)
+      else await update.mutateAsync({ id: Number(id), payload })
     },
     onSaved: () => {
+      setEditing(false)
       formDraft.clearDraft()
       setLineErrors({})
     },
@@ -150,7 +161,25 @@ function GoodsReceiptFormPageContent() {
     setVoidOpen(false)
   }
 
+  const handleDelete = async (reason?: string) => {
+    try {
+      await remove.mutateAsync({ id: Number(id), reason })
+      toast.success('Penerimaan barang berhasil dihapus.')
+      setDeleteOpen(false)
+      closeRecordTab(window.location.pathname, '/purchase/goods-receipts')
+    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus penerimaan barang.')) }
+  }
+
   const actions: DocumentActionButton[] = []
+  if (!isCreate && canChange(gr?.status) && can('purchase.goods_receipts.edit')) {
+    if (gr?.status !== 'draft' && !editing) {
+      actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
+    }
+    if (can('purchase.goods_receipts.edit')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+  }
+  if (editing) {
+    actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
+  }
   if (isEditable && can('purchase.goods-receipts.create')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
@@ -287,6 +316,7 @@ function GoodsReceiptFormPageContent() {
         </div>
       </FormLayout>
 
+      <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={gr?.number ?? ''} hasEffects={!['draft', 'cancelled'].includes(gr?.status ?? 'draft')} isLoading={remove.isPending} />
       <VoidConfirmDialog
         isOpen={isVoidOpen}
         onClose={() => setVoidOpen(false)}
