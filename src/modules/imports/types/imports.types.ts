@@ -35,6 +35,8 @@ export interface ImportBatch {
   original_filename: string
   stored_path: string
   file_hash: string
+  /** Sheet .xlsx yang dibaca batch ini. null = sheet pertama (juga untuk CSV). */
+  sheet_name: string | null
   column_map: Record<string, string> | null
   status: ImportBatchStatus
   total_rows: number
@@ -58,8 +60,16 @@ export interface ImportBatch {
  * pemetaan butuh daftar header untuk bisa digambar sama sekali.
  */
 export interface ImportBatchDetail extends ImportBatch {
+  /** Semua sheet di berkas, berurutan. Kosong untuk CSV. */
+  sheets: string[]
   headers: string[]
   suggested_column_map: Record<string, string>
+}
+
+/** Jawaban `PATCH /imports/{uuid}/sheet` — batch dengan header sheet barunya. */
+export interface SelectImportSheetResponse extends ImportBatchDetail {
+  unmapped_required_fields: string[]
+  auto_mapped: boolean
 }
 
 export interface ImportRow {
@@ -84,6 +94,8 @@ export interface ImportRow {
 
 export interface UploadImportResponse {
   batch: ImportBatch
+  /** Semua sheet di berkas, berurutan. Kosong untuk CSV. */
+  sheets: string[]
   headers: string[]
   duplicate_file: { uuid: string; status: string; uploaded_at: string } | null
   /**
