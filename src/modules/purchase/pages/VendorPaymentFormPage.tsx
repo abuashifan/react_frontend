@@ -24,6 +24,9 @@ import { coaApi } from '@/modules/master-data/services/coaApi'
 import { vendorPaymentSchema, type VendorPaymentFormValues } from '../schemas/vendorPaymentSchema'
 import { vendorPaymentApi } from '../services/vendorPaymentApi'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { DeleteDocumentDialog } from '@/components/shared/document/DeleteDocumentDialog'
+import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionEditMode'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import type { VendorPaymentLinePayload } from '../types/vendorPayment.types'
@@ -52,11 +55,14 @@ function VendorPaymentFormPageContent() {
   const { toast } = useToast()
   const { can } = usePermission()
   const [isVoidOpen, setVoidOpen] = useState(false)
+  const [isDeleteOpen, setDeleteOpen] = useState(false)
   const [billLines, setBillLines] = useState<BillLine[]>([])
 
   const { data, isLoading } = useVendorPayment(id ? Number(id) : undefined)
   const payment = data?.data
-  const { create, post, void: voidPayment } = useVendorPaymentMutations()
+  const { create, post, void: voidPayment, remove } = useVendorPaymentMutations()
+  const { canChange } = useTransactionEditMode()
+  const { closeRecordTab } = useRecordTab()
 
   const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<VendorPaymentFormValues>({
     resolver: zodResolver(vendorPaymentSchema),
@@ -171,7 +177,19 @@ function VendorPaymentFormPageContent() {
     setVoidOpen(false)
   }
 
+  const handleDelete = async (reason?: string) => {
+    try {
+      await remove.mutateAsync({ id: Number(id), reason })
+      toast.success('Pembayaran vendor berhasil dihapus.')
+      setDeleteOpen(false)
+      closeRecordTab(window.location.pathname, '/purchase/payments')
+    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus pembayaran vendor.')) }
+  }
+
   const actions: DocumentActionButton[] = []
+  if (!isCreate && canChange(payment?.status) && can('purchase.payments.void')) {
+    actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+  }
   if (isCreate && can('purchase.payments.create')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
@@ -270,6 +288,7 @@ function VendorPaymentFormPageContent() {
           </div>
         </div>
       </FormLayout>
+      <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={payment?.number ?? ''} hasEffects={payment?.status === 'posted'} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={payment?.number ?? ''} isLoading={voidPayment.isPending} />
     </>
   )

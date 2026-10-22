@@ -103,4 +103,5 @@ export interface CreateJournalEntryPayload {
   lines: JournalEntryLinePayload[]
 }
 
-export type UpdateJournalEntryPayload = Partial<CreateJournalEntryPayload>
+/** `edit_reason` wajib saat jurnal yang sudah diposting diedit (mode open). */
+export type UpdateJournalEntryPayload = Partial<CreateJournalEntryPayload> & { edit_reason?: string }

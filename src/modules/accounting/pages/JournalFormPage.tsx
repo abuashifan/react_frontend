@@ -9,7 +9,11 @@ import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/compon
 import { AmountInput } from '@/components/shared/form/AmountInput'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
+import { DeleteDocumentDialog } from '@/components/shared/document/DeleteDocumentDialog'
+import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionEditMode'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
@@ -20,7 +24,7 @@ import { useJournalEntry, useJournalEntryMutations } from '../hooks/useJournalEn
 import { journalEntrySchema, type JournalEntryFormValues } from '../schemas/journalEntrySchema'
 import { journalEntryApi } from '../services/journalEntryApi'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
-import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
+import { useRecordFormNavigation, FormValidationAbort } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import type { BudgetWarning } from '../types/journalEntry.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
@@ -98,7 +102,9 @@ function JournalFormPageContent() {
 
   const { data, isLoading } = useJournalEntry(id ? Number(id) : undefined)
   const journal = data?.data
-  const { create, update, approve, post, void: voidJournal } = useJournalEntryMutations()
+  const { create, update, approve, post, void: voidJournal, remove } = useJournalEntryMutations()
+  const { canChange } = useTransactionEditMode()
+  const { closeRecordTab } = useRecordTab()
 
   const { register, handleSubmit, control, getValues, reset, setError, formState: { errors, isSubmitting } } = useForm<JournalEntryFormValues>({
     resolver: zodResolver(journalEntrySchema),
@@ -111,6 +117,10 @@ function JournalFormPageContent() {
   // ditolak ikut ditandai, bukan cuma toast.
   const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
+  const [isDeleteOpen, setDeleteOpen] = useState(false)
+  // Mode open: jurnal approved/posted dibuka untuk diedit; jurnal posted wajib beralasan.
+  const [editing, setEditing] = useState(false)
+  const [editReason, setEditReason] = useState('')
   /** Indeks baris yang sedang membuka dialog pemilih akun; `null` = dialog tertutup. */
   const [pickerRow, setPickerRow] = useState<number | null>(null)
 
@@ -152,7 +162,8 @@ function JournalFormPageContent() {
   }
 
   const status = (journal?.status ?? 'draft') as DocumentStatus
-  const isEditable = isCreate || journal?.status === 'draft'
+  const isEditable = isCreate || journal?.status === 'draft' || editing
+  const isManualJournal = !journal?.is_system_generated
 
   const totalDebit = lines.reduce((s, l) => s + (l.debit || 0), 0)
   const totalCredit = lines.reduce((s, l) => s + (l.credit || 0), 0)
@@ -206,11 +217,19 @@ function JournalFormPageContent() {
     save: async (values, creating) => {
       const linePayloads = lines.map((l, i) => ({ account_id: l.account_id!, description: l.description || null, debit: l.debit || undefined, credit: l.credit || undefined, line_order: i + 1 }))
       if (creating) await create.mutateAsync({ ...values, lines: linePayloads })
-      else await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads } })
+      else {
+        if (journal?.status === 'posted' && editReason.trim().length < 3) {
+          toast.error('Isi alasan edit (minimal 3 karakter) untuk jurnal yang sudah diposting.')
+          throw new FormValidationAbort()
+        }
+        await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads, ...(journal?.status === 'posted' ? { edit_reason: editReason.trim() } : {}) } })
+      }
     },
     onSaved: () => {
       formDraft.clearDraft()
       setLineErrors({})
+      setEditing(false)
+      setEditReason('')
     },
     successMessage: (creating) => (creating ? 'Jurnal berhasil dibuat.' : 'Jurnal berhasil diperbarui.'),
     onError: (error) => {
@@ -313,7 +332,26 @@ function JournalFormPageContent() {
     },
   ]
 
+  const handleDelete = async (reason?: string) => {
+    try {
+      await remove.mutateAsync({ id: Number(id), reason })
+      formDraft.clearDraft()
+      toast.success('Jurnal berhasil dihapus.')
+      setDeleteOpen(false)
+      closeRecordTab(window.location.pathname, '/accounting/journals')
+    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus jurnal.')) }
+  }
+
   const actions: DocumentActionButton[] = []
+  if (!isCreate && isManualJournal && canChange(journal?.status) && can('journal.edit')) {
+    if (journal?.status !== 'draft' && !editing) {
+      actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
+    }
+    actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+  }
+  if (editing) {
+    actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => { setEditing(false); setEditReason('') } })
+  }
   if (isEditable && can('journal.create')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
@@ -377,6 +415,15 @@ function JournalFormPageContent() {
             </div>
           </section>
 
+          {editing && journal?.status === 'posted' && (
+            <div className="mb-3 flex flex-col gap-1">
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
+                Alasan Edit <span className="text-red-500">*</span>
+              </Label>
+              <Input value={editReason} onChange={(e) => setEditReason(e.target.value)} placeholder="Mengapa jurnal yang sudah diposting ini diubah?" className="h-9 text-[13px]" />
+            </div>
+          )}
+
           <LineItemsTable
             items={lines}
             columns={columns}
@@ -426,6 +473,7 @@ function JournalFormPageContent() {
           </div>
         </div>
       </FormLayout>
+      <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={journal?.journal_number ?? ''} hasEffects={journal?.status === 'posted'} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={journal?.journal_number ?? ''} isLoading={voidJournal.isPending} />
 
       <AccountPickerDialog

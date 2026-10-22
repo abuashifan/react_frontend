@@ -22,6 +22,9 @@ import { useCashReceipt, useCashReceiptMutations } from '../hooks/useCashBankLis
 import { cashReceiptSchema, type CashReceiptFormValues } from '../schemas/cashBankSchemas'
 import { cashReceiptApi } from '../services/cashBankApi'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { DeleteDocumentDialog } from '@/components/shared/document/DeleteDocumentDialog'
+import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionEditMode'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useRecordFormNavigation, FormValidationAbort } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import type { Coa } from '@/modules/master-data/types/coa.types'
@@ -49,19 +52,24 @@ function CashReceiptFormPageContent() {
   const { can } = usePermission()
   const { data, isLoading } = useCashReceipt(id ? Number(id) : undefined)
   const receipt = data?.data
-  const { create, post, void: voidReceipt } = useCashReceiptMutations()
+  const { create, update, remove, post, void: voidReceipt } = useCashReceiptMutations()
+  const { canChange } = useTransactionEditMode()
+  const { closeRecordTab } = useRecordTab()
   const { register, handleSubmit, control, getValues, setValue, watch, reset, setError, clearErrors, formState: { errors, isSubmitting } } = useForm<CashReceiptFormValues>({ resolver: zodResolver(cashReceiptSchema), defaultValues: { receipt_date: new Date().toISOString().slice(0, 10) } })
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
   // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
   // ditolak ikut ditandai, bukan cuma toast.
   const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
+  const [isDeleteOpen, setDeleteOpen] = useState(false)
+  // Draft selalu bisa diedit; yang sudah posted (mode open) dibuka lewat tombol Edit.
+  const [editing, setEditing] = useState(false)
   /** Indeks baris yang sedang membuka dialog pemilih akun; `null` = dialog tertutup. */
   const [pickerRow, setPickerRow] = useState<number | null>(null)
   /** Mode penomoran saat create: "auto" (default, digenerate backend) atau "manual" (user ketik sendiri). */
   const [numberMode, setNumberMode] = useState<'auto' | 'manual'>('auto')
   const status = (receipt?.status ?? 'draft') as DocumentStatus
-  const isEditable = isCreate
+  const isEditable = isCreate || receipt?.status === 'draft' || editing
 
   useEffect(() => {
     if (receipt) {
@@ -129,7 +137,7 @@ function CashReceiptFormPageContent() {
     sequenceQueryKey: ['cash-bank', 'receipts', 'adjacent'],
     fetchAdjacent: async (recordId) => (await cashReceiptApi.adjacent(recordId)).data,
     handleSubmit,
-    save: async (values) => {
+    save: async (values, creating) => {
       // Mode "Manual" tanpa nomor diisi dibatalkan di sini — melemparnya sebagai
       // FormValidationAbort menghentikan simpan sekaligus navigasi tanpa toast kedua.
       const trimmedNumber = (values.receipt_number ?? '').trim()
@@ -140,17 +148,20 @@ function CashReceiptFormPageContent() {
       }
 
       const linePayloads = lines.filter((l) => l.account_id).map((l) => ({ account_id: l.account_id!, amount: l.amount, description: l.description || null }))
-      await create.mutateAsync({
+      const payload = {
         ...values,
         receipt_number: numberMode === 'manual' ? trimmedNumber : undefined,
         lines: linePayloads.length ? linePayloads : undefined,
-      })
+      }
+      if (creating) await create.mutateAsync(payload)
+      else await update.mutateAsync({ id: Number(id), payload })
     },
     onSaved: () => {
       formDraft.clearDraft()
       setLineErrors({})
+      setEditing(false)
     },
-    successMessage: () => 'Penerimaan kas berhasil dibuat.',
+    successMessage: (creating) => (creating ? 'Penerimaan kas berhasil dibuat.' : 'Penerimaan kas berhasil diperbarui.'),
     onError: (saveError) => {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
       // bukan hanya toast generik "Gagal menyimpan".
@@ -208,8 +219,23 @@ function CashReceiptFormPageContent() {
     },
   ]
 
+  const handleDelete = async (reason?: string) => {
+    try {
+      await remove.mutateAsync({ id: Number(id), reason })
+      formDraft.clearDraft()
+      toast.success('Penerimaan kas berhasil dihapus.')
+      setDeleteOpen(false)
+      closeRecordTab(window.location.pathname, '/cash-bank/cash-receipts')
+    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus penerimaan kas.')) }
+  }
+
   const actions: DocumentActionButton[] = []
-  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
+  if (!isCreate && canChange(receipt?.status) && can('cash_bank.edit')) {
+    if (receipt?.status !== 'draft' && !editing) actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
+    actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+  }
+  if (editing) actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
+  if (isEditable && can(isCreate ? 'cash_bank.create' : 'cash_bank.edit')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   if (!isCreate && receipt?.status === 'draft' && can('cash_bank.post')) actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
   if (!isCreate && receipt?.status === 'posted' && can('cash_bank.void')) actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
 
@@ -351,6 +377,7 @@ function CashReceiptFormPageContent() {
           </div>
         </div>
       </FormLayout>
+      <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={receipt?.number ?? ''} hasEffects={receipt?.status === 'posted'} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={receipt?.number ?? ''} isLoading={voidReceipt.isPending} />
 
       <AccountPickerDialog

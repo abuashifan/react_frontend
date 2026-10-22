@@ -23,6 +23,9 @@ import { useCashPayment, useCashPaymentMutations } from '../hooks/useCashBankLis
 import { cashPaymentSchema, type CashPaymentFormValues } from '../schemas/cashBankSchemas'
 import { cashPaymentApi } from '../services/cashBankApi'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
+import { DeleteDocumentDialog } from '@/components/shared/document/DeleteDocumentDialog'
+import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionEditMode'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { cn, fieldErrorClass, formatCurrency, toDateInputValue } from '@/lib/utils'
@@ -48,7 +51,9 @@ function CashPaymentFormPageContent() {
   const { can } = usePermission()
   const { data, isLoading } = useCashPayment(id ? Number(id) : undefined)
   const payment = data?.data
-  const { create, post, void: voidPayment } = useCashPaymentMutations()
+  const { create, update, remove, post, void: voidPayment } = useCashPaymentMutations()
+  const { canChange } = useTransactionEditMode()
+  const { closeRecordTab } = useRecordTab()
   const { register, handleSubmit, control, getValues, setValue, watch, reset, setError, formState: { errors, isSubmitting } } = useForm<CashPaymentFormValues>({ resolver: zodResolver(cashPaymentSchema), defaultValues: { payment_date: new Date().toISOString().slice(0, 10) } })
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
   const [pickerRow, setPickerRow] = useState<number | null>(null)
@@ -56,8 +61,11 @@ function CashPaymentFormPageContent() {
   // ditolak ikut ditandai, bukan cuma toast.
   const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
+  const [isDeleteOpen, setDeleteOpen] = useState(false)
+  // Draft selalu bisa diedit; yang sudah posted (mode open) dibuka lewat tombol Edit.
+  const [editing, setEditing] = useState(false)
   const status = (payment?.status ?? 'draft') as DocumentStatus
-  const isEditable = isCreate
+  const isEditable = isCreate || payment?.status === 'draft' || editing
 
   useEffect(() => {
     if (payment) {
@@ -95,15 +103,18 @@ function CashPaymentFormPageContent() {
     sequenceQueryKey: ['cash-bank', 'payments', 'adjacent'],
     fetchAdjacent: async (recordId) => (await cashPaymentApi.adjacent(recordId)).data,
     handleSubmit,
-    save: async (values) => {
+    save: async (values, creating) => {
       const linePayloads = lines.filter((l) => l.account_id).map((l) => ({ account_id: l.account_id!, amount: l.amount, description: l.description || null }))
-      await create.mutateAsync({ ...values, lines: linePayloads.length ? linePayloads : undefined })
+      const payload = { ...values, lines: linePayloads.length ? linePayloads : undefined }
+      if (creating) await create.mutateAsync(payload)
+      else await update.mutateAsync({ id: Number(id), payload })
     },
     onSaved: () => {
       formDraft.clearDraft()
       setLineErrors({})
+      setEditing(false)
     },
-    successMessage: () => 'Pengeluaran kas berhasil dibuat.',
+    successMessage: (creating) => (creating ? 'Pengeluaran kas berhasil dibuat.' : 'Pengeluaran kas berhasil diperbarui.'),
     onError: (saveError) => {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
       // bukan hanya toast generik "Gagal menyimpan".
@@ -175,8 +186,23 @@ function CashPaymentFormPageContent() {
     { id: 'description', header: 'Keterangan', width: 180, render: ({ item, isReadOnly, onUpdate }) => <Input value={item.description} onChange={(e) => onUpdate('description', e.target.value)} disabled={isReadOnly} placeholder="Keterangan..." className={cn('h-8 text-[12px]', FLUSH_INPUT_CLASS)} /> },
   ]
 
+  const handleDelete = async (reason?: string) => {
+    try {
+      await remove.mutateAsync({ id: Number(id), reason })
+      formDraft.clearDraft()
+      toast.success('Pengeluaran kas berhasil dihapus.')
+      setDeleteOpen(false)
+      closeRecordTab(window.location.pathname, '/cash-bank/cash-payments')
+    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus pengeluaran kas.')) }
+  }
+
   const actions: DocumentActionButton[] = []
-  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
+  if (!isCreate && canChange(payment?.status) && can('cash_bank.edit')) {
+    if (payment?.status !== 'draft' && !editing) actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
+    actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+  }
+  if (editing) actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
+  if (isEditable && can(isCreate ? 'cash_bank.create' : 'cash_bank.edit')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   if (!isCreate && payment?.status === 'draft' && can('cash_bank.post')) actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
   if (!isCreate && payment?.status === 'posted' && can('cash_bank.void')) actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
 
@@ -288,6 +314,7 @@ function CashPaymentFormPageContent() {
         }}
       />
 
+      <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={payment?.number ?? ''} hasEffects={payment?.status === 'posted'} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={payment?.number ?? ''} isLoading={voidPayment.isPending} />
     </>
   )

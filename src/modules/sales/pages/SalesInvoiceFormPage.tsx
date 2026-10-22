@@ -10,6 +10,8 @@ import { AmountInput } from '@/components/shared/form/AmountInput'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { DocumentLockedBanner } from '@/components/shared/document/DocumentLockedBanner'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
+import { DeleteDocumentDialog } from '@/components/shared/document/DeleteDocumentDialog'
+import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionEditMode'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -27,6 +29,7 @@ import { salesInvoiceSchema, type SalesInvoiceFormValues } from '../schemas/sale
 import { salesInvoiceApi } from '../services/salesInvoiceApi'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import type { DocumentStatus } from '@/types/common.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
 
@@ -64,10 +67,12 @@ function SalesInvoiceFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const { closeRecordTab } = useRecordTab()
 
   const { data, isLoading } = useSalesInvoice(id ? Number(id) : undefined)
   const invoice = data?.data
-  const { create, update, approve, post, void: voidInv } = useSalesInvoiceMutations()
+  const { create, update, approve, post, void: voidInv, remove } = useSalesInvoiceMutations()
+  const { canChange } = useTransactionEditMode()
 
   const { control, getValues, register, handleSubmit, setValue, setError, reset, formState: { errors, isSubmitting } } = useForm<SalesInvoiceFormValues>({
     resolver: zodResolver(salesInvoiceSchema),
@@ -84,10 +89,14 @@ function SalesInvoiceFormPageContent() {
 
   const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
+  const [isDeleteOpen, setDeleteOpen] = useState(false)
+  // Mode open: dokumen yang sudah approved/posted dibuka untuk diedit lewat tombol Edit.
+  const [editing, setEditing] = useState(false)
 
   const status = (invoice?.status ?? 'draft') as DocumentStatus
-  const isEditable = isCreate || invoice?.status === 'draft'
+  const isEditable = isCreate || invoice?.status === 'draft' || editing
   const hasPostedDependences = ['partially_paid', 'paid'].includes(invoice?.status ?? '')
+  const canEditNow = !isCreate && !hasPostedDependences && canChange(invoice?.status) && invoice?.status !== 'draft'
 
   const subtotal = lines.reduce((s, l) => s + lineBase(l), 0)
   const taxAmount = lines.reduce((s, l) => s + lineBase(l) * (l.tax_percent / 100), 0)
@@ -167,6 +176,7 @@ function SalesInvoiceFormPageContent() {
     onSaved: () => {
       formDraft.clearDraft()
       setLineErrors({})
+      setEditing(false)
     },
     successMessage: (creating) => (creating ? 'Invoice berhasil dibuat.' : 'Invoice berhasil diperbarui.'),
     onError: (saveError) => {
@@ -201,7 +211,26 @@ function SalesInvoiceFormPageContent() {
     setVoidOpen(false)
   }
 
+  const handleDelete = async (reason?: string) => {
+    try {
+      await remove.mutateAsync({ id: Number(id), reason })
+      formDraft.clearDraft()
+      toast.success('Invoice berhasil dihapus.')
+      setDeleteOpen(false)
+      closeRecordTab(window.location.pathname, '/sales/invoices')
+    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus invoice.')) }
+  }
+
   const actions: DocumentActionButton[] = []
+  if (canEditNow && !editing && can('sales.invoices.edit')) {
+    actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
+  }
+  if (editing) {
+    actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
+  }
+  if (!isCreate && canChange(invoice?.status) && !hasPostedDependences && can('sales.invoices.edit')) {
+    actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+  }
   if (isEditable && can('sales.invoices.create')) {
     actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
@@ -403,6 +432,15 @@ function SalesInvoiceFormPageContent() {
           </div>
         </div>
       </FormLayout>
+
+      <DeleteDocumentDialog
+        isOpen={isDeleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={(reason) => void handleDelete(reason)}
+        documentNumber={invoice?.number ?? ''}
+        hasEffects={invoice?.status !== 'draft' && invoice?.status !== 'approved'}
+        isLoading={remove.isPending}
+      />
 
       <VoidConfirmDialog
         isOpen={isVoidOpen}

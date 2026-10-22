@@ -39,6 +39,8 @@ import type { VendorBillLineClassification } from '../types/vendorBill.types'
 import { applyApiValidationErrors, getApiErrorMessage, isApiNotFound, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { NotFoundPage, ServerErrorPage } from '@/modules/errors/ErrorPage'
 import { useRecordTab } from '@/hooks/useRecordTab'
+import { DeleteDocumentDialog } from '@/components/shared/document/DeleteDocumentDialog'
+import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionEditMode'
 
 interface EditableLine {
   product_id: number | null
@@ -79,7 +81,8 @@ function VendorBillFormPageContent() {
 
   const { data, isLoading, isError, error } = useVendorBill(id ? Number(id) : undefined)
   const bill = data?.data
-  const { create, createFromPurchaseOrder, createFromGoodsReceipt, update, approve, post, void: voidBill } = useVendorBillMutations()
+  const { create, createFromPurchaseOrder, createFromGoodsReceipt, update, approve, post, void: voidBill, remove } = useVendorBillMutations()
+  const { canChange } = useTransactionEditMode()
 
   // Source picker (A13-165) — hanya saat create.
   const [sourceMode, setSourceMode] = useState<'none' | BillSourceType>('none')
@@ -121,6 +124,9 @@ function VendorBillFormPageContent() {
   // yang ditandai oleh LineItemsTable.
   const [apiLineErrors, setApiLineErrors] = useState<LineItemErrorMap>({})
   const [isVoidOpen, setVoidOpen] = useState(false)
+  const [isDeleteOpen, setDeleteOpen] = useState(false)
+  // Mode open: tagihan approved/posted dibuka untuk diedit lewat tombol Edit.
+  const [editing, setEditing] = useState(false)
   const [confirmAction, setConfirmAction] = useState<'approve' | 'post' | null>(null)
 
   const depositVendorId = bill?.vendor_id ?? vendorId ?? null
@@ -131,7 +137,7 @@ function VendorBillFormPageContent() {
   })
 
   const status = (bill?.status ?? 'draft') as DocumentStatus
-  const isEditable = isCreate || bill?.status === 'draft'
+  const isEditable = isCreate || bill?.status === 'draft' || editing
   const hasPaidDependences = ['partially_paid', 'paid'].includes(bill?.status ?? '')
 
   const subtotal = lines.reduce((s, l) => s + lineBase(l), 0)
@@ -236,6 +242,7 @@ function VendorBillFormPageContent() {
     onSaved: () => {
       formDraft.clearDraft()
       setApiLineErrors({})
+      setEditing(false)
     },
     successMessage: (creating) => (creating ? 'Tagihan vendor berhasil dibuat.' : 'Tagihan vendor berhasil diperbarui.'),
     onError: (saveError) => {
@@ -259,6 +266,16 @@ function VendorBillFormPageContent() {
     }
   }
 
+  const handleDelete = async (reason?: string) => {
+    try {
+      await remove.mutateAsync({ id: Number(id), reason })
+      formDraft.clearDraft()
+      toast.success('Tagihan vendor berhasil dihapus.')
+      setDeleteOpen(false)
+      closeRecordTab(window.location.pathname, '/purchase/bills')
+    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus tagihan vendor.')) }
+  }
+
   const actions: DocumentActionButton[] = []
   const canSaveBill = isCreate ? can('purchase.bills.create') : can('purchase.bills.edit')
 
@@ -267,6 +284,15 @@ function VendorBillFormPageContent() {
   }
   if (isEditable && formDraft.isRestored) {
     actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: handleDiscardDraft })
+  }
+  if (!isCreate && !hasPaidDependences && canChange(bill?.status) && can('purchase.bills.edit')) {
+    if (bill?.status !== 'draft' && !editing) {
+      actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
+    }
+    actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+  }
+  if (editing) {
+    actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
   }
   if (!isCreate) {
     if (bill?.status === 'draft' && can('purchase.bills.approve')) {
@@ -549,6 +575,7 @@ function VendorBillFormPageContent() {
           )}
         </div>
       </FormLayout>
+      <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={bill?.number ?? ''} hasEffects={bill?.status !== 'draft' && bill?.status !== 'approved'} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={bill?.number ?? ''} isLoading={voidBill.isPending} />
       <ConfirmDialog
         isOpen={confirmAction === 'approve'}

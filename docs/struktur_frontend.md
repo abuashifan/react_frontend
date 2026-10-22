@@ -246,6 +246,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____PermissionGuard.tsx
 | | | |____document/
 | | | | |____ConfirmDialog.tsx
+| | | | |____DeleteDocumentDialog.tsx
 | | | | |____DocumentActionBar.tsx
 | | | | |____DocumentLockedBanner.tsx
 | | | | |____documentEditPolicy.ts
@@ -851,6 +852,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____hooks/
 | | | | |____useAccessManagement.ts
 | | | | |____useCompanySettings.ts
+| | | | |____useTransactionEditMode.ts
 | | | |____pages/
 | | | | |____AccessAuditPage.tsx
 | | | | |____AccountingPeriodPage.tsx
