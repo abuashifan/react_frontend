@@ -26,7 +26,7 @@ import { DeleteDocumentDialog } from '@/components/shared/document/DeleteDocumen
 import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionEditMode'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
-import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
+import { cn, fieldErrorClass, formatCurrency, toDateInputValue } from '@/lib/utils'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 
@@ -55,7 +55,7 @@ function SalesReceiptFormPageContent() {
 
   const { data, isLoading } = useSalesReceipt(id ? Number(id) : undefined)
   const receipt = data?.data
-  const { create, post, void: voidRec, remove } = useSalesReceiptMutations()
+  const { create, update, post, void: voidRec, remove } = useSalesReceiptMutations()
   const { canChange } = useTransactionEditMode()
   const { closeRecordTab } = useRecordTab()
 
@@ -67,19 +67,21 @@ function SalesReceiptFormPageContent() {
   const [lines, setLines] = useState<ReceiptLine[]>([])
   const [isVoidOpen, setVoidOpen] = useState(false)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
-
-  const customerId = watch('customer_id')
-  const { data: openInvoicesData } = useCustomerOpenInvoices(customerId && isCreate ? customerId : undefined)
+  // Draft selalu bisa diedit; yang sudah posted (mode open) dibuka lewat tombol Edit.
+  const [editing, setEditing] = useState(false)
 
   const status = (receipt?.status ?? 'draft') as DocumentStatus
-  const isEditable = isCreate
+  const isEditable = isCreate || receipt?.status === 'draft' || editing
+
+  const customerId = watch('customer_id')
+  const { data: openInvoicesData } = useCustomerOpenInvoices(customerId && isEditable ? customerId : undefined)
   const totalAmount = lines.reduce((s, l) => s + l.amount, 0)
 
   useEffect(() => {
     if (receipt) {
       reset({
         customer_id: receipt.customer_id,
-        date: receipt.date,
+        date: toDateInputValue(receipt.receipt_date ?? receipt.date),
         cash_bank_account_id: receipt.cash_bank_account_id,
         amount: receipt.amount,
         notes: receipt.notes ?? '',
@@ -87,7 +89,9 @@ function SalesReceiptFormPageContent() {
       setLines(receipt.lines.map((l) => ({
         sales_invoice_id: l.sales_invoice_id,
         invoice_number: l.invoice?.number ?? String(l.sales_invoice_id),
-        balance_due: l.invoice?.balance_due ?? 0,
+        // Penerimaan posted sudah mengurangi sisa tagihan; saat diedit, jumlah
+        // miliknya sendiri dikembalikan supaya batas bayarnya benar.
+        balance_due: (l.invoice?.balance_due ?? 0) + (receipt.status === 'posted' ? l.amount : 0),
         amount: l.amount,
       })))
     }
@@ -120,20 +124,24 @@ function SalesReceiptFormPageContent() {
     sequenceQueryKey: ['sales', 'receipts', 'adjacent'],
     fetchAdjacent: async (recordId) => (await salesReceiptApi.adjacent(recordId)).data,
     handleSubmit,
-    save: async (values) => {
-      await create.mutateAsync({
+    save: async (values, creating) => {
+      const payload = {
         ...values,
         lines: lines.map(({ sales_invoice_id, amount }) => ({ sales_invoice_id, amount })),
-      })
+      }
+      if (creating) await create.mutateAsync(payload)
+      else await update.mutateAsync({ id: Number(id), payload })
     },
-    onSaved: () => formDraft.clearDraft(),
-    successMessage: () => 'Penerimaan berhasil disimpan.',
+    onSaved: () => {
+      formDraft.clearDraft()
+      setEditing(false)
+    },
+    successMessage: (creating) => (creating ? 'Penerimaan berhasil disimpan.' : 'Penerimaan berhasil diperbarui.'),
     onError: (saveError) => {
       // Backend memvalidasi tanggal sebagai `receipt_date`, form memakai `date`.
       applyApiValidationErrors(saveError, setError, { receipt_date: 'date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan penerimaan.'))
     },
-    // Penerimaan tersimpan langsung terposting: hanya form create yang bisa disimpan.
     canSave: isEditable,
   })
 
@@ -162,10 +170,16 @@ function SalesReceiptFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
-  if (!isCreate && canChange(receipt?.status) && can('sales.receipts.void')) {
+  if (!isCreate && canChange(receipt?.status) && can('sales.receipts.create')) {
+    if (receipt?.status !== 'draft' && !editing) {
+      actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
+    }
     actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
   }
-  if (isCreate && can('sales.receipts.create')) {
+  if (editing) {
+    actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
+  }
+  if (isEditable && can('sales.receipts.create')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {

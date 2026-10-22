@@ -8,6 +8,8 @@ export interface SalesReceiptLine {
 }
 
 export interface SalesReceipt {
+  /** Nama kolom backend; `date` dipakai form. */
+  receipt_date?: string
   id: number
   number: string
   date: string

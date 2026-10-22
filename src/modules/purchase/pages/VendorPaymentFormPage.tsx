@@ -56,11 +56,13 @@ function VendorPaymentFormPageContent() {
   const { can } = usePermission()
   const [isVoidOpen, setVoidOpen] = useState(false)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
+  // Draft selalu bisa diedit; yang sudah posted (mode open) dibuka lewat tombol Edit.
+  const [editing, setEditing] = useState(false)
   const [billLines, setBillLines] = useState<BillLine[]>([])
 
   const { data, isLoading } = useVendorPayment(id ? Number(id) : undefined)
   const payment = data?.data
-  const { create, post, void: voidPayment, remove } = useVendorPaymentMutations()
+  const { create, update, post, void: voidPayment, remove } = useVendorPaymentMutations()
   const { canChange } = useTransactionEditMode()
   const { closeRecordTab } = useRecordTab()
 
@@ -69,8 +71,9 @@ function VendorPaymentFormPageContent() {
     defaultValues: { date: new Date().toISOString().slice(0, 10) },
   })
 
+  const isEditable = isCreate || payment?.status === 'draft' || editing
   const vendorId = watch('vendor_id')
-  const { data: vendorContextData } = useVendorOpenBills(isCreate ? vendorId : null)
+  const { data: vendorContextData } = useVendorOpenBills(isEditable ? vendorId : null)
   const openBills = vendorContextData?.data?.open_bills ?? []
 
   const status = (payment?.status ?? 'draft') as DocumentStatus
@@ -79,7 +82,9 @@ function VendorPaymentFormPageContent() {
   useEffect(() => {
     if (payment) {
       reset({ vendor_id: payment.vendor_id, date: payment.date, cash_bank_account_id: payment.cash_bank_account_id, amount: payment.amount, notes: payment.notes ?? '' })
-      setBillLines(payment.lines.map((l) => ({ vendor_bill_id: l.vendor_bill_id, bill_number: l.bill_number ?? '', balance_due: l.balance_due ?? 0, amount: l.amount })))
+      // Pembayaran posted sudah mengurangi sisa tagihan; saat diedit, jumlah
+      // miliknya sendiri dikembalikan supaya batas bayarnya benar.
+      setBillLines(payment.lines.map((l) => ({ vendor_bill_id: l.vendor_bill_id, bill_number: l.bill_number ?? '', balance_due: (l.balance_due ?? 0) + (payment.status === 'posted' ? l.amount : 0), amount: l.amount })))
     }
   }, [payment, reset])
 
@@ -154,19 +159,23 @@ function VendorPaymentFormPageContent() {
     sequenceQueryKey: ['purchase', 'payments', 'adjacent'],
     fetchAdjacent: async (recordId) => (await vendorPaymentApi.adjacent(recordId)).data,
     handleSubmit,
-    save: async (values) => {
+    save: async (values, creating) => {
       const lines: VendorPaymentLinePayload[] = billLines.map((l) => ({ vendor_bill_id: l.vendor_bill_id, amount: l.amount }))
-      await create.mutateAsync({ ...toVendorPaymentPayload(values), lines })
+      const payload = { ...toVendorPaymentPayload(values), lines }
+      if (creating) await create.mutateAsync(payload)
+      else await update.mutateAsync({ id: Number(id), payload })
     },
-    onSaved: () => formDraft.clearDraft(),
-    successMessage: () => 'Pembayaran vendor berhasil dibuat.',
+    onSaved: () => {
+      formDraft.clearDraft()
+      setEditing(false)
+    },
+    successMessage: (creating) => (creating ? 'Pembayaran vendor berhasil dibuat.' : 'Pembayaran vendor berhasil diperbarui.'),
     onError: (saveError) => {
       // Backend memakai nama kolom DB (`payment_date`), form memakai `date`.
       applyApiValidationErrors(saveError, setError, { payment_date: 'date' })
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan pembayaran vendor.'))
     },
-    // Pembayaran tersimpan langsung terposting: hanya form create yang bisa disimpan.
-    canSave: isCreate,
+    canSave: isEditable,
   })
 
   const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Pembayaran berhasil diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting pembayaran.')) } }
@@ -187,10 +196,16 @@ function VendorPaymentFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
-  if (!isCreate && canChange(payment?.status) && can('purchase.payments.void')) {
+  if (!isCreate && canChange(payment?.status) && can('purchase.payments.create')) {
+    if (payment?.status !== 'draft' && !editing) {
+      actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
+    }
     actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
   }
-  if (isCreate && can('purchase.payments.create')) {
+  if (editing) {
+    actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
+  }
+  if (isEditable && can('purchase.payments.create')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
@@ -228,16 +243,16 @@ function VendorPaymentFormPageContent() {
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Vendor <span className="text-red-500">*</span></Label>
-              <SearchableSelect value={watch('vendor_id') ?? null} onChange={(v) => setValue('vendor_id', v as number)} onSearch={(q) => kontakApi.search(q, 'supplier')} placeholder="Pilih vendor..." disabled={!isCreate} error={errors.vendor_id?.message} selectedOptions={payment?.vendor ? [{ value: payment.vendor.id, label: payment.vendor.name }] : []} />
+              <SearchableSelect value={watch('vendor_id') ?? null} onChange={(v) => setValue('vendor_id', v as number)} onSearch={(q) => kontakApi.search(q, 'supplier')} placeholder="Pilih vendor..." disabled={!isEditable} error={errors.vendor_id?.message} selectedOptions={payment?.vendor ? [{ value: payment.vendor.id, label: payment.vendor.name }] : []} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
-              <Input {...register('date')} type="date" disabled={!isCreate} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
+              <Input {...register('date')} type="date" disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.date))} />
               <FieldError message={errors.date?.message} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Kas/Bank <span className="text-red-500">*</span></Label>
-              <SearchableSelect value={watch('cash_bank_account_id') ?? null} onChange={(v) => setValue('cash_bank_account_id', v as number)} onSearch={coaApi.search} placeholder="Pilih akun kas/bank..." disabled={!isCreate} error={errors.cash_bank_account_id?.message} selectedOptions={payment?.cash_bank_account ? [{ value: payment.cash_bank_account.id, label: `${payment.cash_bank_account.code} - ${payment.cash_bank_account.name}` }] : []} />
+              <SearchableSelect value={watch('cash_bank_account_id') ?? null} onChange={(v) => setValue('cash_bank_account_id', v as number)} onSearch={coaApi.search} placeholder="Pilih akun kas/bank..." disabled={!isEditable} error={errors.cash_bank_account_id?.message} selectedOptions={payment?.cash_bank_account ? [{ value: payment.cash_bank_account.id, label: `${payment.cash_bank_account.code} - ${payment.cash_bank_account.name}` }] : []} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Total Pembayaran</Label>
@@ -246,7 +261,7 @@ function VendorPaymentFormPageContent() {
             </div>
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Catatan</Label>
-              <Textarea {...register('notes')} disabled={!isCreate} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
+              <Textarea {...register('notes')} disabled={!isEditable} placeholder="Catatan..." className={cn('resize-none text-[13px]', fieldErrorClass(errors.notes))} rows={2} />
               <FieldError message={errors.notes?.message} />
             </div>
           </FormSection>
@@ -254,7 +269,7 @@ function VendorPaymentFormPageContent() {
           <div>
             <div className="mb-2 flex items-center justify-between">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tagihan yang Dibayar</p>
-              {isCreate && vendorId && openBills.length > 0 && (
+              {isEditable && vendorId && openBills.length > 0 && (
                 <SearchableSelect
                   value={null}
                   onChange={(v) => { if (v) handleAddBill(v as number) }}
@@ -271,7 +286,7 @@ function VendorPaymentFormPageContent() {
               columns={billColumns}
               onRemove={(index) => setBillLines((prev) => prev.filter((_, idx) => idx !== index))}
               onUpdate={(index, field, value) => setBillLines((prev) => prev.map((l, idx) => (idx === index ? { ...l, [field]: value } : l)))}
-              isReadOnly={!isCreate}
+              isReadOnly={!isEditable}
               emptyLabel="Belum ada tagihan dipilih"
               footer={billLines.length === 0 ? undefined : (_items, cellCount) => (
                 <tr>

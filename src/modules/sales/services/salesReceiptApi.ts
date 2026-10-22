@@ -8,6 +8,11 @@ import type {
 } from '../types/salesReceipt.types'
 import type { SalesInvoice } from '../types/salesInvoice.types'
 
+/** Form memakai `date`, backend memvalidasi `receipt_date`. */
+function toReceiptPayload({ date, ...rest }: CreateSalesReceiptPayload) {
+  return { ...rest, receipt_date: date }
+}
+
 export const salesReceiptApi = {
   list: (params: SalesReceiptListParams) =>
     http.get<unknown, PaginatedResponse<SalesReceipt>>('/sales/receipts', { params }),
@@ -25,7 +30,7 @@ export const salesReceiptApi = {
     }),
 
   create: (payload: CreateSalesReceiptPayload) =>
-    http.post<unknown, ApiResponse<SalesReceipt>>('/sales/receipts', payload),
+    http.post<unknown, ApiResponse<SalesReceipt>>('/sales/receipts', toReceiptPayload(payload)),
 
   post: (id: number) =>
     http.patch<unknown, ApiResponse<SalesReceipt>>(`/sales/receipts/${id}/post`),
@@ -35,7 +40,7 @@ export const salesReceiptApi = {
 
   /** Edit (mode lock/open): isian lengkap seperti buat baru; yang sudah posted diposting ulang. */
   update: (id: number, payload: CreateSalesReceiptPayload) =>
-    http.patch<unknown, ApiResponse<SalesReceipt>>(`/sales/receipts/${id}`, payload),
+    http.patch<unknown, ApiResponse<SalesReceipt>>(`/sales/receipts/${id}`, toReceiptPayload(payload)),
 
   /** Hapus dokumen (mode lock/open). Draft dihapus permanen; yang sudah berefek di-void lalu disembunyikan. */
   remove: (id: number, reason?: string) =>
