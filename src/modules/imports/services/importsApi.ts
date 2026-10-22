@@ -2,7 +2,14 @@ import axios from 'axios'
 import { http } from '@/services/http'
 import { useAuthStore } from '@/stores/useAuthStore'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
-import type { ImportBatch, ImportBatchDetail, ImportProfile, ImportRow, UploadImportResponse } from '../types/imports.types'
+import type {
+  ImportBatch,
+  ImportBatchDetail,
+  ImportProfile,
+  ImportRow,
+  SelectImportSheetResponse,
+  UploadImportResponse,
+} from '../types/imports.types'
 
 export const importsApi = {
   profiles: () => http.get<unknown, ApiResponse<ImportProfile[]>>('/imports/profiles'),
@@ -17,6 +24,10 @@ export const importsApi = {
     // `data` adalah FormData -- jangan diset manual di sini.
     return http.post<unknown, ApiResponse<UploadImportResponse>>('/imports', form)
   },
+
+  /** Ganti sheet .xlsx yang diimpor; pemetaan & pratinjau sebelumnya direset. */
+  selectSheet: (uuid: string, sheet: string) =>
+    http.patch<unknown, ApiResponse<SelectImportSheetResponse>>(`/imports/${uuid}/sheet`, { sheet }),
 
   mapping: (uuid: string, columnMap: Record<string, string>) =>
     http.patch<unknown, ApiResponse<ImportBatch>>(`/imports/${uuid}/mapping`, { column_map: columnMap }),

@@ -60,6 +60,9 @@ export default function ImportPage() {
   const [file, setFile] = useState<File | null>(null)
   const [activeUuid, setActiveUuid] = useState<string | null>(null)
   const [uploadHeaders, setUploadHeaders] = useState<string[]>([])
+  // Sheet berkas .xlsx. `sheetName` null = sheet pertama (bawaan backend).
+  const [sheets, setSheets] = useState<string[]>([])
+  const [sheetName, setSheetName] = useState<string | null>(null)
   const [columnMap, setColumnMap] = useState<Record<string, string>>({})
   const [duplicateWarning, setDuplicateWarning] = useState<DuplicateFileWarningMeta['duplicate'] | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -122,8 +125,10 @@ export default function ImportPage() {
 
   const { data: rowsResponse, isFetching: rowsFetching } = useImportRows(step === 'preview' ? activeUuid : null, rowsPage)
 
-  const { upload, mapping, commit, cancel, revert } = useImportMutations()
-  const busy = upload.isPending || mapping.isPending || commit.isPending || cancel.isPending
+  const { upload, selectSheet, mapping, commit, cancel, revert } = useImportMutations()
+  // Sheet hanya bisa diganti selama datanya belum masuk ke buku.
+  const canChangeSheet = !batch || RESUMABLE_STATUSES.includes(batch.status)
+  const busy = upload.isPending || selectSheet.isPending || mapping.isPending || commit.isPending || cancel.isPending
 
   const reset = () => {
     setStep('upload')
@@ -131,6 +136,8 @@ export default function ImportPage() {
     setFile(null)
     setActiveUuid(null)
     setUploadHeaders([])
+    setSheets([])
+    setSheetName(null)
     setColumnMap({})
     setDuplicateWarning(null)
     setUploadError(null)
@@ -146,10 +153,12 @@ export default function ImportPage() {
 
     try {
       const res = await upload.mutateAsync({ profile: profile.key, file, confirmDuplicateFile })
-      const { batch: uploaded, headers, suggested_column_map: suggested, auto_mapped: autoMapped } = res.data
+      const { batch: uploaded, sheets: fileSheets, headers, suggested_column_map: suggested, auto_mapped: autoMapped } = res.data
 
       setActiveUuid(uploaded.uuid)
       setUploadHeaders(headers)
+      setSheets(fileSheets)
+      setSheetName(uploaded.sheet_name)
       setColumnMap(suggested)
       setDuplicateWarning(null)
 
@@ -223,6 +232,41 @@ export default function ImportPage() {
     }
   }
 
+  /**
+   * Ganti sheet yang diimpor. Backend membuang pemetaan dan pratinjau lama
+   * (milik header sheet sebelumnya), jadi alurnya diulang seperti unggahan
+   * baru: header dikenal → langsung pratinjau, selain itu → layar pemetaan.
+   */
+  const changeSheet = async (name: string) => {
+    if (!activeUuid) return
+
+    try {
+      const { data: switched } = await selectSheet.mutateAsync({ uuid: activeUuid, sheet: name })
+
+      setSheetName(switched.sheet_name)
+      setUploadHeaders(switched.headers)
+      setColumnMap(switched.suggested_column_map)
+      setRowsPage(1)
+
+      if (switched.auto_mapped) {
+        try {
+          await mapping.mutateAsync({ uuid: activeUuid, columnMap: switched.suggested_column_map })
+          setAutoMappedNotice(true)
+          setStep('preview')
+
+          return
+        } catch {
+          toast.error('Kolom tidak bisa dipetakan otomatis. Periksa pemetaannya.')
+        }
+      }
+
+      setAutoMappedNotice(false)
+      setStep('mapping')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal mengganti sheet.'))
+    }
+  }
+
   // ── Langkah 2: pemetaan kolom ────────────────────────────────────────
 
   const submitMapping = async () => {
@@ -291,6 +335,8 @@ export default function ImportPage() {
       setProfileKey(detail.profile)
       setActiveUuid(detail.uuid)
       setUploadHeaders(detail.headers)
+      setSheets(detail.sheets)
+      setSheetName(detail.sheet_name)
       setColumnMap(detail.column_map ?? detail.suggested_column_map)
       setFile(null)
       setUploadError(null)
@@ -556,6 +602,13 @@ export default function ImportPage() {
               belum. Lengkapi sisanya; field bertanda <span className="text-red-500">*</span> wajib dipetakan.
             </p>
 
+            <SheetPicker
+              sheets={sheets}
+              value={sheetName}
+              disabled={busy || !canChangeSheet}
+              onChange={(name) => void changeSheet(name)}
+            />
+
             <div className="grid gap-3 sm:grid-cols-2">
               {profile.fields.map((field, index) => {
                 const required = profile.required_fields.includes(field)
@@ -605,6 +658,14 @@ export default function ImportPage() {
                 {STATUS_LABELS[batch.status] ?? batch.status}
               </Badge>
             </div>
+
+            <SheetPicker
+              className="mt-3"
+              sheets={sheets}
+              value={sheetName}
+              disabled={busy || !canChangeSheet}
+              onChange={(name) => void changeSheet(name)}
+            />
 
             {autoMappedNotice && (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-[#bfdbfe] bg-[#eff6ff] p-3">
@@ -945,6 +1006,53 @@ function ImportHistory({
         loadingLabel="Membatalkan..."
       />
     </section>
+  )
+}
+
+/**
+ * Pilihan sheet untuk berkas .xlsx berisi lebih dari satu sheet. Tidak
+ * digambar sama sekali untuk CSV atau berkas satu sheet — tidak ada yang
+ * bisa dipilih.
+ */
+function SheetPicker({
+  sheets,
+  value,
+  disabled,
+  onChange,
+  className,
+}: {
+  sheets: string[]
+  value: string | null
+  disabled: boolean
+  onChange: (name: string) => void
+  className?: string
+}) {
+  if (sheets.length < 2) return null
+
+  const current = value ?? sheets[0]
+
+  return (
+    <div className={cn('mb-4 flex flex-col gap-1 rounded-md border border-[#e2e8f0] bg-[#f8fafc] p-3', className)}>
+      <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Sheet yang diimpor</Label>
+      <select
+        className={selectClass}
+        value={current}
+        disabled={disabled}
+        onChange={(e) => {
+          if (e.target.value !== current) onChange(e.target.value)
+        }}
+      >
+        {sheets.map((name, index) => (
+          <option key={name} value={name}>
+            {name}
+            {index === 0 ? ' (sheet pertama)' : ''}
+          </option>
+        ))}
+      </select>
+      <p className="text-[11px] text-[#64748b]">
+        Berkas ini punya {sheets.length} sheet. Mengganti sheet mengulang pemetaan kolom dan pratinjau.
+      </p>
+    </div>
   )
 }
 

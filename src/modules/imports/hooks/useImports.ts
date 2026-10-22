@@ -54,6 +54,10 @@ export function useImportMutations() {
       mutationFn: ({ profile, file, confirmDuplicateFile }: { profile: string; file: File; confirmDuplicateFile?: boolean }) =>
         importsApi.upload(profile, file, confirmDuplicateFile),
     }),
+    selectSheet: useMutation({
+      mutationFn: ({ uuid, sheet }: { uuid: string; sheet: string }) => importsApi.selectSheet(uuid, sheet),
+      onSuccess: (_, { uuid }) => invalidateBatch(uuid),
+    }),
     mapping: useMutation({
       mutationFn: ({ uuid, columnMap }: { uuid: string; columnMap: Record<string, string> }) =>
         importsApi.mapping(uuid, columnMap),
