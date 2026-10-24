@@ -8,6 +8,11 @@ import type {
   UpdateDeliveryOrderPayload,
 } from '../types/deliveryOrder.types'
 
+
+/** Form memakai `date`; backend mewajibkan `delivery_date` (tanpa ini simpan ditolak 422). */
+function toPayload<T extends { date?: string }>({ date, ...rest }: T) {
+  return date === undefined ? rest : { ...rest, delivery_date: date }
+}
 export const deliveryOrderApi = {
   list: (params: DeliveryOrderListParams) =>
     http.get<unknown, PaginatedResponse<DeliveryOrder>>('/sales/delivery-orders', { params }),
@@ -20,13 +25,13 @@ export const deliveryOrderApi = {
     http.get<unknown, ApiResponse<DeliveryOrder>>(`/sales/delivery-orders/${id}`),
 
   create: (payload: CreateDeliveryOrderPayload) =>
-    http.post<unknown, ApiResponse<DeliveryOrder>>('/sales/delivery-orders', payload),
+    http.post<unknown, ApiResponse<DeliveryOrder>>('/sales/delivery-orders', toPayload(payload)),
 
   createFromSalesOrder: (salesOrderId: number) =>
     http.post<unknown, ApiResponse<DeliveryOrder>>(`/sales/delivery-orders/from-sales-order/${salesOrderId}`),
 
   update: (id: number, payload: UpdateDeliveryOrderPayload) =>
-    http.patch<unknown, ApiResponse<DeliveryOrder>>(`/sales/delivery-orders/${id}`, payload),
+    http.patch<unknown, ApiResponse<DeliveryOrder>>(`/sales/delivery-orders/${id}`, toPayload(payload)),
 
   ready: (id: number) =>
     http.patch<unknown, ApiResponse<DeliveryOrder>>(`/sales/delivery-orders/${id}/ready`),

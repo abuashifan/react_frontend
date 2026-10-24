@@ -18,6 +18,11 @@ function toSalesOrder(row: SalesOrder): SalesOrder {
   return row.order_number ? { ...row, number: row.order_number } : row
 }
 
+
+/** Form memakai `date`; backend mewajibkan `order_date` (tanpa ini simpan ditolak 422). */
+function toPayload<T extends { date?: string }>({ date, ...rest }: T) {
+  return date === undefined ? rest : { ...rest, order_date: date }
+}
 export const salesOrderApi = {
   list: async (params: SalesOrderListParams) => {
     const res = await http.get<unknown, PaginatedResponse<SalesOrder>>('/sales/orders', { params })
@@ -37,13 +42,13 @@ export const salesOrderApi = {
   },
 
   create: (payload: CreateSalesOrderPayload) =>
-    http.post<unknown, ApiResponse<SalesOrder>>('/sales/orders', payload),
+    http.post<unknown, ApiResponse<SalesOrder>>('/sales/orders', toPayload(payload)),
 
   createFromQuotation: (quotationId: number) =>
     http.post<unknown, ApiResponse<SalesOrder>>(`/sales/orders/from-quotation/${quotationId}`),
 
   update: (id: number, payload: UpdateSalesOrderPayload) =>
-    http.patch<unknown, ApiResponse<SalesOrder>>(`/sales/orders/${id}`, payload),
+    http.patch<unknown, ApiResponse<SalesOrder>>(`/sales/orders/${id}`, toPayload(payload)),
 
   approve: (id: number) =>
     http.patch<unknown, ApiResponse<SalesOrder>>(`/sales/orders/${id}/approve`),

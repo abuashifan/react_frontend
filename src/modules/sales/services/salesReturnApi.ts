@@ -8,6 +8,11 @@ import type {
   UpdateSalesReturnPayload,
 } from '../types/salesReturn.types'
 
+
+/** Form memakai `date`; backend mewajibkan `return_date` (tanpa ini simpan ditolak 422). */
+function toPayload<T extends { date?: string }>({ date, ...rest }: T) {
+  return date === undefined ? rest : { ...rest, return_date: date }
+}
 export const salesReturnApi = {
   list: (params: SalesReturnListParams) =>
     http.get<unknown, PaginatedResponse<SalesReturn>>('/sales/returns', { params }),
@@ -20,7 +25,7 @@ export const salesReturnApi = {
     http.get<unknown, ApiResponse<SalesReturn>>(`/sales/returns/${id}`),
 
   create: (payload: CreateSalesReturnPayload) =>
-    http.post<unknown, ApiResponse<SalesReturn>>('/sales/returns', payload),
+    http.post<unknown, ApiResponse<SalesReturn>>('/sales/returns', toPayload(payload)),
 
   createFromInvoice: (invoiceId: number) =>
     http.post<unknown, ApiResponse<SalesReturn>>(`/sales/returns/from-invoice/${invoiceId}`),
@@ -29,7 +34,7 @@ export const salesReturnApi = {
     http.post<unknown, ApiResponse<SalesReturn>>(`/sales/returns/from-delivery-order/${doId}`),
 
   update: (id: number, payload: UpdateSalesReturnPayload) =>
-    http.patch<unknown, ApiResponse<SalesReturn>>(`/sales/returns/${id}`, payload),
+    http.patch<unknown, ApiResponse<SalesReturn>>(`/sales/returns/${id}`, toPayload(payload)),
 
   approve: (id: number) =>
     http.patch<unknown, ApiResponse<SalesReturn>>(`/sales/returns/${id}/approve`),
