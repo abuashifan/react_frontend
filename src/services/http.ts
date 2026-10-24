@@ -90,6 +90,38 @@ function documentNumberFrom(record: Record<string, unknown>): string | undefined
   return undefined
 }
 
+/**
+ * Kolom desimal Laravel dikirim sebagai teks ("100.0000"). Tipe frontend dan
+ * skema Zod memakai number, jadi teks itu membuat validasi baris gagal diam-diam
+ * saat dokumen tersimpan diedit. Hanya kolom angka yang jelas yang diubah --
+ * kode akun ("1101.02") dan nomor dokumen tidak tersentuh.
+ */
+const DECIMAL_FIELDS = new Set([
+  'quantity',
+  'unit_cost',
+  'unit_price',
+  'estimated_unit_price',
+  'discount_percent',
+  'discount_value',
+  'tax_percent',
+  'tax_rate',
+  'physical_quantity',
+  'system_quantity',
+  'difference_quantity',
+  'received_quantity',
+  'billed_quantity',
+  'returned_quantity',
+  'delivered_quantity',
+  'invoiced_quantity',
+])
+
+function toDecimalNumber(key: string, value: unknown): unknown {
+  if (DECIMAL_FIELDS.has(key) && typeof value === 'string' && /^-?\d+(\.\d+)?$/.test(value.trim())) {
+    return Number(value)
+  }
+  return value
+}
+
 function normalizeDocumentNumbers(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map((item) => normalizeDocumentNumbers(item))
@@ -100,7 +132,7 @@ function normalizeDocumentNumbers(value: unknown): unknown {
   }
 
   const normalized = Object.fromEntries(
-    Object.entries(value).map(([key, item]) => [key, normalizeDocumentNumbers(item)]),
+    Object.entries(value).map(([key, item]) => [key, toDecimalNumber(key, normalizeDocumentNumbers(item))]),
   )
   const existingNumber = normalized.number
   const needsNumberAlias =
