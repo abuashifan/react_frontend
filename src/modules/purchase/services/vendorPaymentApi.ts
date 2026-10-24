@@ -23,8 +23,18 @@ export const vendorPaymentApi = {
   create: (payload: CreateVendorPaymentPayload) =>
     http.post<unknown, ApiResponse<VendorPayment>>('/purchase/payments', payload),
 
-  getVendorContext: (vendorId: number) =>
-    http.get<unknown, ApiResponse<VendorContext>>('/purchase/payments/vendor-context', { params: { vendor_id: vendorId } }),
+  /**
+   * Backend mengirim tagihan terbuka dengan kunci `bill_id`; form membaca
+   * `vendor_bill_id`. Tanpa alias ini memilih tagihan tidak menambah baris.
+   */
+  getVendorContext: async (vendorId: number) => {
+    const res = await http.get<unknown, ApiResponse<VendorContext>>('/purchase/payments/vendor-context', { params: { vendor_id: vendorId } })
+    const openBills = (res.data?.open_bills ?? []).map((bill) => ({
+      ...bill,
+      vendor_bill_id: bill.vendor_bill_id ?? (bill as unknown as { bill_id: number }).bill_id,
+    }))
+    return { ...res, data: { ...res.data, open_bills: openBills } }
+  },
 
   post: (id: number) =>
     http.patch<unknown, ApiResponse<VendorPayment>>(`/purchase/payments/${id}/post`),

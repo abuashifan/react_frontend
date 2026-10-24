@@ -24,10 +24,20 @@ export const salesReceiptApi = {
   get: (id: number) =>
     http.get<unknown, ApiResponse<SalesReceipt>>(`/sales/receipts/${id}`),
 
-  getCustomerContext: (customerId: number) =>
-    http.get<unknown, ApiResponse<{ open_invoices: SalesInvoice[] }>>('/sales/receipts/customer-context', {
+  /**
+   * Backend mengirim invoice terbuka dengan kunci `invoice_id`; form membaca `id`.
+   * Tanpa alias ini `sales_invoice_id` kosong dan penerimaan ditolak 422.
+   */
+  getCustomerContext: async (customerId: number) => {
+    const res = await http.get<unknown, ApiResponse<{ open_invoices: SalesInvoice[] }>>('/sales/receipts/customer-context', {
       params: { customer_id: customerId },
-    }),
+    })
+    const open = (res.data?.open_invoices ?? []).map((inv) => ({
+      ...inv,
+      id: inv.id ?? (inv as unknown as { invoice_id: number }).invoice_id,
+    }))
+    return { ...res, data: { ...res.data, open_invoices: open } }
+  },
 
   create: (payload: CreateSalesReceiptPayload) =>
     http.post<unknown, ApiResponse<SalesReceipt>>('/sales/receipts', toReceiptPayload(payload)),

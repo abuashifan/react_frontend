@@ -8,6 +8,14 @@ import type {
   UpdateSalesInvoicePayload,
 } from '../types/salesInvoice.types'
 
+/**
+ * Form memakai `date`; backend mewajibkan `invoice_date`. Tanpa pemetaan ini
+ * membuat/mengubah invoice selalu ditolak 422 "invoice date field is required".
+ */
+function toInvoicePayload({ date, ...rest }: Partial<CreateSalesInvoicePayload>) {
+  return date === undefined ? rest : { ...rest, invoice_date: date }
+}
+
 export const salesInvoiceApi = {
   list: (params: SalesInvoiceListParams) =>
     http.get<unknown, PaginatedResponse<SalesInvoice>>('/sales/invoices', { params }),
@@ -20,7 +28,7 @@ export const salesInvoiceApi = {
     http.get<unknown, ApiResponse<SalesInvoice>>(`/sales/invoices/${id}`),
 
   create: (payload: CreateSalesInvoicePayload) =>
-    http.post<unknown, ApiResponse<SalesInvoice>>('/sales/invoices', payload),
+    http.post<unknown, ApiResponse<SalesInvoice>>('/sales/invoices', toInvoicePayload(payload)),
 
   createFromSalesOrder: (salesOrderId: number) =>
     http.post<unknown, ApiResponse<SalesInvoice>>(`/sales/invoices/from-sales-order/${salesOrderId}`),
@@ -32,7 +40,7 @@ export const salesInvoiceApi = {
     http.post<unknown, ApiResponse<SalesInvoice>>(`/sales/invoices/from-proforma/${proformaId}`),
 
   update: (id: number, payload: UpdateSalesInvoicePayload) =>
-    http.patch<unknown, ApiResponse<SalesInvoice>>(`/sales/invoices/${id}`, payload),
+    http.patch<unknown, ApiResponse<SalesInvoice>>(`/sales/invoices/${id}`, toInvoicePayload(payload)),
 
   approve: (id: number) =>
     http.patch<unknown, ApiResponse<SalesInvoice>>(`/sales/invoices/${id}/approve`),

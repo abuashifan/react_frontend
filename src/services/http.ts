@@ -46,6 +46,40 @@ const DOCUMENT_NUMBER_FIELDS = [
   'asset_number',
 ] as const
 
+/**
+ * Backend menamai tanggal dokumen per jenis (`invoice_date`, `bill_date`, ...),
+ * sedangkan tipe frontend memakai `date`. Alias `date` dibuat dari field itu bila
+ * `date` belum ada -- tanpa ini daftar menampilkan "-" dan form edit kosong.
+ */
+const DOCUMENT_DATE_FIELDS = [
+  'invoice_date',
+  'bill_date',
+  'receipt_date',
+  'payment_date',
+  'deposit_date',
+  'transfer_date',
+  'return_date',
+  'delivery_date',
+  'adjustment_date',
+  'movement_date',
+  'opname_date',
+  'journal_date',
+  'order_date',
+  'quotation_date',
+  'proforma_date',
+  'request_date',
+] as const
+
+function documentDateFrom(record: Record<string, unknown>): string | undefined {
+  for (const field of DOCUMENT_DATE_FIELDS) {
+    const value = record[field]
+    if (typeof value === 'string' && value.trim() !== '') {
+      return value
+    }
+  }
+  return undefined
+}
+
 function documentNumberFrom(record: Record<string, unknown>): string | undefined {
   for (const field of DOCUMENT_NUMBER_FIELDS) {
     const value = record[field]
@@ -74,14 +108,19 @@ function normalizeDocumentNumbers(value: unknown): unknown {
     existingNumber === null ||
     (typeof existingNumber === 'string' && existingNumber.trim() === '')
   const documentNumber = documentNumberFrom(normalized)
+  const existingDate = normalized.date
+  const documentDate = existingDate === undefined || existingDate === null || existingDate === ''
+    ? documentDateFrom(normalized)
+    : undefined
 
-  if (!needsNumberAlias || !documentNumber) {
+  if ((!needsNumberAlias || !documentNumber) && !documentDate) {
     return normalized
   }
 
   return {
     ...normalized,
-    number: documentNumber,
+    ...(needsNumberAlias && documentNumber ? { number: documentNumber } : {}),
+    ...(documentDate ? { date: documentDate } : {}),
   }
 }
 
