@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -24,6 +25,8 @@ import { setupApi } from '../../services/onboardingApi'
 import { companySettingsApi } from '@/modules/settings/services/companySettingsApi'
 import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage } from '@/lib/apiError'
+import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionEditMode'
+import { EDIT_MODE_OPTIONS } from '@/modules/settings/constants/transactionEditMode'
 
 const FISCAL_MONTH_OPTIONS = [
   { value: '1', label: 'Januari' },
@@ -56,9 +59,18 @@ export function Step1CompanyInfo({ defaultValues, onComplete }: Props) {
       address: '',
       fiscal_year_start: '1',
       currency: 'IDR',
+      transaction_edit_mode: 'lock',
       ...defaultValues,
     },
   })
+
+  // Mode yang sudah tersimpan (mis. wizard dibuka ulang) jadi nilai awal,
+  // supaya kembali ke langkah ini tidak diam-diam mengembalikannya ke lock.
+  const { mode: savedEditMode } = useTransactionEditMode()
+  useEffect(() => {
+    if (!form.formState.dirtyFields.transaction_edit_mode) form.setValue('transaction_edit_mode', savedEditMode)
+  }, [savedEditMode, form])
+  const editMode = form.watch('transaction_edit_mode')
 
   const onSubmit = async (values: CompanyInfoValues) => {
     try {
@@ -66,7 +78,7 @@ export function Step1CompanyInfo({ defaultValues, onComplete }: Props) {
       // Catatan: backend belum mengekspos update profil (NPWP/alamat) &
       // fiscal_year_start lewat setup wizard; field tersebut hanya dipakai untuk
       // ringkasan wizard.
-      await companySettingsApi.updateAccounting({ base_currency: values.currency })
+      await companySettingsApi.updateAccounting({ base_currency: values.currency, transaction_edit_mode: values.transaction_edit_mode })
       // Tandai progres step di backend (best-effort). `opening_date` dititipkan di sini
       // karena tidak ada step lain di wizard yang mengirimnya sama sekali -- tanpa ini
       // validasi `accounting_settings` (OPENING_DATE_REQUIRED) akan selalu gagal saat
@@ -169,6 +181,36 @@ export function Step1CompanyInfo({ defaultValues, onComplete }: Props) {
                     <SelectItem value="USD" className="text-[13px]">USD — US Dollar</SelectItem>
                   </SelectContent>
                 </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </FormSection>
+
+        <FormSection title="Edit Transaksi" columns={2}>
+          <FormField
+            control={form.control}
+            name="transaction_edit_mode"
+            render={({ field }) => (
+              <FormItem className="md:col-span-2">
+                <FormLabel>Mode Edit Transaksi</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger className="h-9 text-[13px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {EDIT_MODE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value} className="text-[13px]">
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-[#94a3b8]">
+                  {EDIT_MODE_OPTIONS.find((opt) => opt.value === editMode)?.hint} Bisa diubah nanti di Pengaturan → Transaksi.
+                </p>
                 <FormMessage />
               </FormItem>
             )}

@@ -29,6 +29,7 @@ import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import { cn, fieldErrorClass, formatCurrency, toDateInputValue } from '@/lib/utils'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 
 interface ReceiptLine {
   sales_invoice_id: number
@@ -254,6 +255,7 @@ function SalesReceiptFormPageContent() {
         headerActions={
           <>
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentHistoryButton documentType="sales_receipt" documentId={id} />
             <DocumentActionBar placement="header" documentStatus={status} documentNumber={receipt?.number} actions={actions} />
           </>
         }

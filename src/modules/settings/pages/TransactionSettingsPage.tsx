@@ -12,24 +12,12 @@ import { getApiErrorMessage } from '@/lib/apiError'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { useCompanySettings, useCompanySettingsMutations } from '../hooks/useCompanySettings'
 import type { CompanyAccountingSettings, TransactionEditMode, WorkflowMode } from '../types/settings.types'
+import { EDIT_MODE_OPTIONS } from '../constants/transactionEditMode'
 
 const WORKFLOW_OPTIONS: { value: WorkflowMode; label: string; hint: string }[] = [
   { value: 'simple_auto_post', label: 'Sederhana — Auto Post', hint: 'Dokumen langsung diposting tanpa draft.' },
   { value: 'draft_then_post', label: 'Draft lalu Post', hint: 'Buat draft, lalu posting manual.' },
   { value: 'draft_approve_post', label: 'Draft → Approve → Post', hint: 'Butuh approval sebelum posting.' },
-]
-
-const EDIT_MODE_OPTIONS: { value: TransactionEditMode; label: string; hint: string }[] = [
-  {
-    value: 'lock',
-    label: 'Lock — hanya draft',
-    hint: 'Hanya transaksi draft yang bisa diedit/dihapus, termasuk jurnal manual. Yang sudah diposting harus di-void dulu. Sales Order & Delivery Order tetap mengikuti aturannya sendiri.',
-  },
-  {
-    value: 'open',
-    label: 'Open — semua status',
-    hint: 'Transaksi yang sudah diposting juga bisa diedit/dihapus, selama tidak tertaut transaksi lain. Saat disimpan, jurnal lama di-void (tetap tersimpan sebagai jejak) lalu diposting ulang.',
-  },
 ]
 
 interface ToggleField { key: keyof CompanyAccountingSettings; label: string; hint?: string }

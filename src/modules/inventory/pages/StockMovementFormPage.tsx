@@ -32,6 +32,7 @@ import { useRecordFormNavigation, FormValidationAbort } from '@/hooks/useRecordF
 import type { DocumentStatus } from '@/types/common.types'
 import type { StockMovementType } from '../types/stockMovement.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
+import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 
 const MANUAL_TYPES: { value: StockMovementType; label: string }[] = [
   { value: 'adjustment_in', label: 'Penyesuaian Masuk' },
@@ -291,6 +292,7 @@ function StockMovementFormPageContent() {
         headerActions={
           <>
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentHistoryButton documentType="stock_movement" documentId={id} />
             <DocumentActionBar placement="header" documentStatus={status} documentNumber={movement?.number} actions={actions} />
           </>
         }

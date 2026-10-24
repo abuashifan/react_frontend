@@ -30,6 +30,7 @@ import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 
 interface EditableLine {
   product_id: number | null
@@ -286,6 +287,7 @@ function DeliveryOrderFormPageContent() {
         headerActions={
           <>
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentHistoryButton documentType="delivery_order" documentId={id} />
             <DocumentActionBar placement="header" documentStatus={status} documentNumber={order?.number} actions={actions} />
           </>
         }

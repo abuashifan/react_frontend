@@ -28,6 +28,7 @@ import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import type { StockOpnameLine } from '../types/stockOpname.types'
+import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 
 export default function StockOpnameFormPage() {
   const { id } = useParams()
@@ -223,6 +224,7 @@ function StockOpnameFormPageContent() {
         headerActions={
           <>
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentHistoryButton documentType="stock_opname" documentId={id} />
             <DocumentActionBar placement="header" documentStatus={status} documentNumber={opname?.number} actions={actions} />
           </>
         }

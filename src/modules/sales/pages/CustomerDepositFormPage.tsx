@@ -27,6 +27,7 @@ import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 
 export default function CustomerDepositFormPage() {
   const { id } = useParams()
@@ -181,6 +182,7 @@ function CustomerDepositFormPageContent() {
         headerActions={
           <>
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentHistoryButton documentType="customer_deposit" documentId={id} />
             <DocumentActionBar placement="header" documentStatus={status} documentNumber={deposit?.number} actions={actions} />
           </>
         }

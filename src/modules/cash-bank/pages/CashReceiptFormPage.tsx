@@ -30,6 +30,7 @@ import type { DocumentStatus } from '@/types/common.types'
 import type { Coa } from '@/modules/master-data/types/coa.types'
 import { cn, fieldErrorClass, formatCurrency, toDateInputValue } from '@/lib/utils'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 
 interface EditableLine { account_id: number | null; account?: { id: number; code: string; name: string } | null; amount: number; description: string }
 const DEFAULT_LINE: EditableLine = { account_id: null, account: null, amount: 0, description: '' }
@@ -248,6 +249,7 @@ function CashReceiptFormPageContent() {
         headerActions={
           <>
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentHistoryButton documentType="cash_receipt" documentId={id} />
             <DocumentActionBar placement="header" documentStatus={status} documentNumber={receipt?.number} actions={actions} />
           </>
         }>

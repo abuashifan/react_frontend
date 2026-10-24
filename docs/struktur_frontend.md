@@ -365,9 +365,12 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____services/
 | | | | |____adminApi.ts
 | | |____accounting/
+| | | |____components/
+| | | | |____DocumentHistoryButton.tsx
 | | | |____constants/
 | | | | |____journalSourceTypes.ts
 | | | |____hooks/
+| | | | |____useDocumentHistory.ts
 | | | | |____useFiscalYear.ts
 | | | | |____useJournalEntryList.ts
 | | | | |____usePeriodEnd.ts
@@ -381,6 +384,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____schemas/
 | | | | |____journalEntrySchema.ts
 | | | |____services/
+| | | | |____documentHistoryApi.ts
 | | | | |____fiscalYearApi.ts
 | | | | |____journalEntryApi.ts
 | | | | |____periodEndApi.ts
@@ -849,6 +853,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____salesReceipt.types.ts
 | | | | |____salesReturn.types.ts
 | | |____settings/
+| | | |____constants/
+| | | | |____transactionEditMode.ts
 | | | |____hooks/
 | | | | |____useAccessManagement.ts
 | | | | |____useCompanySettings.ts

@@ -13,7 +13,6 @@ import { DeleteDocumentDialog } from '@/components/shared/document/DeleteDocumen
 import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionEditMode'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
@@ -24,10 +23,11 @@ import { useJournalEntry, useJournalEntryMutations } from '../hooks/useJournalEn
 import { journalEntrySchema, type JournalEntryFormValues } from '../schemas/journalEntrySchema'
 import { journalEntryApi } from '../services/journalEntryApi'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
-import { useRecordFormNavigation, FormValidationAbort } from '@/hooks/useRecordFormNavigation'
+import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import type { BudgetWarning } from '../types/journalEntry.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 
 interface EditableLine {
   account_id: number | null
@@ -120,7 +120,6 @@ function JournalFormPageContent() {
   const [isDeleteOpen, setDeleteOpen] = useState(false)
   // Mode open: jurnal approved/posted dibuka untuk diedit; jurnal posted wajib beralasan.
   const [editing, setEditing] = useState(false)
-  const [editReason, setEditReason] = useState('')
   /** Indeks baris yang sedang membuka dialog pemilih akun; `null` = dialog tertutup. */
   const [pickerRow, setPickerRow] = useState<number | null>(null)
 
@@ -217,19 +216,12 @@ function JournalFormPageContent() {
     save: async (values, creating) => {
       const linePayloads = lines.map((l, i) => ({ account_id: l.account_id!, description: l.description || null, debit: l.debit || undefined, credit: l.credit || undefined, line_order: i + 1 }))
       if (creating) await create.mutateAsync({ ...values, lines: linePayloads })
-      else {
-        if (journal?.status === 'posted' && editReason.trim().length < 3) {
-          toast.error('Isi alasan edit (minimal 3 karakter) untuk jurnal yang sudah diposting.')
-          throw new FormValidationAbort()
-        }
-        await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads, ...(journal?.status === 'posted' ? { edit_reason: editReason.trim() } : {}) } })
-      }
+      else await update.mutateAsync({ id: Number(id), payload: { ...values, lines: linePayloads } })
     },
     onSaved: () => {
       formDraft.clearDraft()
       setLineErrors({})
       setEditing(false)
-      setEditReason('')
     },
     successMessage: (creating) => (creating ? 'Jurnal berhasil dibuat.' : 'Jurnal berhasil diperbarui.'),
     onError: (error) => {
@@ -350,7 +342,7 @@ function JournalFormPageContent() {
     actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
   }
   if (editing) {
-    actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => { setEditing(false); setEditReason('') } })
+    actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
   }
   if (isEditable && can('journal.create')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
@@ -386,6 +378,7 @@ function JournalFormPageContent() {
         headerActions={
           <>
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentHistoryButton documentType="journal_entry" documentId={id} />
             <DocumentActionBar placement="header" documentStatus={status} documentNumber={journal?.journal_number} actions={actions} />
           </>
         }
@@ -415,14 +408,6 @@ function JournalFormPageContent() {
             </div>
           </section>
 
-          {editing && journal?.status === 'posted' && (
-            <div className="mb-3 flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
-                Alasan Edit <span className="text-red-500">*</span>
-              </Label>
-              <Input value={editReason} onChange={(e) => setEditReason(e.target.value)} placeholder="Mengapa jurnal yang sudah diposting ini diubah?" className="h-9 text-[13px]" />
-            </div>
-          )}
 
           <LineItemsTable
             items={lines}

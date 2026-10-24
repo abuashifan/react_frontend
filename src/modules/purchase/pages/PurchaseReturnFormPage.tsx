@@ -31,6 +31,7 @@ import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 
 interface EditableLine {
   product_id: number | null
@@ -206,6 +207,7 @@ function PurchaseReturnFormPageContent() {
         headerActions={
           <>
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentHistoryButton documentType="purchase_return" documentId={id} />
             <DocumentActionBar placement="header" documentStatus={status} documentNumber={ret?.number} actions={actions} />
           </>
         }

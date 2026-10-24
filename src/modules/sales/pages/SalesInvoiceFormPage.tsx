@@ -32,6 +32,7 @@ import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import type { DocumentStatus } from '@/types/common.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
+import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 
 interface EditableLine {
   product_id: number | null
@@ -339,6 +340,7 @@ function SalesInvoiceFormPageContent() {
         headerActions={
           <>
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentHistoryButton documentType="sales_invoice" documentId={id} />
             <DocumentActionBar placement="header" documentStatus={status} documentNumber={invoice?.number} actions={actions} />
           </>
         }

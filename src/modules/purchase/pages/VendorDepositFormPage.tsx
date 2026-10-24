@@ -29,6 +29,7 @@ import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { useState } from 'react'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 
 export default function VendorDepositFormPage() {
   const { id } = useParams()
@@ -165,6 +166,7 @@ function VendorDepositFormPageContent() {
         headerActions={
           <>
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentHistoryButton documentType="vendor_deposit" documentId={id} />
             <DocumentActionBar placement="header" documentStatus={status} documentNumber={deposit?.number} actions={actions} />
           </>
         }

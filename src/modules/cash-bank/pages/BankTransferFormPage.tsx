@@ -25,6 +25,7 @@ import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
+import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 
 export default function BankTransferFormPage() {
   const { id } = useParams()
@@ -140,6 +141,7 @@ function BankTransferFormPageContent() {
         headerActions={
           <>
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentHistoryButton documentType="bank_transfer" documentId={id} />
             <DocumentActionBar placement="header" documentStatus={status} documentNumber={transfer?.number} actions={actions} />
           </>
         }>

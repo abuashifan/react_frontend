@@ -32,6 +32,7 @@ import { useRecordFormNavigation, FormValidationAbort } from '@/hooks/useRecordF
 import type { DocumentStatus } from '@/types/common.types'
 import type { StockAdjustmentLineType } from '../types/stockAdjustment.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
+import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 
 interface EditableLine {
   product_id: number | null
@@ -371,6 +372,7 @@ function StockAdjustmentFormPageContent() {
         headerActions={
           <>
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentHistoryButton documentType="stock_adjustment" documentId={id} />
             <DocumentActionBar placement="header" documentStatus={status} documentNumber={adj?.number} actions={actions} />
           </>
         }

@@ -41,6 +41,7 @@ import { NotFoundPage, ServerErrorPage } from '@/modules/errors/ErrorPage'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { DeleteDocumentDialog } from '@/components/shared/document/DeleteDocumentDialog'
 import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionEditMode'
+import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 
 interface EditableLine {
   product_id: number | null
@@ -406,6 +407,7 @@ function VendorBillFormPageContent() {
         headerActions={
           <>
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentHistoryButton documentType="vendor_bill" documentId={id} />
             <DocumentActionBar placement="header" documentStatus={status} documentNumber={bill?.number} actions={actions} />
           </>
         }

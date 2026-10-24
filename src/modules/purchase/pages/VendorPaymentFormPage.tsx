@@ -31,6 +31,7 @@ import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import type { VendorPaymentLinePayload } from '../types/vendorPayment.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 
 interface BillLine {
   vendor_bill_id: number
@@ -235,6 +236,7 @@ function VendorPaymentFormPageContent() {
         headerActions={
           <>
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
+            <DocumentHistoryButton documentType="vendor_payment" documentId={id} />
             <DocumentActionBar placement="header" documentStatus={status} documentNumber={payment?.number} actions={actions} />
           </>
         }
