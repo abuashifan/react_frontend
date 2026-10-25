@@ -9,6 +9,7 @@ import { AccountMappingImportDialog } from '@/modules/master-data/components/Acc
 import { AccountMappingResetButton } from '@/modules/master-data/components/AccountMappingResetButton'
 import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage } from '@/lib/apiError'
+import { setupApi } from '../../services/onboardingApi'
 
 interface Props {
   onComplete: () => void
@@ -53,6 +54,8 @@ export function Step3AccountMapping({ onComplete, onBack }: Props) {
         await qc.invalidateQueries({ queryKey: ['master-data-account-mappings'] })
         toast.success('Perubahan pemetaan akun disimpan.')
       }
+      // Catat progres di server supaya wizard yang dibuka ulang tahu langkah ini sudah selesai.
+      try { await setupApi.validateStep('account_mappings') } catch { /* progres non-blocking */ }
       onComplete()
     } catch (saveError) {
       toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan perubahan pemetaan akun. Coba lagi.'))
