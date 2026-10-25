@@ -1,10 +1,11 @@
+/** Angka yang tidak boleh dilihat user (izin kurang) dikirim backend sebagai null. */
 export interface DashboardSummary {
-  total_receivable: number
+  total_receivable: number | null
   receivable_trend?: number | null
-  total_payable: number
+  total_payable: number | null
   payable_trend?: number | null
-  cash_balance: number
-  current_month_profit: number
+  cash_balance: number | null
+  current_month_profit: number | null
   profit_trend?: number | null
 }
 

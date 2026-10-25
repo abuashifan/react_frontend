@@ -65,8 +65,8 @@ export function KpiCards({ summary, isLoading, isUnavailable }: Props) {
       <PermissionGuard permission="cash_bank.view" fallback={null}>
         <KpiCard title="Kas & Bank" value={summary?.cash_balance ?? 0} icon={Wallet} iconBg="bg-teal-50" iconColor="text-teal-600" isLoading={isLoading} />
       </PermissionGuard>
-      <PermissionGuard permission="reports.view" fallback={null}>
-        <KpiCard title="Laba Bulan Ini" value={summary?.current_month_profit ?? 0} trend={summary?.profit_trend} icon={BarChart2} iconBg={summary && summary.current_month_profit >= 0 ? 'bg-green-50' : 'bg-red-50'} iconColor={summary && summary.current_month_profit >= 0 ? 'text-green-600' : 'text-red-600'} isLoading={isLoading} />
+      <PermissionGuard permission="dashboard.financial.view" fallback={null}>
+        <KpiCard title="Laba Bulan Ini" value={summary?.current_month_profit ?? 0} trend={summary?.profit_trend} icon={BarChart2} iconBg={(summary?.current_month_profit ?? 0) >= 0 ? 'bg-green-50' : 'bg-red-50'} iconColor={(summary?.current_month_profit ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'} isLoading={isLoading} />
       </PermissionGuard>
     </div>
   )
