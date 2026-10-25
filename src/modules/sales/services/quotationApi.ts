@@ -21,10 +21,10 @@ export const quotationApi = {
     http.get<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}`).then(mapSalesResponse),
 
   create: (payload: CreateQuotationPayload) =>
-    http.post<unknown, ApiResponse<SalesQuotation>>('/sales/quotations', toSalesPayload(payload)),
+    http.post<unknown, ApiResponse<SalesQuotation>>('/sales/quotations', toSalesPayload(payload, 'quotation_date')),
 
   update: (id: number, payload: UpdateQuotationPayload) =>
-    http.patch<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}`, toSalesPayload(payload)),
+    http.patch<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}`, toSalesPayload(payload, 'quotation_date')),
 
   send: (id: number) =>
     http.patch<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}/send`),

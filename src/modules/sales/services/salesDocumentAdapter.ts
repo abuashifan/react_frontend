@@ -59,6 +59,7 @@ export function fromSalesDocument<T>(raw: T): T {
   return {
     ...raw,
     customer: fromContact(raw.customer),
+    expiry_date: firstDefined(raw.expiry_date, raw.valid_until) ?? null,
     subtotal: num(firstDefined(raw.subtotal_after_discount, raw.subtotal)),
     discount_amount: num(raw.header_discount_amount) + num(raw.line_discount_total),
     tax_amount: num(firstDefined(raw.tax_total, raw.tax_amount)),
@@ -89,6 +90,18 @@ function toLinePayload(line: unknown): unknown {
   }
 }
 
-export function toSalesPayload<T extends { lines?: unknown }>(payload: T): T {
-  return Array.isArray(payload.lines) ? { ...payload, lines: payload.lines.map(toLinePayload) } : payload
+/**
+ * Payload form → backend. Selain baris, header memakai nama kolom DB: `date`
+ * -> `dateField` (mis. `quotation_date`) dan `expiry_date` -> `valid_until`.
+ */
+export function toSalesPayload<T extends { lines?: unknown; date?: string; expiry_date?: string | null }>(
+  payload: T,
+  dateField?: string,
+): T {
+  const { date, expiry_date: expiry, ...rest } = payload
+  const header: Record<string, unknown> = { ...rest }
+  if (date !== undefined) header[dateField ?? 'date'] = date
+  if (expiry !== undefined) header.valid_until = expiry
+  if (Array.isArray(rest.lines)) header.lines = rest.lines.map(toLinePayload)
+  return header as T
 }

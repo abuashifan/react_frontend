@@ -21,13 +21,13 @@ export const proformaApi = {
     http.get<unknown, ApiResponse<ProformaInvoice>>(`/sales/proformas/${id}`).then(mapSalesResponse),
 
   create: (payload: CreateProformaPayload) =>
-    http.post<unknown, ApiResponse<ProformaInvoice>>('/sales/proformas', toSalesPayload(payload)),
+    http.post<unknown, ApiResponse<ProformaInvoice>>('/sales/proformas', toSalesPayload(payload, 'proforma_date')),
 
   createFromSalesOrder: (salesOrderId: number) =>
     http.post<unknown, ApiResponse<ProformaInvoice>>(`/sales/proformas/from-sales-order/${salesOrderId}`),
 
   update: (id: number, payload: UpdateProformaPayload) =>
-    http.patch<unknown, ApiResponse<ProformaInvoice>>(`/sales/proformas/${id}`, toSalesPayload(payload)),
+    http.patch<unknown, ApiResponse<ProformaInvoice>>(`/sales/proformas/${id}`, toSalesPayload(payload, 'proforma_date')),
 
   issue: (id: number) =>
     http.patch<unknown, ApiResponse<ProformaInvoice>>(`/sales/proformas/${id}/issue`),
