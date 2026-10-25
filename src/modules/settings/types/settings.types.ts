@@ -66,6 +66,8 @@ export type CompanyProfilePayload = Pick<CompanyProfile, 'tax_number' | 'address
 
 export interface CompanySettingsResponse {
   profile?: CompanyProfile
+  /** Modul yang sudah punya data -- menunya tidak disembunyikan walau flag-nya mati. */
+  modules_in_use?: { inventory: boolean; fixed_asset: boolean }
   accounting: CompanyAccountingSettings
   transaction_defaults: CompanyTransactionDefaults
   modules: CompanyModuleSettings

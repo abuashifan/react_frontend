@@ -29,6 +29,7 @@ import { UnsavedFormsDialog } from '@/components/shared/feedback/UnsavedFormsDia
 import { SubscriptionWarningBadge } from './SubscriptionWarningBadge'
 import { cn } from '@/lib/utils'
 import { APP_NAME } from '@/lib/constants'
+import { useHiddenModules } from '@/modules/settings/hooks/useCompanySettings'
 
 // Ikon modul topbar TIDAK diambil dari `ModuleConfig` — petanya di sini,
 // dikunci id modul. Menambah modul di moduleConfig.ts tanpa menambah entri di
@@ -67,6 +68,7 @@ export function Topbar() {
   const { activeCompany } = useCompanyStore()
   const { activeModule, isRibbonOpen, setActiveModule, openRibbon, closeRibbon } = useTabStore()
   const openTab = useOpenPrimaryTab()
+  const hiddenModules = useHiddenModules()
   const {
     isBusy,
     blocked,
@@ -126,7 +128,7 @@ export function Topbar() {
             if (event.target === event.currentTarget) closeRibbon()
           }}
         >
-          {TOP_MODULES.map((mod) => {
+          {TOP_MODULES.filter((mod) => !hiddenModules.has(mod.id)).map((mod) => {
             const Icon = MODULE_ICONS[mod.id]
             const isActive = activeModule === mod.id
 
