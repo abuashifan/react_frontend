@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage } from '@/lib/apiError'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useCompanySettings, useCompanySettingsMutations } from '../hooks/useCompanySettings'
-import type { CompanyAccountingSettings, CompanyModuleSettings, RoundingMethod } from '../types/settings.types'
+import type { CompanyAccountingSettings, CompanyModuleSettings, CompanyProfilePayload, RoundingMethod } from '../types/settings.types'
 
 const ROUNDING_OPTIONS: { value: RoundingMethod; label: string }[] = [
   { value: 'half_up', label: 'Half Up (pembulatan ke atas)' },
@@ -33,9 +33,19 @@ const MODULE_LABELS: { key: keyof CompanyModuleSettings; label: string }[] = [
   { key: 'reports_enabled', label: 'Laporan' },
 ]
 
+const PROFILE_FIELDS: { key: keyof CompanyProfilePayload; label: string; placeholder?: string; wide?: boolean }[] = [
+  { key: 'tax_number', label: 'NPWP', placeholder: '00.000.000.0-000.000' },
+  { key: 'phone', label: 'Telepon' },
+  { key: 'address', label: 'Alamat', wide: true },
+  { key: 'city', label: 'Kota' },
+  { key: 'province', label: 'Provinsi' },
+  { key: 'postal_code', label: 'Kode Pos' },
+  { key: 'email', label: 'Email' },
+]
+
 export default function CompanySettingsPage() {
   const { data, isLoading } = useCompanySettings()
-  const { updateAccounting, updateModules } = useCompanySettingsMutations()
+  const { updateAccounting, updateModules, updateProfile } = useCompanySettingsMutations()
   const { toast } = useToast()
 
   const companies = useAuthStore((s) => s.companies)
@@ -44,16 +54,26 @@ export default function CompanySettingsPage() {
 
   const [accounting, setAccounting] = useState<CompanyAccountingSettings>({})
   const [modules, setModules] = useState<CompanyModuleSettings>({})
+  const [profile, setProfile] = useState<CompanyProfilePayload>({})
 
   useEffect(() => {
     if (data?.data) {
       const timer = window.setTimeout(() => {
         setAccounting(data.data.accounting ?? {})
         setModules(data.data.modules ?? {})
+        const p = data.data.profile ?? {}
+        setProfile({ tax_number: p.tax_number ?? '', address: p.address ?? '', city: p.city ?? '', province: p.province ?? '', postal_code: p.postal_code ?? '', phone: p.phone ?? '', email: p.email ?? '' })
       }, 0)
       return () => window.clearTimeout(timer)
     }
   }, [data])
+
+  const handleSaveProfile = async () => {
+    try {
+      await updateProfile.mutateAsync(profile)
+      toast.success('Profil perusahaan disimpan.')
+    } catch (saveError) { toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan profil perusahaan.')) }
+  }
 
   const handleSaveAccounting = async () => {
     try {
@@ -111,9 +131,28 @@ export default function CompanySettingsPage() {
               <Label htmlFor="company-settings-code" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kode</Label>
               <Input id="company-settings-code" value={company?.code ?? '-'} readOnly className="h-9 bg-[#f8fafc] text-[13px]" />
             </div>
+            {PROFILE_FIELDS.map((f) => (
+              <div key={f.key} className={f.wide ? 'flex flex-col gap-1 md:col-span-2' : 'flex flex-col gap-1'}>
+                <Label htmlFor={`company-settings-${f.key}`} className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">{f.label}</Label>
+                <Input
+                  id={`company-settings-${f.key}`}
+                  value={profile[f.key] ?? ''}
+                  placeholder={f.placeholder}
+                  onChange={(e) => setProfile((p) => ({ ...p, [f.key]: e.target.value }))}
+                  className="h-9 text-[13px]"
+                />
+              </div>
+            ))}
             <div className="md:col-span-2 rounded-md border border-[#e2e8f0] bg-[#f8fafc] p-3 text-[11px] text-[#64748b]">
-              Profil perusahaan dikelola di level akun. Hubungi administrator untuk mengubah identitas perusahaan.
+              Nama, nama legal, dan kode tidak bisa diubah di sini karena menjadi dasar alamat dan database perusahaan.
             </div>
+            <PermissionGuard permission="settings.company.edit">
+              <div className="md:col-span-2 flex justify-end">
+                <Button type="button" onClick={() => void handleSaveProfile()} disabled={updateProfile.isPending} className="h-9 bg-[#e39774] px-5 text-[13px] hover:bg-[#d4845e]">
+                  {updateProfile.isPending ? 'Menyimpan...' : 'Simpan Profil'}
+                </Button>
+              </div>
+            </PermissionGuard>
           </FormSection>
         </TabsContent>
 

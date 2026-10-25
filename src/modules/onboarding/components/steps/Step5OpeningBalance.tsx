@@ -49,21 +49,34 @@ export function Step5OpeningBalance({ onComplete, onBack }: Props) {
   const effectiveDate = dateDraft || status?.opening_date || ''
   const hasJournals = (status?.journal_count ?? 0) > 0
 
+  /**
+   * Simpan tanggal yang diubah di layar ini. Dipanggil saat kolom ditinggalkan
+   * dan sebelum pindah ke halaman impor -- dulu hanya tersimpan lewat
+   * "Lanjutkan", sehingga user yang langsung menekan "Impor Saldo Akun"
+   * mendapat jurnal pembuka bertanggal bawaan, bukan tanggal pilihannya.
+   */
+  const persistDate = async (): Promise<boolean> => {
+    if (!dateDraft || dateDraft === status?.opening_date || status?.opening_date_locked) return true
+    try {
+      await setOpeningDate.mutateAsync(dateDraft)
+      return true
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan tanggal saldo awal.'))
+      return false
+    }
+  }
+
   const handleContinue = async () => {
     setIsContinuing(true)
     try {
-      // Tanggalnya disimpan lebih dulu kalau user mengubahnya di layar ini —
-      // langkah ini tidak valid tanpa tanggal, dan itu satu-satunya syaratnya.
-      if (dateDraft && dateDraft !== status?.opening_date && !status?.opening_date_locked) {
-        await setOpeningDate.mutateAsync(dateDraft)
-      }
+      if (!(await persistDate())) return
       await setupApi.validateStep('opening_balance', { opening_date: effectiveDate })
+      onComplete(!hasJournals)
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Gagal menyimpan tanggal saldo awal.'))
     } finally {
       setIsContinuing(false)
     }
-    onComplete(!hasJournals)
   }
 
   /**
@@ -72,7 +85,8 @@ export function Step5OpeningBalance({ onComplete, onBack }: Props) {
    * selalu mengarahkan router ke tab aktif saat mount sehingga `href` telanjang
    * akan dipantulkan ke Dashboard. Tab primer didaftarkan dulu.
    */
-  const handleOpenOpeningBalance = () => {
+  const handleOpenOpeningBalance = async () => {
+    if (!(await persistDate())) return
     openTab({
       id: 'accounting-opening-balance',
       menuKey: 'opening-balance',
@@ -83,7 +97,8 @@ export function Step5OpeningBalance({ onComplete, onBack }: Props) {
     navigate('/opening-balance')
   }
 
-  const handleOpenImport = (profile: string) => {
+  const handleOpenImport = async (profile: string) => {
+    if (!(await persistDate())) return
     useImportPresetStore.getState().requestProfile(profile)
     openTab({
       id: 'master-data-import',
@@ -115,6 +130,7 @@ export function Step5OpeningBalance({ onComplete, onBack }: Props) {
             value={effectiveDate}
             disabled={status?.opening_date_locked}
             onChange={(event) => setDateDraft(event.target.value)}
+            onBlur={() => void persistDate()}
             className="mt-1 h-9 text-[13px] tabular-nums"
           />
           {status?.opening_date_locked && (
@@ -134,15 +150,15 @@ export function Step5OpeningBalance({ onComplete, onBack }: Props) {
         </p>
 
         <div className="flex flex-wrap gap-2 pt-1">
-          <Button type="button" variant="outline" className="h-9 gap-1.5 text-[13px]" onClick={() => handleOpenImport('opening_balance')}>
+          <Button type="button" variant="outline" className="h-9 gap-1.5 text-[13px]" onClick={() => void handleOpenImport('opening_balance')}>
             <Upload className="h-3.5 w-3.5" /> Impor Saldo Akun
           </Button>
           {fixedAssetEnabled && (
-            <Button type="button" variant="outline" className="h-9 gap-1.5 text-[13px]" onClick={() => handleOpenImport('fixed_asset_opening')}>
+            <Button type="button" variant="outline" className="h-9 gap-1.5 text-[13px]" onClick={() => void handleOpenImport('fixed_asset_opening')}>
               <Upload className="h-3.5 w-3.5" /> Impor Aset Tetap
             </Button>
           )}
-          <Button type="button" variant="outline" className="h-9 gap-1.5 text-[13px]" onClick={handleOpenOpeningBalance}>
+          <Button type="button" variant="outline" className="h-9 gap-1.5 text-[13px]" onClick={() => void handleOpenOpeningBalance()}>
             <ExternalLink className="h-3.5 w-3.5" /> Buka Papan Saldo Awal
           </Button>
         </div>

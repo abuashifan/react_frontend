@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { companySettingsApi } from '../services/companySettingsApi'
 import type {
-  CompanyAccountingSettings, CompanyModuleSettings, CompanyTransactionDefaults,
+  CompanyAccountingSettings, CompanyModuleSettings, CompanyTransactionDefaults, CompanyProfilePayload,
 } from '../types/settings.types'
 
 export const COMPANY_SETTINGS_KEY = ['settings', 'company']
@@ -18,6 +18,7 @@ export function useCompanySettingsMutations() {
   const qc = useQueryClient()
   const inv = () => void qc.invalidateQueries({ queryKey: COMPANY_SETTINGS_KEY })
   return {
+    updateProfile: useMutation({ mutationFn: (p: CompanyProfilePayload) => companySettingsApi.updateProfile(p), onSuccess: inv }),
     updateAccounting: useMutation({ mutationFn: (p: Partial<CompanyAccountingSettings>) => companySettingsApi.updateAccounting(p), onSuccess: inv }),
     updateModules: useMutation({ mutationFn: (p: Partial<CompanyModuleSettings>) => companySettingsApi.updateModules(p), onSuccess: inv }),
     updateTransactionDefaults: useMutation({ mutationFn: (p: Partial<CompanyTransactionDefaults>) => companySettingsApi.updateTransactionDefaults(p), onSuccess: inv }),

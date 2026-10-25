@@ -48,7 +48,24 @@ export interface CompanyTransactionDefaults {
   default_payment_term_id?: number | null
 }
 
+/** Profil perusahaan. Nama, nama legal, dan kode hanya-baca (dasar slug & database tenant). */
+export interface CompanyProfile {
+  name?: string
+  legal_name?: string | null
+  code?: string
+  tax_number?: string | null
+  address?: string | null
+  city?: string | null
+  province?: string | null
+  postal_code?: string | null
+  phone?: string | null
+  email?: string | null
+}
+
+export type CompanyProfilePayload = Pick<CompanyProfile, 'tax_number' | 'address' | 'city' | 'province' | 'postal_code' | 'phone' | 'email'>
+
 export interface CompanySettingsResponse {
+  profile?: CompanyProfile
   accounting: CompanyAccountingSettings
   transaction_defaults: CompanyTransactionDefaults
   modules: CompanyModuleSettings

@@ -27,13 +27,7 @@ import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage } from '@/lib/apiError'
 import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionEditMode'
 import { EDIT_MODE_OPTIONS } from '@/modules/settings/constants/transactionEditMode'
-
-const FISCAL_MONTH_OPTIONS = [
-  { value: '1', label: 'Januari' },
-  { value: '4', label: 'April' },
-  { value: '7', label: 'Juli' },
-  { value: '10', label: 'Oktober' },
-]
+import { useCompanySettings } from '@/modules/settings/hooks/useCompanySettings'
 
 interface Props {
   defaultValues?: Partial<CompanyInfoValues>
@@ -72,22 +66,29 @@ export function Step1CompanyInfo({ defaultValues, onComplete }: Props) {
   }, [savedEditMode, form])
   const editMode = form.watch('transaction_edit_mode')
 
+  // NPWP & alamat yang sudah tersimpan jadi nilai awal (wizard dibuka ulang).
+  const { data: settings } = useCompanySettings()
+  const savedProfile = settings?.data?.profile
+  useEffect(() => {
+    if (!savedProfile) return
+    if (!form.formState.dirtyFields.npwp && savedProfile.tax_number) form.setValue('npwp', savedProfile.tax_number)
+    if (!form.formState.dirtyFields.address && savedProfile.address) form.setValue('address', savedProfile.address)
+  }, [savedProfile, form])
+
   const onSubmit = async (values: CompanyInfoValues) => {
     try {
-      // Mata uang dasar disimpan via company accounting settings (endpoint nyata).
-      // Catatan: backend belum mengekspos update profil (NPWP/alamat) &
-      // fiscal_year_start lewat setup wizard; field tersebut hanya dipakai untuk
-      // ringkasan wizard.
+      // NPWP & alamat disimpan ke profil perusahaan; mata uang & mode edit ke
+      // pengaturan akuntansi. Tahun fiskal selalu tahun kalender (lihat
+      // FiscalYearService), jadi tidak ada pilihan bulan yang dikirim.
+      await companySettingsApi.updateProfile({ tax_number: values.npwp || null, address: values.address || null })
       await companySettingsApi.updateAccounting({ base_currency: values.currency, transaction_edit_mode: values.transaction_edit_mode })
-      // Tandai progres step di backend (best-effort). `opening_date` dititipkan di sini
-      // karena tidak ada step lain di wizard yang mengirimnya sama sekali -- tanpa ini
-      // validasi `accounting_settings` (OPENING_DATE_REQUIRED) akan selalu gagal saat
-      // finalize walau semua step lain valid. Default ke hari ini; saldo awal per akun
-      // tetap diinput lewat modul Saldo Awal terpisah dengan tanggal batch-nya sendiri.
+      // Tandai progres step di backend (best-effort). Tanggal saldo awal TIDAK
+      // dikirim dari sini: dulu dititipkan sebagai "hari ini", padahal bawaan yang
+      // benar adalah awal tahun fiskal (backend memakainya bila belum diisi), dan
+      // setiap kembali ke langkah ini tanggal pilihan user di langkah Saldo Awal
+      // ikut tertimpa. Langkah Saldo Awal yang menyimpannya.
       try {
-        await setupApi.validateStep('company_profile', {
-          opening_date: new Date().toISOString().slice(0, 10),
-        })
+        await setupApi.validateStep('company_profile', {})
       } catch { /* progres non-blocking */ }
       onComplete(values)
     } catch (saveError) {
@@ -139,30 +140,13 @@ export function Step1CompanyInfo({ defaultValues, onComplete }: Props) {
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="fiscal_year_start"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Bulan Mulai Tahun Fiskal <span className="text-red-500">*</span></FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger className="h-9 text-[13px]">
-                      <SelectValue placeholder="Pilih bulan" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {FISCAL_MONTH_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value} className="text-[13px]">
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="flex flex-col gap-1">
+            <p className="text-[13px] font-medium text-[#24323a]">Tahun Fiskal</p>
+            <div className="flex h-9 items-center rounded-md border border-[#e2e8f0] bg-[#f8fafc] px-3 text-[13px] text-[#475569]">
+              Januari – Desember (tahun kalender)
+            </div>
+            <p className="text-[11px] text-[#94a3b8]">Periode tutup buku mengikuti tahun kalender.</p>
+          </div>
 
           <FormField
             control={form.control}
