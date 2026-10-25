@@ -1,6 +1,6 @@
 import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
-import type { AdjacentRecords } from '@/types/common.types'
+import type { AdjacentRecords, SelectOption } from '@/types/common.types'
 import type {
   GoodsReceipt,
   RawGoodsReceipt,
@@ -21,6 +21,16 @@ export const goodsReceiptApi = {
 
   create: (payload: CreateGoodsReceiptPayload) =>
     http.post<unknown, ApiResponse<GoodsReceipt>>('/purchase/goods-receipts', payload),
+
+  /** PO yang masih bisa diterima barangnya -- untuk pilihan "Dari Purchase Order" di form GR. */
+  searchReceivableOrders: async (query: string): Promise<SelectOption<number>[]> => {
+    const res = await http.get<unknown, PaginatedResponse<{ id: number; order_number?: string; status: string; vendor?: { name?: string } | null }>>('/purchase/orders', {
+      params: { search: query, per_page: 50, page: 1 },
+    })
+    return res.data
+      .filter((po) => ['confirmed', 'partially_received', 'partially_billed', 'billed'].includes(po.status))
+      .map((po) => ({ value: po.id, label: po.order_number ?? `PO #${po.id}`, sublabel: po.vendor?.name ?? undefined }))
+  },
 
   createFromPurchaseOrder: (purchaseOrderId: number) =>
     http.post<unknown, ApiResponse<GoodsReceipt>>(`/purchase/goods-receipts/from-purchase-order/${purchaseOrderId}`),

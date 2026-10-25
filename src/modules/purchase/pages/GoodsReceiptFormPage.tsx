@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -69,9 +70,22 @@ function GoodsReceiptFormPageContent() {
 
   const { data, isLoading } = useGoodsReceipt(id ? Number(id) : undefined)
   const gr = data?.data
-  const { create, receive, cancel, void: voidGr, remove, update } = useGoodsReceiptMutations()
+  const { create, createFromPurchaseOrder, receive, cancel, void: voidGr, remove, update } = useGoodsReceiptMutations()
+  // GR manual tidak membawa harga, jadi nilai persediaannya hanya benar bila
+  // diterima dari PO. Pilihan sumber ini hanya muncul saat membuat GR baru.
+  const [sourceMode, setSourceMode] = useState<'none' | 'purchase_order'>('none')
+  const [sourcePoId, setSourcePoId] = useState<number | null>(null)
+  const isSourceMode = isCreate && sourceMode === 'purchase_order'
+  const handleCreateFromPo = async () => {
+    if (!sourcePoId) return
+    try {
+      const res = await createFromPurchaseOrder.mutateAsync(sourcePoId)
+      toast.success('Penerimaan barang dibuat dari PO.')
+      replaceRecordTab('/purchase/goods-receipts/create', { label: res.data.number ?? 'Penerimaan Barang', path: `/purchase/goods-receipts/${res.data.id}` })
+    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat penerimaan barang dari PO.')) }
+  }
   const { canChange } = useTransactionEditMode()
-  const { closeRecordTab } = useRecordTab()
+  const { closeRecordTab, replaceRecordTab } = useRecordTab()
 
   const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<GoodsReceiptFormValues>({
     resolver: zodResolver(goodsReceiptSchema),
@@ -254,6 +268,39 @@ function GoodsReceiptFormPageContent() {
         }
       >
         <div className="space-y-3">
+          {isCreate && (
+            <FormSection title="Sumber Dokumen">
+              <div className="flex flex-col gap-2 md:col-span-2">
+                <div className="flex gap-1">
+                  {([['none', 'Tanpa Sumber'], ['purchase_order', 'Dari Purchase Order']] as const).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => { setSourceMode(mode); setSourcePoId(null) }}
+                      className={`h-8 rounded px-3 text-[12px] font-medium transition-colors ${sourceMode === mode ? 'bg-[#5c9ead] text-white' : 'bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {isSourceMode ? (
+                  <>
+                    <SearchableSelect value={sourcePoId} onChange={(v) => setSourcePoId(v)} onSearch={goodsReceiptApi.searchReceivableOrders} placeholder="Pilih purchase order..." />
+                    <p className="text-[11px] text-[#94a3b8]">Item, sisa qty, harga, dan gudang diambil dari PO. Periksa lalu klik Terima Barang.</p>
+                    <div>
+                      <Button type="button" className="h-8 bg-[#5c9ead] px-3 text-[13px] hover:bg-[#4a8593]" disabled={!sourcePoId || createFromPurchaseOrder.isPending} onClick={() => void handleCreateFromPo()}>
+                        {createFromPurchaseOrder.isPending ? 'Memproses...' : 'Buat dari PO'}
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-[11px] text-[#94a3b8]">Penerimaan tanpa PO dinilai dengan harga rata-rata persediaan saat ini.</p>
+                )}
+              </div>
+            </FormSection>
+          )}
+          {!isSourceMode && (
+          <>
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Vendor <span className="text-red-500">*</span></Label>
@@ -315,6 +362,8 @@ function GoodsReceiptFormPageContent() {
               addLabel="Tambah Item"
             />
           </div>
+          </>
+          )}
         </div>
       </FormLayout>
 

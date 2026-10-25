@@ -18,6 +18,9 @@ import { cn, fieldErrorClass } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { useSalesOrder, useSalesOrderMutations } from '../hooks/useSalesOrderList'
+import { useDeliveryOrderMutations } from '../hooks/useDeliveryOrderList'
+import { useSalesInvoiceMutations } from '../hooks/useSalesInvoiceList'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
@@ -76,6 +79,9 @@ function SalesOrderFormPageContent() {
   const { data, isLoading } = useSalesOrder(id ? Number(id) : undefined)
   const order = data?.data
   const { create, createFromQuotation, update, approve, confirm, cancel } = useSalesOrderMutations()
+  const { createFromSalesOrder: createDelivery } = useDeliveryOrderMutations()
+  const { openRecordTab } = useRecordTab()
+  const { createFromSalesOrder: createInvoice } = useSalesInvoiceMutations()
 
   const { control, register, handleSubmit, getValues, setValue, setError, reset, formState: { errors, isSubmitting } } = useForm<SalesOrderFormValues>({
     resolver: zodResolver(salesOrderSchema),
@@ -199,6 +205,26 @@ function SalesOrderFormPageContent() {
     } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan Sales Order.')) }
   }
 
+  // Langkah lanjutan SO yang sudah dikonfirmasi: dokumen dibuat dari sisa qty SO
+  // lalu dibuka untuk diperiksa sebelum dikirim/diposting.
+  const handleCreateDelivery = async () => {
+    try {
+      const res = await createDelivery.mutateAsync(Number(id))
+      toast.success('Delivery Order dibuat dari Sales Order.')
+      openRecordTab({ label: res.data.number ?? 'Delivery Order', path: `/sales/delivery-orders/${res.data.id}` })
+    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat Delivery Order dari Sales Order.')) }
+  }
+  const handleCreateInvoice = async () => {
+    try {
+      const res = await createInvoice.mutateAsync(Number(id))
+      toast.success('Invoice dibuat dari Sales Order.')
+      openRecordTab({ label: res.data.number ?? 'Invoice', path: `/sales/invoices/${res.data.id}` })
+    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat invoice dari Sales Order.')) }
+  }
+  const isFollowUpStatus = !!order && !['draft', 'approved', 'cancelled', 'closed', 'void'].includes(order.status as string)
+  const hasUndelivered = !!order?.lines.some((l) => (l.delivered_quantity ?? 0) < l.quantity)
+  const hasUninvoiced = !!order?.lines.some((l) => (l.invoiced_quantity ?? 0) < l.quantity)
+
   const actions: DocumentActionButton[] = []
   if (isEditable && can('sales.orders.create')) {
     actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
@@ -209,6 +235,12 @@ function SalesOrderFormPageContent() {
     }
     if (order?.status === 'approved' && can('sales.orders.approve')) {
       actions.push({ id: 'confirm', label: 'Konfirmasi', variant: 'primary', onClick: () => void handleConfirm(), isLoading: confirm.isPending })
+    }
+    if (isFollowUpStatus && hasUndelivered && can('sales.delivery_orders.create')) {
+      actions.push({ id: 'create_delivery', label: 'Buat Delivery Order', variant: 'primary', onClick: () => void handleCreateDelivery(), isLoading: createDelivery.isPending })
+    }
+    if (isFollowUpStatus && hasUninvoiced && can('sales.invoices.create')) {
+      actions.push({ id: 'create_invoice', label: 'Buat Invoice', variant: 'secondary', onClick: () => void handleCreateInvoice(), isLoading: createInvoice.isPending })
     }
     if (['draft', 'approved'].includes(order?.status ?? '') && can('sales.orders.update')) {
       actions.push({ id: 'cancel', label: 'Batalkan', variant: 'destructive', onClick: () => void handleCancel(), isLoading: cancel.isPending })

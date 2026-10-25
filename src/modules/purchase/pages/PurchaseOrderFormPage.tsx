@@ -17,6 +17,9 @@ import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { usePurchaseOrder, usePurchaseOrderMutations } from '../hooks/usePurchaseOrderList'
+import { useGoodsReceiptMutations } from '../hooks/useGoodsReceiptList'
+import { useVendorBillMutations } from '../hooks/useVendorBillList'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { toPurchaseOrderPayload } from '../services/purchaseOrderAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { produkApi } from '@/modules/master-data/services/produkApi'
@@ -79,6 +82,9 @@ function PurchaseOrderFormPageContent() {
   const { data, isLoading } = usePurchaseOrder(id ? Number(id) : undefined)
   const po = data?.data
   const { create, createFromRequest, update, approve, confirm, cancel } = usePurchaseOrderMutations()
+  const { createFromPurchaseOrder: createReceipt } = useGoodsReceiptMutations()
+  const { openRecordTab } = useRecordTab()
+  const { createFromPurchaseOrder: createBill } = useVendorBillMutations()
 
   const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<PurchaseOrderFormValues>({
     resolver: zodResolver(purchaseOrderSchema),
@@ -169,6 +175,26 @@ function PurchaseOrderFormPageContent() {
   const handleConfirm = async () => { try { await confirm.mutateAsync(Number(id)); toast.success('PO dikonfirmasi.') } catch (confirmError) { toast.error(getApiErrorMessage(confirmError, 'Gagal konfirmasi PO.')) } }
   const handleCancel = async () => { try { await cancel.mutateAsync(Number(id)); toast.success('PO dibatalkan.') } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan PO.')) } }
 
+  // Langkah lanjutan PO yang sudah dikonfirmasi: dokumen dibuat dari sisa qty PO
+  // lalu dibuka untuk diperiksa (Terima Barang / Posting tetap langkah terpisah).
+  const handleCreateReceipt = async () => {
+    try {
+      const res = await createReceipt.mutateAsync(Number(id))
+      toast.success('Penerimaan barang dibuat dari PO.')
+      openRecordTab({ label: res.data.number ?? 'Penerimaan Barang', path: `/purchase/goods-receipts/${res.data.id}` })
+    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat penerimaan barang dari PO.')) }
+  }
+  const handleCreateBill = async () => {
+    try {
+      const res = await createBill.mutateAsync(Number(id))
+      toast.success('Tagihan dibuat dari PO.')
+      openRecordTab({ label: res.data.bill_number ?? 'Tagihan', path: `/purchase/bills/${res.data.id}` })
+    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat tagihan dari PO.')) }
+  }
+  const isFollowUpStatus = !!po && !['draft', 'approved', 'cancelled', 'closed', 'void'].includes(po.status as string)
+  const hasUnreceived = !!po?.lines.some((l) => (l.received_quantity ?? 0) < l.quantity)
+  const hasUnbilled = !!po?.lines.some((l) => (l.billed_quantity ?? 0) < l.quantity)
+
   const actions: DocumentActionButton[] = []
   if (isEditable && can('purchase.orders.create')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
@@ -179,6 +205,12 @@ function PurchaseOrderFormPageContent() {
     }
     if (po?.status === 'approved' && can('purchase.orders.approve')) {
       actions.push({ id: 'confirm', label: 'Konfirmasi', variant: 'primary', onClick: () => void handleConfirm(), isLoading: confirm.isPending })
+    }
+    if (isFollowUpStatus && hasUnreceived && can('purchase.goods_receipts.create')) {
+      actions.push({ id: 'create_receipt', label: 'Buat Penerimaan Barang', variant: 'primary', onClick: () => void handleCreateReceipt(), isLoading: createReceipt.isPending })
+    }
+    if (isFollowUpStatus && hasUnbilled && can('purchase.bills.create')) {
+      actions.push({ id: 'create_bill', label: 'Buat Tagihan', variant: 'secondary', onClick: () => void handleCreateBill(), isLoading: createBill.isPending })
     }
     if (['draft', 'approved'].includes(po?.status ?? '') && can('purchase.orders.cancel')) {
       actions.push({ id: 'cancel', label: 'Batalkan', variant: 'destructive', onClick: () => void handleCancel(), isLoading: cancel.isPending })
