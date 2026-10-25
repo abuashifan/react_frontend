@@ -7,26 +7,27 @@ import type {
   CreateProformaPayload,
   UpdateProformaPayload,
 } from '../types/proforma.types'
+import { mapSalesPage, mapSalesResponse, toSalesPayload } from './salesDocumentAdapter'
 
 export const proformaApi = {
   list: (params: ProformaListParams) =>
-    http.get<unknown, PaginatedResponse<ProformaInvoice>>('/sales/proformas', { params }),
+    http.get<unknown, PaginatedResponse<ProformaInvoice>>('/sales/proformas', { params }).then(mapSalesPage),
 
   /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
   adjacent: (id?: number) =>
     http.get<unknown, ApiResponse<AdjacentRecords>>('/sales/proformas/adjacent', { params: { id } }),
 
   get: (id: number) =>
-    http.get<unknown, ApiResponse<ProformaInvoice>>(`/sales/proformas/${id}`),
+    http.get<unknown, ApiResponse<ProformaInvoice>>(`/sales/proformas/${id}`).then(mapSalesResponse),
 
   create: (payload: CreateProformaPayload) =>
-    http.post<unknown, ApiResponse<ProformaInvoice>>('/sales/proformas', payload),
+    http.post<unknown, ApiResponse<ProformaInvoice>>('/sales/proformas', toSalesPayload(payload)),
 
   createFromSalesOrder: (salesOrderId: number) =>
     http.post<unknown, ApiResponse<ProformaInvoice>>(`/sales/proformas/from-sales-order/${salesOrderId}`),
 
   update: (id: number, payload: UpdateProformaPayload) =>
-    http.patch<unknown, ApiResponse<ProformaInvoice>>(`/sales/proformas/${id}`, payload),
+    http.patch<unknown, ApiResponse<ProformaInvoice>>(`/sales/proformas/${id}`, toSalesPayload(payload)),
 
   issue: (id: number) =>
     http.patch<unknown, ApiResponse<ProformaInvoice>>(`/sales/proformas/${id}/issue`),

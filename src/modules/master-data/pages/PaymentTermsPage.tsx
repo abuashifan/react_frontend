@@ -186,7 +186,7 @@ export default function PaymentTermsPage() {
       header: 'Jumlah Hari',
       size: 120,
       meta: { className: 'tabular-nums text-right' },
-      cell: ({ original }) => `${original.days} hari`,
+      cell: ({ original }) => (original.days == null ? 'Atur sendiri' : `${original.days} hari`),
     },
     {
       id: 'is_active',

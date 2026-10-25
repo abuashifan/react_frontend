@@ -89,7 +89,7 @@ export function Step4MasterData({ onComplete, onBack }: Props) {
   const paymentTerms: QuickAddItem[] = (paymentTermsQuery.data?.data ?? []).map((p) => ({
     id: p.id,
     name: p.name,
-    sublabel: `${p.days} hari`,
+    sublabel: p.days == null ? 'Atur sendiri' : `${p.days} hari`,
     values: { name: p.name, days: p.days },
   }))
 

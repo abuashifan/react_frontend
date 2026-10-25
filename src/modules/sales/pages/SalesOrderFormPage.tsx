@@ -261,6 +261,8 @@ function SalesOrderFormPageContent() {
           onChange={(v, opt) => {
             onUpdate('product_id', v)
             onUpdate('product', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null)
+            // Deskripsi wajib di backend: isi dari nama produk bila masih kosong (tetap bisa diedit).
+            if (opt && !item.description?.trim()) onUpdate('description', opt.label)
           }}
           onSearch={produkApi.search}
           placeholder="Pilih produk..."

@@ -7,25 +7,27 @@ import type {
   CreateSalesInvoicePayload,
   UpdateSalesInvoicePayload,
 } from '../types/salesInvoice.types'
+import { mapSalesPage, mapSalesResponse, toSalesPayload } from './salesDocumentAdapter'
 
 /**
  * Form memakai `date`; backend mewajibkan `invoice_date`. Tanpa pemetaan ini
  * membuat/mengubah invoice selalu ditolak 422 "invoice date field is required".
  */
 function toInvoicePayload({ date, ...rest }: Partial<CreateSalesInvoicePayload>) {
-  return date === undefined ? rest : { ...rest, invoice_date: date }
+  const mapped = toSalesPayload(rest)
+  return date === undefined ? mapped : { ...mapped, invoice_date: date }
 }
 
 export const salesInvoiceApi = {
   list: (params: SalesInvoiceListParams) =>
-    http.get<unknown, PaginatedResponse<SalesInvoice>>('/sales/invoices', { params }),
+    http.get<unknown, PaginatedResponse<SalesInvoice>>('/sales/invoices', { params }).then(mapSalesPage),
 
   /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
   adjacent: (id?: number) =>
     http.get<unknown, ApiResponse<AdjacentRecords>>('/sales/invoices/adjacent', { params: { id } }),
 
   get: (id: number) =>
-    http.get<unknown, ApiResponse<SalesInvoice>>(`/sales/invoices/${id}`),
+    http.get<unknown, ApiResponse<SalesInvoice>>(`/sales/invoices/${id}`).then(mapSalesResponse),
 
   create: (payload: CreateSalesInvoicePayload) =>
     http.post<unknown, ApiResponse<SalesInvoice>>('/sales/invoices', toInvoicePayload(payload)),

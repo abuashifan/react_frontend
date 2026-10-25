@@ -27,7 +27,7 @@ export const paymentTermsApi = {
     return res.data.map((p) => ({
       value: p.id,
       label: p.name,
-      sublabel: `${p.days} hari`,
+      sublabel: p.days == null ? 'Atur sendiri' : `${p.days} hari`,
     }))
   },
 }

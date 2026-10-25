@@ -837,6 +837,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____deliveryOrderApi.ts
 | | | | |____proformaApi.ts
 | | | | |____quotationApi.ts
+| | | | |____salesDocumentAdapter.ts
 | | | | |____salesInvoiceApi.ts
 | | | | |____salesOrderApi.ts
 | | | | |____salesReceiptApi.ts

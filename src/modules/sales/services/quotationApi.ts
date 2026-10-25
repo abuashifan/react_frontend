@@ -7,23 +7,24 @@ import type {
   CreateQuotationPayload,
   UpdateQuotationPayload,
 } from '../types/quotation.types'
+import { mapSalesPage, mapSalesResponse, toSalesPayload } from './salesDocumentAdapter'
 
 export const quotationApi = {
   list: (params: SalesQuotationListParams) =>
-    http.get<unknown, PaginatedResponse<SalesQuotation>>('/sales/quotations', { params }),
+    http.get<unknown, PaginatedResponse<SalesQuotation>>('/sales/quotations', { params }).then(mapSalesPage),
 
   /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
   adjacent: (id?: number) =>
     http.get<unknown, ApiResponse<AdjacentRecords>>('/sales/quotations/adjacent', { params: { id } }),
 
   get: (id: number) =>
-    http.get<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}`),
+    http.get<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}`).then(mapSalesResponse),
 
   create: (payload: CreateQuotationPayload) =>
-    http.post<unknown, ApiResponse<SalesQuotation>>('/sales/quotations', payload),
+    http.post<unknown, ApiResponse<SalesQuotation>>('/sales/quotations', toSalesPayload(payload)),
 
   update: (id: number, payload: UpdateQuotationPayload) =>
-    http.patch<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}`, payload),
+    http.patch<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}`, toSalesPayload(payload)),
 
   send: (id: number) =>
     http.patch<unknown, ApiResponse<SalesQuotation>>(`/sales/quotations/${id}/send`),

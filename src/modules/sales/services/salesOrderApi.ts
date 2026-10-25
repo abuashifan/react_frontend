@@ -7,6 +7,7 @@ import type {
   CreateSalesOrderPayload,
   UpdateSalesOrderPayload,
 } from '../types/salesOrder.types'
+import { fromSalesDocument, toSalesPayload } from './salesDocumentAdapter'
 
 /**
  * Petakan `order_number` backend ke UI `number`.
@@ -15,13 +16,15 @@ import type {
  * eksplisit dengan `order_number` (spec-33 / GAP-08).
  */
 function toSalesOrder(row: SalesOrder): SalesOrder {
-  return row.order_number ? { ...row, number: row.order_number } : row
+  const mapped = fromSalesDocument(row)
+  return mapped.order_number ? { ...mapped, number: mapped.order_number } : mapped
 }
 
 
 /** Form memakai `date`; backend mewajibkan `order_date` (tanpa ini simpan ditolak 422). */
 function toPayload<T extends { date?: string }>({ date, ...rest }: T) {
-  return date === undefined ? rest : { ...rest, order_date: date }
+  const mapped = toSalesPayload(rest)
+  return date === undefined ? mapped : { ...mapped, order_date: date }
 }
 export const salesOrderApi = {
   list: async (params: SalesOrderListParams) => {
