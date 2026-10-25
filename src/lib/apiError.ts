@@ -12,6 +12,7 @@ type ValidationErrorMap = Record<string, string>
  * Kode yang belum terdaftar otomatis jatuh ke `message` dari backend.
  */
 const API_ERROR_MESSAGES_ID: Record<string, string> = {
+  INSUFFICIENT_STOCK: 'Stok tidak mencukupi untuk transaksi ini.',
   DUPLICATE_ACCOUNT_CODE: 'Kode akun sudah digunakan. Gunakan kode lain.',
   DUPLICATE_CONTACT_CODE: 'Kode kontak sudah digunakan. Gunakan kode lain.',
   DUPLICATE_DEPARTMENT_CODE: 'Kode departemen sudah digunakan. Gunakan kode lain.',
