@@ -288,8 +288,8 @@ function StockOpnameFormPageContent() {
                         return (
                           <tr key={line.id} className="border-b border-[#f1f5f9] hover:bg-[#f8fafc]">
                             <td className="px-3 py-2">
-                              <div className="font-medium text-[#334155]">{line.product?.name ?? '-'}</div>
-                              <div className="text-[11px] text-[#94a3b8]">{line.product?.code}</div>
+                              <div className="font-medium text-[#334155]">{line.product?.product_name ?? line.product?.name ?? `#${line.product_id}`}</div>
+                              <div className="text-[11px] text-[#94a3b8]">{line.product?.product_code ?? line.product?.code}</div>
                             </td>
                             <td className="px-3 py-2 tabular-nums text-right text-[#334155]">{formatNumber(line.system_quantity, 4)}</td>
                             <td className="px-3 py-2">

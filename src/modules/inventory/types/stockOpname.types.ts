@@ -3,7 +3,8 @@ export type StockOpnameStatus = 'draft' | 'counted' | 'finalized' | 'void'
 export interface StockOpnameLine {
   id: number
   product_id: number
-  product?: { id: number; code: string; name: string }
+  /** Backend mengirim model Product mentah (product_name/product_code); name/code untuk respons lama. */
+  product?: { id: number; code?: string; name?: string; product_code?: string; product_name?: string }
   warehouse_id: number
   warehouse?: { id: number; name: string } | null
   unit_id?: number | null
