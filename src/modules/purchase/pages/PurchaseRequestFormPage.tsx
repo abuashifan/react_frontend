@@ -173,7 +173,7 @@ function PurchaseRequestFormPageContent() {
         <SearchableSelect
           flush
           value={item.product_id}
-          onChange={(v) => onUpdate('product_id', v)}
+          onChange={(v, opt) => { onUpdate('product_id', v); onUpdate('product', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null); if (opt && !item.description?.trim()) onUpdate('description', opt.label) }}
           onSearch={produkApi.search}
           placeholder="Pilih produk..."
           disabled={isReadOnly}
