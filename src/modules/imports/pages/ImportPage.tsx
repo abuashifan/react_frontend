@@ -36,6 +36,12 @@ const STATUS_LABELS: Record<string, string> = {
   reverted: 'Dibatalkan',
 }
 
+/** Pratinjau tanpa satu pun baris valid bukan "Siap di-commit". */
+function batchStatusLabel(batch: { status: string; valid_rows?: number | null }): string {
+  if (batch.status === 'previewed' && (batch.valid_rows ?? 0) === 0) return 'Perlu diperbaiki'
+  return STATUS_LABELS[batch.status] ?? batch.status
+}
+
 /** Profil yang commit-nya punya lawan (backend: interface `RevertsImport`). */
 const REVERTIBLE_PROFILES = ['opening_balance', 'fixed_asset_opening']
 
@@ -345,6 +351,16 @@ export default function ImportPage() {
       setAutoMappedNotice(false)
       setRowsPage(1)
       if (fileInputRef.current) fileInputRef.current.value = ''
+
+      // Batch yang dibuka lagi bisa membawa hasil validasi basi (mis. modul baru
+      // saja diaktifkan, akun baru dibuat). Validasi ulang dengan pemetaan yang
+      // sama sebelum pratinjau ditampilkan.
+      if (detail.status === 'previewed' && detail.column_map) {
+        try {
+          await mapping.mutateAsync({ uuid: detail.uuid, columnMap: detail.column_map })
+          toast.info('Batch divalidasi ulang dengan data terbaru.')
+        } catch { /* pratinjau lama tetap ditampilkan */ }
+      }
 
       // `draft` berarti pemetaan belum pernah disimpan — satu-satunya status
       // yang masih butuh layar pemetaan. Sisanya sudah punya baris tervalidasi.
@@ -656,7 +672,7 @@ export default function ImportPage() {
             <div className="flex items-center justify-between mb-1">
               <h2 className="text-[14px] font-semibold text-[#24323a]">3. Pratinjau &amp; Commit</h2>
               <Badge className={cn('text-[10px] px-1.5 py-0', statusBadgeClass(batch.status))}>
-                {STATUS_LABELS[batch.status] ?? batch.status}
+                {batchStatusLabel(batch)}
               </Badge>
             </div>
 
@@ -896,7 +912,7 @@ function ImportHistory({
       header: 'Status',
       cell: ({ original }) => (
         <Badge className={cn('text-[10px] px-1.5 py-0', statusBadgeClass(original.status))}>
-          {STATUS_LABELS[original.status] ?? original.status}
+          {batchStatusLabel(original)}
         </Badge>
       ),
     },
