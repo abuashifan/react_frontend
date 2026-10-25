@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -22,7 +23,9 @@ import { Step5OpeningBalance } from '../components/steps/Step5OpeningBalance'
 import { Step6Complete } from '../components/steps/Step6Complete'
 import type { CompanyInfoValues } from '../schemas/companyInfoSchema'
 import type { QuickAddItem } from '../components/MasterDataQuickAdd'
-import { WIZARD_STATE_KEY } from '../constants'
+import { COA_TEMPLATES, WIZARD_STATE_KEY } from '../constants'
+import { setupApi } from '../services/onboardingApi'
+import type { SetupStatus, SetupStepKey } from '../types/setup.types'
 
 interface WizardState {
   /**
@@ -81,6 +84,57 @@ const INITIAL_STATE: WizardState = {
   openingBalanceSkipped: false,
 }
 
+/** Langkah wizard yang punya padanan step backend (Master Data tidak punya). */
+const SERVER_STEP_NUMBER: Partial<Record<SetupStepKey, number>> = {
+  company_profile: 1,
+  chart_of_accounts: 2,
+  module_selection: 3,
+  account_mappings: 4,
+  opening_balance: 6,
+}
+
+/**
+ * Posisi wizard dari status server -- dipakai saat sessionStorage kosong
+ * (tab baru, refresh di browser lain). Tanpa ini wizard mulai lagi dari
+ * langkah 1 dengan langkah COA kosong, dan memilih template di sana bisa
+ * menimpa COA yang sudah diterapkan.
+ */
+function stateFromServer(base: WizardState, status: SetupStatus): WizardState {
+  const completed = new Set<number>()
+  for (const key of status.state.completed_steps) {
+    const n = SERVER_STEP_NUMBER[key]
+    if (n) completed.add(n)
+  }
+  // Master Data tidak dilacak server; dianggap selesai bila langkah sesudahnya selesai.
+  if (completed.has(6)) completed.add(5)
+
+  let current = 7
+  for (let n = 1; n <= 6; n++) {
+    if (!completed.has(n)) { current = n; break }
+  }
+
+  const templateId = status.coa?.template_id ?? null
+  return {
+    ...base,
+    currentStep: current,
+    visitedSteps: Array.from({ length: current }, (_, i) => i + 1),
+    completedSteps: [...completed].sort((a, b) => a - b),
+    selectedTemplate: templateId,
+    templateLabel: COA_TEMPLATES.find((t) => t.id === templateId)?.label ?? null,
+    templateAccountCount: status.coa?.account_count ?? 0,
+    mappingCompleted: completed.has(4),
+  }
+}
+
+function hasPersistedState(activeCompanyId: number | null): boolean {
+  try {
+    const raw = sessionStorage.getItem(WIZARD_STATE_KEY)
+    return !!raw && (JSON.parse(raw) as Partial<WizardState>).companyId === activeCompanyId
+  } catch {
+    return false
+  }
+}
+
 /*
  * Posisi wizard disimpan di sessionStorage. Langkah Opening Balance
  * memindahkan user ke halaman Saldo Awal, dan tanpa ini wizard akan mengulang
@@ -120,6 +174,23 @@ export function OnboardingPage() {
       return next
     })
   }
+
+  // Sekali per buka halaman: bila tidak ada posisi tersimpan di tab ini, ambil dari server.
+  const [needsServerResume, setNeedsServerResume] = useState(() => !hasPersistedState(activeCompanyId))
+  const resumeQuery = useQuery({
+    queryKey: ['setup', 'wizard-resume', activeCompanyId],
+    queryFn: setupApi.getStatus,
+    enabled: needsServerResume,
+    staleTime: 0,
+    retry: false,
+  })
+  const resumeStatus = resumeQuery.data?.data
+  if (needsServerResume && resumeStatus) {
+    // Penyesuaian state saat render (bukan effect) -- pola resmi React untuk state turunan.
+    setNeedsServerResume(false)
+    setState((prev) => stateFromServer(prev, resumeStatus))
+  }
+  const resuming = needsServerResume && resumeQuery.isLoading
 
   const markCompleted = (step: number, next: number) => {
     setState((prev) => ({
@@ -199,7 +270,12 @@ export function OnboardingPage() {
             </div>
 
             {/* Step content */}
-            {state.currentStep === 1 && (
+            {resuming && (
+              <div className="flex h-40 items-center justify-center text-[13px] text-[#64748b]">
+                Memuat posisi setup...
+              </div>
+            )}
+            {!resuming && state.currentStep === 1 && (
               <Step1CompanyInfo
                 defaultValues={state.companyInfo ?? undefined}
                 onComplete={(values) => {
@@ -213,7 +289,6 @@ export function OnboardingPage() {
               <Step2TemplateCOA
                 currentTemplate={state.selectedTemplate}
                 currentAccountCount={state.templateAccountCount}
-                mappingCompleted={state.mappingCompleted}
                 onComplete={(templateId, templateLabel, accountCount) => {
                   setState((prev) => ({
                     ...prev,

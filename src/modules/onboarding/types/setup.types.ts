@@ -70,6 +70,8 @@ export interface SetupStatus {
    * pernah berbeda pendapat.
    */
   opening_balance: OBStatus
+  /** COA hasil template yang sedang terpasang -- dasar pemulihan langkah COA. */
+  coa?: { template_id: string | null; account_count: number }
 }
 
 /** Kontrak `/api/setup/coa-templates` -- lihat CoaTemplateService::templates(). */

@@ -21,7 +21,8 @@ export const setupApi = {
   finalize: () => http.post<unknown, ApiResponse<Record<string, unknown>>>('/setup/finalize'),
   reopen: (reason: string) => http.post<unknown, ApiResponse<Record<string, unknown>>>('/setup/reopen', { reason }),
   listCoaTemplates: () => http.get<unknown, ApiResponse<CoaTemplateDef[]>>('/setup/coa-templates'),
-  applyCoaTemplate: (payload: { template_id: string; accounts: CoaTemplateAccountInput[] }) =>
+  /** `replace_existing` wajib true bila COA hasil template sudah terpasang -- backend menolak dengan 409 tanpanya. */
+  applyCoaTemplate: (payload: { template_id: string; accounts: CoaTemplateAccountInput[]; replace_existing?: boolean }) =>
     http.post<unknown, ApiResponse<unknown>>('/setup/coa-templates/apply', payload),
 
   /** Baca berkas COA milik user (CSV/XLSX) jadi draft akun -- belum disimpan, dipratinjau dulu. */

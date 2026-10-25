@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import axios from 'axios'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -29,12 +30,11 @@ interface Props {
   currentTemplate: string | null
   /** Jumlah akun hasil penerapan sebelumnya -- dipakai ringkasan wizard saat Lanjutkan tanpa penerapan ulang. */
   currentAccountCount: number
-  mappingCompleted: boolean
   onComplete: (templateId: string, templateLabel: string, accountCount: number) => void
   onBack: () => void
 }
 
-export function Step2TemplateCOA({ currentTemplate, currentAccountCount, mappingCompleted, onComplete, onBack }: Props) {
+export function Step2TemplateCOA({ currentTemplate, currentAccountCount, onComplete, onBack }: Props) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [selected, setSelected] = useState<string | null>(currentTemplate)
@@ -47,6 +47,8 @@ export function Step2TemplateCOA({ currentTemplate, currentAccountCount, mapping
   const [importDialogOpen, setImportDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [pendingChange, setPendingChange] = useState<{ id: string; accounts: CoaTemplateAccountInput[] | null } | null>(null)
+  // Server menolak (409) karena COA sudah terpasang padahal wizard tidak tahu -- minta konfirmasi.
+  const [replaceConflict, setReplaceConflict] = useState<string | null>(null)
 
   const templatesQuery = useQuery({
     queryKey: ['setup-coa-templates'],
@@ -58,8 +60,8 @@ export function Step2TemplateCOA({ currentTemplate, currentAccountCount, mapping
 
   /** Dipakai baik oleh klik card template maupun hasil impor file -- keduanya mengganti `selected` + `customAccounts`. */
   const applySelection = (id: string, accounts: CoaTemplateAccountInput[] | null) => {
-    // Warn if mapping was already done -- ganti template mengganti ulang akun yang sudah dibuat.
-    if (mappingCompleted && currentTemplate && id !== currentTemplate) {
+    // COA sudah terpasang: ganti template menghapus akun yang sudah dibuat, jadi minta konfirmasi dulu.
+    if (currentTemplate && id !== currentTemplate) {
       setPendingChange({ id, accounts })
       return
     }
@@ -98,7 +100,7 @@ export function Step2TemplateCOA({ currentTemplate, currentAccountCount, mapping
     }
   }
 
-  const handleContinue = async () => {
+  const handleContinue = async (forceReplace = false) => {
     if (!selected || !selectedTemplateDef) return
 
     // COA sudah pernah diterapkan dan tidak diubah di kunjungan ini: jangan terapkan ulang.
@@ -116,6 +118,9 @@ export function Step2TemplateCOA({ currentTemplate, currentAccountCount, mapping
       await setupApi.applyCoaTemplate({
         template_id: selected,
         accounts: customAccounts ?? selectedTemplateDef.accounts,
+        // User sudah mengonfirmasi penggantian (dialog ganti template) atau
+        // sedang mengedit COA yang memang sudah terpasang.
+        replace_existing: forceReplace || currentTemplate !== null,
       })
       // Backend menyesuaikan modul dengan jenis usaha template saat template
       // berganti; tanpa ini langkah Modul menampilkan pilihan dari cache lama.
@@ -130,6 +135,10 @@ export function Step2TemplateCOA({ currentTemplate, currentAccountCount, mapping
       try { await setupApi.validateStep('chart_of_accounts') } catch { /* progres non-blocking */ }
       onComplete(selected, selectedTemplateDef.label, (customAccounts ?? selectedTemplateDef.accounts).length)
     } catch (continueError) {
+      if (axios.isAxiosError(continueError) && continueError.response?.status === 409) {
+        setReplaceConflict(getApiErrorMessage(continueError, 'Chart of Accounts sudah diterapkan.'))
+        return
+      }
       toast.error(getApiErrorMessage(continueError, 'Gagal menerapkan template COA. Coba lagi.'))
     } finally {
       setIsSubmitting(false)
@@ -253,6 +262,29 @@ export function Step2TemplateCOA({ currentTemplate, currentAccountCount, mapping
           {isSubmitting ? 'Menerapkan...' : 'Lanjutkan →'}
         </Button>
       </div>
+
+      <AlertDialog open={!!replaceConflict} onOpenChange={() => setReplaceConflict(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ganti Chart of Accounts yang sudah ada?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {replaceConflict} Melanjutkan akan menghapus akun hasil template sebelumnya, lalu
+              Account Mapping disesuaikan ulang. Pilih Batal untuk mempertahankan COA saat ini.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setReplaceConflict(null)
+                void handleContinue(true)
+              }}
+            >
+              Ya, Ganti COA
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* COA change warning */}
       <AlertDialog open={!!pendingChange} onOpenChange={() => setPendingChange(null)}>
