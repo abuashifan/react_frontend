@@ -82,6 +82,12 @@ export default function CashFlowPage() {
         {!isLoading && !isError && report && !report.no_cash_accounts && summary && (
           <ReportPrintDocument title="Arus Kas" paramLabel={paramLabel} filterSummary={filterSummary}>
             <div className="space-y-4">
+              {/* Klasifikasi bawaan mengikuti tipe akun; yang tersisa di sini hanya transfer antar kas/bank atau akun bertipe lain. */}
+              {sections?.unclassified && (sections.unclassified.cash_in !== 0 || sections.unclassified.cash_out !== 0) && (
+                <p className="no-print rounded-md border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-[12px] text-[#92400e]">
+                  Sebagian arus kas belum terklasifikasi. Atur Kategori Arus Kas pada akun lawan di Master Data → Bagan Akun.
+                </p>
+              )}
               {/* Section breakdown table */}
               {sections && (
                 <table className="w-full text-[12px]">
