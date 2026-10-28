@@ -15,6 +15,19 @@ Backend ada di : /workspace/laravel_backend/
 **Produk:** Seaside Escape ERP — SPA React untuk akuntansi & operasional bisnis UKM  
 **Stack:** React 18 + Vite + TypeScript + TanStack Query + Zustand + Shadcn/ui + Tailwind
 
+### Status Project dan Data (keputusan pemilik produk, 2026-10-28)
+
+Finlite masih dalam tahap development. `app.finlite.my.id` adalah lingkungan
+testing; belum ada pengguna produksi dan seluruh transaksi saat ini adalah data
+uji. Backend berjalan di Render, frontend di Vercel, dan Render otomatis
+menjalankan migrasi baru saat deploy.
+
+Saat mengerjakan rancangan dan rencana hak akses per pengguna di root workspace,
+jangan mengasumsikan perlu menjaga kompatibilitas role atau kunci izin lama demi
+pengguna produksi. Ikuti perubahan kontrak yang direncanakan, termasuk
+penggantian izin di backend dan frontend, lalu perbarui tes terkait. Aturan
+isolasi tenant, penjagaan izin, dan integritas transaksi tetap berlaku.
+
 ---
 
 ## 2. ATURAN AKSES FILE

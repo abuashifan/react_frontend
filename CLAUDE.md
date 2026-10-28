@@ -9,6 +9,12 @@
 
 **Baca `AGENTS.md` di folder ini sebelum melakukan apapun.**
 
+**Konteks pemilik produk (2026-10-28):** Finlite masih development;
+`app.finlite.my.id` dipakai untuk testing, belum ada pengguna produksi, dan
+seluruh transaksi saat ini adalah data uji. Untuk rencana hak akses per pengguna,
+jangan menahan penggantian role atau kunci izin lama karena asumsi pengguna
+produksi. Lihat `AGENTS.md` untuk aturan lengkap.
+
 `AGENTS.md` berisi:
 - Peta semua dokumen dan kapan harus dibaca
 - Mapping task → dokumen yang relevan
