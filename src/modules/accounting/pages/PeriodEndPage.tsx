@@ -146,7 +146,7 @@ export default function PeriodEndPage() {
               className="h-8 w-[150px] text-[13px] tabular-nums"
             />
             {status?.can_run ? (
-              <PermissionGuard permission="period_end.run">
+              <PermissionGuard permission="accounting.period_end.approve">
                 <Button
                   type="button"
                   onClick={() => setRunConfirmOpen(true)}
@@ -158,7 +158,7 @@ export default function PeriodEndPage() {
               </PermissionGuard>
             ) : null}
             {status?.can_reopen ? (
-              <PermissionGuard permission="period_end.reopen">
+              <PermissionGuard permission="accounting.period_end.reopen">
                 <Button
                   type="button"
                   variant="outline"

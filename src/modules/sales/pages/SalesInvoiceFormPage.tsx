@@ -229,10 +229,10 @@ function SalesInvoiceFormPageContent() {
   if (editing) {
     actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
   }
-  if (!isCreate && canChange(invoice?.status) && !hasPostedDependences && can('sales.invoices.edit')) {
-    actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+  if (!isCreate && canChange(invoice?.status) && !hasPostedDependences) {
+    if (can('sales.invoices.delete')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
   }
-  if (isEditable && can('sales.invoices.create')) {
+  if (isEditable && can(isCreate ? 'sales.invoices.create' : 'sales.invoices.edit')) {
     actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (isEditable && formDraft.isRestored) {
@@ -242,10 +242,10 @@ function SalesInvoiceFormPageContent() {
     if (invoice?.status === 'draft' && can('sales.invoices.approve')) {
       actions.push({ id: 'approve', label: 'Approve', variant: 'primary', onClick: () => void handleApprove(), isLoading: approve.isPending })
     }
-    if (invoice?.status === 'approved' && can('sales.invoices.post')) {
+    if (invoice?.status === 'approved' && can('sales.invoices.approve')) {
       actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
     }
-    if (invoice?.status === 'posted' && !hasPostedDependences && can('sales.invoices.void')) {
+    if (invoice?.status === 'posted' && !hasPostedDependences && can('sales.invoices.delete')) {
       actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
     }
   }

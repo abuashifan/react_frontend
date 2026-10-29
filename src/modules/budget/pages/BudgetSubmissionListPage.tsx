@@ -184,7 +184,7 @@ export default function BudgetSubmissionListPage() {
       breadcrumb={[{ label: 'Anggaran' }, { label: 'Daftar Budget' }]}
       sidebar={sidebar}
       action={
-        <PermissionGuard permission="budgets.submit">
+        <PermissionGuard permission="budget.submissions.create">
           <Button
             className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]"
             onClick={() => openRecordTab({ label: 'Budget Baru', path: '/budget/submissions/new' })}

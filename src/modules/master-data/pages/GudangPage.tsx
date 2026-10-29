@@ -138,7 +138,7 @@ export default function GudangPage() {
       id: 'bulk-activate',
       label: 'Aktifkan Terpilih',
       icon: <Power className="h-3.5 w-3.5" />,
-      permission: 'warehouses.edit',
+      permission: 'master_data.warehouses.edit',
       onClick: (ids) => runBulkStatusChange(ids, true, (id) => activate.mutateAsync(id)),
     },
     {
@@ -146,7 +146,7 @@ export default function GudangPage() {
       label: 'Nonaktifkan Terpilih',
       icon: <PowerOff className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'warehouses.deactivate',
+      permission: 'master_data.warehouses.delete',
       onClick: (ids) => runBulkStatusChange(ids, false, (id) => deactivate.mutateAsync(id)),
     },
   ]
@@ -207,7 +207,7 @@ export default function GudangPage() {
       breadcrumb={[{ label: 'Master Data' }, { label: 'Gudang' }]}
       sidebar={sidebar}
       action={
-        <PermissionGuard permission="warehouses.create">
+        <PermissionGuard permission="master_data.warehouses.create">
           <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={openCreate}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Gudang
           </Button>
@@ -229,7 +229,7 @@ export default function GudangPage() {
         // tidak ada tombol edit per baris. Tanpa izin ubah, baris tidak bisa
         // diklik sama sekali supaya user tidak dibawa ke dialog yang pasti
         // ditolak backend saat disimpan.
-        onRowClick={can('warehouses.edit') ? openEdit : undefined}
+        onRowClick={can('master_data.warehouses.edit') ? openEdit : undefined}
         emptyTitle="Belum ada gudang"
         emptyDescription="Tambahkan gudang untuk menyimpan stok produk."
       />

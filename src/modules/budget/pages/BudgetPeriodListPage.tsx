@@ -146,7 +146,7 @@ export default function BudgetPeriodListPage() {
       breadcrumb={[{ label: 'Anggaran' }, { label: 'Pagu Anggaran' }]}
       sidebar={sidebar}
       action={
-        <PermissionGuard permission="budgets.manage">
+        <PermissionGuard permission="budget.periods.manage">
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               {/* Bungkus dengan <span> supaya tooltip tetap muncul saat hover —

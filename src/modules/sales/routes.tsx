@@ -42,9 +42,9 @@ export const salesRoutes = [
   { path: '/sales/orders/:id', element: guard('sales.orders.view', <SalesOrderFormPage />) },
 
   // Delivery Order
-  { path: '/sales/delivery-orders', element: guard('sales.delivery-orders.view', <DeliveryOrderListPage />) },
-  { path: '/sales/delivery-orders/create', element: guard('sales.delivery-orders.create', <DeliveryOrderFormPage />) },
-  { path: '/sales/delivery-orders/:id', element: guard('sales.delivery-orders.view', <DeliveryOrderFormPage />) },
+  { path: '/sales/delivery-orders', element: guard('sales.delivery_orders.view', <DeliveryOrderListPage />) },
+  { path: '/sales/delivery-orders/create', element: guard('sales.delivery_orders.create', <DeliveryOrderFormPage />) },
+  { path: '/sales/delivery-orders/:id', element: guard('sales.delivery_orders.view', <DeliveryOrderFormPage />) },
 
   // Proforma Invoice
   { path: '/sales/proformas', element: guard('sales.proformas.view', <ProformaListPage />) },

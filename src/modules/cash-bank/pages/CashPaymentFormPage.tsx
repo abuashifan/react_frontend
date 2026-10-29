@@ -198,14 +198,14 @@ function CashPaymentFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
-  if (!isCreate && canChange(payment?.status) && can('cash_bank.edit')) {
-    if (payment?.status !== 'draft' && !editing) actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
-    actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+  if (!isCreate && canChange(payment?.status)) {
+    if (payment?.status !== 'draft' && !editing && can('cash_bank.payments.edit')) actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
+    if (can('cash_bank.payments.delete')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
   }
   if (editing) actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
-  if (isEditable && can(isCreate ? 'cash_bank.create' : 'cash_bank.edit')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
-  if (!isCreate && payment?.status === 'draft' && can('cash_bank.post')) actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
-  if (!isCreate && payment?.status === 'posted' && can('cash_bank.void')) actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
+  if (isEditable && can(isCreate ? 'cash_bank.payments.create' : 'cash_bank.payments.edit')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
+  if (!isCreate && payment?.status === 'draft' && can('cash_bank.payments.approve')) actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
+  if (!isCreate && payment?.status === 'posted' && can('cash_bank.payments.delete')) actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
 
   if (!isCreate && isLoading) return <FormLayout title="Pengeluaran Kas" breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Pengeluaran Kas', path: '/cash-bank/cash-payments' }, { label: 'Memuat...' }]}><div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat...</div></FormLayout>
 

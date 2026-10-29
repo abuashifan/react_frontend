@@ -75,7 +75,7 @@ export function PendingDocumentAlerts({ pending, isLoading, isUnavailable }: Pro
           </PermissionGuard>
         )}
         {(pending?.fiscal_year_days_remaining ?? 999) <= 30 && (
-          <PermissionGuard permission="accounting.fiscal-years.manage" fallback={null}>
+          <PermissionGuard permission="accounting.fiscal_year.view" fallback={null}>
             <AlertCard icon={Calendar} label={`Periode akuntansi berakhir dalam ${pending?.fiscal_year_days_remaining ?? 0} hari`} href="/accounting/fiscal-years" variant="info" />
           </PermissionGuard>
         )}

@@ -17,7 +17,7 @@ export const SETUP_STATUS_KEY = ['setup', 'status']
 export function useSetupStatus() {
   const activeCompanyId = useAuthStore((s) => s.activeCompanyId)
   const { can, permissionsLoaded } = usePermission()
-  const allowed = !!activeCompanyId && permissionsLoaded && can('setup.view')
+  const allowed = !!activeCompanyId && permissionsLoaded && can('setup.wizard.view')
 
   return useQuery({
     queryKey: [...SETUP_STATUS_KEY, activeCompanyId],

@@ -68,7 +68,7 @@ export default function SalesReturnListPage() {
       label: 'Void Terpilih',
       icon: <Trash2 className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'sales.returns.void',
+      permission: 'sales.returns.delete',
       onClick: (ids) => {
         const eligible = rows.filter((salesReturn) => ids.includes(String(salesReturn.id)) && salesReturn.status !== 'void')
         if (eligible.length === 0) {

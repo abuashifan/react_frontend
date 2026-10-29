@@ -69,7 +69,7 @@ export default function VendorPaymentListPage() {
       label: 'Void Terpilih',
       icon: <Trash2 className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'purchase.payments.void',
+      permission: 'purchase.payments.delete',
       onClick: (ids) => {
         const eligible = rows.filter((payment) => ids.includes(String(payment.id)) && payment.status !== 'void')
         if (eligible.length === 0) {

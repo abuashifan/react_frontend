@@ -63,7 +63,7 @@ export default function StockAdjustmentListPage() {
       label: 'Void Terpilih',
       icon: <Trash2 className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'inventory.adjustments.void',
+      permission: 'inventory.adjustments.delete',
       onClick: (ids) => {
         const eligible = rows.filter((adjustment) => ids.includes(String(adjustment.id)) && adjustment.status !== 'void')
         if (eligible.length === 0) {

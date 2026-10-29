@@ -6,7 +6,7 @@ import { hasPermission } from '@/hooks/usePermission'
 import { useSetupGate, useSetupStatus } from '@/modules/onboarding/hooks/useSetupStatus'
 
 interface ProtectedRouteProps {
-  permission?: string
+  permission?: string | string[]
   requireCompany?: boolean
   requireOnboarding?: boolean
   children: React.ReactNode
@@ -38,7 +38,7 @@ export function ProtectedRoute({
     return <Navigate to="/onboarding" replace />
   }
 
-  if (permission && !hasPermission(permissions, permission)) {
+  if (permission && !(Array.isArray(permission) ? permission.some((key) => hasPermission(permissions, key)) : hasPermission(permissions, permission))) {
     return <Navigate to="/403" replace />
   }
 

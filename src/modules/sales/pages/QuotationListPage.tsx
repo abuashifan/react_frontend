@@ -151,7 +151,7 @@ export default function QuotationListPage() {
       sidebar={sidebar}
       action={
         <>
-          <ListExportButton
+          <ListExportButton permission="sales.quotations.export"
             filename="penawaran"
             sheetName="Penawaran"
             columns={EXPORT_COLUMNS}

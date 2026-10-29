@@ -71,7 +71,7 @@ export default function BankTransferListPage() {
       label: 'Void Terpilih',
       icon: <Trash2 className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'cash_bank.void',
+      permission: 'cash_bank.transfers.delete',
       onClick: (ids) => {
         const eligible = rows.filter((transfer) => ids.includes(String(transfer.id)) && transfer.status !== 'void')
         if (eligible.length === 0) {
@@ -202,7 +202,7 @@ export default function BankTransferListPage() {
         breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Transfer Bank' }]}
         sidebar={sidebar}
         action={
-          <PermissionGuard permission="cash_bank.create">
+          <PermissionGuard permission="cash_bank.transfers.create">
             <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Transfer Baru', path: '/cash-bank/bank-transfers/create' })}>
               <Plus className="mr-1 h-3.5 w-3.5" /> Buat Transfer
             </Button>

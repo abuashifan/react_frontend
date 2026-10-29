@@ -177,20 +177,20 @@ function ProformaFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
-  if (isEditable && can('sales.proformas.create')) {
+  if (isEditable && can(isCreate ? 'sales.proformas.create' : 'sales.proformas.edit')) {
     actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
-    if (proforma?.status === 'draft' && can('sales.proformas.update')) {
+    if (proforma?.status === 'draft' && can('sales.proformas.edit')) {
       actions.push({ id: 'issue', label: 'Terbitkan', variant: 'primary', onClick: () => void handleIssue(), isLoading: issue.isPending })
     }
-    if (proforma?.status === 'issued' && can('sales.proformas.update')) {
+    if (proforma?.status === 'issued' && can('sales.proformas.edit')) {
       actions.push({ id: 'accept', label: 'Terima', variant: 'primary', onClick: () => void handleAccept(), isLoading: accept.isPending })
     }
     if (proforma?.status === 'accepted' && can('sales.invoices.create')) {
       actions.push({ id: 'convert', label: 'Convert ke Invoice', variant: 'primary', onClick: () => void handleConvertToInvoice(), isLoading: isConverting })
     }
-    if (['draft', 'issued'].includes(proforma?.status ?? '') && can('sales.proformas.update')) {
+    if (['draft', 'issued'].includes(proforma?.status ?? '') && can('sales.proformas.edit')) {
       actions.push({ id: 'cancel', label: 'Batalkan', variant: 'destructive', onClick: () => void handleCancel(), isLoading: cancel.isPending })
     }
   }

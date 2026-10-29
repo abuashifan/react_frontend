@@ -166,7 +166,7 @@ function CoaFormPageContent() {
           >
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
             {!isCreate && coa && (
-              <PermissionGuard permission={coa.is_active ? 'coa.deactivate' : 'coa.edit'}>
+              <PermissionGuard permission={coa.is_active ? 'master_data.coa.delete' : 'master_data.coa.edit'}>
                 <Button
                   type="button"
                   variant="outline"

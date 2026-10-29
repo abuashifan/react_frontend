@@ -4,174 +4,69 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
-import { DataTable } from '@/components/shared/table/DataTable'
-import type { ColumnDef } from '@/components/shared/table/DataTable'
+import { DataTable, type ColumnDef } from '@/components/shared/table/DataTable'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { useToast } from '@/hooks/useToast'
 import { ConfirmDialog } from '@/components/shared/document/ConfirmDialog'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { FieldError } from '@/components/shared/form/FieldError'
+import { useToast } from '@/hooks/useToast'
+import { usePermission } from '@/hooks/usePermission'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
-import { formatDate, cn, fieldErrorClass } from '@/lib/utils'
-import { useInvitations, useInvitationMutations, useAccessRoles } from '../hooks/useAccessManagement'
-import type { Invitation, InvitationStatus } from '../types/access.types'
+import { formatDate } from '@/lib/utils'
+import { PermissionMatrix, type AccessSelection } from '../components/PermissionMatrix'
+import { useInvitations, useInvitationMutations, usePermissionCatalog } from '../hooks/useAccessManagement'
+import type { Invitation } from '../types/access.types'
 
-const STATUS_BADGE: Record<InvitationStatus, { label: string; className: string }> = {
-  pending: { label: 'Menunggu', className: 'bg-[#FEF3C7] text-[#92400E] hover:bg-[#FEF3C7]' },
-  accepted: { label: 'Diterima', className: 'bg-[#D1FAE5] text-[#065F46] hover:bg-[#D1FAE5]' },
-  expired: { label: 'Kedaluwarsa', className: 'bg-[#F1F5F9] text-[#64748b] hover:bg-[#F1F5F9]' },
-  revoked: { label: 'Dibatalkan', className: 'bg-[#FEE2E2] text-[#991B1B] hover:bg-[#FEE2E2]' },
-}
-
-const inviteSchema = z.object({
-  email: z.string().email('Format email tidak valid'),
-  role_id: z.number().nullable().optional(),
-})
+const inviteSchema = z.object({ email: z.string().email('Format email tidak valid') })
 type InviteForm = z.infer<typeof inviteSchema>
 
 export default function InvitationsPage() {
   const { toast } = useToast()
-  const { data, isLoading } = useInvitations()
-  const { data: rolesData } = useAccessRoles()
+  const { can } = usePermission()
+  const { data, isLoading } = useInvitations(can('access.invitations.view'))
+  const catalog = usePermissionCatalog(can('access.invitations.create'))
   const { create, resend, revoke } = useInvitationMutations()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [revokeTarget, setRevokeTarget] = useState<Invitation | null>(null)
-
-  const invitations = data?.data ?? []
-  const roles = rolesData?.data ?? []
-
-  const form = useForm<InviteForm>({ resolver: zodResolver(inviteSchema), defaultValues: { email: '', role_id: null } })
-
+  const [selection, setSelection] = useState<AccessSelection>({ full_access: false, permissions: [] })
+  const [createdLink, setCreatedLink] = useState('')
+  const form = useForm<InviteForm>({ resolver: zodResolver(inviteSchema), defaultValues: { email: '' } })
+  const linkFor = (invitation: Invitation) => `${window.location.origin}/invitations/${encodeURIComponent(invitation.token)}/accept`
+  const copyLink = async (invitation: Invitation) => {
+    const link = linkFor(invitation)
+    setCreatedLink(link)
+    try { await navigator.clipboard.writeText(link); toast.success('Tautan undangan disalin.') }
+    catch { toast.warning('Salin tautan undangan yang ditampilkan.') }
+  }
   const handleCreate = form.handleSubmit(async (values) => {
-    const role = roles.find((r) => r.id === values.role_id)
     try {
-      await create.mutateAsync({ email: values.email, role_id: values.role_id ?? undefined, role: role?.slug ?? undefined })
-      toast.success('Undangan terkirim.')
-      setDialogOpen(false)
-      form.reset()
-    } catch (inviteError) {
-      // Tandai field penyebab dari backend (mis. email sudah diundang) supaya user
-      // tahu isian mana yang salah, bukan hanya toast generik.
-      applyApiValidationErrors(inviteError, form.setError)
-      toast.error(getApiErrorMessage(inviteError, 'Gagal mengirim undangan.'))
-    }
+      const result = await create.mutateAsync({ email: values.email, ...selection })
+      setCreatedLink(linkFor(result.data))
+      toast.success('Undangan dibuat. Bagikan tautan kepada penerima.')
+      setDialogOpen(false); form.reset(); setSelection({ full_access: false, permissions: [] })
+    } catch (error) { applyApiValidationErrors(error, form.setError); toast.error(getApiErrorMessage(error, 'Gagal membuat undangan.')) }
   })
-
-  const handleResend = async (inv: Invitation) => {
-    try { await resend.mutateAsync(inv.id); toast.success('Undangan dikirim ulang.') }
-    catch (resendError) { toast.error(getApiErrorMessage(resendError, 'Gagal mengirim ulang undangan.')) }
-  }
-
-  const handleRevoke = async (inv: Invitation) => {
-    try { await revoke.mutateAsync(inv.id); toast.success('Undangan dibatalkan.') }
-    catch (revokeError) { toast.error(getApiErrorMessage(revokeError, 'Gagal membatalkan undangan.')) }
-  }
-
+  const invitations = data?.data ?? []
   const columns: ColumnDef<Invitation>[] = [
-    { id: 'email', header: 'Email', size: 220, cell: ({ original }) => <span className="font-medium text-[#24323a] text-[13px]">{original.email}</span> },
-    { id: 'role', header: 'Peran', size: 140, cell: ({ original }) => <span className="text-[13px]">{original.role ?? '—'}</span> },
-    {
-      id: 'status', header: 'Status', size: 120,
-      cell: ({ original }) => {
-        const badge = STATUS_BADGE[original.status] ?? STATUS_BADGE.pending
-        return <Badge className={cn('text-[11px] px-2 py-0.5 rounded-full', badge.className)}>{badge.label}</Badge>
-      },
-    },
-    { id: 'sent_at', header: 'Dikirim', size: 120, cell: ({ original }) => <span className="tabular-nums text-[13px]">{formatDate(original.created_at)}</span> },
-    { id: 'expires_at', header: 'Kedaluwarsa', size: 120, cell: ({ original }) => <span className="tabular-nums text-[13px]">{formatDate(original.expires_at)}</span> },
-    {
-      id: 'actions', header: '', size: 180,
-      cell: ({ original }) => {
-        if (original.status !== 'pending') return null
-        return (
-          <div className="flex items-center gap-1">
-            <PermissionGuard permission="access.invitations.resend" fallback={null}>
-              <Button type="button" size="sm" variant="ghost" onClick={() => void handleResend(original)} className="h-7 text-[11px] text-[#326273]">Kirim Ulang</Button>
-            </PermissionGuard>
-            <PermissionGuard permission="access.invitations.revoke" fallback={null}>
-              <Button type="button" size="sm" variant="ghost" onClick={() => setRevokeTarget(original)} className="h-7 text-[11px] text-red-500 hover:text-red-600">Batalkan</Button>
-            </PermissionGuard>
-          </div>
-        )
-      },
-    },
+    { id: 'email', header: 'Email', size: 220, cell: ({ original }) => original.email },
+    { id: 'access', header: 'Akses', size: 130, cell: ({ original }) => original.full_access ? 'Akses penuh' : `${original.permissions?.length ?? 0} izin` },
+    { id: 'status', header: 'Status', size: 120, cell: ({ original }) => <Badge variant="outline">{({ pending: 'Menunggu', accepted: 'Diterima', expired: 'Kedaluwarsa', revoked: 'Dibatalkan' })[original.status]}</Badge> },
+    { id: 'created_at', header: 'Dibuat', size: 120, cell: ({ original }) => formatDate(original.created_at) },
+    { id: 'expires_at', header: 'Kedaluwarsa', size: 120, cell: ({ original }) => formatDate(original.expires_at) },
+    { id: 'actions', header: '', size: 250, cell: ({ original }) => original.status === 'pending' ? <div className="flex gap-1"><Button size="sm" variant="ghost" onClick={() => void copyLink(original)}>Salin tautan</Button><PermissionGuard permission="access.invitations.create"><Button size="sm" variant="ghost" onClick={() => void (async () => { try { const result = await resend.mutateAsync(original.id); setCreatedLink(linkFor(result.data)); toast.success('Tautan baru dibuat.') } catch (error) { toast.error(getApiErrorMessage(error, 'Gagal membuat tautan baru.')) } })()}>Buat ulang</Button></PermissionGuard><PermissionGuard permission="access.invitations.delete"><Button size="sm" variant="ghost" onClick={() => setRevokeTarget(original)}>Cabut</Button></PermissionGuard></div> : null },
   ]
-
-  return (
-    <WorkspaceLayout
-      title="Undangan Pengguna"
-      breadcrumb={[{ label: 'Pengaturan' }, { label: 'Undangan' }]}
-      action={
-        <PermissionGuard permission="access.invitations.create" fallback={null}>
-          <Button type="button" onClick={() => setDialogOpen(true)} className="h-8 gap-1.5 bg-[#e39774] text-[12px] text-white hover:bg-[#d4845e]">
-            <Plus className="h-4 w-4" /> Kirim Undangan
-          </Button>
-        </PermissionGuard>
-      }
-    >
-      <DataTable
-        columns={columns}
-        data={invitations}
-        totalRows={invitations.length}
-        isLoading={isLoading}
-        pagination={{ pageIndex: 0, pageSize: 25 }}
-        onPaginationChange={() => {}}
-        emptyTitle="Belum ada undangan"
-        emptyDescription="Kirim undangan untuk menambah pengguna ke perusahaan."
-      />
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-[15px]">Kirim Undangan</DialogTitle>
-            <DialogDescription className="text-[13px] text-[#64748b]">Masukkan email dan peran tujuan sebelum mengirim undangan.</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={(e) => void handleCreate(e)} className="space-y-3 pt-1">
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="settings-invitations-email" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Email <span className="text-red-500">*</span></Label>
-              <Input id="settings-invitations-email" {...form.register('email')} type="email" className={cn('h-9 text-[13px]', fieldErrorClass(form.formState.errors.email))} placeholder="nama@perusahaan.com" />
-              <FieldError message={form.formState.errors.email?.message} />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="settings-invitations-role-id" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Peran</Label>
-              <select
-                id="settings-invitations-role-id"
-                value={form.watch('role_id') ?? ''}
-                onChange={(e) => form.setValue('role_id', e.target.value ? Number(e.target.value) : null)}
-                className={cn('h-9 rounded-md border border-input bg-background px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-ring', fieldErrorClass(form.formState.errors.role_id))}
-              >
-                <option value="">— Pilih peran —</option>
-                {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
-              <FieldError message={form.formState.errors.role_id?.message} />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="h-9 text-[13px]">Batal</Button>
-              <Button type="submit" disabled={create.isPending} className="h-9 bg-[#5c9ead] text-[13px] hover:bg-[#4a8a9b]">{create.isPending ? 'Mengirim...' : 'Kirim'}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <ConfirmDialog
-        isOpen={!!revokeTarget}
-        onClose={() => setRevokeTarget(null)}
-        onConfirm={() => {
-          if (!revokeTarget) return
-          const invitation = revokeTarget
-          setRevokeTarget(null)
-          void handleRevoke(invitation)
-        }}
-        title="Batalkan Undangan"
-        description={revokeTarget ? `Batalkan undangan untuk ${revokeTarget.email}? Pengguna tidak akan bisa menerima undangan ini lagi.` : ''}
-        confirmLabel="Batalkan Undangan"
-        variant="destructive"
-        isLoading={revoke.isPending}
-      />
-    </WorkspaceLayout>
-  )
+  return <WorkspaceLayout title="Undangan Pengguna" breadcrumb={[{ label: 'Pengaturan' }, { label: 'Undangan' }]} action={<PermissionGuard permission="access.invitations.create"><Button onClick={() => setDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />Buat Undangan</Button></PermissionGuard>}>
+    {createdLink && <div className="mb-4 space-y-1 rounded border p-3"><Label htmlFor="invitation-link">Bagikan tautan ini kepada penerima</Label><Input id="invitation-link" readOnly value={createdLink} onFocus={(event) => event.currentTarget.select()} /></div>}
+    {can('access.invitations.view') && <DataTable columns={columns} data={invitations} totalRows={invitations.length} isLoading={isLoading} pagination={{ pageIndex: 0, pageSize: 25 }} onPaginationChange={() => {}} emptyTitle="Belum ada undangan" emptyDescription="Buat undangan untuk menambah pengguna ke perusahaan." />}
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}><DialogContent className="max-h-[90dvh] max-w-5xl overflow-y-auto"><DialogHeader><DialogTitle>Buat undangan</DialogTitle><DialogDescription>Masukkan email dan pilih hak akses untuk pengguna.</DialogDescription></DialogHeader>
+      <form onSubmit={(event) => void handleCreate(event)} className="space-y-4"><div><Label htmlFor="invite-email">Email</Label><Input id="invite-email" type="email" {...form.register('email')} /><FieldError message={form.formState.errors.email?.message} /></div>
+        {catalog.isLoading && <p>Memuat katalog akses...</p>}{catalog.isError && <p role="alert">Gagal memuat katalog akses.</p>}{catalog.data && <PermissionMatrix catalog={catalog.data.data} value={selection} onChange={setSelection} />}
+        <DialogFooter><Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Batal</Button><Button type="submit" disabled={create.isPending || !catalog.data}>{create.isPending ? 'Menyimpan...' : 'Buat undangan'}</Button></DialogFooter>
+      </form></DialogContent></Dialog>
+    <ConfirmDialog isOpen={!!revokeTarget} onClose={() => setRevokeTarget(null)} onConfirm={() => { if (revokeTarget) void revoke.mutateAsync(revokeTarget.id).then(() => toast.success('Undangan dicabut.')).catch((error) => toast.error(getApiErrorMessage(error, 'Gagal mencabut undangan.'))); setRevokeTarget(null) }} title="Cabut undangan" description={`Cabut undangan untuk ${revokeTarget?.email ?? ''}?`} confirmLabel="Cabut" variant="destructive" />
+  </WorkspaceLayout>
 }

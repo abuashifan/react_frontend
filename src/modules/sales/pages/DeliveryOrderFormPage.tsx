@@ -195,32 +195,32 @@ function DeliveryOrderFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
-  if (!isCreate && canChange(order?.status, ['draft', 'ready']) && can('sales.delivery_orders.edit')) {
-    if (order?.status !== 'draft' && !editing) {
+  if (!isCreate && canChange(order?.status, ['draft', 'ready'])) {
+    if (order?.status !== 'draft' && !editing && can('sales.delivery_orders.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
     }
-    if (can('sales.delivery_orders.edit')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+    if (can('sales.delivery_orders.delete')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
   }
   if (editing) {
     actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
   }
-  if (isEditable && can('sales.delivery-orders.create')) {
+  if (isEditable && can(isCreate ? 'sales.delivery_orders.create' : 'sales.delivery_orders.edit')) {
     actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
-    if (order?.status === 'draft' && can('sales.delivery-orders.update')) {
+    if (order?.status === 'draft' && can('sales.delivery_orders.edit')) {
       actions.push({ id: 'ready', label: 'Tandai Siap', variant: 'primary', onClick: () => void handleReady(), isLoading: ready.isPending })
     }
-    if (order?.status === 'ready' && can('sales.delivery-orders.update')) {
+    if (order?.status === 'ready' && can('sales.delivery_orders.edit')) {
       actions.push({ id: 'ship', label: 'Kirim', variant: 'primary', onClick: () => void handleShip(), isLoading: ship.isPending })
     }
-    if (order?.status === 'shipped' && can('sales.delivery-orders.update')) {
+    if (order?.status === 'shipped' && can('sales.delivery_orders.edit')) {
       actions.push({ id: 'deliver', label: 'Konfirmasi Terima', variant: 'primary', onClick: () => void handleDeliver(), isLoading: deliver.isPending || isDeliverConfirming })
     }
-    if (['draft', 'ready', 'shipped'].includes(order?.status ?? '') && can('sales.delivery-orders.update')) {
+    if (['draft', 'ready', 'shipped'].includes(order?.status ?? '') && can('sales.delivery_orders.edit')) {
       actions.push({ id: 'cancel', label: 'Batalkan', variant: 'neutral', onClick: () => void handleCancel(), isLoading: cancel.isPending })
     }
-    if (order?.status === 'delivered' && can('sales.delivery-orders.void')) {
+    if (order?.status === 'delivered' && can('sales.delivery_orders.delete')) {
       actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
     }
   }

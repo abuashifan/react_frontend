@@ -197,23 +197,23 @@ function VendorPaymentFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
-  if (!isCreate && canChange(payment?.status) && can('purchase.payments.create')) {
-    if (payment?.status !== 'draft' && !editing) {
+  if (!isCreate && canChange(payment?.status)) {
+    if (payment?.status !== 'draft' && !editing && can('purchase.payments.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
     }
-    actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+    if (can('purchase.payments.delete')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
   }
   if (editing) {
     actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
   }
-  if (isEditable && can('purchase.payments.create')) {
+  if (isEditable && can(isCreate ? 'purchase.payments.create' : 'purchase.payments.edit')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
-    if (payment?.status === 'draft' && can('purchase.payments.post')) {
+    if (payment?.status === 'draft' && can('purchase.payments.approve')) {
       actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
     }
-    if (payment?.status === 'posted' && can('purchase.payments.void')) {
+    if (payment?.status === 'posted' && can('purchase.payments.delete')) {
       actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
     }
   }

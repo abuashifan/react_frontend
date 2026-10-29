@@ -34,16 +34,16 @@ import {
 import type { RibbonItem } from '@/router/moduleConfig'
 
 export const LEGACY_REPORTS_RIBBON_ITEMS: RibbonItem[] = [
-  { id: 'financial', label: 'Keuangan', icon: BarChart3, path: '/reports/financial', permission: 'reports.view' },
-  { id: 'gl', label: 'Buku Besar', icon: BookMarked, path: '/reports/gl', permission: 'reports.view' },
-  { id: 'sales', label: 'Penjualan', icon: TrendingUp, path: '/reports/sales', permission: 'reports.view' },
-  { id: 'purchase', label: 'Pembelian', icon: TrendingDown, path: '/reports/purchase', permission: 'reports.view' },
-  { id: 'ar', label: 'Piutang', icon: Clock, path: '/reports/ar', permission: 'reports.view' },
-  { id: 'ap', label: 'Hutang', icon: Clock, path: '/reports/ap', permission: 'reports.view' },
-  { id: 'reconciliation', label: 'Rekonsiliasi', icon: RefreshCcw, path: '/reports/reconciliation', permission: 'reports.view' },
-  { id: 'inventory', label: 'Persediaan', icon: Package, path: '/reports/inventory', permission: 'reports.view' },
-  { id: 'fixed-assets', label: 'Aktiva Tetap', icon: Building2, path: '/reports/fixed-assets', permission: 'reports.view' },
-  { id: 'cash-bank', label: 'Kas & Bank', icon: Landmark, path: '/reports/cash-bank', permission: 'reports.view' },
-  { id: 'tax', label: 'Pajak', icon: Receipt, path: '/reports/tax', permission: 'reports.view' },
-  { id: 'saved', label: 'Tersimpan', icon: Bookmark, path: '/reports/saved', permission: 'reports.view' },
+  { id: 'financial', label: 'Keuangan', icon: BarChart3, path: '/reports/financial', permission: 'reports.financial.view' },
+  { id: 'gl', label: 'Buku Besar', icon: BookMarked, path: '/reports/gl', permission: 'reports.general_ledger.view' },
+  { id: 'sales', label: 'Penjualan', icon: TrendingUp, path: '/reports/sales', permission: 'reports.sales.view' },
+  { id: 'purchase', label: 'Pembelian', icon: TrendingDown, path: '/reports/purchase', permission: 'reports.purchase.view' },
+  { id: 'ar', label: 'Piutang', icon: Clock, path: '/reports/ar', permission: 'reports.ar.view' },
+  { id: 'ap', label: 'Hutang', icon: Clock, path: '/reports/ap', permission: 'reports.ap.view' },
+  { id: 'reconciliation', label: 'Rekonsiliasi', icon: RefreshCcw, path: '/reports/reconciliation', permission: 'reports.reconciliation.view' },
+  { id: 'inventory', label: 'Persediaan', icon: Package, path: '/reports/inventory', permission: 'reports.inventory.view' },
+  { id: 'fixed-assets', label: 'Aktiva Tetap', icon: Building2, path: '/reports/fixed-assets', permission: 'reports.fixed_assets.view' },
+  { id: 'cash-bank', label: 'Kas & Bank', icon: Landmark, path: '/reports/cash-bank', permission: 'reports.cash_bank.view' },
+  { id: 'tax', label: 'Pajak', icon: Receipt, path: '/reports/tax', permission: 'reports.tax.view' },
+  { id: 'saved', label: 'Tersimpan', icon: Bookmark, path: '/reports/saved', permission: 'reports.saved.manage' },
 ]

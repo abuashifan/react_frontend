@@ -143,7 +143,7 @@ export default function SalesOrderListPage() {
       sidebar={sidebar}
       action={
         <>
-          <ListExportButton
+          <ListExportButton permission="sales.orders.export"
             filename="sales-order"
             sheetName="Sales Order"
             columns={EXPORT_COLUMNS}

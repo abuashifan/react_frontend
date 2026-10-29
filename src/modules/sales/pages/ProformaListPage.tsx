@@ -142,7 +142,7 @@ export default function ProformaListPage() {
       sidebar={sidebar}
       action={
         <>
-          <ListExportButton
+          <ListExportButton permission="sales.proformas.export"
             filename="proforma"
             sheetName="Proforma"
             columns={EXPORT_COLUMNS}

@@ -286,11 +286,11 @@ function VendorBillFormPageContent() {
   if (isEditable && formDraft.isRestored) {
     actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: handleDiscardDraft })
   }
-  if (!isCreate && !hasPaidDependences && canChange(bill?.status) && can('purchase.bills.edit')) {
-    if (bill?.status !== 'draft' && !editing) {
+  if (!isCreate && !hasPaidDependences && canChange(bill?.status)) {
+    if (bill?.status !== 'draft' && !editing && can('purchase.bills.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
     }
-    actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+    if (can('purchase.bills.delete')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
   }
   if (editing) {
     actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
@@ -299,10 +299,10 @@ function VendorBillFormPageContent() {
     if (bill?.status === 'draft' && can('purchase.bills.approve')) {
       actions.push({ id: 'approve', label: 'Approve', variant: 'primary', onClick: () => setConfirmAction('approve'), isLoading: approve.isPending })
     }
-    if (bill?.status === 'approved' && can('purchase.bills.post')) {
+    if (bill?.status === 'approved' && can('purchase.bills.approve')) {
       actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => setConfirmAction('post'), isLoading: post.isPending })
     }
-    if (bill?.status === 'posted' && !hasPaidDependences && can('purchase.bills.void')) {
+    if (bill?.status === 'posted' && !hasPaidDependences && can('purchase.bills.delete')) {
       actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
     }
   }

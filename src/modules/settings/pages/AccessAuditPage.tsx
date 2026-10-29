@@ -23,6 +23,7 @@ export default function AccessAuditPage() {
     { id: 'user', header: 'Pengguna', size: 160, cell: ({ original }) => <span className="text-[13px]">{original.user?.name ?? '—'}</span> },
     { id: 'action', header: 'Aksi', size: 180, cell: ({ original }) => <span className="font-medium text-[13px] text-[#326273]">{original.action}</span> },
     { id: 'description', header: 'Detail', size: 280, cell: ({ original }) => <span className="text-[12px] text-[#64748b]">{original.description ?? '—'}</span> },
+    { id: 'changes', header: 'Perubahan', size: 180, cell: ({ original }) => original.properties?.old_values || original.properties?.new_values ? <details className="text-xs"><summary className="cursor-pointer text-primary">Lihat sebelum / sesudah</summary><pre className="max-h-48 overflow-auto whitespace-pre-wrap">{JSON.stringify({ sebelum: original.properties?.old_values, sesudah: original.properties?.new_values }, null, 2)}</pre></details> : '—' },
     { id: 'ip_address', header: 'IP', size: 130, cell: ({ original }) => <span className="tabular-nums text-[12px] text-[#94a3b8]">{original.ip_address ?? '—'}</span> },
   ]
 
@@ -50,7 +51,7 @@ export default function AccessAuditPage() {
         pagination={{ pageIndex: 0, pageSize: 50 }}
         onPaginationChange={() => {}}
         emptyTitle="Belum ada catatan audit"
-        emptyDescription="Aktivitas akses (peran, izin, undangan) akan tercatat di sini."
+        emptyDescription="Perubahan izin dan undangan akan tercatat di sini."
       />
     </WorkspaceLayout>
   )

@@ -133,7 +133,7 @@ export default function JournalListPage() {
       label: 'Void Terpilih',
       icon: <Trash2 className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'journal.void',
+      permission: 'accounting.journals.delete',
       onClick: requestBulkVoid,
     },
   ]
@@ -275,14 +275,14 @@ export default function JournalListPage() {
         sidebar={sidebar}
         action={
           <>
-            <ListExportButton
+            <ListExportButton permission="accounting.journals.export"
               filename="jurnal-umum"
               sheetName="Jurnal Umum"
               columns={EXPORT_COLUMNS}
               totalRows={data?.meta.total}
               fetchPage={(exportPage, exportPerPage) => journalEntryApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}
             />
-            <PermissionGuard permission="journal.create">
+            <PermissionGuard permission="accounting.journals.create">
               <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Jurnal Baru', path: '/accounting/journals/create' })}>
                 <Plus className="mr-1 h-3.5 w-3.5" /> Buat Jurnal
               </Button>

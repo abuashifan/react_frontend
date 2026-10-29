@@ -54,7 +54,7 @@ export function RibbonPanel() {
     closeRibbon,
     primaryTabs,
   } = useTabStore()
-  const { can, permissionsLoaded } = usePermission()
+  const { can, canAny, permissionsLoaded } = usePermission()
   const openTab = useOpenPrimaryTab()
   const activePrimaryTab = primaryTabs.find((tab) => tab.id === activePrimaryTabId)
 
@@ -64,7 +64,7 @@ export function RibbonPanel() {
   const moduleConfig = MODULE_MAP[moduleId]
 
   const visibleItems = (moduleConfig?.ribbonItems ?? []).filter((item) => {
-    if (permissionsLoaded && item.permission && !can(item.permission)) return false
+    if (permissionsLoaded && item.permission && !(Array.isArray(item.permission) ? canAny(item.permission) : can(item.permission))) return false
     return true
   })
 

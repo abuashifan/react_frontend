@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import { useLocation } from 'react-router-dom'
+import { usePermission } from '@/hooks/usePermission'
+import { reportCategoryForPath } from '../constants/reportPermissions'
 import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/useToast'
@@ -59,6 +62,8 @@ export function ReportExportButton({
   label = 'Export Excel',
 }: ReportExportButtonProps) {
   const { toast } = useToast()
+  const { can } = usePermission()
+  const { pathname } = useLocation()
   const [isExporting, setIsExporting] = useState(false)
 
   const handleExport = () => {
@@ -79,6 +84,8 @@ export function ReportExportButton({
       setIsExporting(false)
     }
   }
+
+  if (!can(`reports.${reportCategoryForPath(pathname)}.export`)) return null
 
   if (variant === 'tool') {
     return <ReportToolButton icon={Download} label={label} onClick={handleExport} disabled={disabled || isExporting} />

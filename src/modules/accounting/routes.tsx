@@ -10,10 +10,10 @@ const PeriodLockPage = lazy(() => import('./pages/PeriodLockPage'))
 const PeriodEndPage = lazy(() => import('./pages/PeriodEndPage'))
 
 export const accountingRoutes: RouteObject[] = [
-  { path: '/accounting/journals', element: <ProtectedRoute permission="journal.view"><JournalListPage /></ProtectedRoute> },
-  { path: '/accounting/journals/create', element: <ProtectedRoute permission="journal.create"><JournalFormPage /></ProtectedRoute> },
-  { path: '/accounting/journals/:id', element: <ProtectedRoute permission="journal.view"><JournalFormPage /></ProtectedRoute> },
-  { path: '/accounting/fiscal-years', element: <ProtectedRoute permission="accounting.fiscal-years.manage"><FiscalYearPage /></ProtectedRoute> },
-  { path: '/accounting/period-locks', element: <ProtectedRoute permission="accounting.period-locks.manage"><PeriodLockPage /></ProtectedRoute> },
-  { path: '/accounting/period-end', element: <ProtectedRoute permission="period_end.view"><PeriodEndPage /></ProtectedRoute> },
+  { path: '/accounting/journals', element: <ProtectedRoute permission="accounting.journals.view"><JournalListPage /></ProtectedRoute> },
+  { path: '/accounting/journals/create', element: <ProtectedRoute permission="accounting.journals.create"><JournalFormPage /></ProtectedRoute> },
+  { path: '/accounting/journals/:id', element: <ProtectedRoute permission="accounting.journals.view"><JournalFormPage /></ProtectedRoute> },
+  { path: '/accounting/fiscal-years', element: <ProtectedRoute permission="accounting.fiscal_year.view"><FiscalYearPage /></ProtectedRoute> },
+  { path: '/accounting/period-locks', element: <ProtectedRoute permission="accounting.period_locks.view"><PeriodLockPage /></ProtectedRoute> },
+  { path: '/accounting/period-end', element: <ProtectedRoute permission="accounting.period_end.view"><PeriodEndPage /></ProtectedRoute> },
 ]

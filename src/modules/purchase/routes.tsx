@@ -40,9 +40,9 @@ export const purchaseRoutes = [
   { path: '/purchase/orders/:id', element: guard('purchase.orders.view', <PurchaseOrderFormPage />) },
 
   // Goods Receipt
-  { path: '/purchase/goods-receipts', element: guard('purchase.goods-receipts.view', <GoodsReceiptListPage />) },
-  { path: '/purchase/goods-receipts/create', element: guard('purchase.goods-receipts.create', <GoodsReceiptFormPage />) },
-  { path: '/purchase/goods-receipts/:id', element: guard('purchase.goods-receipts.view', <GoodsReceiptFormPage />) },
+  { path: '/purchase/goods-receipts', element: guard('purchase.goods_receipts.view', <GoodsReceiptListPage />) },
+  { path: '/purchase/goods-receipts/create', element: guard('purchase.goods_receipts.create', <GoodsReceiptFormPage />) },
+  { path: '/purchase/goods-receipts/:id', element: guard('purchase.goods_receipts.view', <GoodsReceiptFormPage />) },
 
   // Vendor Bill
   { path: '/purchase/bills', element: guard('purchase.bills.view', <VendorBillListPage />) },

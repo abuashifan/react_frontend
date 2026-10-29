@@ -134,7 +134,7 @@ export default function SatuanPage() {
       id: 'bulk-activate',
       label: 'Aktifkan Terpilih',
       icon: <Power className="h-3.5 w-3.5" />,
-      permission: 'units.edit',
+      permission: 'master_data.units.edit',
       onClick: (ids) => runBulkStatusChange(ids, true, (id) => activate.mutateAsync(id)),
     },
     {
@@ -142,7 +142,7 @@ export default function SatuanPage() {
       label: 'Nonaktifkan Terpilih',
       icon: <PowerOff className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'units.deactivate',
+      permission: 'master_data.units.delete',
       onClick: (ids) => runBulkStatusChange(ids, false, (id) => deactivate.mutateAsync(id)),
     },
   ]
@@ -204,7 +204,7 @@ export default function SatuanPage() {
       breadcrumb={[{ label: 'Master Data' }, { label: 'Satuan' }]}
       sidebar={sidebar}
       action={
-        <PermissionGuard permission="units.create">
+        <PermissionGuard permission="master_data.units.create">
           <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={openCreate}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Satuan
           </Button>
@@ -226,7 +226,7 @@ export default function SatuanPage() {
         // tidak ada tombol edit per baris. Tanpa izin ubah, baris tidak bisa
         // diklik sama sekali supaya user tidak dibawa ke dialog yang pasti
         // ditolak backend saat disimpan.
-        onRowClick={can('units.edit') ? openEdit : undefined}
+        onRowClick={can('master_data.units.edit') ? openEdit : undefined}
         emptyTitle="Belum ada satuan"
         emptyDescription="Tambahkan satuan seperti pcs, kg, liter, dll."
       />

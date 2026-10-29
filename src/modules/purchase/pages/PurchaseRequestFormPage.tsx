@@ -150,7 +150,7 @@ function PurchaseRequestFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
-  if (isEditable && can('purchase.requests.create')) {
+  if (isEditable && can(isCreate ? 'purchase.requests.create' : 'purchase.requests.edit')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
@@ -161,7 +161,7 @@ function PurchaseRequestFormPageContent() {
       actions.push({ id: 'approve', label: 'Approve', variant: 'primary', onClick: () => void handleApprovePR(), isLoading: approve.isPending })
       actions.push({ id: 'reject', label: 'Tolak', variant: 'destructive', onClick: () => void handleReject(), isLoading: reject.isPending })
     }
-    if (['draft', 'submitted'].includes(pr?.status ?? '') && can('purchase.requests.cancel')) {
+    if (['draft', 'submitted'].includes(pr?.status ?? '') && can('purchase.requests.delete')) {
       actions.push({ id: 'cancel', label: 'Batalkan', variant: 'destructive', onClick: () => void handleCancel(), isLoading: cancel.isPending })
     }
   }

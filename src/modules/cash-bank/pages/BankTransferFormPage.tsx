@@ -118,19 +118,19 @@ function BankTransferFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
-  if (!isCreate && canChange(transfer?.status) && can('cash_bank.edit')) {
-    if (transfer?.status !== 'draft' && !editing) {
+  if (!isCreate && canChange(transfer?.status)) {
+    if (transfer?.status !== 'draft' && !editing && can('cash_bank.transfers.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
     }
-    if (can('cash_bank.edit')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+    if (can('cash_bank.transfers.delete')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
   }
   if (editing) {
     actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
   }
-  if (isEditable && can(isCreate ? 'cash_bank.create' : 'cash_bank.edit')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
+  if (isEditable && can(isCreate ? 'cash_bank.transfers.create' : 'cash_bank.transfers.edit')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   if (isEditable && formDraft.isRestored) actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: handleDiscardDraft })
-  if (!isCreate && transfer?.status === 'draft' && can('cash_bank.post')) actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
-  if (!isCreate && transfer?.status === 'posted' && can('cash_bank.void')) actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
+  if (!isCreate && transfer?.status === 'draft' && can('cash_bank.transfers.approve')) actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
+  if (!isCreate && transfer?.status === 'posted' && can('cash_bank.transfers.delete')) actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
 
   if (!isCreate && isLoading) return <FormLayout title="Transfer Bank" breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Transfer Bank', path: '/cash-bank/bank-transfers' }, { label: 'Memuat...' }]}><div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat...</div></FormLayout>
 

@@ -725,6 +725,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____ReportExportButton.tsx
 | | | |____constants/
 | | | | |____reportCategories.ts
+| | | | |____reportPermissions.ts
 | | | | |____reportDomainIcons.ts
 | | | | |____reportKeyRoutes.ts
 | | | | |____pageSizes.ts
@@ -854,6 +855,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____salesReceipt.types.ts
 | | | | |____salesReturn.types.ts
 | | |____settings/
+| | | |____components/
+| | | | |____PermissionMatrix.tsx
 | | | |____constants/
 | | | | |____transactionEditMode.ts
 | | | |____hooks/
@@ -862,12 +865,12 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____useTransactionEditMode.ts
 | | | |____pages/
 | | | | |____AccessAuditPage.tsx
+| | | | |____AcceptInvitationPage.tsx
 | | | | |____AccountingPeriodPage.tsx
 | | | | |____AccountMappingSettingsPage.tsx
 | | | | |____CompanySettingsPage.tsx
 | | | | |____InvitationsPage.tsx
 | | | | |____MyPreferencesPage.tsx
-| | | | |____RolesPage.tsx
 | | | | |____TransactionSettingsPage.tsx
 | | | | |____UsersPage.tsx
 | | | |____routes.tsx

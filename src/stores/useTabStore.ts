@@ -113,7 +113,7 @@ function getActiveModuleForTab(tab: PrimaryTab | null): ModuleKey | null {
  * `/master-data/account-mappings` ikut dihapus — tanpa dipensiunkan di sini,
  * user yang tabnya tersimpan di sessionStorage mendarat di rute yang tidak ada.
  */
-const RETIRED_TAB_IDS = new Set(['sales-ar', 'purchase-ap', 'master-data-account-mappings'])
+const RETIRED_TAB_IDS = new Set(['sales-ar', 'purchase-ap', 'master-data-account-mappings', 'settings-roles'])
 
 function createListTab(tab: PrimaryTab): SecondaryTab {
   return {
@@ -360,7 +360,7 @@ export const useTabStore = create<TabState & TabActions>()(
     }),
     {
       name: 'seaside-erp-tabs',
-      version: 6,
+      version: 7,
       storage: createJSONStorage(() => sessionStorage),
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') {

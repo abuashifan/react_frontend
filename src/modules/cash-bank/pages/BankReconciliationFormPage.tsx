@@ -121,8 +121,8 @@ function BankReconciliationFormPageContent() {
   const clearedTotal = clearedLines.reduce((sum, l) => sum + (l.direction === 'in' ? l.amount : -l.amount), 0)
 
   const actions: DocumentActionButton[] = []
-  if (isCreate && can('cash_bank.create')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'primary', onClick: saveAndClose, isLoading: isSubmitting })
-  if (!isCreate && isDraft && can('cash_bank.edit')) actions.push({ id: 'update', label: 'Simpan & Tutup', variant: 'primary', onClick: saveAndClose, isLoading: isSubmitting || update.isPending })
+  if (isCreate && can('cash_bank.reconciliations.create')) actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'primary', onClick: saveAndClose, isLoading: isSubmitting })
+  if (!isCreate && isDraft && can('cash_bank.reconciliations.edit')) actions.push({ id: 'update', label: 'Simpan & Tutup', variant: 'primary', onClick: saveAndClose, isLoading: isSubmitting || update.isPending })
 
   if (!isCreate && isLoading) return <FormLayout title="Rekonsiliasi Bank" breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Rekonsiliasi Bank', path: '/cash-bank/bank-reconciliations' }, { label: 'Memuat...' }]}><div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat...</div></FormLayout>
 

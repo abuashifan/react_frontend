@@ -93,7 +93,7 @@ export default function FiscalYearPage() {
           )}
         </FormSection>
 
-        {fy?.status === 'open' && can('accounting.fiscal-years.manage') && (
+        {fy?.status === 'open' && can('accounting.fiscal_year.view') && (
           <FormSection title="Tutup Tahun Fiskal">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal Jurnal Penutup</Label>
@@ -117,7 +117,7 @@ export default function FiscalYearPage() {
           </FormSection>
         )}
 
-        {fy?.status === 'closed' && can('accounting.fiscal-years.manage') && (
+        {fy?.status === 'closed' && can('accounting.fiscal_year.view') && (
           <FormSection title="Buka Kembali Tahun Fiskal">
             <div className="flex flex-col gap-1 md:col-span-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Alasan Reopen <span className="text-red-500">*</span></Label>

@@ -12,6 +12,6 @@ const OpeningBalanceStatusPage = lazy(() => import('./pages/OpeningBalanceStatus
 export const openingBalanceRoutes: RouteObject[] = [
   {
     path: '/opening-balance',
-    element: <ProtectedRoute permission="opening_balance.view"><OpeningBalanceStatusPage /></ProtectedRoute>,
+    element: <ProtectedRoute permission="accounting.opening_balance.view"><OpeningBalanceStatusPage /></ProtectedRoute>,
   },
 ]

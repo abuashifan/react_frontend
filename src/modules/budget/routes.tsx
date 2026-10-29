@@ -16,7 +16,7 @@ const ProjectFinancialSummaryPage = lazy(() => import('./pages/ProjectFinancialS
 const BudgetVersionHistoryPage = lazy(() => import('./pages/BudgetVersionHistoryPage'))
 const BudgetDashboardPage = lazy(() => import('./pages/BudgetDashboardPage'))
 
-const wrap = (element: ReactElement, permission = 'budgets.view') => (
+const wrap = (element: ReactElement, permission = 'budget.submissions.view') => (
   <ProtectedRoute permission={permission}>{element}</ProtectedRoute>
 )
 
@@ -29,9 +29,9 @@ export const budgetRoutes: RouteObject[] = [
   { path: '/budget/submissions', element: wrap(<BudgetSubmissionListPage />) },
   // Rute yang membuat memakai permission membuat, mengikuti pola modul lain —
   // `budgets.view` saja akan menampilkan form yang pasti ditolak backend.
-  { path: '/budget/submissions/new', element: wrap(<BudgetSubmissionCreatePage />, 'budgets.submit') },
+  { path: '/budget/submissions/new', element: wrap(<BudgetSubmissionCreatePage />, 'budget.submissions.create') },
   { path: '/budget/periods', element: wrap(<BudgetPeriodListPage />) },
-  { path: '/budget/periods/new', element: wrap(<BudgetPeriodFormPage />, 'budgets.manage') },
+  { path: '/budget/periods/new', element: wrap(<BudgetPeriodFormPage />, 'budget.periods.manage') },
   { path: '/budget/periods/:id', element: wrap(<BudgetPeriodDetailPage />) },
   { path: '/budget/submissions/:id', element: wrap(<BudgetSubmissionPage />) },
   { path: '/budget/submissions/:id/versions', element: wrap(<BudgetVersionHistoryPage />) },

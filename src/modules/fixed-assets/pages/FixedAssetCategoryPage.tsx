@@ -217,7 +217,7 @@ export default function FixedAssetCategoryPage() {
       header: '',
       size: 80,
       cell: ({ original }) => (
-        <PermissionGuard permission="fixed_assets.settings.manage">
+        <PermissionGuard permission="fixed_assets.settings.edit">
           <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#64748b] hover:text-[#326273]" onClick={() => openEdit(original)}>
             <Pencil className="h-3.5 w-3.5" />
           </Button>
@@ -231,7 +231,7 @@ export default function FixedAssetCategoryPage() {
       title="Kategori Aktiva"
       breadcrumb={[{ label: 'Aktiva Tetap' }, { label: 'Kategori' }]}
       action={
-        <PermissionGuard permission="fixed_assets.settings.manage">
+        <PermissionGuard permission="fixed_assets.settings.create">
           <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={openCreate}>
             <Plus className="mr-1 h-3.5 w-3.5" />
             Tambah Kategori

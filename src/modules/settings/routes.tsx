@@ -8,7 +8,6 @@ const TransactionSettingsPage = lazy(() => import('./pages/TransactionSettingsPa
 const AccountMappingSettingsPage = lazy(() => import('./pages/AccountMappingSettingsPage'))
 const AccountingPeriodPage = lazy(() => import('./pages/AccountingPeriodPage'))
 const UsersPage = lazy(() => import('./pages/UsersPage'))
-const RolesPage = lazy(() => import('./pages/RolesPage'))
 const InvitationsPage = lazy(() => import('./pages/InvitationsPage'))
 const AccessAuditPage = lazy(() => import('./pages/AccessAuditPage'))
 const MyPreferencesPage = lazy(() => import('./pages/MyPreferencesPage'))
@@ -20,27 +19,23 @@ export const settingsRoutes: RouteObject[] = [
   },
   {
     path: '/settings/transactions',
-    element: <ProtectedRoute permission="settings.company.view"><TransactionSettingsPage /></ProtectedRoute>,
+    element: <ProtectedRoute permission="settings.transactions.view"><TransactionSettingsPage /></ProtectedRoute>,
   },
   {
     path: '/settings/account-mapping',
-    element: <ProtectedRoute permission="settings.company.view"><AccountMappingSettingsPage /></ProtectedRoute>,
+    element: <ProtectedRoute permission="settings.account_mapping.view"><AccountMappingSettingsPage /></ProtectedRoute>,
   },
   {
     path: '/settings/accounting-period',
-    element: <ProtectedRoute permission="settings.company.view"><AccountingPeriodPage /></ProtectedRoute>,
+    element: <ProtectedRoute permission="accounting.period_locks.view"><AccountingPeriodPage /></ProtectedRoute>,
   },
   {
     path: '/settings/users',
     element: <ProtectedRoute permission="access.users.view"><UsersPage /></ProtectedRoute>,
   },
   {
-    path: '/settings/roles',
-    element: <ProtectedRoute permission="access.roles.view"><RolesPage /></ProtectedRoute>,
-  },
-  {
     path: '/settings/invitations',
-    element: <ProtectedRoute permission="access.invitations.view"><InvitationsPage /></ProtectedRoute>,
+    element: <ProtectedRoute permission={['access.invitations.view', 'access.invitations.create']}><InvitationsPage /></ProtectedRoute>,
   },
   {
     path: '/settings/audit',

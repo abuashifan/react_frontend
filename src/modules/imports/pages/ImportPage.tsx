@@ -477,7 +477,8 @@ export default function ImportPage() {
     },
   ]
 
-  const canCommit = (batch?.valid_rows ?? 0) > 0 && batch?.status === 'previewed' && can('imports.commit')
+  const importPermission = (key?: string) => ({ sales_invoice: 'sales.invoices.import', vendor_bill: 'purchase.bills.import', journal_entry: 'accounting.journals.import' }[key ?? ''] ?? 'master_data.import.execute')
+  const canCommit = (batch?.valid_rows ?? 0) > 0 && batch?.status === 'previewed' && can(importPermission(batch?.profile))
   const isDone = batch?.status === 'completed' || batch?.status === 'failed'
   const isCommitting = batch?.status === 'committing'
 
@@ -807,8 +808,8 @@ export default function ImportPage() {
           onDiscard={(uuid) => void doDiscard(uuid)}
           reverting={revert.isPending}
           discarding={cancel.isPending}
-          canRevert={can('imports.revert')}
-          canCancel={can('imports.cancel')}
+          canRevert={can('master_data.import.revert')}
+          canCancel={can(importPermission(batch?.profile))}
           activeUuid={activeUuid}
         />
       </div>

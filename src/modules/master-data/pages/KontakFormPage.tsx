@@ -176,7 +176,7 @@ function KontakFormPageContent() {
           >
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
             {!isCreate && kontak && (
-              <PermissionGuard permission={kontak.is_active ? 'contacts.deactivate' : 'contacts.edit'}>
+              <PermissionGuard permission={kontak.is_active ? 'master_data.contacts.delete' : 'master_data.contacts.edit'}>
                 <Button
                   type="button"
                   variant="outline"

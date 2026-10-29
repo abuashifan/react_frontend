@@ -2,6 +2,7 @@ import { useParams } from 'react-router-dom'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { ReportDomainPanel } from '../components/ReportDomainPanel'
+import { REPORT_CATEGORIES } from '../constants/reportPermissions'
 import { DOMAIN_BY_PATH } from '../constants/reportCategories'
 
 export default function ReportCategoryPage() {
@@ -17,7 +18,7 @@ export default function ReportCategoryPage() {
   }
 
   return (
-    <PermissionGuard permission="reports.view">
+    <PermissionGuard permission={`reports.${REPORT_CATEGORIES[domain.categoryPath] ?? domain.categoryPath}.view`}>
       <WorkspaceLayout hideHeader>
         <ReportDomainPanel domainId={domain.categoryPath} />
       </WorkspaceLayout>

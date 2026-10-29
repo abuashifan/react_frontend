@@ -63,7 +63,7 @@ export default function StockOpnameListPage() {
       label: 'Void Terpilih',
       icon: <Trash2 className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'inventory.opname.void',
+      permission: 'inventory.opname.delete',
       onClick: (ids) => {
         const eligible = rows.filter((opname) => ids.includes(String(opname.id)) && opname.status !== 'void')
         if (eligible.length === 0) {

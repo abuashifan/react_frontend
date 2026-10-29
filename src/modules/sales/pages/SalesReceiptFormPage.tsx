@@ -171,23 +171,23 @@ function SalesReceiptFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
-  if (!isCreate && canChange(receipt?.status) && can('sales.receipts.create')) {
-    if (receipt?.status !== 'draft' && !editing) {
+  if (!isCreate && canChange(receipt?.status)) {
+    if (receipt?.status !== 'draft' && !editing && can('sales.receipts.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
     }
-    actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+    if (can('sales.receipts.delete')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
   }
   if (editing) {
     actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
   }
-  if (isEditable && can('sales.receipts.create')) {
+  if (isEditable && can(isCreate ? 'sales.receipts.create' : 'sales.receipts.edit')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
-    if (receipt?.status === 'draft' && can('sales.receipts.post')) {
+    if (receipt?.status === 'draft' && can('sales.receipts.approve')) {
       actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
     }
-    if (receipt?.status === 'posted' && can('sales.receipts.void')) {
+    if (receipt?.status === 'posted' && can('sales.receipts.delete')) {
       actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
     }
   }

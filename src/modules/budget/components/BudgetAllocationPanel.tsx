@@ -131,7 +131,7 @@ export function BudgetAllocationPanel({ periodId }: Props) {
             Periode ini belum punya pagu. Pagu biasanya diisi bersamaan saat periode dibuat — tambahkan pagu
             perusahaan di sini untuk mulai mengalokasikan ke departemen.
           </p>
-          {can('budgets.manage') && (
+          {can('budget.periods.manage') && (
             <Button size="sm" className="mt-3 text-[12px]" onClick={openRootDialog}>
               Buat Pagu Perusahaan
             </Button>
@@ -144,7 +144,7 @@ export function BudgetAllocationPanel({ periodId }: Props) {
               <p className="text-[11px] text-[#64748b]">Total Pagu Perusahaan</p>
               <p className="text-[16px] font-bold tabular-nums text-[#1e293b]">{formatCurrency(parseFloat(root.amount))}</p>
             </div>
-            {can('budgets.manage') && (
+            {can('budget.periods.manage') && (
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" className="text-[12px]" onClick={openRootDialog}>
                   <Pencil className="mr-1 h-3.5 w-3.5" /> Ubah
@@ -181,7 +181,7 @@ export function BudgetAllocationPanel({ periodId }: Props) {
                     </td>
                     <td className="px-3 py-1.5 text-right tabular-nums">{formatCurrency(parseFloat(row.amount))}</td>
                     <td className="px-3 py-1.5 text-center">
-                      {can('budgets.manage') && (
+                      {can('budget.periods.manage') && (
                         <button
                           type="button"
                           onClick={() => openEditDeptDialog(row)}

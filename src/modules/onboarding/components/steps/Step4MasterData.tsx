@@ -182,8 +182,8 @@ export function Step4MasterData({ onComplete, onBack }: Props) {
         ]}
         items={warehouses}
         onAdd={handleAddWarehouse}
-        onEdit={can('warehouses.edit') ? handleEditWarehouse : undefined}
-        onDelete={can('warehouses.deactivate') ? handleDeleteWarehouse : undefined}
+        onEdit={can('master_data.warehouses.edit') ? handleEditWarehouse : undefined}
+        onDelete={can('master_data.warehouses.delete') ? handleDeleteWarehouse : undefined}
         deleteNote="dan tidak lagi muncul sebagai pilihan gudang di transaksi. Gudang dinonaktifkan, bukan dihapus permanen — data yang sudah memakainya tetap utuh dan gudang bisa diaktifkan lagi lewat Master Data → Gudang."
       />
 
@@ -197,8 +197,8 @@ export function Step4MasterData({ onComplete, onBack }: Props) {
         ]}
         items={units}
         onAdd={handleAddUnit}
-        onEdit={can('units.edit') ? handleEditUnit : undefined}
-        onDelete={can('units.deactivate') ? handleDeleteUnit : undefined}
+        onEdit={can('master_data.units.edit') ? handleEditUnit : undefined}
+        onDelete={can('master_data.units.delete') ? handleDeleteUnit : undefined}
         deleteNote="dan tidak lagi muncul sebagai pilihan satuan di form produk. Satuan dinonaktifkan, bukan dihapus permanen — produk yang sudah memakainya tetap utuh dan satuan bisa diaktifkan lagi lewat Master Data → Satuan."
       />
 
@@ -212,8 +212,8 @@ export function Step4MasterData({ onComplete, onBack }: Props) {
         ]}
         items={paymentTerms}
         onAdd={handleAddPaymentTerm}
-        onEdit={can('payment_terms.edit') ? handleEditPaymentTerm : undefined}
-        onDelete={can('payment_terms.deactivate') ? handleDeletePaymentTerm : undefined}
+        onEdit={can('master_data.payment_terms.edit') ? handleEditPaymentTerm : undefined}
+        onDelete={can('master_data.payment_terms.delete') ? handleDeletePaymentTerm : undefined}
         deleteNote="dan tidak lagi muncul sebagai pilihan di faktur maupun tagihan. Syarat pembayaran dinonaktifkan, bukan dihapus permanen — dokumen yang sudah memakainya tetap utuh dan bisa diaktifkan lagi lewat Master Data → Syarat Pembayaran."
       />
 

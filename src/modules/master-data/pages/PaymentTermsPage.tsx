@@ -132,7 +132,7 @@ export default function PaymentTermsPage() {
       id: 'bulk-activate',
       label: 'Aktifkan Terpilih',
       icon: <Power className="h-3.5 w-3.5" />,
-      permission: 'payment_terms.edit',
+      permission: 'master_data.payment_terms.edit',
       onClick: (ids) => runBulkStatusChange(ids, true, (id) => activate.mutateAsync(id)),
     },
     {
@@ -140,7 +140,7 @@ export default function PaymentTermsPage() {
       label: 'Nonaktifkan Terpilih',
       icon: <PowerOff className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'payment_terms.deactivate',
+      permission: 'master_data.payment_terms.delete',
       onClick: (ids) => runBulkStatusChange(ids, false, (id) => deactivate.mutateAsync(id)),
     },
   ]
@@ -202,7 +202,7 @@ export default function PaymentTermsPage() {
       breadcrumb={[{ label: 'Master Data' }, { label: 'Syarat Pembayaran' }]}
       sidebar={sidebar}
       action={
-        <PermissionGuard permission="payment_terms.create">
+        <PermissionGuard permission="master_data.payment_terms.create">
           <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={openCreate}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Syarat Bayar
           </Button>
@@ -224,7 +224,7 @@ export default function PaymentTermsPage() {
         // tidak ada tombol edit per baris. Tanpa izin ubah, baris tidak bisa
         // diklik sama sekali supaya user tidak dibawa ke dialog yang pasti
         // ditolak backend saat disimpan.
-        onRowClick={can('payment_terms.edit') ? openEdit : undefined}
+        onRowClick={can('master_data.payment_terms.edit') ? openEdit : undefined}
         emptyTitle="Belum ada syarat pembayaran"
         emptyDescription="Tambahkan syarat pembayaran seperti COD, Net 30, dll."
       />

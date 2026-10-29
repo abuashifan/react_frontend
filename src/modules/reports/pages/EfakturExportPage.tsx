@@ -3,6 +3,7 @@ import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { Download, FileSpreadsheet } from 'lucide-react'
 import { reportsApi } from '../services/reportsApi'
 import type { ReportParams } from '../types/reports.types'
@@ -59,10 +60,10 @@ export default function EfakturExportPage() {
               <FileSpreadsheet className="h-4 w-4 text-[#5c9ead]" /> E-Faktur Keluaran (Penjualan)
             </div>
             <p className="text-[12px] text-[#64748b]">Faktur penjualan taxable yang sudah diposting, format CSV DJP siap diimpor ke aplikasi e-Faktur.</p>
-            <Button onClick={() => handleDownload('sales')} disabled={downloading !== null} className="h-8 w-fit bg-[#5c9ead] px-4 text-[13px] hover:bg-[#4a8a9b]">
+            <PermissionGuard permission="reports.tax.export"><Button onClick={() => handleDownload('sales')} disabled={downloading !== null} className="h-8 w-fit bg-[#5c9ead] px-4 text-[13px] hover:bg-[#4a8a9b]">
               <Download className="mr-1.5 h-3.5 w-3.5" />
               {downloading === 'sales' ? 'Menyiapkan...' : 'Unduh CSV Penjualan'}
-            </Button>
+            </Button></PermissionGuard>
           </div>
 
           <div className="flex flex-col gap-3 rounded-lg border border-[#e2e8f0] bg-white p-4">
@@ -70,10 +71,10 @@ export default function EfakturExportPage() {
               <FileSpreadsheet className="h-4 w-4 text-[#5c9ead]" /> E-Faktur Masukan (Pembelian)
             </div>
             <p className="text-[12px] text-[#64748b]">Tagihan pembelian taxable yang sudah diposting, memakai nomor Faktur Pajak vendor.</p>
-            <Button onClick={() => handleDownload('purchase')} disabled={downloading !== null} className="h-8 w-fit bg-[#5c9ead] px-4 text-[13px] hover:bg-[#4a8a9b]">
+            <PermissionGuard permission="reports.tax.export"><Button onClick={() => handleDownload('purchase')} disabled={downloading !== null} className="h-8 w-fit bg-[#5c9ead] px-4 text-[13px] hover:bg-[#4a8a9b]">
               <Download className="mr-1.5 h-3.5 w-3.5" />
               {downloading === 'purchase' ? 'Menyiapkan...' : 'Unduh CSV Pembelian'}
-            </Button>
+            </Button></PermissionGuard>
           </div>
         </div>
       </div>

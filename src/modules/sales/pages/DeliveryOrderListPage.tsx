@@ -112,7 +112,7 @@ export default function DeliveryOrderListPage() {
       breadcrumb={[{ label: 'Sales' }, { label: 'Delivery Order' }]}
       sidebar={sidebar}
       action={
-        <PermissionGuard permission="sales.delivery-orders.create">
+        <PermissionGuard permission="sales.delivery_orders.create">
           <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => openRecordTab({ label: 'Delivery Order Baru', path: '/sales/delivery-orders/create' })}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Buat DO
           </Button>

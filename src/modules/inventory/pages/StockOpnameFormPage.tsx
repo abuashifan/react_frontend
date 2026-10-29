@@ -177,10 +177,10 @@ function StockOpnameFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
-  if (!isCreate && canChange(opname?.status, ['draft', 'counted']) && can('inventory.opname.finalize')) {
-    if (can('inventory.opname.edit')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+  if (!isCreate && canChange(opname?.status, ['draft', 'counted'])) {
+    if (can('inventory.opname.delete')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
   }
-  if (!isCreate && opname?.status === 'finalized' && canChange(opname?.status, ['draft', 'counted']) && can('inventory.opname.finalize')) {
+  if (!isCreate && opname?.status === 'finalized' && canChange(opname?.status, ['draft', 'counted']) && can('inventory.opname.approve')) {
     actions.push({ id: 'reopen', label: 'Buka Kembali', variant: 'secondary', onClick: () => void handleReopen(), isLoading: reopen.isPending })
   }
   if (isCreate && can('inventory.opname.create')) {
@@ -196,10 +196,10 @@ function StockOpnameFormPageContent() {
     if (opname?.status === 'draft' && existingLinesCount > 0 && can('inventory.opname.edit')) {
       actions.push({ id: 'counted', label: 'Tandai Selesai Hitung', variant: 'secondary', onClick: () => void handleMarkCounted(), isLoading: markCounted.isPending })
     }
-    if (opname?.status === 'counted' && can('inventory.opname.finalize')) {
+    if (opname?.status === 'counted' && can('inventory.opname.approve')) {
       actions.push({ id: 'finalize', label: 'Finalisasi', variant: 'primary', onClick: () => setFinalizeConfirmOpen(true) })
     }
-    if (['draft', 'counted', 'finalized'].includes(opname?.status ?? '') && can('inventory.opname.void')) {
+    if (['draft', 'counted', 'finalized'].includes(opname?.status ?? '') && can('inventory.opname.delete')) {
       actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
     }
   }

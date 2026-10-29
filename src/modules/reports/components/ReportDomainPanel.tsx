@@ -1,4 +1,6 @@
 import { FileText } from 'lucide-react'
+import { usePermission } from '@/hooks/usePermission'
+import { REPORT_CATEGORIES } from '../constants/reportPermissions'
 import { useTabStore } from '@/stores/useTabStore'
 import { DOMAIN_BY_PATH, filterReports } from '../constants/reportCategories'
 import { cn } from '@/lib/utils'
@@ -13,10 +15,11 @@ export function ReportDomainPanel({ domainId, searchQuery = '' }: ReportDomainPa
   const activePrimaryTabId = useTabStore((s) => s.activePrimaryTabId)
   const openSecondaryTab = useTabStore((s) => s.openSecondaryTab)
   const domain = DOMAIN_BY_PATH[domainId]
+  const { can } = usePermission()
 
   if (!domain) return null
 
-  const reports = filterReports(domain.reports, searchQuery)
+  const reports = filterReports(domain.reports, searchQuery).filter((report) => can(report.permission ?? `reports.${REPORT_CATEGORIES[domainId] ?? domainId}.view`))
   if (reports.length === 0) return null
 
   return (

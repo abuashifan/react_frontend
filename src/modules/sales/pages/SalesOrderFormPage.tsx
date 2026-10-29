@@ -226,7 +226,7 @@ function SalesOrderFormPageContent() {
   const hasUninvoiced = !!order?.lines.some((l) => (l.invoiced_quantity ?? 0) < l.quantity)
 
   const actions: DocumentActionButton[] = []
-  if (isEditable && can('sales.orders.create')) {
+  if (isEditable && can(isCreate ? 'sales.orders.create' : 'sales.orders.edit')) {
     actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
@@ -242,7 +242,7 @@ function SalesOrderFormPageContent() {
     if (isFollowUpStatus && hasUninvoiced && can('sales.invoices.create')) {
       actions.push({ id: 'create_invoice', label: 'Buat Invoice', variant: 'secondary', onClick: () => void handleCreateInvoice(), isLoading: createInvoice.isPending })
     }
-    if (['draft', 'approved'].includes(order?.status ?? '') && can('sales.orders.update')) {
+    if (['draft', 'approved'].includes(order?.status ?? '') && can('sales.orders.edit')) {
       actions.push({ id: 'cancel', label: 'Batalkan', variant: 'destructive', onClick: () => void handleCancel(), isLoading: cancel.isPending })
     }
   }

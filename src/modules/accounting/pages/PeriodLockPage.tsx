@@ -82,7 +82,7 @@ export default function PeriodLockPage() {
           </div>
         </FormSection>
 
-        {can('accounting.period-locks.manage') && (
+        {can('accounting.period_locks.view') && (
           <FormSection title="Atur Period Lock">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Lock Sampai Tanggal</Label>

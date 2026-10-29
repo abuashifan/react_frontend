@@ -139,7 +139,7 @@ export default function PurchaseOrderListPage() {
       sidebar={sidebar}
       action={
         <>
-          <ListExportButton
+          <ListExportButton permission="purchase.orders.export"
             filename="purchase-order"
             sheetName="Purchase Order"
             columns={EXPORT_COLUMNS}

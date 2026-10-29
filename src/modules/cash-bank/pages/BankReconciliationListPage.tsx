@@ -60,7 +60,7 @@ export default function BankReconciliationListPage() {
 
   return (
     <WorkspaceLayout title="Rekonsiliasi Bank" breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Rekonsiliasi Bank' }]}
-      action={<PermissionGuard permission="cash_bank.create"><Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Rekonsiliasi Baru', path: '/cash-bank/bank-reconciliations/create' })}><Plus className="mr-1 h-3.5 w-3.5" /> Buat Rekonsiliasi</Button></PermissionGuard>}>
+      action={<PermissionGuard permission="cash_bank.reconciliations.create"><Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Rekonsiliasi Baru', path: '/cash-bank/bank-reconciliations/create' })}><Plus className="mr-1 h-3.5 w-3.5" /> Buat Rekonsiliasi</Button></PermissionGuard>}>
       <DataTable data={data?.data ?? []} columns={columns} totalRows={data?.meta.total ?? 0} isLoading={isLoading} isFetching={isFetching} pagination={{ pageIndex: page, pageSize: 25 }} onPaginationChange={(p) => setPage(p.pageIndex)} sort={sort} onSortChange={toggleSort} emptyTitle="Belum ada rekonsiliasi bank" emptyDescription="Rekonsiliasi saldo buku vs rekening koran." />
     </WorkspaceLayout>
   )

@@ -69,7 +69,7 @@ export default function VendorDepositListPage() {
       label: 'Void Terpilih',
       icon: <Trash2 className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'purchase.deposits.void',
+      permission: 'purchase.deposits.delete',
       onClick: (ids) => {
         const eligible = rows.filter((deposit) => ids.includes(String(deposit.id)) && deposit.status !== 'void')
         if (eligible.length === 0) {

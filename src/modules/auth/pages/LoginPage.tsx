@@ -134,6 +134,12 @@ export function LoginPage() {
 
       setAuth(token, user, [], [], values.remember_me)
 
+      const returnPath = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname
+      if (returnPath && /^\/invitations\/[^/]+\/accept$/.test(returnPath)) {
+        navigate(returnPath, { replace: true })
+        return
+      }
+
       const companiesResponse = await companyApi.list()
       const companies = companiesResponse.data
       setCompanies(companies)

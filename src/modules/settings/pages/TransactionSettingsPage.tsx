@@ -150,7 +150,7 @@ export default function TransactionSettingsPage() {
           </div>
         </FormSection>
 
-        <PermissionGuard permission="settings.company.edit" fallback={null}>
+        <PermissionGuard permission="settings.transactions.edit" fallback={null}>
           <div className="flex justify-end">
             <Button type="button" onClick={() => void handleSave()} disabled={updateAccounting.isPending || updateTransactionDefaults.isPending} className="h-9 bg-[#5c9ead] px-6 text-[13px] hover:bg-[#4a8a9b]">
               {updateAccounting.isPending || updateTransactionDefaults.isPending ? 'Menyimpan...' : 'Simpan Perubahan'}

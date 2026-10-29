@@ -196,7 +196,7 @@ function PurchaseOrderFormPageContent() {
   const hasUnbilled = !!po?.lines.some((l) => (l.billed_quantity ?? 0) < l.quantity)
 
   const actions: DocumentActionButton[] = []
-  if (isEditable && can('purchase.orders.create')) {
+  if (isEditable && can(isCreate ? 'purchase.orders.create' : 'purchase.orders.edit')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
@@ -212,7 +212,7 @@ function PurchaseOrderFormPageContent() {
     if (isFollowUpStatus && hasUnbilled && can('purchase.bills.create')) {
       actions.push({ id: 'create_bill', label: 'Buat Tagihan', variant: 'secondary', onClick: () => void handleCreateBill(), isLoading: createBill.isPending })
     }
-    if (['draft', 'approved'].includes(po?.status ?? '') && can('purchase.orders.cancel')) {
+    if (['draft', 'approved'].includes(po?.status ?? '') && can('purchase.orders.delete')) {
       actions.push({ id: 'cancel', label: 'Batalkan', variant: 'destructive', onClick: () => void handleCancel(), isLoading: cancel.isPending })
     }
   }

@@ -124,7 +124,7 @@ export default function PurchaseRequestListPage() {
       sidebar={sidebar}
       action={
         <>
-          <ListExportButton
+          <ListExportButton permission="purchase.requests.export"
             filename="permintaan-pembelian"
             sheetName="Permintaan Pembelian"
             columns={EXPORT_COLUMNS}

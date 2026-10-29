@@ -323,11 +323,11 @@ function StockAdjustmentFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
-  if (!isCreate && canChange(adj?.status) && can('inventory.adjustments.edit')) {
-    if (adj?.status !== 'draft' && !editing) {
+  if (!isCreate && canChange(adj?.status)) {
+    if (adj?.status !== 'draft' && !editing && can('inventory.adjustments.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
     }
-    if (can('inventory.adjustments.edit')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+    if (can('inventory.adjustments.delete')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
   }
   if (editing) {
     actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
@@ -345,10 +345,10 @@ function StockAdjustmentFormPageContent() {
     if (adj?.status === 'draft' && can('inventory.adjustments.approve')) {
       actions.push({ id: 'approve', label: 'Approve', variant: 'primary', onClick: () => setApproveConfirmOpen(true) })
     }
-    if (adj?.status === 'approved' && can('inventory.adjustments.post')) {
+    if (adj?.status === 'approved' && can('inventory.adjustments.approve')) {
       actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => setPostConfirmOpen(true) })
     }
-    if (['draft', 'approved', 'posted'].includes(adj?.status ?? '') && can('inventory.adjustments.void')) {
+    if (['draft', 'approved', 'posted'].includes(adj?.status ?? '') && can('inventory.adjustments.delete')) {
       actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
     }
   }

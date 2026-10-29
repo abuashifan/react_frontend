@@ -335,26 +335,26 @@ function JournalFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
-  if (!isCreate && isManualJournal && canChange(journal?.status) && can('journal.edit')) {
-    if (journal?.status !== 'draft' && !editing) {
+  if (!isCreate && isManualJournal && canChange(journal?.status)) {
+    if (journal?.status !== 'draft' && !editing && can('accounting.journals.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
     }
-    actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+    if (can('accounting.journals.delete')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
   }
   if (editing) {
     actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
   }
-  if (isEditable && can('journal.create')) {
+  if (isEditable && can(isCreate ? 'accounting.journals.create' : 'accounting.journals.edit')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
-    if (journal?.status === 'draft' && can('journal.approve')) {
+    if (journal?.status === 'draft' && can('accounting.journals.approve')) {
       actions.push({ id: 'approve', label: 'Approve', variant: 'secondary', onClick: () => void handleApprove(), isLoading: approve.isPending })
     }
-    if (['draft', 'approved'].includes(journal?.status ?? '') && can('journal.post')) {
+    if (['draft', 'approved'].includes(journal?.status ?? '') && can('accounting.journals.approve')) {
       actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
     }
-    if (['draft', 'approved', 'posted'].includes(journal?.status ?? '') && can('journal.void')) {
+    if (['draft', 'approved', 'posted'].includes(journal?.status ?? '') && can('accounting.journals.delete')) {
       actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
     }
   }

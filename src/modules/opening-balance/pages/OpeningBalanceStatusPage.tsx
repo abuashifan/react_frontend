@@ -148,7 +148,7 @@ export default function OpeningBalanceStatusPage() {
                 Terkunci — sudah ada jurnal pembuka bertanggal ini. Batalkan jurnalnya dulu kalau tanggalnya salah.
               </p>
             ) : (
-              <PermissionGuard permission="opening_balance.manage" fallback={null}>
+              <PermissionGuard permission="accounting.opening_balance.edit" fallback={null}>
                 <Button
                   type="button"
                   onClick={() => void handleSaveDate()}
@@ -207,7 +207,7 @@ export default function OpeningBalanceStatusPage() {
                     <td className="px-3 py-2 text-[#64748b]">{journal.description}</td>
                     <td className="px-3 py-2 text-right tabular-nums text-[#334155]">{formatCurrency(journal.total_debit)}</td>
                     <td className="px-3 py-2 text-right">
-                      <PermissionGuard permission="opening_balance.reopen" fallback={null}>
+                      <PermissionGuard permission="accounting.opening_balance.reopen" fallback={null}>
                         <Button
                           type="button"
                           variant="outline"
@@ -280,7 +280,7 @@ function ClearingCard({ status, onClose, closing }: { status: OBStatus; onClose:
       </div>
 
       {!settled && status.journal_count > 0 && (
-        <PermissionGuard permission="opening_balance.post" fallback={null}>
+        <PermissionGuard permission="accounting.opening_balance.approve" fallback={null}>
           <Button
             type="button"
             onClick={onClose}

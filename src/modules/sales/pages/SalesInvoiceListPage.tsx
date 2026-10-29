@@ -103,7 +103,7 @@ export default function SalesInvoiceListPage() {
       label: 'Void Terpilih',
       icon: <Trash2 className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'sales.invoices.void',
+      permission: 'sales.invoices.delete',
       onClick: (ids) => {
         const eligible = rows.filter((invoice) => ids.includes(String(invoice.id)) && invoice.status !== 'void')
         if (eligible.length === 0) {
@@ -267,7 +267,7 @@ export default function SalesInvoiceListPage() {
         sidebar={sidebar}
         action={
           <>
-            <ListExportButton
+            <ListExportButton permission="sales.invoices.export"
               filename="invoice-penjualan"
               sheetName="Invoice Penjualan"
               columns={EXPORT_COLUMNS}

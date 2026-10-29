@@ -204,11 +204,11 @@ function QuotationFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
-  if (isEditable && can('sales.quotations.create')) {
+  if (isEditable && can(isCreate ? 'sales.quotations.create' : 'sales.quotations.edit')) {
     actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
-    if (quotation?.status === 'draft' && can('sales.quotations.update')) {
+    if (quotation?.status === 'draft' && can('sales.quotations.edit')) {
       actions.push({ id: 'send', label: 'Kirim', variant: 'primary', onClick: () => void handleSend(), isLoading: send.isPending })
     }
     if (quotation?.status === 'sent' && can('sales.quotations.approve')) {
@@ -222,7 +222,7 @@ function QuotationFormPageContent() {
     if (quotation?.status === 'accepted' && can('sales.orders.create')) {
       actions.push({ id: 'convert', label: 'Convert ke SO', variant: 'primary', onClick: () => void handleConvertToSO(), isLoading: isConverting })
     }
-    if (['draft', 'sent', 'approved'].includes(quotation?.status ?? '') && can('sales.quotations.update')) {
+    if (['draft', 'sent', 'approved'].includes(quotation?.status ?? '') && can('sales.quotations.edit')) {
       actions.push({ id: 'cancel', label: 'Batalkan', variant: 'destructive', onClick: () => void handleCancel(), isLoading: cancel.isPending })
     }
   }

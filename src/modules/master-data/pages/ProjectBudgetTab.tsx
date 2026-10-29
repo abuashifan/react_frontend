@@ -42,7 +42,7 @@ export function ProjectBudgetTab({ projectId, projectName, onOpenBudget }: Proje
     return (
       <section className="rounded-lg border border-[#d9e2e5] bg-white p-6 text-center">
         <p className="text-[13px] text-[#64748b]">Belum ada pagu anggaran.</p>
-        {can('budgets.manage') && (
+        {can('budget.periods.manage') && (
           <Button
             size="sm"
             variant="outline"
@@ -113,7 +113,7 @@ export function ProjectBudgetTab({ projectId, projectName, onOpenBudget }: Proje
           <p className="text-[13px] text-[#64748b]">
             Proyek ini belum punya baris anggaran pada periode {summary.period.name}.
           </p>
-          {can('budgets.submit') && (
+          {can('budget.submissions.create') && (
             <Button size="sm" variant="outline" className="mt-3 text-[12px]" onClick={openBudgetModule}>
               Buat Anggaran
             </Button>

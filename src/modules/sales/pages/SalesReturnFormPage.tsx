@@ -179,26 +179,26 @@ function SalesReturnFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
-  if (!isCreate && canChange(ret?.status) && can('sales.returns.create')) {
-    if (ret?.status !== 'draft' && !editing) {
+  if (!isCreate && canChange(ret?.status)) {
+    if (ret?.status !== 'draft' && !editing && can('sales.returns.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
     }
-    if (can('sales.returns.void')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+    if (can('sales.returns.delete')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
   }
   if (editing) {
     actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
   }
-  if (isEditable && can('sales.returns.create')) {
+  if (isEditable && can(isCreate ? 'sales.returns.create' : 'sales.returns.edit')) {
     actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
     if (ret?.status === 'draft' && can('sales.returns.approve')) {
       actions.push({ id: 'approve', label: 'Approve', variant: 'primary', onClick: () => void handleApprove(), isLoading: approve.isPending })
     }
-    if (ret?.status === 'approved' && can('sales.returns.post')) {
+    if (ret?.status === 'approved' && can('sales.returns.approve')) {
       actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
     }
-    if (ret?.status === 'posted' && can('sales.returns.void')) {
+    if (ret?.status === 'posted' && can('sales.returns.delete')) {
       actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
     }
   }

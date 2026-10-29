@@ -32,7 +32,7 @@ export const REPORT_DOMAINS: ReportDomain[] = [
       // Dipertahankan di domain Keuangan: `BudgetComparisonPage` masih hidup dan
       // endpointnya sengaja dijaga backend sebagai alias tipis. Menghapusnya demi
       // kerapian akan memutus halaman yang berfungsi.
-      { id: 'budget-comparison', title: 'Realisasi vs Anggaran', description: 'Perbandingan anggaran disetujui dengan realisasi jurnal', path: '/reports/budget/comparison', permission: 'budgets.view' },
+      { id: 'budget-comparison', title: 'Realisasi vs Anggaran', description: 'Perbandingan anggaran disetujui dengan realisasi jurnal', path: '/reports/budget/comparison', permission: 'budget.submissions.view' },
     ],
   },
   {
@@ -45,14 +45,14 @@ export const REPORT_DOMAINS: ReportDomain[] = [
     reports: [
       // Semua entri di bawah ini preset dari mesin yang sama; yang berbeda hanya
       // `group_by` dan `mode` awalnya, dibawa lewat `?preset=`.
-      { id: 'budget-summary', title: 'Ringkasan Anggaran', description: 'Total anggaran vs realisasi, bisa di-drill-down per dimensi', path: '/budget/analysis?preset=summary', permission: 'budgets.view' },
-      { id: 'budget-analysis', title: 'Anggaran vs Aktual', description: 'Anggaran vs realisasi lintas dimensi dengan drill-down', path: '/budget/analysis?preset=vs-actual', permission: 'budgets.view' },
-      { id: 'budget-variance', title: 'Analisis Variance', description: 'Selisih anggaran dengan realisasi, favorable/unfavorable', path: '/budget/analysis?preset=variance', permission: 'budgets.view' },
-      { id: 'budget-by-account', title: 'Anggaran per Akun', description: 'Anggaran dan realisasi dikelompokkan per akun COA', path: '/budget/analysis?preset=by-account', permission: 'budgets.view' },
-      { id: 'budget-by-cost-center', title: 'Anggaran per Cost Center', description: 'Anggaran dan realisasi dikelompokkan per departemen', path: '/budget/analysis?preset=by-cost-center', permission: 'budgets.view' },
-      { id: 'budget-by-project', title: 'Anggaran per Project', description: 'Anggaran dan realisasi dikelompokkan per proyek', path: '/budget/analysis?preset=by-project', permission: 'budgets.view' },
-      { id: 'budget-by-period', title: 'Anggaran per Periode', description: 'Anggaran bulanan; baris tahunan ditampilkan terpisah', path: '/budget/analysis?preset=by-period', permission: 'budgets.view' },
-      { id: 'budget-utilization', title: 'Serapan Anggaran', description: 'Persentase penyerapan anggaran, tertinggi lebih dulu', path: '/budget/analysis?preset=utilization', permission: 'budgets.view' },
+      { id: 'budget-summary', title: 'Ringkasan Anggaran', description: 'Total anggaran vs realisasi, bisa di-drill-down per dimensi', path: '/budget/analysis?preset=summary', permission: 'budget.submissions.view' },
+      { id: 'budget-analysis', title: 'Anggaran vs Aktual', description: 'Anggaran vs realisasi lintas dimensi dengan drill-down', path: '/budget/analysis?preset=vs-actual', permission: 'budget.submissions.view' },
+      { id: 'budget-variance', title: 'Analisis Variance', description: 'Selisih anggaran dengan realisasi, favorable/unfavorable', path: '/budget/analysis?preset=variance', permission: 'budget.submissions.view' },
+      { id: 'budget-by-account', title: 'Anggaran per Akun', description: 'Anggaran dan realisasi dikelompokkan per akun COA', path: '/budget/analysis?preset=by-account', permission: 'budget.submissions.view' },
+      { id: 'budget-by-cost-center', title: 'Anggaran per Cost Center', description: 'Anggaran dan realisasi dikelompokkan per departemen', path: '/budget/analysis?preset=by-cost-center', permission: 'budget.submissions.view' },
+      { id: 'budget-by-project', title: 'Anggaran per Project', description: 'Anggaran dan realisasi dikelompokkan per proyek', path: '/budget/analysis?preset=by-project', permission: 'budget.submissions.view' },
+      { id: 'budget-by-period', title: 'Anggaran per Periode', description: 'Anggaran bulanan; baris tahunan ditampilkan terpisah', path: '/budget/analysis?preset=by-period', permission: 'budget.submissions.view' },
+      { id: 'budget-utilization', title: 'Serapan Anggaran', description: 'Persentase penyerapan anggaran, tertinggi lebih dulu', path: '/budget/analysis?preset=utilization', permission: 'budget.submissions.view' },
     ],
   },
   {
@@ -60,11 +60,11 @@ export const REPORT_DOMAINS: ReportDomain[] = [
     label: 'Project',
     categoryPath: 'project',
     reports: [
-      { id: 'budget-project-financials', title: 'Keuangan Project', description: 'Anggaran pendapatan dan biaya per proyek', path: '/budget/projects?tab=budget', permission: 'budgets.view' },
-      { id: 'project-profitability', title: 'Profitabilitas Project', description: 'Pendapatan, biaya, laba, dan margin per proyek', path: '/budget/projects?tab=profitability', permission: 'budgets.view' },
-      { id: 'project-budget-vs-actual', title: 'Budget vs Actual Project', description: 'Realisasi proyek disandingkan dengan anggarannya', path: '/budget/projects?tab=actual', permission: 'budgets.view' },
-      { id: 'project-cash-flow', title: 'Cash Flow Project', description: 'Arus kas anggaran dan realisasi untuk satu proyek', path: '/budget/projects?tab=cash-flow', permission: 'budgets.view' },
-      { id: 'project-transactions', title: 'Transaksi Project', description: 'Jurnal yang menyusun realisasi pendapatan & biaya proyek', path: '/budget/projects?tab=transactions', permission: 'budgets.view' },
+      { id: 'budget-project-financials', title: 'Keuangan Project', description: 'Anggaran pendapatan dan biaya per proyek', path: '/budget/projects?tab=budget', permission: 'budget.submissions.view' },
+      { id: 'project-profitability', title: 'Profitabilitas Project', description: 'Pendapatan, biaya, laba, dan margin per proyek', path: '/budget/projects?tab=profitability', permission: 'budget.submissions.view' },
+      { id: 'project-budget-vs-actual', title: 'Budget vs Actual Project', description: 'Realisasi proyek disandingkan dengan anggarannya', path: '/budget/projects?tab=actual', permission: 'budget.submissions.view' },
+      { id: 'project-cash-flow', title: 'Cash Flow Project', description: 'Arus kas anggaran dan realisasi untuk satu proyek', path: '/budget/projects?tab=cash-flow', permission: 'budget.submissions.view' },
+      { id: 'project-transactions', title: 'Transaksi Project', description: 'Jurnal yang menyusun realisasi pendapatan & biaya proyek', path: '/budget/projects?tab=transactions', permission: 'budget.submissions.view' },
     ],
   },
   {
@@ -162,7 +162,7 @@ export const REPORT_DOMAINS: ReportDomain[] = [
       { id: 'account-statement', title: 'Mutasi Rekening', description: 'Mutasi kas & bank per rekening', path: '/reports/account-statement' },
       // "Arus Kas" akuntansi tetap di domain Keuangan — itu laporan keuangan,
       // bukan anggaran. Yang masuk ke sini hanya versi anggarannya.
-      { id: 'budget-cash', title: 'Cash Budget vs Actual', description: 'Saldo awal + kas masuk − kas keluar = saldo akhir (asumsi akrual)', path: '/budget/cash', permission: 'budgets.view' },
+      { id: 'budget-cash', title: 'Cash Budget vs Actual', description: 'Saldo awal + kas masuk − kas keluar = saldo akhir (asumsi akrual)', path: '/budget/cash', permission: 'budget.submissions.view' },
     ],
   },
   {

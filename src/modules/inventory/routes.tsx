@@ -21,7 +21,7 @@ export const inventoryRoutes: RouteObject[] = [
   { path: '/inventory/adjustments', element: <ProtectedRoute permission="inventory.adjustments.view"><StockAdjustmentListPage /></ProtectedRoute> },
   { path: '/inventory/adjustments/create', element: <ProtectedRoute permission="inventory.adjustments.create"><StockAdjustmentFormPage /></ProtectedRoute> },
   { path: '/inventory/adjustments/:id', element: <ProtectedRoute permission="inventory.adjustments.view"><StockAdjustmentFormPage /></ProtectedRoute> },
-  { path: '/inventory/opnames', element: <ProtectedRoute permission="inventory.opnames.view"><StockOpnameListPage /></ProtectedRoute> },
-  { path: '/inventory/opnames/create', element: <ProtectedRoute permission="inventory.opnames.create"><StockOpnameFormPage /></ProtectedRoute> },
-  { path: '/inventory/opnames/:id', element: <ProtectedRoute permission="inventory.opnames.view"><StockOpnameFormPage /></ProtectedRoute> },
+  { path: '/inventory/opnames', element: <ProtectedRoute permission="inventory.opname.view"><StockOpnameListPage /></ProtectedRoute> },
+  { path: '/inventory/opnames/create', element: <ProtectedRoute permission="inventory.opname.create"><StockOpnameFormPage /></ProtectedRoute> },
+  { path: '/inventory/opnames/:id', element: <ProtectedRoute permission="inventory.opname.view"><StockOpnameFormPage /></ProtectedRoute> },
 ]

@@ -94,7 +94,7 @@ export default function GoodsReceiptListPage() {
       label: 'Void Terpilih',
       icon: <Trash2 className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'purchase.goods-receipts.void',
+      permission: 'purchase.goods_receipts.delete',
       onClick: (ids) => {
         const eligible = rows.filter((goodsReceipt) => ids.includes(String(goodsReceipt.id)) && goodsReceipt.status !== 'void')
         if (eligible.length === 0) {
@@ -214,7 +214,7 @@ export default function GoodsReceiptListPage() {
         sidebar={sidebar}
         action={
           <>
-            <ListExportButton
+            <ListExportButton permission="purchase.goods_receipts.export"
               filename="penerimaan-barang"
               sheetName="Penerimaan Barang"
               columns={EXPORT_COLUMNS}
@@ -226,7 +226,7 @@ export default function GoodsReceiptListPage() {
                 return { ...response, data: response.data.map(fromGoodsReceiptResponse) }
               }}
             />
-            <PermissionGuard permission="purchase.goods-receipts.create">
+            <PermissionGuard permission="purchase.goods_receipts.create">
               <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Penerimaan Baru', path: '/purchase/goods-receipts/create' })}>
                 <Plus className="mr-1 h-3.5 w-3.5" /> Buat GR
               </Button>

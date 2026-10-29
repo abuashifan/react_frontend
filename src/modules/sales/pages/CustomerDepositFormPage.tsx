@@ -139,23 +139,23 @@ function CustomerDepositFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
-  if (!isCreate && canChange(deposit?.status) && can('sales.deposits.create')) {
-    if (deposit?.status !== 'draft' && !editing) {
+  if (!isCreate && canChange(deposit?.status)) {
+    if (deposit?.status !== 'draft' && !editing && can('sales.deposits.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
     }
-    if (can('sales.deposits.create')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+    if (can('sales.deposits.delete')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
   }
   if (editing) {
     actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
   }
-  if (isEditable && can(isCreate ? 'sales.deposits.create' : 'sales.deposits.create')) {
+  if (isEditable && can(isCreate ? 'sales.deposits.create' : 'sales.deposits.edit')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
-    if (deposit?.status === 'draft' && can('sales.deposits.post')) {
+    if (deposit?.status === 'draft' && can('sales.deposits.approve')) {
       actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
     }
-    if (deposit?.status === 'posted' && can('sales.deposits.void')) {
+    if (deposit?.status === 'posted' && can('sales.deposits.delete')) {
       actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
     }
   }

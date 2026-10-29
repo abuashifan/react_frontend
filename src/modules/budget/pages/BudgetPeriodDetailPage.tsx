@@ -135,7 +135,7 @@ function BudgetPeriodDetailPageContent() {
               <span>Periode: <strong className="text-[#1e293b]">{formatDate(period.period_from)} — {formatDate(period.period_to)}</strong></span>
               <span>Status: <strong className={`${period.status === 'open' ? 'text-green-700' : 'text-slate-600'}`}>{period.status === 'open' ? 'Aktif' : 'Ditutup'}</strong></span>
             </div>
-            {can('budgets.manage') && period.status === 'open' && (
+            {can('budget.periods.manage') && period.status === 'open' && (
               <Button variant="outline" size="sm" className="text-[12px] text-red-600 border-red-200 hover:bg-red-50" onClick={() => closeMut.mutate()} disabled={closeMut.isPending}>
                 Tutup Periode
               </Button>
@@ -162,7 +162,7 @@ function BudgetPeriodDetailPageContent() {
 
         {activeTab === 'submissions' && (
           <div className="space-y-3">
-            {can('budgets.submit') && period?.status === 'open' && (
+            {can('budget.submissions.create') && period?.status === 'open' && (
               <div className="flex justify-end">
                 <Button size="sm" onClick={() => setSubmitDialogOpen(true)}>Ajukan Anggaran</Button>
               </div>

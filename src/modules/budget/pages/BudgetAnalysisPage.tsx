@@ -299,7 +299,7 @@ function BudgetAnalysisPageContent() {
         </Button>
 
         {result && (
-          <PermissionGuard permission="budgets.export" fallback={null}>
+          <PermissionGuard permission="budget.submissions.export" fallback={null}>
             <Button size="sm" variant="outline" onClick={handleExport}>
               <Download className="mr-1 h-3.5 w-3.5" /> Export CSV
             </Button>

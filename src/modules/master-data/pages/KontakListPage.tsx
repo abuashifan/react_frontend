@@ -171,7 +171,7 @@ export default function KontakListPage() {
       id: 'bulk-activate',
       label: 'Aktifkan Terpilih',
       icon: <Power className="h-3.5 w-3.5" />,
-      permission: 'contacts.edit',
+      permission: 'master_data.contacts.edit',
       onClick: (ids) => runBulkStatusChange(ids, true, (id) => activate.mutateAsync(id)),
     },
     {
@@ -179,7 +179,7 @@ export default function KontakListPage() {
       label: 'Nonaktifkan Terpilih',
       icon: <PowerOff className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'contacts.deactivate',
+      permission: 'master_data.contacts.delete',
       onClick: (ids) => runBulkStatusChange(ids, false, (id) => deactivate.mutateAsync(id)),
     },
   ]
@@ -219,14 +219,14 @@ export default function KontakListPage() {
       sidebar={sidebar}
       action={
         <>
-          <ListExportButton
+          <ListExportButton permission="master_data.contacts.export"
             filename="kontak"
             sheetName="Kontak"
             columns={EXPORT_COLUMNS}
             totalRows={data?.meta.total}
             fetchPage={(exportPage, exportPerPage) => kontakApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}
           />
-          <PermissionGuard permission="master-data.contacts.create">
+          <PermissionGuard permission="master_data.contacts.create">
             <Button
               className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]"
               onClick={() => openRecordTab({ label: 'Kontak Baru', path: '/master-data/contacts/create' })}

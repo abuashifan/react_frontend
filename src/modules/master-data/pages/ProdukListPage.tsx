@@ -157,7 +157,7 @@ export default function ProdukListPage() {
       id: 'bulk-activate',
       label: 'Aktifkan Terpilih',
       icon: <Power className="h-3.5 w-3.5" />,
-      permission: 'products.edit',
+      permission: 'master_data.products.edit',
       onClick: (ids) => runBulkStatusChange(ids, true, (id) => activate.mutateAsync(id)),
     },
     {
@@ -165,7 +165,7 @@ export default function ProdukListPage() {
       label: 'Nonaktifkan Terpilih',
       icon: <PowerOff className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'products.deactivate',
+      permission: 'master_data.products.delete',
       onClick: (ids) => runBulkStatusChange(ids, false, (id) => deactivate.mutateAsync(id)),
     },
   ]
@@ -208,14 +208,14 @@ export default function ProdukListPage() {
       sidebar={sidebar}
       action={
         <>
-          <ListExportButton
+          <ListExportButton permission="master_data.products.export"
             filename="produk"
             sheetName="Produk"
             columns={EXPORT_COLUMNS}
             totalRows={data?.meta.total}
             fetchPage={(exportPage, exportPerPage) => produkApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}
           />
-          <PermissionGuard permission="master-data.products.create">
+          <PermissionGuard permission="master_data.products.create">
             <Button
               className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]"
               onClick={() => openRecordTab({ label: 'Produk Baru', path: '/master-data/products/create' })}

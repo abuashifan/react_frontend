@@ -97,7 +97,7 @@ export default function CashPaymentListPage() {
       label: 'Void Terpilih',
       icon: <Trash2 className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'cash_bank.void',
+      permission: 'cash_bank.payments.delete',
       onClick: (ids) => {
         const eligible = rows.filter((payment) => ids.includes(String(payment.id)) && payment.status !== 'void')
         if (eligible.length === 0) {
@@ -230,14 +230,14 @@ export default function CashPaymentListPage() {
         sidebar={sidebar}
         action={
           <>
-            <ListExportButton
+            <ListExportButton permission="cash_bank.payments.export"
               filename="pengeluaran-kas"
               sheetName="Pengeluaran Kas"
               columns={EXPORT_COLUMNS}
               totalRows={data?.meta.total}
               fetchPage={(exportPage, exportPerPage) => cashPaymentApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}
             />
-            <PermissionGuard permission="cash_bank.create">
+            <PermissionGuard permission="cash_bank.payments.create">
               <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Pengeluaran Baru', path: '/cash-bank/cash-payments/create' })}>
                 <Plus className="mr-1 h-3.5 w-3.5" /> Buat Pengeluaran
               </Button>

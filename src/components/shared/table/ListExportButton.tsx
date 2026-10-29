@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Download, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/useToast'
+import { usePermission } from '@/hooks/usePermission'
 import { getApiErrorMessage } from '@/lib/apiError'
 import { exportXlsx, type XlsxCell, type XlsxFormat } from '@/lib/exportXlsx'
 
@@ -31,6 +32,7 @@ export interface ExportColumn<T> {
 }
 
 interface ListExportButtonProps<T> {
+  permission: string
   /** Nama file tanpa ekstensi; stempel waktu ditambahkan otomatis. */
   filename: string
   sheetName: string
@@ -82,6 +84,7 @@ function timestamp(): string {
  * ditampilkan di layar.
  */
 export function ListExportButton<T>({
+  permission,
   filename,
   sheetName,
   columns,
@@ -91,6 +94,7 @@ export function ListExportButton<T>({
   disabled,
 }: ListExportButtonProps<T>) {
   const { toast } = useToast()
+  const { can } = usePermission()
   const [isExporting, setIsExporting] = useState(false)
 
   const handleExport = async () => {
@@ -144,6 +148,8 @@ export function ListExportButton<T>({
       setIsExporting(false)
     }
   }
+
+  if (!can(permission)) return null
 
   return (
     <Button

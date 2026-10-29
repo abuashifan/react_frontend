@@ -420,20 +420,20 @@ function FixedAssetFormPageContent() {
     <>
       <StatusBadge status={status} />
       <RecordNavButtons {...navProps} isBusy={isSubmitting} />
-      {isEditable && can(isCreate ? 'fixed_assets.create' : 'fixed_assets.edit') && (
+      {isEditable && can(isCreate ? 'fixed_assets.assets.create' : 'fixed_assets.assets.edit') && (
         <Button type="button" variant="outline" className="h-8 px-4 text-[13px]" disabled={isSubmitting || mutations.create.isPending || mutations.update.isPending} onClick={saveAndClose}>
           {isSubmitting ? 'Menyimpan...' : 'Simpan & Tutup'}
         </Button>
       )}
       {canCapitalize && (
-        <PermissionGuard permission="fixed_assets.capitalize">
+        <PermissionGuard permission="fixed_assets.assets.approve">
           <Button type="button" className="h-8 bg-[#e39774] px-4 text-[13px] hover:bg-[#d4845e]" onClick={() => setCapitalizeOpen(true)}>
             Kapitalisasi
           </Button>
         </PermissionGuard>
       )}
       {canDispose && (
-        <PermissionGuard permission="fixed_assets.dispose">
+        <PermissionGuard permission="fixed_assets.disposal.approve">
           <Button type="button" variant="outline" className="h-8 border-red-200 px-4 text-[13px] text-red-700 hover:bg-red-50" onClick={() => setDisposeOpen(true)}>
             Disposal
           </Button>

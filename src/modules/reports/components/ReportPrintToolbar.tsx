@@ -2,6 +2,9 @@ import { Printer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { PageSetupControl } from './PageSetupControl'
+import { useLocation } from 'react-router-dom'
+import { usePermission } from '@/hooks/usePermission'
+import { reportCategoryForPath } from '../constants/reportPermissions'
 
 interface ReportPrintToolbarProps {
   /** Slot untuk aksi tambahan spesifik laporan, mis. Export CSV / Simpan Laporan. */
@@ -16,12 +19,15 @@ interface ReportPrintToolbarProps {
  * termasuk yang dioper lewat `extra`.
  */
 export function ReportPrintToolbar({ extra }: ReportPrintToolbarProps) {
+  const { can } = usePermission()
+  const { pathname } = useLocation()
+  const canPrint = can(`reports.${reportCategoryForPath(pathname)}.print`)
   return (
     <TooltipProvider delayDuration={300}>
       <div className="no-print flex items-center gap-1">
         {extra}
-        <PageSetupControl />
-        <Tooltip>
+        {canPrint && <PageSetupControl />}
+        {canPrint && <Tooltip>
           <TooltipTrigger asChild>
             <Button
               type="button"
@@ -34,7 +40,7 @@ export function ReportPrintToolbar({ extra }: ReportPrintToolbarProps) {
             </Button>
           </TooltipTrigger>
           <TooltipContent className="text-[11px]">Cetak / Simpan PDF</TooltipContent>
-        </Tooltip>
+        </Tooltip>}
       </div>
     </TooltipProvider>
   )

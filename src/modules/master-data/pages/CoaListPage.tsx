@@ -134,7 +134,7 @@ export default function CoaListPage() {
       id: 'bulk-activate',
       label: 'Aktifkan Terpilih',
       icon: <Power className="h-3.5 w-3.5" />,
-      permission: 'coa.edit',
+      permission: 'master_data.coa.edit',
       onClick: (ids) => runBulkStatusChange(ids, true, (id) => activate.mutateAsync(id)),
     },
     {
@@ -142,7 +142,7 @@ export default function CoaListPage() {
       label: 'Nonaktifkan Terpilih',
       icon: <PowerOff className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'coa.deactivate',
+      permission: 'master_data.coa.delete',
       onClick: (ids) => runBulkStatusChange(ids, false, (id) => deactivate.mutateAsync(id)),
     },
   ]
@@ -212,14 +212,14 @@ export default function CoaListPage() {
       sidebar={sidebar}
       action={
         <>
-          <ListExportButton
+          <ListExportButton permission="master_data.coa.export"
             filename="coa"
             sheetName="Chart of Accounts"
             columns={EXPORT_COLUMNS}
             totalRows={data?.meta.total}
             fetchPage={(exportPage, exportPerPage) => coaApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}
           />
-          <PermissionGuard permission="master-data.coa.create">
+          <PermissionGuard permission="master_data.coa.create">
             <Button
               className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]"
               onClick={() => openRecordTab({ label: 'Akun Baru', path: '/master-data/coa/create' })}

@@ -41,7 +41,7 @@ export default function DashboardPage() {
         ) : null}
 
         {/* Saldo awal yang belum tuntas — diam sendiri kalau sudah beres. */}
-        <PermissionGuard permission="opening_balance.view" fallback={null}>
+        <PermissionGuard permission="accounting.opening_balance.view" fallback={null}>
           <OpeningBalanceAlert />
         </PermissionGuard>
 
@@ -52,7 +52,7 @@ export default function DashboardPage() {
         <PendingDocumentAlerts pending={pending.data?.data} isLoading={pending.isLoading} isUnavailable={pendingUnavailable} />
 
         {/* Charts */}
-        <PermissionGuard permission="reports.view" fallback={null}>
+        <PermissionGuard permission="reports.financial.view" fallback={null}>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <SalesPurchaseChart data={chart.data?.data?.sales_purchase} isLoading={chart.isLoading} isUnavailable={chartUnavailable} />
             <CashFlowChart data={chart.data?.data?.cash_flow} isLoading={chart.isLoading} isUnavailable={chartUnavailable} />

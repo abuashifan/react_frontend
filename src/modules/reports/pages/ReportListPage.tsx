@@ -1,4 +1,6 @@
 import { Bookmark, LayoutGrid, Search } from 'lucide-react'
+import { usePermission } from '@/hooks/usePermission'
+import { REPORT_CATEGORIES } from '../constants/reportPermissions'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Input } from '@/components/ui/input'
 import { useTabFormState } from '@/hooks/useTabFormState'
@@ -39,18 +41,19 @@ export default function ReportListPage() {
   // user berpindah tab (halaman ini di-unmount oleh router outlet).
   const [{ category, query }, patchState] = useTabFormState<ReportListState>(DEFAULT_STATE)
 
+  const { can } = usePermission()
   const activeEntry = SIDEBAR_ENTRIES.find((entry) => entry.key === category) ?? SIDEBAR_ENTRIES[1]
   const isSaved = category === 'saved'
   const isAll = category === 'all'
 
   const domains = isAll ? REPORT_DOMAINS : [DOMAIN_BY_PATH[category]].filter(Boolean)
-  const visibleDomains = domains.filter((domain) => filterReports(domain.reports, query).length > 0)
+  const visibleDomains = domains.filter((domain) => can(`reports.${REPORT_CATEGORIES[domain.categoryPath] ?? domain.categoryPath}.view`) && filterReports(domain.reports, query).length > 0)
 
   return (
     <WorkspaceLayout hideHeader>
       <div className="flex h-full min-h-0 gap-4">
         <aside className="w-[200px] shrink-0 overflow-y-auto rounded-lg border border-[#e2e8f0] bg-white p-1.5">
-          {SIDEBAR_ENTRIES.map((entry) => {
+          {SIDEBAR_ENTRIES.filter((entry) => entry.key === 'all' || (entry.key === 'saved' ? can('reports.saved.manage') : can(`reports.${REPORT_CATEGORIES[entry.key] ?? entry.key}.view`))).map((entry) => {
             const Icon = entry.icon
             const isActive = entry.key === category
             return (

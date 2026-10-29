@@ -3,6 +3,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Upload } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
+import { PermissionGuard } from '@/components/shared/PermissionGuard'
+import { usePermission } from '@/hooks/usePermission'
 import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage } from '@/lib/apiError'
 import { useAccountMappings, useAccountMappingMutations } from '@/modules/master-data/hooks/useAccountMappings'
@@ -17,6 +19,7 @@ import { AccountMappingResetButton } from '@/modules/master-data/components/Acco
  * (dan bisa diubah lagi) di sini, tanpa duplikasi tampilan yang bisa berbeda.
  */
 export default function AccountMappingSettingsPage() {
+  const { can } = usePermission()
   const { data, isLoading } = useAccountMappings()
   const { update } = useAccountMappingMutations()
   const { toast } = useToast()
@@ -54,14 +57,14 @@ export default function AccountMappingSettingsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button
+          <PermissionGuard permission="settings.account_mapping.edit"><Button
             type="button"
             variant="outline"
             onClick={() => setImportOpen(true)}
             className="h-9 w-fit gap-1.5 border-dashed text-[12px]"
           >
             <Upload className="w-3.5 h-3.5" /> Impor dari File (CSV/XLSX)
-          </Button>
+          </Button></PermissionGuard>
           <AccountMappingResetButton onReset={() => setOverrides({})} />
         </div>
 
@@ -76,17 +79,17 @@ export default function AccountMappingSettingsPage() {
           }}
         />
 
-        <AccountMappingGroupedFields
+        <fieldset disabled={!can('settings.account_mapping.edit')}><AccountMappingGroupedFields
           mappings={mappings}
           overrides={overrides}
           onOverrideChange={(key, val) => setOverrides((prev) => ({ ...prev, [key]: val }))}
           idPrefix="settings-account-mapping"
-        />
+        /></fieldset>
 
         <div className="flex justify-end">
-          <Button type="button" onClick={() => void handleSave()} disabled={saving || Object.keys(overrides).length === 0} className="h-9 bg-[#5c9ead] px-6 text-[13px] hover:bg-[#4a8a9b]">
+          <PermissionGuard permission="settings.account_mapping.edit"><Button type="button" onClick={() => void handleSave()} disabled={saving || Object.keys(overrides).length === 0} className="h-9 bg-[#5c9ead] px-6 text-[13px] hover:bg-[#4a8a9b]">
             {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
-          </Button>
+          </Button></PermissionGuard>
         </div>
       </div>
     </WorkspaceLayout>

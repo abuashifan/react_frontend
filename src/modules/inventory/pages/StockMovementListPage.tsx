@@ -94,7 +94,7 @@ export default function StockMovementListPage() {
       label: 'Void Terpilih',
       icon: <Trash2 className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'inventory.movements.void',
+      permission: 'inventory.movements.delete',
       onClick: (ids) => {
         const eligible = rows.filter((movement) => ids.includes(String(movement.id)) && movement.status !== 'void')
         if (eligible.length === 0) {

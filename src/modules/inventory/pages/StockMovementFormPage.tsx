@@ -249,26 +249,26 @@ function StockMovementFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
-  if (!isCreate && canChange(movement?.status) && can('inventory.movements.create')) {
-    if (movement?.status !== 'draft' && !editing) {
+  if (!isCreate && canChange(movement?.status)) {
+    if (movement?.status !== 'draft' && !editing && can('inventory.movements.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
     }
-    if (can('inventory.movements.create')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+    if (can('inventory.movements.delete')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
   }
   if (editing) {
     actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
   }
-  if (isEditable && can(isCreate ? 'inventory.movements.create' : 'inventory.movements.create')) {
+  if (isEditable && can(isCreate ? 'inventory.movements.create' : 'inventory.movements.edit')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (isCreate && formDraft.isRestored) {
     actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: () => { reset({ movement_date: new Date().toISOString().slice(0, 10), movement_type: 'adjustment_in' }); setLines([{ ...DEFAULT_LINE }]); formDraft.discardDraft(); toast.success('Draft lokal dibuang.') } })
   }
   if (!isCreate) {
-    if (movement?.status === 'draft' && can('inventory.movements.post')) {
+    if (movement?.status === 'draft' && can('inventory.movements.approve')) {
       actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => setPostConfirmOpen(true) })
     }
-    if (movement?.status === 'posted' && can('inventory.movements.void')) {
+    if (movement?.status === 'posted' && can('inventory.movements.delete')) {
       actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
     }
   }

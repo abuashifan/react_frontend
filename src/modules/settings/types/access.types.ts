@@ -1,7 +1,7 @@
 // Types untuk Access Management (/access/*). Mengikuti payload backend aktual
 // (lihat app/Http/Controllers/Api/Access/*). Phase 9 — spec-27 / gap-02.
 
-export type CompanyUserStatus = 'active' | 'inactive' | 'pending'
+export type CompanyUserStatus = 'active' | 'inactive' | 'pending' | 'removed'
 
 export interface CompanyUser {
   id: number
@@ -9,43 +9,20 @@ export interface CompanyUser {
   user_id: number
   name: string | null
   email: string | null
-  /** Slug role bawaan (mis. 'admin'); bisa null jika role kustom. */
-  role: string | null
-  role_id: number | null
-  role_name: string | null
+  full_access: boolean
+  is_owner: boolean
+  feature_count: number
   status: CompanyUserStatus
   joined_at: string | null
 }
 
-export interface PermissionOverride {
-  permission_key: string | null
-  effect: 'allow' | 'deny'
-  reason: string | null
-}
-
 export interface CompanyUserPermissions {
   company_user: CompanyUser
-  role_permission_keys: string[]
-  allow_override_keys: string[]
-  deny_override_keys: string[]
-  effective_permission_keys: string[]
-  overrides: PermissionOverride[]
-}
-
-export interface AccessRole {
-  id: number
-  company_id?: number | null
-  name: string
-  slug?: string | null
-  description?: string | null
-  is_system?: boolean
-  is_active: boolean
-  // index() pakai withCount → *_count; detail (rolePayload) pakai assigned_users_count
-  permissions_count?: number
-  company_users_count?: number
-  assigned_users_count?: number
-  permission_keys?: string[]
-  permissions?: PermissionDefinition[]
+  full_access: boolean
+  is_owner: boolean
+  permissions: string[]
+  effective_permissions: string[]
+  catalog: PermissionCatalog
 }
 
 export type InvitationStatus = 'pending' | 'accepted' | 'expired' | 'revoked'
@@ -53,7 +30,9 @@ export type InvitationStatus = 'pending' | 'accepted' | 'expired' | 'revoked'
 export interface Invitation {
   id: number
   email: string
-  role: string | null
+  full_access: boolean
+  permissions: string[] | null
+  token: string
   status: InvitationStatus
   invited_by?: number | string | null
   expires_at?: string | null
@@ -66,6 +45,7 @@ export interface AuditEntry {
   action: string
   module: string
   description: string | null
+  properties?: { old_values?: unknown; new_values?: unknown } | null
   ip_address?: string | null
   created_at: string
   user?: { id: number; name: string; email: string } | null
@@ -109,23 +89,13 @@ export interface PermissionCatalog {
 }
 
 // Payloads
-export interface UpdateUserRolePayload {
-  role_id?: number | null
-  role?: string | null
+export interface UpdatePermissionsPayload {
+  full_access: boolean
+  permissions: string[]
 }
 
-export interface CreateRolePayload {
-  name: string
-  description?: string | null
-  is_active?: boolean
-}
-
-export type UpdateRolePayload = Partial<CreateRolePayload>
-
-export interface CreateInvitationPayload {
+export interface CreateInvitationPayload extends UpdatePermissionsPayload {
   email: string
-  role?: string | null
-  role_id?: number | null
   expires_at?: string | null
 }
 

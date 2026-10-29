@@ -66,7 +66,7 @@ export function BudgetApprovalActions({ submission, onActionSuccess }: Props) {
       id: 'submit',
       label: 'Ajukan',
       variant: 'primary',
-      permission: 'budgets.submit',
+      permission: 'budget.submissions.create',
       onClick: () => submitMut.mutate(),
       isLoading: submitMut.isPending,
     })
@@ -77,7 +77,7 @@ export function BudgetApprovalActions({ submission, onActionSuccess }: Props) {
       id: 'approve-head',
       label: 'Setujui (Kepala)',
       variant: 'primary',
-      permission: 'budgets.approve_head',
+      permission: 'budget.submissions.approve_head',
       onClick: () => approveHeadMut.mutate(),
       isLoading: approveHeadMut.isPending,
     })
@@ -85,7 +85,7 @@ export function BudgetApprovalActions({ submission, onActionSuccess }: Props) {
       id: 'reject-head',
       label: 'Tolak',
       variant: 'destructive',
-      permission: 'budgets.approve_head',
+      permission: 'budget.submissions.approve_head',
       onClick: () => setShowReject(true),
     })
   }
@@ -95,7 +95,7 @@ export function BudgetApprovalActions({ submission, onActionSuccess }: Props) {
       id: 'approve-finance',
       label: 'Setujui (Finance)',
       variant: 'primary',
-      permission: 'budgets.approve_finance',
+      permission: 'budget.submissions.approve_finance',
       onClick: () => approveFinanceMut.mutate(),
       isLoading: approveFinanceMut.isPending,
     })
@@ -103,7 +103,7 @@ export function BudgetApprovalActions({ submission, onActionSuccess }: Props) {
       id: 'reject-finance',
       label: 'Tolak',
       variant: 'destructive',
-      permission: 'budgets.approve_finance',
+      permission: 'budget.submissions.approve_finance',
       onClick: () => setShowReject(true),
     })
   }

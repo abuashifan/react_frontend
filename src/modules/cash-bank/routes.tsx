@@ -13,16 +13,16 @@ const BankReconciliationListPage = lazy(() => import('./pages/BankReconciliation
 const BankReconciliationFormPage = lazy(() => import('./pages/BankReconciliationFormPage'))
 
 export const cashBankRoutes: RouteObject[] = [
-  { path: '/cash-bank/cash-receipts', element: <ProtectedRoute permission="cash_bank.view"><CashReceiptListPage /></ProtectedRoute> },
-  { path: '/cash-bank/cash-receipts/create', element: <ProtectedRoute permission="cash_bank.create"><CashReceiptFormPage /></ProtectedRoute> },
-  { path: '/cash-bank/cash-receipts/:id', element: <ProtectedRoute permission="cash_bank.view"><CashReceiptFormPage /></ProtectedRoute> },
-  { path: '/cash-bank/cash-payments', element: <ProtectedRoute permission="cash_bank.view"><CashPaymentListPage /></ProtectedRoute> },
-  { path: '/cash-bank/cash-payments/create', element: <ProtectedRoute permission="cash_bank.create"><CashPaymentFormPage /></ProtectedRoute> },
-  { path: '/cash-bank/cash-payments/:id', element: <ProtectedRoute permission="cash_bank.view"><CashPaymentFormPage /></ProtectedRoute> },
-  { path: '/cash-bank/bank-transfers', element: <ProtectedRoute permission="cash_bank.view"><BankTransferListPage /></ProtectedRoute> },
-  { path: '/cash-bank/bank-transfers/create', element: <ProtectedRoute permission="cash_bank.create"><BankTransferFormPage /></ProtectedRoute> },
-  { path: '/cash-bank/bank-transfers/:id', element: <ProtectedRoute permission="cash_bank.view"><BankTransferFormPage /></ProtectedRoute> },
-  { path: '/cash-bank/bank-reconciliations', element: <ProtectedRoute permission="cash_bank.view"><BankReconciliationListPage /></ProtectedRoute> },
-  { path: '/cash-bank/bank-reconciliations/create', element: <ProtectedRoute permission="cash_bank.create"><BankReconciliationFormPage /></ProtectedRoute> },
-  { path: '/cash-bank/bank-reconciliations/:id', element: <ProtectedRoute permission="cash_bank.view"><BankReconciliationFormPage /></ProtectedRoute> },
+  { path: '/cash-bank/cash-receipts', element: <ProtectedRoute permission="cash_bank.receipts.view"><CashReceiptListPage /></ProtectedRoute> },
+  { path: '/cash-bank/cash-receipts/create', element: <ProtectedRoute permission="cash_bank.receipts.create"><CashReceiptFormPage /></ProtectedRoute> },
+  { path: '/cash-bank/cash-receipts/:id', element: <ProtectedRoute permission="cash_bank.receipts.view"><CashReceiptFormPage /></ProtectedRoute> },
+  { path: '/cash-bank/cash-payments', element: <ProtectedRoute permission="cash_bank.payments.view"><CashPaymentListPage /></ProtectedRoute> },
+  { path: '/cash-bank/cash-payments/create', element: <ProtectedRoute permission="cash_bank.payments.create"><CashPaymentFormPage /></ProtectedRoute> },
+  { path: '/cash-bank/cash-payments/:id', element: <ProtectedRoute permission="cash_bank.payments.view"><CashPaymentFormPage /></ProtectedRoute> },
+  { path: '/cash-bank/bank-transfers', element: <ProtectedRoute permission="cash_bank.transfers.view"><BankTransferListPage /></ProtectedRoute> },
+  { path: '/cash-bank/bank-transfers/create', element: <ProtectedRoute permission="cash_bank.transfers.create"><BankTransferFormPage /></ProtectedRoute> },
+  { path: '/cash-bank/bank-transfers/:id', element: <ProtectedRoute permission="cash_bank.transfers.view"><BankTransferFormPage /></ProtectedRoute> },
+  { path: '/cash-bank/bank-reconciliations', element: <ProtectedRoute permission="cash_bank.reconciliations.view"><BankReconciliationListPage /></ProtectedRoute> },
+  { path: '/cash-bank/bank-reconciliations/create', element: <ProtectedRoute permission="cash_bank.reconciliations.create"><BankReconciliationFormPage /></ProtectedRoute> },
+  { path: '/cash-bank/bank-reconciliations/:id', element: <ProtectedRoute permission="cash_bank.reconciliations.view"><BankReconciliationFormPage /></ProtectedRoute> },
 ]

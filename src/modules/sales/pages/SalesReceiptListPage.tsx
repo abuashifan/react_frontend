@@ -92,7 +92,7 @@ export default function SalesReceiptListPage() {
       label: 'Void Terpilih',
       icon: <Trash2 className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'sales.receipts.void',
+      permission: 'sales.receipts.delete',
       onClick: (ids) => {
         const eligible = rows.filter((receipt) => ids.includes(String(receipt.id)) && receipt.status !== 'void')
         if (eligible.length === 0) {
@@ -225,7 +225,7 @@ export default function SalesReceiptListPage() {
         sidebar={sidebar}
         action={
           <>
-            <ListExportButton
+            <ListExportButton permission="sales.receipts.export"
               filename="penerimaan-penjualan"
               sheetName="Penerimaan"
               columns={EXPORT_COLUMNS}

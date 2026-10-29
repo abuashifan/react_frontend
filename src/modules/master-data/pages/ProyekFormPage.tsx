@@ -129,7 +129,7 @@ function ProyekFormPageContent() {
           <TabsTrigger value="detail" className="text-[12px]">Detail Proyek</TabsTrigger>
           {/* Tab anggaran hanya untuk yang boleh melihat anggaran. Tanpa izin,
               tabnya tidak muncul sama sekali — bukan muncul lalu kosong. */}
-          {!isCreate && can('budgets.view') && (
+          {!isCreate && can('budget.submissions.view') && (
             <TabsTrigger value="budget" className="text-[12px]">Anggaran</TabsTrigger>
           )}
         </TabsList>
@@ -209,7 +209,7 @@ function ProyekFormPageContent() {
           </section>
         </TabsContent>
 
-        {!isCreate && can('budgets.view') && (
+        {!isCreate && can('budget.submissions.view') && (
           <TabsContent value="budget" className="space-y-2.5">
             <ProjectBudgetTab
               projectId={Number(id)}

@@ -160,7 +160,7 @@ function BudgetSubmissionPageContent() {
               </Button>
 
               {canRevise && (
-                <PermissionGuard permission="budgets.revise" fallback={null}>
+                <PermissionGuard permission="budget.submissions.edit" fallback={null}>
                   <Button size="sm" className="text-[12px]" onClick={() => setRevising((prev) => !prev)}>
                     {isRevising ? 'Batal Revisi' : 'Revisi Anggaran'}
                   </Button>

@@ -40,7 +40,7 @@ export function AccountMappingResetButton({ onReset }: Props) {
   }
 
   return (
-    <PermissionGuard permission="settings.company.edit" fallback={null}>
+    <PermissionGuard permission="settings.account_mapping.edit" fallback={null}>
       <Button
         type="button"
         variant="outline"

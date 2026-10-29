@@ -210,7 +210,7 @@ export default function FixedAssetListPage() {
       sidebar={sidebar}
       action={
         <div className="flex items-center gap-2">
-          <ListExportButton
+          <ListExportButton permission="fixed_assets.assets.export"
             filename="aktiva-tetap"
             sheetName="Aktiva Tetap"
             columns={EXPORT_COLUMNS}
@@ -231,7 +231,7 @@ export default function FixedAssetListPage() {
               }
             }}
           />
-          <PermissionGuard permission="fixed_assets.opening_import">
+          <PermissionGuard permission="fixed_assets.opening.import">
             <Button
               variant="outline"
               className="h-8 px-3 text-[13px]"
@@ -241,7 +241,7 @@ export default function FixedAssetListPage() {
               Impor Aset Awal
             </Button>
           </PermissionGuard>
-          <PermissionGuard permission="fixed_assets.create">
+          <PermissionGuard permission="fixed_assets.assets.create">
             <Button
               className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]"
               onClick={() => openRecordTab({ label: 'Aktiva Baru', path: '/fixed-assets/create' })}

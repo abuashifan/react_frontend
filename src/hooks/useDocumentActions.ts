@@ -82,7 +82,7 @@ export function useDocumentActions({
   const availableActions = useMemo<DocumentActionButton[]>(() => {
     if (document.isSystemGenerated || editMode === 'locked' || document.status === 'void') return []
 
-    const permission = (action: DocumentActionId) => `${document.module}.${action}`
+    const permission = (action: DocumentActionId) => `${document.module}.${action === 'void' || action === 'reject' ? 'delete' : action === 'post' ? 'approve' : action === 'save_draft' ? (isNew ? 'create' : 'edit') : action}`
     const actions: DocumentActionButton[] = []
 
     if (isAutoPost) {
@@ -110,12 +110,12 @@ export function useDocumentActions({
     }
 
     if (isNew || document.status === 'draft') {
-      if (can(`${document.module}.create`) && handlers.onSaveDraft) {
+      if (can(permission('save_draft')) && handlers.onSaveDraft) {
         actions.push({
           id: 'save_draft',
           label: 'Simpan Draft',
           variant: 'secondary',
-          permission: `${document.module}.create`,
+          permission: permission('save_draft'),
           onClick: () => void runAction('save_draft', handlers.onSaveDraft, 'Draft berhasil disimpan.'),
           isLoading: loadingAction === 'save_draft',
         })

@@ -186,26 +186,26 @@ function GoodsReceiptFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
-  if (!isCreate && canChange(gr?.status) && can('purchase.goods_receipts.edit')) {
-    if (gr?.status !== 'draft' && !editing) {
+  if (!isCreate && canChange(gr?.status)) {
+    if (gr?.status !== 'draft' && !editing && can('purchase.goods_receipts.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
     }
-    if (can('purchase.goods_receipts.edit')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
+    if (can('purchase.goods_receipts.delete')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
   }
   if (editing) {
     actions.push({ id: 'cancel_edit', label: 'Batal Edit', variant: 'neutral', onClick: () => setEditing(false) })
   }
-  if (isEditable && can('purchase.goods-receipts.create')) {
+  if (isEditable && can(isCreate ? 'purchase.goods_receipts.create' : 'purchase.goods_receipts.edit')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (!isCreate) {
-    if (gr?.status === 'draft' && can('purchase.goods-receipts.receive')) {
+    if (gr?.status === 'draft' && can('purchase.goods_receipts.approve')) {
       actions.push({ id: 'receive', label: 'Terima Barang', variant: 'primary', onClick: () => void handleReceive(), isLoading: receive.isPending })
     }
-    if (gr?.status === 'draft' && can('purchase.goods-receipts.update')) {
+    if (gr?.status === 'draft' && can('purchase.goods_receipts.edit')) {
       actions.push({ id: 'cancel', label: 'Batalkan', variant: 'destructive', onClick: () => void handleCancel(), isLoading: cancel.isPending })
     }
-    if (gr?.status === 'received' && can('purchase.goods-receipts.void')) {
+    if (gr?.status === 'received' && can('purchase.goods_receipts.delete')) {
       actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
     }
   }

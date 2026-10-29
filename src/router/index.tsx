@@ -2,6 +2,7 @@ import { createMemoryRouter, Navigate } from 'react-router-dom'
 import { ProtectedRoute, CompanySelectionGuard, OnboardingGuard } from './guards'
 import { LoginPage } from '@/modules/auth/pages/LoginPage'
 import { CompanyPickerPage } from '@/modules/auth/pages/CompanyPickerPage'
+import { AcceptInvitationPage } from '@/modules/settings/pages/AcceptInvitationPage'
 import { ForbiddenPage, NotFoundPage, ServerErrorPage } from '@/modules/errors/ErrorPage'
 import { NetworkErrorPage } from '@/modules/errors/NetworkErrorPage'
 import { MaintenancePage } from '@/modules/errors/MaintenancePage'
@@ -29,6 +30,7 @@ if (window.location.pathname !== '/') {
 
 export const router = createMemoryRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/invitations/:token/accept', element: <CompanySelectionGuard><AcceptInvitationPage /></CompanySelectionGuard> },
   // Area pengelolaan client. Sesi dan tokennya terpisah dari sesi client, dan
   // tidak satu pun layarnya membaca data perusahaan.
   ...adminRoutes,

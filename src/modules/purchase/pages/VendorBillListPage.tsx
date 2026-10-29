@@ -96,7 +96,7 @@ export default function VendorBillListPage() {
       label: 'Void Terpilih',
       icon: <Trash2 className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'purchase.bills.void',
+      permission: 'purchase.bills.delete',
       onClick: (ids) => {
         const eligible = rows.filter((bill) => ids.includes(String(bill.id)) && bill.status !== 'void')
         if (eligible.length === 0) {
@@ -239,7 +239,7 @@ export default function VendorBillListPage() {
         sidebar={sidebar}
         action={
           <>
-            <ListExportButton
+            <ListExportButton permission="purchase.bills.export"
               filename="tagihan-vendor"
               sheetName="Tagihan Vendor"
               columns={EXPORT_COLUMNS}

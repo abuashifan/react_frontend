@@ -130,7 +130,7 @@ export default function KategoriProdukPage() {
       id: 'bulk-activate',
       label: 'Aktifkan Terpilih',
       icon: <Power className="h-3.5 w-3.5" />,
-      permission: 'products.edit',
+      permission: 'master_data.products.edit',
       onClick: (ids) => runBulkStatusChange(ids, true, (id) => activate.mutateAsync(id)),
     },
     {
@@ -138,7 +138,7 @@ export default function KategoriProdukPage() {
       label: 'Nonaktifkan Terpilih',
       icon: <PowerOff className="h-3.5 w-3.5" />,
       variant: 'destructive',
-      permission: 'products.deactivate',
+      permission: 'master_data.products.delete',
       onClick: (ids) => runBulkStatusChange(ids, false, (id) => deactivate.mutateAsync(id)),
     },
   ]
@@ -187,7 +187,7 @@ export default function KategoriProdukPage() {
       breadcrumb={[{ label: 'Master Data' }, { label: 'Kategori Produk' }]}
       sidebar={sidebar}
       action={
-        <PermissionGuard permission="products.create">
+        <PermissionGuard permission="master_data.products.create">
           <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={openCreate}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Kategori
           </Button>
@@ -209,7 +209,7 @@ export default function KategoriProdukPage() {
         // tidak ada tombol edit per baris. Tanpa izin ubah, baris tidak bisa
         // diklik sama sekali supaya user tidak dibawa ke dialog yang pasti
         // ditolak backend saat disimpan.
-        onRowClick={can('products.edit') ? openEdit : undefined}
+        onRowClick={can('master_data.products.edit') ? openEdit : undefined}
         emptyTitle="Belum ada kategori produk"
         emptyDescription="Tambahkan kategori untuk mengelompokkan produk."
       />
