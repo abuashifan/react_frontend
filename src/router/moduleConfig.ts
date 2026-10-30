@@ -11,6 +11,7 @@ import {
   Mail, Shield, Archive, Tags, CalendarRange, GitCompare, Upload,
   Wallet, LayoutDashboard, FilePlus,
 } from 'lucide-react'
+import { REPORT_VIEW_PERMISSIONS } from '@/modules/reports/constants/reportPermissions'
 
 export interface RibbonItem {
   id: string
@@ -34,7 +35,8 @@ export interface ModuleConfig {
   id: string
   label: string
   path: string
-  permission?: string
+  /** Izin modul tanpa item ribbon (mis. Laporan); salah satu cukup. */
+  permission?: string | string[]
   ribbonItems: RibbonItem[]
   /**
    * Klik main menu langsung membuka tab primer halaman daftar modul ini, tanpa
@@ -210,6 +212,7 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     path: '/reports',
     // Ribbon Laporan dinonaktifkan — kategori kini jadi sidebar di ReportListPage.
     // Model lamanya diarsipkan di src/router/legacy/reportsRibbon.legacy.ts.
+    permission: REPORT_VIEW_PERMISSIONS,
     ribbonItems: [],
     opensListDirectly: true,
     flushContent: true,
@@ -232,6 +235,22 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
 ]
 
 export const MODULE_MAP = Object.fromEntries(MODULE_CONFIGS.map((m) => [m.id, m]))
+
+type CanFn = (permission: string) => boolean
+
+const allowed = (permission: string | string[] | undefined, can: CanFn): boolean =>
+  !permission || (Array.isArray(permission) ? permission.some(can) : can(permission))
+
+/**
+ * Modul tampil di menu atas bila minimal satu item ribbon-nya diizinkan --
+ * aturan yang sama dengan penyaringan ribbon -- atau, untuk modul tanpa ribbon
+ * (Laporan), bila izin modulnya terpenuhi. Tanpa ini staf melihat modul yang
+ * isinya kosong dan seluruh API-nya menolak.
+ */
+export function isModuleVisible(module: ModuleConfig, can: CanFn): boolean {
+  if (module.ribbonItems.length > 0) return module.ribbonItems.some((item) => allowed(item.permission, can))
+  return allowed(module.permission, can)
+}
 
 export const TOP_MODULES: ModuleConfig[] = MODULE_CONFIGS.filter((module) => module.id !== 'dashboard')
 

@@ -22,7 +22,8 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { useCompanyStore } from '@/stores/useCompanyStore'
 import { useTabStore } from '@/stores/useTabStore'
 import type { ModuleKey } from '@/stores/useTabStore'
-import { MODULE_MAP, TOP_MODULES } from '@/router/moduleConfig'
+import { MODULE_MAP, TOP_MODULES, isModuleVisible } from '@/router/moduleConfig'
+import { usePermission } from '@/hooks/usePermission'
 import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
 import { useCompanySession } from '@/hooks/useCompanySession'
 import { UnsavedFormsDialog } from '@/components/shared/feedback/UnsavedFormsDialog'
@@ -69,6 +70,7 @@ export function Topbar() {
   const { activeModule, isRibbonOpen, setActiveModule, openRibbon, closeRibbon } = useTabStore()
   const openTab = useOpenPrimaryTab()
   const hiddenModules = useHiddenModules()
+  const { can, permissionsLoaded } = usePermission()
   const {
     isBusy,
     blocked,
@@ -128,7 +130,7 @@ export function Topbar() {
             if (event.target === event.currentTarget) closeRibbon()
           }}
         >
-          {TOP_MODULES.filter((mod) => !hiddenModules.has(mod.id)).map((mod) => {
+          {TOP_MODULES.filter((mod) => !hiddenModules.has(mod.id) && (!permissionsLoaded || isModuleVisible(mod, can))).map((mod) => {
             const Icon = MODULE_ICONS[mod.id]
             const isActive = activeModule === mod.id
 
