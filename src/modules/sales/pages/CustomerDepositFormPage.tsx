@@ -28,6 +28,8 @@ import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { customerDepositPrint } from '../print/salesPrint'
 
 export default function CustomerDepositFormPage() {
   const { id } = useParams()
@@ -44,6 +46,7 @@ function CustomerDepositFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
 
   const { data, isLoading } = useCustomerDeposit(id ? Number(id) : undefined)
   const deposit = data?.data
@@ -139,6 +142,9 @@ function CustomerDepositFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && deposit && can('sales.deposits.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (!isCreate && canChange(deposit?.status)) {
     if (deposit?.status !== 'draft' && !editing && can('sales.deposits.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
@@ -279,6 +285,7 @@ function CustomerDepositFormPageContent() {
         documentNumber={deposit?.number ?? ''}
         isLoading={voidDep.isPending}
       />
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={deposit ? customerDepositPrint(deposit) : null} defaultPaper="half-a4" />
     </>
   )
 }

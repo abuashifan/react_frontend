@@ -27,6 +27,8 @@ import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { purchaseRequestPrint } from '../print/purchasePrint'
 
 interface EditableLine {
   product_id: number | null
@@ -57,6 +59,7 @@ function PurchaseRequestFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
 
   const { data, isLoading } = usePurchaseRequest(id ? Number(id) : undefined)
   const pr = data?.data
@@ -150,6 +153,9 @@ function PurchaseRequestFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && pr && can('purchase.requests.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (isEditable && can(isCreate ? 'purchase.requests.create' : 'purchase.requests.edit')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
@@ -211,6 +217,7 @@ function PurchaseRequestFormPageContent() {
   }
 
   return (
+    <>
     <FormLayout
       title={isCreate ? 'Buat Purchase Request' : 'Purchase Request'}
       documentNumber={pr?.number}
@@ -268,5 +275,7 @@ function PurchaseRequestFormPageContent() {
         </div>
       </div>
     </FormLayout>
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={pr ? purchaseRequestPrint(pr) : null} />
+    </>
   )
 }

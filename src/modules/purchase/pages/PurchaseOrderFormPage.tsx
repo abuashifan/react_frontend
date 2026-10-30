@@ -31,6 +31,8 @@ import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { purchaseOrderPrint } from '../print/purchasePrint'
 
 interface EditableLine {
   product_id: number | null
@@ -78,6 +80,7 @@ function PurchaseOrderFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
 
   const { data, isLoading } = usePurchaseOrder(id ? Number(id) : undefined)
   const po = data?.data
@@ -196,6 +199,9 @@ function PurchaseOrderFormPageContent() {
   const hasUnbilled = !!po?.lines.some((l) => (l.billed_quantity ?? 0) < l.quantity)
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && po && can('purchase.orders.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (isEditable && can(isCreate ? 'purchase.orders.create' : 'purchase.orders.edit')) {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
@@ -272,6 +278,7 @@ function PurchaseOrderFormPageContent() {
   }
 
   return (
+    <>
     <FormLayout
       title={isCreate ? 'Buat Purchase Order' : 'Purchase Order'}
       documentNumber={po?.number}
@@ -356,5 +363,7 @@ function PurchaseOrderFormPageContent() {
         </div>
       </div>
     </FormLayout>
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={po ? purchaseOrderPrint(po) : null} />
+    </>
   )
 }

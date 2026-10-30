@@ -28,6 +28,8 @@ import type { DocumentStatus } from '@/types/common.types'
 import type { BudgetWarning } from '../types/journalEntry.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { journalEntryPrint } from '../print/journalPrint'
 
 interface EditableLine {
   account_id: number | null
@@ -99,6 +101,7 @@ function JournalFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
 
   const { data, isLoading } = useJournalEntry(id ? Number(id) : undefined)
   const journal = data?.data
@@ -335,6 +338,9 @@ function JournalFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && journal && can('accounting.journals.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (!isCreate && isManualJournal && canChange(journal?.status)) {
     if (journal?.status !== 'draft' && !editing && can('accounting.journals.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
@@ -469,6 +475,7 @@ function JournalFormPageContent() {
           setPickerRow(null)
         }}
       />
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={journal ? journalEntryPrint(journal) : null} />
     </>
   )
 }

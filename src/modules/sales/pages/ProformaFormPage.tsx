@@ -28,6 +28,8 @@ import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { proformaPrint } from '../print/salesPrint'
 
 interface EditableLine {
   product_id: number | null
@@ -60,6 +62,7 @@ function ProformaFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
 
   const { data, isLoading } = useProforma(id ? Number(id) : undefined)
   const proforma = data?.data
@@ -177,6 +180,9 @@ function ProformaFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && proforma && can('sales.proformas.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (isEditable && can(isCreate ? 'sales.proformas.create' : 'sales.proformas.edit')) {
     actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
@@ -264,6 +270,7 @@ function ProformaFormPageContent() {
   }
 
   return (
+    <>
     <FormLayout
       title={isCreate ? 'Buat Proforma Invoice' : 'Proforma Invoice'}
       documentNumber={proforma?.number}
@@ -336,5 +343,7 @@ function ProformaFormPageContent() {
         </div>
       </div>
     </FormLayout>
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={proforma ? proformaPrint(proforma) : null} />
+    </>
   )
 }

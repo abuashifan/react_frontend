@@ -32,6 +32,8 @@ import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { purchaseReturnPrint } from '../print/purchasePrint'
 
 interface EditableLine {
   product_id: number | null
@@ -62,6 +64,7 @@ function PurchaseReturnFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
   const [isVoidOpen, setVoidOpen] = useState(false)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
   // Mode open: dokumen yang sudah berefek dibuka untuk diedit lewat tombol Edit.
@@ -157,6 +160,9 @@ function PurchaseReturnFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && ret && can('purchase.returns.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (!isCreate && canChange(ret?.status)) {
     if (ret?.status !== 'draft' && !editing && can('purchase.returns.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
@@ -246,6 +252,7 @@ function PurchaseReturnFormPageContent() {
       </FormLayout>
       <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={ret?.number ?? ''} hasEffects={!['draft', 'approved'].includes(ret?.status ?? 'draft')} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={ret?.number ?? ''} isLoading={voidRet.isPending} />
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={ret ? purchaseReturnPrint(ret) : null} />
     </>
   )
 }

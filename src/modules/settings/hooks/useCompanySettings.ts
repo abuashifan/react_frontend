@@ -31,6 +31,16 @@ export function useHiddenModules(): Set<string> {
   return hidden
 }
 
+/** Kop surat dokumen cetak. Dimuat hanya saat dialog cetak dibuka (`enabled`). */
+export function useCompanyLetterhead(enabled = true) {
+  return useQuery({
+    queryKey: ['settings', 'company', 'letterhead'],
+    queryFn: companySettingsApi.getLetterhead,
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 export function useCompanyWorkflow() {
   return useQuery({ queryKey: ['settings', 'company', 'workflow'], queryFn: companySettingsApi.getWorkflow })
 }

@@ -33,6 +33,8 @@ import { useRecordTab } from '@/hooks/useRecordTab'
 import type { DocumentStatus } from '@/types/common.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { salesInvoicePrint } from '../print/salesPrint'
 
 interface EditableLine {
   product_id: number | null
@@ -68,6 +70,7 @@ function SalesInvoiceFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
   const { closeRecordTab } = useRecordTab()
 
   const { data, isLoading } = useSalesInvoice(id ? Number(id) : undefined)
@@ -223,6 +226,9 @@ function SalesInvoiceFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && invoice && can('sales.invoices.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (canEditNow && !editing && can('sales.invoices.edit')) {
     actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
   }
@@ -453,6 +459,7 @@ function SalesInvoiceFormPageContent() {
         documentNumber={invoice?.number ?? ''}
         isLoading={voidInv.isPending}
       />
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={invoice ? salesInvoicePrint(invoice) : null} />
     </>
   )
 }

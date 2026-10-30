@@ -29,6 +29,8 @@ import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import type { StockOpnameLine } from '../types/stockOpname.types'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { stockOpnamePrint } from '../print/inventoryPrint'
 
 export default function StockOpnameFormPage() {
   const { id } = useParams()
@@ -45,6 +47,7 @@ function StockOpnameFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
 
   const { data, isLoading } = useStockOpname(id ? Number(id) : undefined)
   const opname = data?.data
@@ -177,6 +180,9 @@ function StockOpnameFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && opname && can('inventory.opname.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (!isCreate && canChange(opname?.status, ['draft', 'counted'])) {
     if (can('inventory.opname.delete')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
   }
@@ -372,6 +378,7 @@ function StockOpnameFormPageContent() {
 
       <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={opname?.number ?? ''} hasEffects={!['draft', 'counted'].includes(opname?.status ?? 'draft')} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={opname?.number ?? ''} isLoading={voidOpname.isPending} />
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={opname ? stockOpnamePrint(opname) : null} />
     </>
   )
 }

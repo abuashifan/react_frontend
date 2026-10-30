@@ -28,6 +28,8 @@ import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { quotationPrint } from '../print/salesPrint'
 
 interface EditableLine {
   product_id: number | null
@@ -60,6 +62,7 @@ function QuotationFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
 
   const { data, isLoading } = useQuotation(id ? Number(id) : undefined)
   const quotation = data?.data
@@ -204,6 +207,9 @@ function QuotationFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && quotation && can('sales.quotations.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (isEditable && can(isCreate ? 'sales.quotations.create' : 'sales.quotations.edit')) {
     actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
@@ -302,6 +308,7 @@ function QuotationFormPageContent() {
   }
 
   return (
+    <>
     <FormLayout
       title={isCreate ? 'Buat Quotation' : 'Quotation'}
       documentNumber={quotation?.number}
@@ -375,5 +382,7 @@ function QuotationFormPageContent() {
         </div>
       </div>
     </FormLayout>
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={quotation ? quotationPrint(quotation) : null} />
+    </>
   )
 }

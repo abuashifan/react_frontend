@@ -31,6 +31,8 @@ import type { DocumentStatus } from '@/types/common.types'
 import { cn, fieldErrorClass, formatCurrency, toDateInputValue } from '@/lib/utils'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { cashPaymentPrint } from '../print/cashBankPrint'
 
 interface EditableLine { account_id: number | null; account?: { id: number; code: string; name: string } | null; amount: number; description: string }
 const DEFAULT_LINE: EditableLine = { account_id: null, account: null, amount: 0, description: '' }
@@ -50,6 +52,7 @@ function CashPaymentFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
   const { data, isLoading } = useCashPayment(id ? Number(id) : undefined)
   const payment = data?.data
   const { create, update, remove, post, void: voidPayment } = useCashPaymentMutations()
@@ -198,6 +201,9 @@ function CashPaymentFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && payment && can('cash_bank.payments.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (!isCreate && canChange(payment?.status)) {
     if (payment?.status !== 'draft' && !editing && can('cash_bank.payments.edit')) actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
     if (can('cash_bank.payments.delete')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
@@ -318,6 +324,7 @@ function CashPaymentFormPageContent() {
 
       <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={payment?.number ?? ''} hasEffects={payment?.status === 'posted'} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={payment?.number ?? ''} isLoading={voidPayment.isPending} />
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={payment ? cashPaymentPrint(payment) : null} defaultPaper="half-a4" />
     </>
   )
 }

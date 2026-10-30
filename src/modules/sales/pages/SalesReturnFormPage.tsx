@@ -31,6 +31,8 @@ import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { salesReturnPrint } from '../print/salesPrint'
 
 interface EditableLine {
   product_id: number | null
@@ -61,6 +63,7 @@ function SalesReturnFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
 
   const { data, isLoading } = useSalesReturn(id ? Number(id) : undefined)
   const ret = data?.data
@@ -179,6 +182,9 @@ function SalesReturnFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && ret && can('sales.returns.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (!isCreate && canChange(ret?.status)) {
     if (ret?.status !== 'draft' && !editing && can('sales.returns.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
@@ -348,6 +354,7 @@ function SalesReturnFormPageContent() {
         documentNumber={ret?.number ?? ''}
         isLoading={voidRet.isPending}
       />
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={ret ? salesReturnPrint(ret) : null} />
     </>
   )
 }

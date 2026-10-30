@@ -30,6 +30,8 @@ import { cn, fieldErrorClass, formatCurrency, toDateInputValue } from '@/lib/uti
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { salesReceiptPrint } from '../print/salesPrint'
 
 interface ReceiptLine {
   sales_invoice_id: number
@@ -53,6 +55,7 @@ function SalesReceiptFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
 
   const { data, isLoading } = useSalesReceipt(id ? Number(id) : undefined)
   const receipt = data?.data
@@ -171,6 +174,9 @@ function SalesReceiptFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && receipt && can('sales.receipts.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (!isCreate && canChange(receipt?.status)) {
     if (receipt?.status !== 'draft' && !editing && can('sales.receipts.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
@@ -363,6 +369,7 @@ function SalesReceiptFormPageContent() {
         documentNumber={receipt?.number ?? ''}
         isLoading={voidRec.isPending}
       />
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={receipt ? salesReceiptPrint(receipt) : null} defaultPaper="half-a4" />
     </>
   )
 }

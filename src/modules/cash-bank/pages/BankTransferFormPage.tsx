@@ -26,6 +26,8 @@ import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { bankTransferPrint } from '../print/cashBankPrint'
 
 export default function BankTransferFormPage() {
   const { id } = useParams()
@@ -42,6 +44,7 @@ function BankTransferFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
   const { data, isLoading } = useBankTransfer(id ? Number(id) : undefined)
   const transfer = data?.data
   const { create, post, void: voidTransfer, remove, update } = useBankTransferMutations()
@@ -118,6 +121,9 @@ function BankTransferFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && transfer && can('cash_bank.transfers.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (!isCreate && canChange(transfer?.status)) {
     if (transfer?.status !== 'draft' && !editing && can('cash_bank.transfers.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
@@ -192,6 +198,7 @@ function BankTransferFormPageContent() {
       </FormLayout>
       <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={transfer?.number ?? ''} hasEffects={!['draft'].includes(transfer?.status ?? 'draft')} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={transfer?.number ?? ''} isLoading={voidTransfer.isPending} />
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={transfer ? bankTransferPrint(transfer) : null} defaultPaper="half-a4" />
     </>
   )
 }

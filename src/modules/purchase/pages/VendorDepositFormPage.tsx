@@ -30,6 +30,8 @@ import type { DocumentStatus } from '@/types/common.types'
 import { useState } from 'react'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { vendorDepositPrint } from '../print/purchasePrint'
 
 export default function VendorDepositFormPage() {
   const { id } = useParams()
@@ -46,6 +48,7 @@ function VendorDepositFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
   const [isVoidOpen, setVoidOpen] = useState(false)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
   // Mode open: dokumen yang sudah berefek dibuka untuk diedit lewat tombol Edit.
@@ -127,6 +130,9 @@ function VendorDepositFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && deposit && can('purchase.deposits.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (!isCreate && canChange(deposit?.status)) {
     if (deposit?.status !== 'draft' && !editing && can('purchase.deposits.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
@@ -219,6 +225,7 @@ function VendorDepositFormPageContent() {
 
       <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={deposit?.number ?? ''} hasEffects={!['draft'].includes(deposit?.status ?? 'draft')} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={deposit?.number ?? ''} isLoading={voidDep.isPending} />
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={deposit ? vendorDepositPrint(deposit) : null} defaultPaper="half-a4" />
     </>
   )
 }

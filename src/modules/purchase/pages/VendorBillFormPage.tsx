@@ -42,6 +42,8 @@ import { useRecordTab } from '@/hooks/useRecordTab'
 import { DeleteDocumentDialog } from '@/components/shared/document/DeleteDocumentDialog'
 import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionEditMode'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { vendorBillPrint } from '../print/purchasePrint'
 
 interface EditableLine {
   product_id: number | null
@@ -79,6 +81,7 @@ function VendorBillFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
 
   const { data, isLoading, isError, error } = useVendorBill(id ? Number(id) : undefined)
   const bill = data?.data
@@ -278,6 +281,9 @@ function VendorBillFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && bill && can('purchase.bills.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   const canSaveBill = isCreate ? can('purchase.bills.create') : can('purchase.bills.edit')
 
   if (isEditable && canSaveBill) {
@@ -599,6 +605,7 @@ function VendorBillFormPageContent() {
         loadingLabel="Memposting..."
         isLoading={post.isPending}
       />
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={bill ? vendorBillPrint(bill) : null} />
     </>
   )
 }

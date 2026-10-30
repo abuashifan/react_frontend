@@ -30,6 +30,8 @@ import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { salesOrderPrint } from '../print/salesPrint'
 
 interface EditableLine {
   product_id: number | null
@@ -75,6 +77,7 @@ function SalesOrderFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
 
   const { data, isLoading } = useSalesOrder(id ? Number(id) : undefined)
   const order = data?.data
@@ -226,6 +229,9 @@ function SalesOrderFormPageContent() {
   const hasUninvoiced = !!order?.lines.some((l) => (l.invoiced_quantity ?? 0) < l.quantity)
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && order && can('sales.orders.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (isEditable && can(isCreate ? 'sales.orders.create' : 'sales.orders.edit')) {
     actions.push({ id: 'save_draft', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
@@ -338,6 +344,7 @@ function SalesOrderFormPageContent() {
   }
 
   return (
+    <>
     <FormLayout
       title={isCreate ? 'Buat Sales Order' : 'Sales Order'}
       documentNumber={order?.number}
@@ -429,5 +436,7 @@ function SalesOrderFormPageContent() {
         </div>
       </div>
     </FormLayout>
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={order ? salesOrderPrint(order) : null} />
+    </>
   )
 }

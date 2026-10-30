@@ -33,6 +33,8 @@ import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { goodsReceiptPrint } from '../print/purchasePrint'
 
 interface EditableLine {
   product_id: number | null
@@ -67,6 +69,7 @@ function GoodsReceiptFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
 
   const { data, isLoading } = useGoodsReceipt(id ? Number(id) : undefined)
   const gr = data?.data
@@ -186,6 +189,9 @@ function GoodsReceiptFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && gr && can('purchase.goods_receipts.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (!isCreate && canChange(gr?.status)) {
     if (gr?.status !== 'draft' && !editing && can('purchase.goods_receipts.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
@@ -375,6 +381,7 @@ function GoodsReceiptFormPageContent() {
         documentNumber={gr?.number ?? ''}
         isLoading={voidGr.isPending}
       />
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={gr ? goodsReceiptPrint(gr) : null} />
     </>
   )
 }

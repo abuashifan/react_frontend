@@ -31,6 +31,8 @@ import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { deliveryOrderPrint } from '../print/salesPrint'
 
 interface EditableLine {
   product_id: number | null
@@ -56,6 +58,7 @@ function DeliveryOrderFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
 
   const { data, isLoading } = useDeliveryOrder(id ? Number(id) : undefined)
   const order = data?.data
@@ -195,6 +198,9 @@ function DeliveryOrderFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && order && can('sales.delivery_orders.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (!isCreate && canChange(order?.status, ['draft', 'ready'])) {
     if (order?.status !== 'draft' && !editing && can('sales.delivery_orders.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
@@ -376,6 +382,7 @@ function DeliveryOrderFormPageContent() {
         documentNumber={order?.number ?? ''}
         isLoading={voidDo.isPending}
       />
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={order ? deliveryOrderPrint(order) : null} />
     </>
   )
 }

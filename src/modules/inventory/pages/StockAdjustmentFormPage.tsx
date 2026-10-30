@@ -33,6 +33,8 @@ import type { DocumentStatus } from '@/types/common.types'
 import type { StockAdjustmentLineType } from '../types/stockAdjustment.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { stockAdjustmentPrint } from '../print/inventoryPrint'
 
 interface EditableLine {
   product_id: number | null
@@ -62,6 +64,7 @@ function StockAdjustmentFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
 
   const { data, isLoading } = useStockAdjustment(id ? Number(id) : undefined)
   const adj = data?.data
@@ -323,6 +326,9 @@ function StockAdjustmentFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && adj && can('inventory.adjustments.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (!isCreate && canChange(adj?.status)) {
     if (adj?.status !== 'draft' && !editing && can('inventory.adjustments.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
@@ -436,6 +442,7 @@ function StockAdjustmentFormPageContent() {
 
       <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={adj?.number ?? ''} hasEffects={!['draft', 'approved'].includes(adj?.status ?? 'draft')} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={adj?.number ?? ''} isLoading={voidAdj.isPending} />
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={adj ? stockAdjustmentPrint(adj) : null} />
     </>
   )
 }

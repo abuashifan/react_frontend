@@ -9,6 +9,8 @@ import type {
 // Backend: app/Modules/Settings/Routes/api.php
 export const companySettingsApi = {
   get: () => http.get<unknown, ApiResponse<CompanySettingsResponse>>('/settings/company'),
+  /** Identitas perusahaan untuk kop dokumen cetak -- terbuka untuk semua anggota perusahaan. */
+  getLetterhead: () => http.get<unknown, ApiResponse<CompanyProfile>>('/settings/company/letterhead'),
   getWorkflow: () => http.get<unknown, ApiResponse<CompanyWorkflowSettings>>('/settings/company/workflow'),
   updateProfile: (payload: CompanyProfilePayload) =>
     http.patch<unknown, ApiResponse<{ profile: CompanyProfile }>>('/settings/company/profile', payload),

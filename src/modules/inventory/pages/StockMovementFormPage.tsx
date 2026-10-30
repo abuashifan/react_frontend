@@ -33,6 +33,8 @@ import type { DocumentStatus } from '@/types/common.types'
 import type { StockMovementType } from '../types/stockMovement.types'
 import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { stockMovementPrint } from '../print/inventoryPrint'
 
 const MANUAL_TYPES: { value: StockMovementType; label: string }[] = [
   { value: 'adjustment_in', label: 'Penyesuaian Masuk' },
@@ -66,6 +68,7 @@ function StockMovementFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
 
   const { data, isLoading } = useStockMovement(id ? Number(id) : undefined)
   const movement = data?.data
@@ -249,6 +252,9 @@ function StockMovementFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && movement && can('inventory.movements.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (!isCreate && canChange(movement?.status)) {
     if (movement?.status !== 'draft' && !editing && can('inventory.movements.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
@@ -356,6 +362,7 @@ function StockMovementFormPageContent() {
 
       <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={movement?.number ?? ''} hasEffects={!['draft'].includes(movement?.status ?? 'draft')} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={movement?.number ?? ''} isLoading={voidMovement.isPending} />
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={movement ? stockMovementPrint(movement) : null} />
     </>
   )
 }

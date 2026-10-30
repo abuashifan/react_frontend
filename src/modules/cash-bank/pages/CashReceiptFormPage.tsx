@@ -31,6 +31,8 @@ import type { Coa } from '@/modules/master-data/types/coa.types'
 import { cn, fieldErrorClass, formatCurrency, toDateInputValue } from '@/lib/utils'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { cashReceiptPrint } from '../print/cashBankPrint'
 
 interface EditableLine { account_id: number | null; account?: { id: number; code: string; name: string } | null; amount: number; description: string }
 const DEFAULT_LINE: EditableLine = { account_id: null, account: null, amount: 0, description: '' }
@@ -51,6 +53,7 @@ function CashReceiptFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
   const { data, isLoading } = useCashReceipt(id ? Number(id) : undefined)
   const receipt = data?.data
   const { create, update, remove, post, void: voidReceipt } = useCashReceiptMutations()
@@ -231,6 +234,9 @@ function CashReceiptFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && receipt && can('cash_bank.receipts.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (!isCreate && canChange(receipt?.status)) {
     if (receipt?.status !== 'draft' && !editing && can('cash_bank.receipts.edit')) actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
     if (can('cash_bank.receipts.delete')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
@@ -390,6 +396,7 @@ function CashReceiptFormPageContent() {
           setPickerRow(null)
         }}
       />
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={receipt ? cashReceiptPrint(receipt) : null} defaultPaper="half-a4" />
     </>
   )
 }

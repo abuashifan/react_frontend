@@ -32,6 +32,8 @@ import type { DocumentStatus } from '@/types/common.types'
 import type { VendorPaymentLinePayload } from '../types/vendorPayment.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
+import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
+import { vendorPaymentPrint } from '../print/purchasePrint'
 
 interface BillLine {
   vendor_bill_id: number
@@ -55,6 +57,7 @@ function VendorPaymentFormPageContent() {
   const isCreate = !id
   const { toast } = useToast()
   const { can } = usePermission()
+  const [printOpen, setPrintOpen] = useState(false)
   const [isVoidOpen, setVoidOpen] = useState(false)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
   // Draft selalu bisa diedit; yang sudah posted (mode open) dibuka lewat tombol Edit.
@@ -197,6 +200,9 @@ function VendorPaymentFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (!isCreate && payment && can('purchase.payments.print')) {
+    actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
+  }
   if (!isCreate && canChange(payment?.status)) {
     if (payment?.status !== 'draft' && !editing && can('purchase.payments.edit')) {
       actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
@@ -307,6 +313,7 @@ function VendorPaymentFormPageContent() {
       </FormLayout>
       <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={payment?.number ?? ''} hasEffects={payment?.status === 'posted'} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={payment?.number ?? ''} isLoading={voidPayment.isPending} />
+      <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={payment ? vendorPaymentPrint(payment) : null} defaultPaper="half-a4" />
     </>
   )
 }

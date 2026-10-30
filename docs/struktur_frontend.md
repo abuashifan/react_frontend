@@ -244,6 +244,11 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | |____components/
 | | |____shared/
 | | | |____PermissionGuard.tsx
+| | | |____print/
+| | | | |____DocumentPrintDialog.tsx
+| | | | |____TransactionDocumentPrint.tsx
+| | | | |____printDocument.tsx
+| | | | |____printHelpers.ts
 | | | |____document/
 | | | | |____ConfirmDialog.tsx
 | | | | |____DeleteDocumentDialog.tsx
@@ -342,6 +347,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____constants.ts
 | | |____exportXlsx.ts
 | | |____formDraftStorage.ts
+| | |____terbilang.ts
 | | |____upgradeToast.tsx
 | | |____utils.ts
 | |____main.tsx
@@ -365,6 +371,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____services/
 | | | | |____adminApi.ts
 | | |____accounting/
+| | | |____print/
+| | | | |____journalPrint.ts
 | | | |____components/
 | | | | |____DocumentHistoryButton.tsx
 | | | |____constants/
@@ -446,6 +454,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____types/
 | | | | |____budget.types.ts
 | | |____cash-bank/
+| | | |____print/
+| | | | |____cashBankPrint.ts
 | | | |____hooks/
 | | | | |____useCashBankList.ts
 | | | |____pages/
@@ -522,6 +532,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____types/
 | | | | |____imports.types.ts
 | | |____inventory/
+| | | |____print/
+| | | | |____inventoryPrint.ts
 | | | |____components/
 | | | |____hooks/
 | | | | |____useStockAdjustmentList.ts
@@ -651,6 +663,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____types/
 | | | | |____openingBalance.types.ts
 | | |____purchase/
+| | | |____print/
+| | | | |____purchasePrint.ts
 | | | |____hooks/
 | | | | |____useApData.ts
 | | | | |____useGoodsReceiptList.ts
@@ -788,6 +802,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____types/
 | | | | |____reports.types.ts
 | | |____sales/
+| | | |____print/
+| | | | |____salesPrint.ts
 | | | |____components/
 | | | | |____SourceDocumentPicker.tsx
 | | | |____hooks/
@@ -924,6 +940,10 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | `hooks/useListSort.ts` | State sorting halaman daftar; hasilnya disebar ke params query | `DataTable.sort` / `onSortChange` |
 | `hooks/useBulkVoid.ts` | Alur void massal: saring dokumen eligible, konfirmasi, `allSettled`, rangkuman toast | `BulkActionBar`, `VoidConfirmDialog` |
 | `lib/exportXlsx.ts` | Penulis .xlsx satu-sheet tanpa dependency (ZIP store + SpreadsheetML); `toExcelDate()`/`toExcelNumber()` menormalkan nilai backend jadi tanggal & angka asli | `ListExportButton`, `ReportExportButton`, `BudgetAnalysisPage` |
+| `components/shared/print/DocumentPrintDialog.tsx` | Dialog pratinjau cetak dokumen transaksi: pilihan kertas A4 / setengah A4, kop dari `/settings/company/letterhead`, lalu cetak lewat `printDocument` | Semua form dokumen yang punya izin `*.print` |
+| `components/shared/print/TransactionDocumentPrint.tsx` | Tata letak cetak generik (kop, judul+nomor, pihak lawan, info, tabel baris, total, terbilang, catatan, tanda tangan, cap DRAFT/VOID). Komponen murni karena juga dirender di iframe | `DocumentPrintDialog`; data dari fungsi `modules/*/print/*Print.ts` |
+| `components/shared/print/printDocument.tsx` | Mencetak node React lewat iframe tersembunyi (salin stylesheet, `@page` A4 / A5 landscape) supaya hasil cetak tidak terpotong layout halaman | `DocumentPrintDialog` |
+| `lib/terbilang.ts` | Nominal rupiah dalam kata Indonesia untuk kwitansi/bukti kas | Pemetaan cetak dokumen |
 | `components/shared/table/ListExportButton.tsx` | Tombol "Export" halaman daftar: mengambil SELURUH baris hasil filter aktif (paging 100/permintaan, batas 10.000) lalu menulisnya ke .xlsx | Semua halaman list yang punya ekspor |
 | `modules/reports/components/ReportExportButton.tsx` | Tombol "Export Excel" modul Laporan: laporan sudah memegang seluruh barisnya di memori, jadi baris tinggal diratakan — tanpa paging ulang. Menggantikan `lib/exportCsv.ts` yang sudah dihapus | Semua halaman laporan, plus Anggaran & Project |
 | `components/shared/form/AmountInput.tsx` | Input uang dengan pemisah ribuan id-ID; pengganti `<Input type="number">` untuk nominal | `LineItemsTable`, form transaksi |
