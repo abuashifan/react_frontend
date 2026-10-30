@@ -22,6 +22,8 @@ export interface Company {
   slug?: string | null
   status?: string
   user_role?: string | null
+  /** Pemilik perusahaan (selalu Akses penuh); satu-satunya yang boleh menghapus perusahaan. */
+  is_owner?: boolean
   tenant_database?: Record<string, unknown> | null
   logo?: string
   last_accessed_at: string | null
@@ -68,6 +70,8 @@ export interface BackendCompany {
   slug?: string | null
   status?: string
   user_role?: string | null
+  /** Pemilik perusahaan (selalu Akses penuh); satu-satunya yang boleh menghapus perusahaan. */
+  is_owner?: boolean
   tenant_database?: Record<string, unknown> | null
   logo?: string
   last_accessed_at?: string | null

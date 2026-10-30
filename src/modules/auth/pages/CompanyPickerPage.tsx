@@ -50,7 +50,7 @@ interface CompanyCardProps {
 }
 
 function CompanyCard({ company, onClick, onDeleteClick, isLoading }: CompanyCardProps) {
-  const canDelete = company.user_role === 'owner'
+  const canDelete = company.is_owner === true
 
   return (
     <div className="relative">
