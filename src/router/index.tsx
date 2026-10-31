@@ -2,6 +2,8 @@ import { createMemoryRouter, Navigate } from 'react-router-dom'
 import { ProtectedRoute, CompanySelectionGuard, OnboardingGuard } from './guards'
 import { LoginPage } from '@/modules/auth/pages/LoginPage'
 import { CompanyPickerPage } from '@/modules/auth/pages/CompanyPickerPage'
+import { ForgotPasswordPage } from '@/modules/auth/pages/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/modules/auth/pages/ResetPasswordPage'
 import { AcceptInvitationPage } from '@/modules/settings/pages/AcceptInvitationPage'
 import { ForbiddenPage, NotFoundPage, ServerErrorPage } from '@/modules/errors/ErrorPage'
 import { NetworkErrorPage } from '@/modules/errors/NetworkErrorPage'
@@ -30,7 +32,10 @@ if (window.location.pathname !== '/') {
 
 export const router = createMemoryRouter([
   { path: '/login', element: <LoginPage /> },
-  { path: '/invitations/:token/accept', element: <CompanySelectionGuard><AcceptInvitationPage /></CompanySelectionGuard> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
+  // Publik: staf baru membuat akunnya dari tautan undangan di email.
+  { path: '/invitations/:token/accept', element: <AcceptInvitationPage /> },
   // Area pengelolaan client. Sesi dan tokennya terpisah dari sesi client, dan
   // tidak satu pun layarnya membaca data perusahaan.
   ...adminRoutes,

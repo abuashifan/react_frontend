@@ -13,6 +13,19 @@ export const authApi = {
     return http.post<unknown, ApiResponse<LoginResponse>>('/auth/login', payload)
   },
 
+  forgotPassword(email: string): Promise<ApiResponse<null>> {
+    return http.post<unknown, ApiResponse<null>>('/auth/forgot-password', { email })
+  },
+
+  resetPassword(payload: {
+    token: string
+    email: string
+    password: string
+    password_confirmation: string
+  }): Promise<ApiResponse<null>> {
+    return http.post<unknown, ApiResponse<null>>('/auth/reset-password', payload)
+  },
+
   logout(): Promise<ApiResponse<null>> {
     return http.post<unknown, ApiResponse<null>>('/auth/logout')
   },

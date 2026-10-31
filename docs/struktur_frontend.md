@@ -406,10 +406,13 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____DeleteCompanyDialog.tsx
 | | | |____pages/
 | | | | |____CompanyPickerPage.tsx
+| | | | |____ForgotPasswordPage.tsx
 | | | | |____LoginPage.tsx
+| | | | |____ResetPasswordPage.tsx
 | | | |____schemas/
 | | | | |____companySchema.ts
 | | | | |____loginSchema.ts
+| | | | |____passwordSchemas.ts
 | | | |____services/
 | | | | |____authApi.ts
 | | | | |____companyApi.ts
@@ -940,6 +943,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | `hooks/useListSort.ts` | State sorting halaman daftar; hasilnya disebar ke params query | `DataTable.sort` / `onSortChange` |
 | `hooks/useBulkVoid.ts` | Alur void massal: saring dokumen eligible, konfirmasi, `allSettled`, rangkuman toast | `BulkActionBar`, `VoidConfirmDialog` |
 | `lib/exportXlsx.ts` | Penulis .xlsx satu-sheet tanpa dependency (ZIP store + SpreadsheetML); `toExcelDate()`/`toExcelNumber()` menormalkan nilai backend jadi tanggal & angka asli | `ListExportButton`, `ReportExportButton`, `BudgetAnalysisPage` |
+| `components/shared/auth/AuthCard.tsx` | Kartu satu kolom untuk layar di luar login: lupa/atur ulang kata sandi dan terima undangan | `ForgotPasswordPage`, `ResetPasswordPage`, `AcceptInvitationPage` |
 | `components/shared/print/DocumentPrintDialog.tsx` | Dialog pratinjau cetak dokumen transaksi: pilihan kertas A4 / setengah A4, kop dari `/settings/company/letterhead`, lalu cetak lewat `printDocument` | Semua form dokumen yang punya izin `*.print` |
 | `components/shared/print/TransactionDocumentPrint.tsx` | Tata letak cetak generik (kop, judul+nomor, pihak lawan, info, tabel baris, total, terbilang, catatan, tanda tangan, cap DRAFT/VOID). Komponen murni karena juga dirender di iframe | `DocumentPrintDialog`; data dari fungsi `modules/*/print/*Print.ts` |
 | `components/shared/print/printDocument.tsx` | Mencetak node React lewat iframe tersembunyi (salin stylesheet, `@page` A4 / A5 landscape) supaya hasil cetak tidak terpotong layout halaman | `DocumentPrintDialog` |

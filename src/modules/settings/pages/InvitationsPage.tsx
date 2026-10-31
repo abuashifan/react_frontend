@@ -45,8 +45,9 @@ export default function InvitationsPage() {
   const handleCreate = form.handleSubmit(async (values) => {
     try {
       const result = await create.mutateAsync({ email: values.email, ...selection })
-      setCreatedLink(linkFor(result.data))
-      toast.success('Undangan dibuat. Bagikan tautan kepada penerima.')
+      setCreatedLink(result.data.accept_url ?? linkFor(result.data))
+      if (result.data.mail_sent) toast.success(`Undangan dikirim ke ${values.email}.`)
+      else toast.warning('Undangan dibuat, tetapi email gagal terkirim. Bagikan tautan di bawah secara manual.')
       setDialogOpen(false); form.reset(); setSelection({ full_access: false, permissions: [] })
     } catch (error) { applyApiValidationErrors(error, form.setError); toast.error(getApiErrorMessage(error, 'Gagal membuat undangan.')) }
   })
@@ -57,10 +58,10 @@ export default function InvitationsPage() {
     { id: 'status', header: 'Status', size: 120, cell: ({ original }) => <Badge variant="outline">{({ pending: 'Menunggu', accepted: 'Diterima', expired: 'Kedaluwarsa', revoked: 'Dibatalkan' })[original.status]}</Badge> },
     { id: 'created_at', header: 'Dibuat', size: 120, cell: ({ original }) => formatDate(original.created_at) },
     { id: 'expires_at', header: 'Kedaluwarsa', size: 120, cell: ({ original }) => formatDate(original.expires_at) },
-    { id: 'actions', header: '', size: 250, cell: ({ original }) => original.status === 'pending' ? <div className="flex gap-1"><Button size="sm" variant="ghost" onClick={() => void copyLink(original)}>Salin tautan</Button><PermissionGuard permission="access.invitations.create"><Button size="sm" variant="ghost" onClick={() => void (async () => { try { const result = await resend.mutateAsync(original.id); setCreatedLink(linkFor(result.data)); toast.success('Tautan baru dibuat.') } catch (error) { toast.error(getApiErrorMessage(error, 'Gagal membuat tautan baru.')) } })()}>Buat ulang</Button></PermissionGuard><PermissionGuard permission="access.invitations.delete"><Button size="sm" variant="ghost" onClick={() => setRevokeTarget(original)}>Cabut</Button></PermissionGuard></div> : null },
+    { id: 'actions', header: '', size: 250, cell: ({ original }) => original.status === 'pending' ? <div className="flex gap-1"><Button size="sm" variant="ghost" onClick={() => void copyLink(original)}>Salin tautan</Button><PermissionGuard permission="access.invitations.create"><Button size="sm" variant="ghost" onClick={() => void (async () => { try { const result = await resend.mutateAsync(original.id); setCreatedLink(result.data.accept_url ?? linkFor(result.data)); if (result.data.mail_sent) toast.success('Tautan baru dikirim ke email penerima.'); else toast.warning('Tautan baru dibuat, tetapi email gagal terkirim. Bagikan tautan secara manual.') } catch (error) { toast.error(getApiErrorMessage(error, 'Gagal membuat tautan baru.')) } })()}>Buat ulang</Button></PermissionGuard><PermissionGuard permission="access.invitations.delete"><Button size="sm" variant="ghost" onClick={() => setRevokeTarget(original)}>Cabut</Button></PermissionGuard></div> : null },
   ]
   return <WorkspaceLayout title="Undangan Pengguna" breadcrumb={[{ label: 'Pengaturan' }, { label: 'Undangan' }]} action={<PermissionGuard permission="access.invitations.create"><Button onClick={() => setDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />Buat Undangan</Button></PermissionGuard>}>
-    {createdLink && <div className="mb-4 space-y-1 rounded border p-3"><Label htmlFor="invitation-link">Bagikan tautan ini kepada penerima</Label><Input id="invitation-link" readOnly value={createdLink} onFocus={(event) => event.currentTarget.select()} /></div>}
+    {createdLink && <div className="mb-4 space-y-1 rounded border p-3"><Label htmlFor="invitation-link">Tautan undangan (sudah dikirim ke email penerima; salin bila email tidak sampai)</Label><Input id="invitation-link" readOnly value={createdLink} onFocus={(event) => event.currentTarget.select()} /></div>}
     {can('access.invitations.view') && <DataTable columns={columns} data={invitations} totalRows={invitations.length} isLoading={isLoading} pagination={{ pageIndex: 0, pageSize: 25 }} onPaginationChange={() => {}} emptyTitle="Belum ada undangan" emptyDescription="Buat undangan untuk menambah pengguna ke perusahaan." />}
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}><DialogContent className="max-h-[90dvh] max-w-5xl overflow-y-auto"><DialogHeader><DialogTitle>Buat undangan</DialogTitle><DialogDescription>Masukkan email dan pilih hak akses untuk pengguna.</DialogDescription></DialogHeader>
       <form onSubmit={(event) => void handleCreate(event)} className="space-y-4"><div><Label htmlFor="invite-email">Email</Label><Input id="invite-email" type="email" {...form.register('email')} /><FieldError message={form.formState.errors.email?.message} /></div>

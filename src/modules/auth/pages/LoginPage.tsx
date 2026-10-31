@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Eye, EyeOff, BarChart3, ShoppingCart, FileText, Building2 } from 'lucide-react'
@@ -319,8 +319,10 @@ export function LoginPage() {
               </form>
             </Form>
 
-            <p className="text-[10px] text-[#d9e2e5] mt-6 [@media(max-height:620px)]:mt-3 text-center">
-              Lupa password? Hubungi administrator sistem Anda.
+            <p className="text-[13px] mt-6 [@media(max-height:620px)]:mt-3 text-center">
+              <Link to="/forgot-password" className="text-[#326273] hover:underline">
+                Lupa kata sandi?
+              </Link>
             </p>
           </div>
         </div>

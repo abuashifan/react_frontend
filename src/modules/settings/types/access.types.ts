@@ -38,6 +38,16 @@ export interface Invitation {
   expires_at?: string | null
   accepted_at?: string | null
   created_at: string
+  /** Hanya ada di respons buat/kirim ulang: tautan terima dan status pengiriman email. */
+  accept_url?: string
+  mail_sent?: boolean
+}
+
+export interface InvitationPreview {
+  email: string
+  company_name: string
+  expires_at: string | null
+  has_account: boolean
 }
 
 export interface AuditEntry {
