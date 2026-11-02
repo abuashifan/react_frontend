@@ -83,6 +83,8 @@ export interface VendorBillLinePayload {
 }
 
 export interface CreateVendorBillPayload {
+  /** Kosong = nomor otomatis; diisi = nomor kustom (harus unik). */
+  bill_number?: string | null
   vendor_id: number
   bill_date: string
   due_date?: string | null

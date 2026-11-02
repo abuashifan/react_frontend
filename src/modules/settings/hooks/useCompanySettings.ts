@@ -3,7 +3,6 @@ import { companySettingsApi } from '../services/companySettingsApi'
 import { usePermission } from '@/hooks/usePermission'
 import type {
   CompanyAccountingSettings, CompanyModuleSettings, CompanyTransactionDefaults, CompanyProfilePayload,
-  DocumentNumberingPayload,
 } from '../types/settings.types'
 
 export const COMPANY_SETTINGS_KEY = ['settings', 'company']
@@ -44,21 +43,6 @@ export function useCompanyLetterhead(enabled = true) {
 
 export function useCompanyWorkflow() {
   return useQuery({ queryKey: ['settings', 'company', 'workflow'], queryFn: companySettingsApi.getWorkflow })
-}
-
-const DOCUMENT_NUMBERING_KEY = ['settings', 'document-numbering']
-
-export function useDocumentNumbering() {
-  return useQuery({ queryKey: DOCUMENT_NUMBERING_KEY, queryFn: companySettingsApi.listDocumentNumbering })
-}
-
-export function useUpdateDocumentNumbering() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ documentType, payload }: { documentType: string; payload: DocumentNumberingPayload }) =>
-      companySettingsApi.updateDocumentNumbering(documentType, payload),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: DOCUMENT_NUMBERING_KEY }),
-  })
 }
 
 export function useCompanySettingsMutations() {

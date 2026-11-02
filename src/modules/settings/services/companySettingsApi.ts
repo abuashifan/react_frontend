@@ -4,7 +4,6 @@ import type {
   CompanySettingsResponse, CompanyWorkflowSettings,
   CompanyAccountingSettings, CompanyModuleSettings, CompanyTransactionDefaults,
   CompanyProfile, CompanyProfilePayload,
-  DocumentNumberingSetting, DocumentNumberingPayload,
 } from '../types/settings.types'
 
 // Backend: app/Modules/Settings/Routes/api.php
@@ -21,8 +20,4 @@ export const companySettingsApi = {
     http.patch<unknown, ApiResponse<{ modules: CompanyModuleSettings }>>('/settings/company/modules', payload),
   updateTransactionDefaults: (payload: Partial<CompanyTransactionDefaults>) =>
     http.patch<unknown, ApiResponse<{ transaction_defaults: CompanyTransactionDefaults }>>('/settings/company/transaction-defaults', payload),
-  listDocumentNumbering: () =>
-    http.get<unknown, ApiResponse<DocumentNumberingSetting[]>>('/settings/document-numbering'),
-  updateDocumentNumbering: (documentType: string, payload: DocumentNumberingPayload) =>
-    http.patch<unknown, ApiResponse<DocumentNumberingSetting>>(`/settings/document-numbering/${documentType}`, payload),
 }

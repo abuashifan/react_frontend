@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 export const vendorBillSchema = z.object({
+  bill_number: z.string().nullable().optional(),
   vendor_id: z.number({ message: 'Vendor wajib dipilih' }),
   date: z.string().min(1, 'Tanggal wajib diisi'),
   due_date: z.string().optional(),

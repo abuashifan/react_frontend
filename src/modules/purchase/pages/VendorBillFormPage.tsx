@@ -151,6 +151,7 @@ function VendorBillFormPageContent() {
   useEffect(() => {
     if (bill) {
       reset({
+        bill_number: bill.number,
         vendor_id: bill.vendor_id,
         date: toDateInputValue(bill.date),
         due_date: toDateInputValue(bill.due_date),
@@ -189,6 +190,7 @@ function VendorBillFormPageContent() {
   const handleDiscardDraft = () => {
     if (bill) {
       reset({
+        bill_number: bill.number,
         vendor_id: bill.vendor_id,
         date: toDateInputValue(bill.date),
         due_date: toDateInputValue(bill.due_date),
@@ -493,6 +495,11 @@ function VendorBillFormPageContent() {
           {!isSourceMode && (
           <>
           <FormSection title="Header">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="bill_number" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">No. Tagihan</Label>
+              <Input {...register('bill_number')} id="bill_number" disabled={!isEditable} placeholder="Otomatis (kosongkan)" className={cn('h-9 text-[13px] tabular-nums', fieldErrorClass(errors.bill_number))} />
+              <FieldError message={errors.bill_number?.message} />
+            </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Vendor <span className="text-red-500">*</span></Label>
               <SearchableSelect value={vendorId ?? null} onChange={(v) => setValue('vendor_id', v as number)} onSearch={(q) => kontakApi.search(q, 'supplier')} placeholder="Pilih vendor..." disabled={!isEditable} error={errors.vendor_id?.message} selectedOptions={bill?.vendor ? [{ value: bill.vendor.id, label: bill.vendor.name }] : []} />

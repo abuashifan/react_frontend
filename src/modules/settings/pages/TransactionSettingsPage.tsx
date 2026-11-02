@@ -12,7 +12,6 @@ import { getApiErrorMessage } from '@/lib/apiError'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { useCompanySettings, useCompanySettingsMutations } from '../hooks/useCompanySettings'
 import type { CompanyAccountingSettings, TransactionEditMode, WorkflowMode } from '../types/settings.types'
-import { DocumentNumberingSection } from '../components/DocumentNumberingSection'
 import { EDIT_MODE_OPTIONS } from '../constants/transactionEditMode'
 
 const WORKFLOW_OPTIONS: { value: WorkflowMode; label: string; hint: string }[] = [
@@ -150,8 +149,6 @@ export default function TransactionSettingsPage() {
             <SearchableSelect triggerId="transaction-settings-default-payment-term" triggerAriaLabel="Syarat pembayaran default" value={paymentTermId} onChange={setPaymentTermId} onSearch={paymentTermsApi.search} placeholder="Pilih syarat pembayaran..." />
           </div>
         </FormSection>
-
-        <DocumentNumberingSection />
 
         <PermissionGuard permission="settings.transactions.edit" fallback={null}>
           <div className="flex justify-end">

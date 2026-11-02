@@ -93,10 +93,11 @@ function toLinePayload(line: VendorBillLineInput): VendorBillLinePayload {
 
 /** Form UI → payload backend. `date` → `bill_date`, diskon/pajak line → kontrak backend. */
 export function toVendorBillPayload(
-  values: { vendor_id: number; date: string; due_date?: string; payment_term_id?: number | null; applied_vendor_deposit_amount?: number | null; notes?: string },
+  values: { bill_number?: string | null; vendor_id: number; date: string; due_date?: string; payment_term_id?: number | null; applied_vendor_deposit_amount?: number | null; notes?: string },
   lines: VendorBillLineInput[],
 ): CreateVendorBillPayload {
   return {
+    bill_number: values.bill_number?.trim() || null,
     vendor_id: values.vendor_id,
     bill_date: values.date,
     due_date: values.due_date || null,

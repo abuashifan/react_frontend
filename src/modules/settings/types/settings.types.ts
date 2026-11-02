@@ -7,21 +7,6 @@ export type UserPermissionMode = 'role_template' | 'manual_per_user'
 /** lock = hanya draft yang bisa diedit/dihapus; open = semua status, selama tidak tertaut transaksi lain. */
 export type TransactionEditMode = 'lock' | 'open'
 
-export type NumberingResetPeriod = 'never' | 'monthly' | 'fiscal_year'
-
-export interface DocumentNumberingSetting {
-  document_type: string
-  name: string | null
-  prefix: string
-  format: string
-  padding: number
-  reset_period: NumberingResetPeriod
-  /** Contoh nomor pertama dari format saat ini. */
-  example: string
-}
-
-export type DocumentNumberingPayload = Partial<Pick<DocumentNumberingSetting, 'prefix' | 'format' | 'padding' | 'reset_period'>>
-
 export interface CompanyAccountingSettings {
   base_currency?: string
   default_payment_term_id?: number | null

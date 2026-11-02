@@ -112,6 +112,7 @@ function SalesInvoiceFormPageContent() {
   useEffect(() => {
     if (invoice) {
       reset({
+        invoice_number: invoice.number,
         customer_id: invoice.customer_id,
         date: toDateInputValue(invoice.date),
         due_date: toDateInputValue(invoice.due_date),
@@ -146,6 +147,7 @@ function SalesInvoiceFormPageContent() {
   const handleDiscardDraft = () => {
     if (invoice) {
       reset({
+        invoice_number: invoice.number,
         customer_id: invoice.customer_id,
         date: toDateInputValue(invoice.date),
         due_date: toDateInputValue(invoice.due_date),
@@ -389,6 +391,17 @@ function SalesInvoiceFormPageContent() {
           )}
 
           <FormSection title="Header">
+            <div className="flex flex-col gap-1">
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">No. Invoice</Label>
+              <Input
+                {...register('invoice_number')}
+                disabled={!isEditable}
+                placeholder="Otomatis (kosongkan)"
+                className={cn('h-9 text-[13px] tabular-nums', fieldErrorClass(errors.invoice_number))}
+              />
+              <FieldError message={errors.invoice_number?.message} />
+            </div>
+
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Customer <span className="text-red-500">*</span>

@@ -64,6 +64,8 @@ export interface SalesInvoiceLinePayload {
 }
 
 export interface CreateSalesInvoicePayload {
+  /** Kosong = nomor otomatis; diisi = nomor kustom (harus unik). */
+  invoice_number?: string | null
   customer_id: number
   date: string
   due_date?: string | null
