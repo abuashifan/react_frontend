@@ -23,7 +23,8 @@ import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { useSalesInvoice, useSalesInvoiceMutations } from '../hooks/useSalesInvoiceList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
-import { produkApi } from '@/modules/master-data/services/produkApi'
+import { ProductPickerDialog } from '@/modules/master-data/components/ProductPickerDialog'
+import type { Produk } from '@/modules/master-data/types/produk.types'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { salesInvoiceSchema, type SalesInvoiceFormValues } from '../schemas/salesInvoiceSchema'
 import { salesInvoiceApi } from '../services/salesInvoiceApi'
@@ -92,6 +93,8 @@ function SalesInvoiceFormPageContent() {
   // ditolak ikut ditandai, bukan cuma toast.
 
   const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
+  // Indeks baris yang membuka dialog pilih produk, 'append' dari tombol tambah, null = tertutup.
+  const [pickerTarget, setPickerTarget] = useState<number | 'append' | null>(null)
   const [isVoidOpen, setVoidOpen] = useState(false)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
   // Mode open: dokumen yang sudah approved/posted dibuka untuk diedit lewat tombol Edit.
@@ -256,27 +259,52 @@ function SalesInvoiceFormPageContent() {
     }
   }
 
+  // N produk terpilih jadi N baris: produk pertama mengisi baris pemicu (atau baris
+  // kosong terakhir bila dari tombol tambah), sisanya jadi baris baru di bawahnya.
+  const handlePickProducts = (products: Produk[]) => {
+    if (products.length === 0 || pickerTarget === null) return
+    const toLine = (product: Produk, base: EditableLine): EditableLine => ({
+      ...base,
+      product_id: product.id,
+      product: { id: product.id, code: product.product_code ?? '', name: product.product_name },
+      description: product.product_name,
+      unit_price: product.selling_price ?? 0,
+    })
+
+    setLines((prev) => {
+      const newLines = products.map((product) => toLine(product, { ...DEFAULT_LINE }))
+      if (pickerTarget === 'append') {
+        const last = prev[prev.length - 1]
+        const lastIsEmpty = last !== undefined && last.product_id === null && !last.description.trim()
+        return lastIsEmpty ? [...prev.slice(0, -1), ...newLines] : [...prev, ...newLines]
+      }
+      // Baris pemicu mempertahankan qty/diskon/pajak yang sudah diketik user.
+      const [first, ...rest] = products
+      const next = [...prev]
+      next[pickerTarget] = toLine(first, prev[pickerTarget])
+      next.splice(pickerTarget + 1, 0, ...rest.map((product) => toLine(product, { ...DEFAULT_LINE })))
+      return next
+    })
+  }
+
   const columns: LineItemColumn<EditableLine>[] = [
     {
       id: 'product',
       header: 'Produk',
       width: 180,
-      render: ({ item, isReadOnly, onUpdate }) => (
-        <SearchableSelect
-          flush
-          value={item.product_id}
-          onChange={(v, opt) => {
-            onUpdate('product_id', v)
-            onUpdate('product', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null)
-            // Deskripsi wajib di backend: isi dari nama produk bila masih kosong (tetap bisa diedit).
-            if (opt && !item.description?.trim()) onUpdate('description', opt.label)
-          }}
-          onSearch={produkApi.search}
-          placeholder="Pilih produk..."
+      render: ({ item, index, isReadOnly }) => (
+        // Sel produk membuka dialog multi-pilih, bukan dropdown sempit selebar sel.
+        <button
+          type="button"
           disabled={isReadOnly}
-          size="sm"
-          selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []}
-        />
+          onClick={() => setPickerTarget(index)}
+          className={cn(
+            'flex h-8 w-full items-center truncate px-2 text-left text-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#5c9ead]/40 disabled:cursor-not-allowed',
+            item.product ? 'text-[#24323a]' : 'text-[#94a3b8]',
+          )}
+        >
+          {item.product ? `${item.product.code ? `${item.product.code} - ` : ''}${item.product.name}` : 'Pilih produk...'}
+        </button>
       ),
     },
     {
@@ -425,12 +453,12 @@ function SalesInvoiceFormPageContent() {
           errors={lineErrors}
               items={lines}
               columns={columns}
-              onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
+              onAdd={() => setPickerTarget('append')}
               onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}
               onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))}
               getSubtotal={lineBase}
               isReadOnly={!isEditable}
-              addLabel="Tambah Item"
+              addLabel="Tambah Item (pilih produk)"
             />
             <FormSummary
               subtotal={subtotal}
@@ -458,6 +486,12 @@ function SalesInvoiceFormPageContent() {
         onConfirm={(reason) => void handleVoid(reason)}
         documentNumber={invoice?.number ?? ''}
         isLoading={voidInv.isPending}
+      />
+      <ProductPickerDialog
+        open={pickerTarget !== null}
+        onClose={() => setPickerTarget(null)}
+        onConfirm={handlePickProducts}
+        priceField="selling_price"
       />
       <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={invoice ? salesInvoicePrint(invoice) : null} />
     </>

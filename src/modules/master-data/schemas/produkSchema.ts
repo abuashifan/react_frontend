@@ -8,6 +8,8 @@ export const produkSchema = z.object({
   unit_id: z.number().nullable().optional(),
   is_stock_item: z.boolean(),
   description: z.string().optional(),
+  purchase_price: z.number().min(0, 'Harga tidak boleh negatif').optional(),
+  selling_price: z.number().min(0, 'Harga tidak boleh negatif').optional(),
   sales_account_id: z.number().nullable().optional(),
   sales_discount_account_id: z.number().nullable().optional(),
   sales_return_account_id: z.number().nullable().optional(),

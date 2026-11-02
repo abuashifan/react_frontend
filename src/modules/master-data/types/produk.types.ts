@@ -10,6 +10,8 @@ export interface Produk {
   unit_id: number | null
   unit?: { id: number; name: string; code: string }
   is_stock_item: boolean
+  purchase_price: number
+  selling_price: number
   is_active: boolean
   description: string | null
   sales_account_id: number | null
@@ -47,6 +49,8 @@ export interface CreateProdukPayload {
   is_stock_item?: boolean
   is_active?: boolean
   description?: string
+  purchase_price?: number
+  selling_price?: number
   sales_account_id?: number | null
   sales_discount_account_id?: number | null
   sales_return_account_id?: number | null

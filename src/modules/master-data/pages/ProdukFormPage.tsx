@@ -8,6 +8,7 @@ import { FormSaveActions } from '@/components/shared/layout/FormSaveActions'
 import { FormSection } from '@/components/shared/form/FormSection'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
+import { AmountInput } from '@/components/shared/form/AmountInput'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -213,6 +214,8 @@ function ProdukFormPageContent() {
         unit_id: produk.unit_id,
         is_stock_item: produk.is_stock_item,
         description: produk.description ?? '',
+        purchase_price: produk.purchase_price ?? 0,
+        selling_price: produk.selling_price ?? 0,
         sales_account_id: produk.sales_account_id,
         sales_discount_account_id: produk.sales_discount_account_id,
         sales_return_account_id: produk.sales_return_account_id,
@@ -274,6 +277,8 @@ function ProdukFormPageContent() {
         unit_id: produk.unit_id,
         is_stock_item: produk.is_stock_item,
         description: produk.description ?? '',
+        purchase_price: produk.purchase_price ?? 0,
+        selling_price: produk.selling_price ?? 0,
         sales_account_id: produk.sales_account_id,
         sales_discount_account_id: produk.sales_discount_account_id,
         sales_return_account_id: produk.sales_return_account_id,
@@ -284,7 +289,7 @@ function ProdukFormPageContent() {
       })
     } else {
       setAccountMode('standard')
-      reset({ is_stock_item: true, product_type: 'goods', product_code: '', product_name: '', description: '' })
+      reset({ is_stock_item: true, product_type: 'goods', product_code: '', product_name: '', description: '', purchase_price: 0, selling_price: 0 })
     }
     toast.info('Draft dibuang.')
   }
@@ -409,6 +414,31 @@ function ProdukFormPageContent() {
               </div>
             </div>
           )}
+        </FormSection>
+
+        <FormSection title="Harga">
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Harga Beli</Label>
+            <Controller
+              name="purchase_price"
+              control={control}
+              render={({ field }) => (
+                <AmountInput value={field.value ?? 0} onChange={field.onChange} decimals={2} ariaLabel="Harga beli" className="h-9 text-right text-[13px]" />
+              )}
+            />
+            <FieldError message={errors.purchase_price?.message} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Harga Jual</Label>
+            <Controller
+              name="selling_price"
+              control={control}
+              render={({ field }) => (
+                <AmountInput value={field.value ?? 0} onChange={field.onChange} decimals={2} ariaLabel="Harga jual" className="h-9 text-right text-[13px]" />
+              )}
+            />
+            <FieldError message={errors.selling_price?.message} />
+          </div>
         </FormSection>
 
         <FormSection title="Akun Akuntansi">
