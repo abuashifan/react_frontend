@@ -17,6 +17,7 @@ import { authApi } from '../services/authApi'
 import { companyApi } from '../services/companyApi'
 import { CreateCompanyDialog } from '../components/CreateCompanyDialog'
 import { DeleteCompanyDialog } from '../components/DeleteCompanyDialog'
+import { ConfirmDialog } from '@/components/shared/document/ConfirmDialog'
 import { cn } from '@/lib/utils'
 import { APP_NAME } from '@/lib/constants'
 import type { Company, CompanyQuota } from '@/types/auth.types'
@@ -32,6 +33,11 @@ function formatTimeAgo(dateStr: string): string {
   if (hours < 24) return `${hours} jam lalu`
   if (days === 1) return 'Kemarin'
   return `${days} hari lalu`
+}
+
+/** Perusahaan yang tenant akuntansinya belum ada (hanya produk lain, mis. Kasir). */
+function needsAccounting(company: Company): boolean {
+  return Array.isArray(company.products) && !company.products.includes('accounting')
 }
 
 function sortByLastAccessed(companies: Company[]): Company[] {
@@ -71,6 +77,11 @@ function CompanyCard({ company, onClick, onDeleteClick, isLoading }: CompanyCard
         </div>
         <div>
           <p className="font-semibold text-[#24323a] text-sm leading-snug">{company.name}</p>
+          {needsAccounting(company) && (
+            <span className="mt-1 inline-block rounded-full bg-[#fef3c7] px-2 py-0.5 text-[10px] font-medium text-[#92400e]">
+              Baru memakai Kasir
+            </span>
+          )}
           <p className="text-[11px] text-[#64748b] mt-1">
             {company.last_accessed_at
               ? `Terakhir diakses ${formatTimeAgo(company.last_accessed_at)}`
@@ -176,6 +187,9 @@ export function CompanyPickerPage() {
   const [loadingId, setLoadingId] = useState<number | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [deletingCompany, setDeletingCompany] = useState<Company | null>(null)
+  // Perusahaan yang baru memakai Kasir dan akan diaktifkan akuntansinya.
+  const [activatingCompany, setActivatingCompany] = useState<Company | null>(null)
+  const [isActivating, setIsActivating] = useState(false)
 
   /**
    * Daftar perusahaan sekaligus kuotanya. `companies` di store diisi saat login
@@ -216,6 +230,15 @@ export function CompanyPickerPage() {
    * `closeDatabase()` yang membersihkan cache serta tab.
    */
   async function handleSelectCompany(company: Company) {
+    if (needsAccounting(company)) {
+      if (company.is_owner) {
+        setActivatingCompany(company)
+      } else {
+        toast.error('Finlite Accounting belum diaktifkan untuk perusahaan ini. Minta pemilik mengaktifkannya.')
+      }
+      return
+    }
+
     if (activeCompanyId !== null && activeCompanyId !== company.id) {
       const unsaved = getUnsavedForms()
       if (unsaved.length > 0) {
@@ -262,6 +285,22 @@ export function CompanyPickerPage() {
     }
 
     await handleSelectCompany(company)
+  }
+
+  async function handleActivateAccounting() {
+    if (!activatingCompany) return
+    setIsActivating(true)
+    try {
+      const response = await companyApi.activateProduct(activatingCompany.id, 'accounting')
+      queryClient.invalidateQueries({ queryKey: ['companies', 'picker'] })
+      setActivatingCompany(null)
+      toast.success('Finlite Accounting diaktifkan.')
+      await handleSelectCompany(response.data)
+    } catch (activateError) {
+      toast.error(getApiErrorMessage(activateError, 'Gagal mengaktifkan Finlite Accounting.'))
+    } finally {
+      setIsActivating(false)
+    }
   }
 
   async function handleLogout() {
@@ -343,6 +382,17 @@ export function CompanyPickerPage() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={handleCompanyCreated}
+      />
+
+      <ConfirmDialog
+        isOpen={activatingCompany !== null}
+        onClose={() => setActivatingCompany(null)}
+        onConfirm={() => void handleActivateAccounting()}
+        title="Aktifkan Finlite Accounting"
+        description={`${activatingCompany?.name ?? ''} baru memakai Finlite Kasir. Aktifkan pembukuan untuk perusahaan ini? Data kasir tidak berubah.`}
+        confirmLabel="Aktifkan"
+        loadingLabel="Menyiapkan..."
+        isLoading={isActivating}
       />
 
       <DeleteCompanyDialog

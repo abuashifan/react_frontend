@@ -25,6 +25,8 @@ export interface Company {
   /** Pemilik perusahaan (selalu Akses penuh); satu-satunya yang boleh menghapus perusahaan. */
   is_owner?: boolean
   tenant_database?: Record<string, unknown> | null
+  /** Produk ekosistem yang aktif (`accounting`, `pos`). Tanpa `accounting` = toko yang baru memakai kasir. */
+  products?: string[]
   logo?: string
   last_accessed_at: string | null
   settings: CompanySettings
@@ -73,6 +75,7 @@ export interface BackendCompany {
   /** Pemilik perusahaan (selalu Akses penuh); satu-satunya yang boleh menghapus perusahaan. */
   is_owner?: boolean
   tenant_database?: Record<string, unknown> | null
+  products?: string[]
   logo?: string
   last_accessed_at?: string | null
   settings?: Partial<CompanySettings> | null
