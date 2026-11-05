@@ -96,6 +96,20 @@ export const companyApi = {
   },
 
   /**
+   * Aktifkan produk ekosistem untuk perusahaan yang sudah ada (mis. Finlite
+   * Accounting untuk toko yang baru memakai Kasir). Backend membuat tenant
+   * produk itu lalu mengembalikan perusahaan dengan `products` terbaru.
+   */
+  async activateProduct(companyId: number, product: 'accounting' | 'pos'): Promise<ApiResponse<Company>> {
+    const response = await http.post<unknown, ApiResponse<BackendCompany>>(`/companies/${companyId}/products/${product}/activate`)
+
+    return {
+      ...response,
+      data: normalizeCompany(response.data),
+    }
+  },
+
+  /**
    * Hapus perusahaan. `confirmName` harus persis sama dengan nama perusahaan —
    * backend menolak kalau tidak cocok, jadi validasi di sini hanya jaga-jaga UX.
    */
