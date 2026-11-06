@@ -53,6 +53,8 @@ export function SubscriptionCycleSection({ client }: { client: ClientUser }) {
   const [cycle, setCycle] = useState<'monthly' | 'yearly'>('monthly')
 
   const { subscription } = client
+  // Riwayat Kasir tampil di tab Finlite Kasir; di sini hanya Finlite Accounting.
+  const history = subscription.history.filter((row) => row.product !== 'pos')
   const locked = subscription.state === 'expired' || subscription.state === 'cancelled'
   const busy = subscribe.isPending || renew.isPending || unlock.isPending
   const hasPlan = client.plan !== null
@@ -95,7 +97,7 @@ export function SubscriptionCycleSection({ client }: { client: ClientUser }) {
 
   const handleUnlock = async () => {
     try {
-      await unlock.mutateAsync(client.id)
+      await unlock.mutateAsync({ id: client.id })
       toast.success(`Akses ${client.name} dibuka kembali selama 7 hari.`)
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Gagal membuka kunci.'))
@@ -217,7 +219,7 @@ export function SubscriptionCycleSection({ client }: { client: ClientUser }) {
         </div>
       )}
 
-      {subscription.history.length > 0 && (
+      {history.length > 0 && (
         <div className="border-t border-[#f1f5f9] pt-4">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[#94a3b8] mb-2">
             Riwayat Penagihan
@@ -235,7 +237,7 @@ export function SubscriptionCycleSection({ client }: { client: ClientUser }) {
                 </tr>
               </thead>
               <tbody>
-                {subscription.history.map((row) => (
+                {history.map((row) => (
                   <tr key={row.id} className="border-b border-[#f8fafc] last:border-0">
                     <td className="py-1.5 text-[#24323a]">{row.plan_name ?? '—'}</td>
                     <td className="py-1.5 text-[#24323a]">

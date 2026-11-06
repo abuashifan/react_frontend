@@ -15,6 +15,7 @@ import { cn, fieldErrorClass } from '@/lib/utils'
 import { useAdminPlans, useClientUser, useClientUserMutations } from '../hooks/useClientUsers'
 import { ResetPasswordSection } from '../components/ResetPasswordSection'
 import { SubscriptionCycleSection } from '../components/SubscriptionCycleSection'
+import { PosSubscriptionSection } from '../components/PosSubscriptionSection'
 import { StorageUsageSection } from '../components/StorageUsageSection'
 import {
   createClientSchema,
@@ -51,7 +52,7 @@ const TAB_FIELDS = {
   addons: ['extra_users'],
 } as const
 
-type TabKey = keyof typeof TAB_FIELDS | 'password' | 'penyimpanan'
+type TabKey = keyof typeof TAB_FIELDS | 'password' | 'penyimpanan' | 'kasir'
 
 const inputClass = 'h-9 text-[13px]'
 const selectClass =
@@ -301,6 +302,11 @@ export default function AdminClientFormPage() {
                 {hasErrorIn(key) && <span className="ml-1.5 text-red-500">•</span>}
               </TabsTrigger>
             ))}
+            {isEdit && (
+              <TabsTrigger value="kasir" className={tabTriggerClass}>
+                Finlite Kasir
+              </TabsTrigger>
+            )}
             {isEdit && (
               <TabsTrigger value="penyimpanan" className={tabTriggerClass}>
                 Penyimpanan
@@ -572,7 +578,7 @@ export default function AdminClientFormPage() {
 
             {/* Tombol simpan di luar TabsContent supaya selalu terlihat di tab
                 mana pun yang isinya memang tersimpan bersama form ini. */}
-            {tab !== 'password' && (
+            {tab !== 'password' && tab !== 'kasir' && (
               <div className="flex justify-end gap-2 mt-4">
                 <Button
                   type="button"
@@ -593,6 +599,12 @@ export default function AdminClientFormPage() {
               </div>
             )}
           </form>
+
+          {isEdit && client && (
+            <TabsContent value="kasir" className="mt-0">
+              <PosSubscriptionSection client={client} />
+            </TabsContent>
+          )}
 
           {isEdit && clientId && (
             <TabsContent value="penyimpanan" className="mt-0">

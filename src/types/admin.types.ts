@@ -17,8 +17,27 @@ export interface AdminPlan {
   name: string
   max_companies: number
   max_users: number
+  /** Batas produk (paket Kasir). null = tanpa batas. */
+  max_products: number | null
+  monthly_price: string
+  yearly_price: string
+  product: AdminProduct
   /** Tier yang jumlah perusahaannya diisi manual per client. */
   is_custom: boolean
+}
+
+export type AdminProduct = 'accounting' | 'pos'
+
+/** Langganan Finlite Kasir milik client (`pos_subscription`). */
+export interface ClientPosSubscription {
+  state: 'none' | 'active' | 'grace' | 'expired' | 'cancelled'
+  ends_at: string | null
+  days_remaining: number | null
+  is_trial: boolean
+  plan_name: string | null
+  plan_code: string | null
+  billing_cycle: 'monthly' | 'yearly' | null
+  limits: { users: number | null; stores: number | null; products: number | null } | null
 }
 
 /** Fase 3 — siklus langganan. `state: null` berarti client belum pernah berlangganan sama sekali (BUKAN kedaluwarsa). */
@@ -35,6 +54,7 @@ export interface ClientSubscription {
 
 export interface ClientSubscriptionHistoryRow {
   id: number
+  product: AdminProduct
   plan_name: string | null
   billing_cycle: string
   price: string
@@ -64,6 +84,7 @@ export interface ClientDueSoonRow {
   name: string
   email: string
   phone: string | null
+  product: AdminProduct
   state: 'active' | 'grace'
   days_remaining: number | null
 }
@@ -95,6 +116,9 @@ export interface ClientUser {
   last_login_at: string | null
   created_at: string | null
   subscription: ClientSubscription
+  /** null kalau client belum pernah berlangganan Finlite Kasir. */
+  pos_subscription: ClientPosSubscription | null
+  email_verified: boolean
 }
 
 export interface ClientUserListParams {
@@ -103,6 +127,8 @@ export interface ClientUserListParams {
   search?: string
   status?: string
   plan_id?: number
+  /** `pos` = hanya client yang pernah berlangganan Finlite Kasir. */
+  product?: AdminProduct
 }
 
 /** Bagian yang sama antara membuat dan mengubah client. */

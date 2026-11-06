@@ -354,6 +354,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | |____modules/
 | | |____admin/
 | | | |____components/
+| | | | |____PosSubscriptionSection.tsx
 | | | | |____ResetPasswordSection.tsx
 | | | | |____StorageUsageSection.tsx
 | | | | |____SubscriptionCycleSection.tsx

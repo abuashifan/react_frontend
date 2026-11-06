@@ -12,7 +12,7 @@ import { adminApi } from '../services/adminApi'
 import { useAdminPlans, useClientUsers, useDueSoonClients } from '../hooks/useClientUsers'
 import { DeleteClientDialog } from '../components/DeleteClientDialog'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
-import type { ClientUser } from '@/types/admin.types'
+import type { AdminProduct, ClientUser } from '@/types/admin.types'
 
 const STATUS_LABELS: Record<string, string> = {
   active: 'Aktif',
@@ -58,6 +58,7 @@ export default function AdminClientsPage() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
+  const [product, setProduct] = useState<AdminProduct | ''>('')
   const [deletingClient, setDeletingClient] = useState<ClientUser | null>(null)
 
   const { data, isLoading, isFetching } = useClientUsers({
@@ -65,6 +66,7 @@ export default function AdminClientsPage() {
     per_page: 25,
     search: search || undefined,
     status: status || undefined,
+    product: product || undefined,
   })
   const { data: plansResponse } = useAdminPlans()
   const { data: dueSoonResponse } = useDueSoonClients()
@@ -72,7 +74,7 @@ export default function AdminClientsPage() {
 
   // Kembali ke halaman 1 saat filter berubah supaya tidak mendarat di halaman
   // kosong setelah hasilnya menyusut.
-  const filterKey = `${search}|${status}`
+  const filterKey = `${search}|${status}|${product}`
   const [prevFilters, setPrevFilters] = useState('')
   if (filterKey !== prevFilters) {
     setPrevFilters(filterKey)
@@ -217,6 +219,36 @@ export default function AdminClientsPage() {
       },
     },
     {
+      id: 'pos_subscription',
+      header: 'Kasir',
+      size: 130,
+      cell: ({ original }) => {
+        const sub = original.pos_subscription
+        if (!sub) return <span className="text-[#94a3b8]">—</span>
+        return (
+          <div>
+            <span
+              className={cn(
+                'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
+                SUBSCRIPTION_STATE_CLASS[sub.state],
+              )}
+            >
+              {sub.is_trial && sub.state === 'active' ? 'Masa coba' : SUBSCRIPTION_STATE_LABELS[sub.state]}
+            </span>
+            <p className="text-[11px] text-[#64748b] mt-0.5">
+              {sub.plan_name ?? '—'}
+              {sub.days_remaining !== null && sub.days_remaining >= 0 ? (
+                <span className="tabular-nums"> · {sub.days_remaining} hari</span>
+              ) : null}
+            </p>
+            {!original.email_verified && (
+              <p className="text-[11px] text-[#b45309]">Email belum diverifikasi</p>
+            )}
+          </div>
+        )
+      },
+    },
+    {
       id: 'last_login_at',
       header: 'Terakhir Login',
       size: 140,
@@ -298,12 +330,15 @@ export default function AdminClientsPage() {
               <div className="flex flex-wrap gap-2">
                 {dueSoon.map((row) => (
                   <button
-                    key={row.id}
+                    key={`${row.id}-${row.product}`}
                     type="button"
                     onClick={() => navigate(`/admin/clients/${row.id}`)}
                     className="flex items-center gap-1.5 rounded-md border border-[#FDE68A] bg-white px-2 py-1 text-[11px] text-[#92400E] hover:bg-[#FEF3C7]"
                   >
                     <span className="font-medium">{row.name}</span>
+                    {row.product === 'pos' && (
+                      <span className="rounded bg-[#EFF9FB] px-1 text-[10px] text-[#326273]">Kasir</span>
+                    )}
                     <span className="tabular-nums text-[#b45309]">
                       {row.state === 'grace'
                         ? `tenggang ${row.days_remaining !== null ? Math.abs(row.days_remaining) : ''} hari`
@@ -331,6 +366,15 @@ export default function AdminClientsPage() {
               <option value="active">Aktif</option>
               <option value="inactive">Nonaktif</option>
               <option value="suspended">Ditangguhkan</option>
+            </select>
+            <select
+              className={selectClass}
+              value={product}
+              onChange={(event) => setProduct(event.target.value as AdminProduct | '')}
+              aria-label="Filter produk"
+            >
+              <option value="">Semua client</option>
+              <option value="pos">Client Finlite Kasir</option>
             </select>
             <span className="text-[12px] text-[#64748b] ml-auto">
               {plansResponse?.data.length ?? 0} paket tersedia
