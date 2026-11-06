@@ -3,6 +3,7 @@ import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type {
   AdminLoginResponse,
   AdminPlan,
+  AdminProduct,
   ClientCompanyStorage,
   ClientDueSoonRow,
   ClientUser,
@@ -46,8 +47,8 @@ export const adminApi = {
     await adminHttp.post('/admin/logout')
   },
 
-  async plans(): Promise<ApiResponse<AdminPlan[]>> {
-    return adminHttp.get<unknown, ApiResponse<AdminPlan[]>>('/admin/plans')
+  async plans(product: AdminProduct = 'accounting'): Promise<ApiResponse<AdminPlan[]>> {
+    return adminHttp.get<unknown, ApiResponse<AdminPlan[]>>('/admin/plans', { params: { product } })
   },
 
   async clients(params: ClientUserListParams): Promise<PaginatedResponse<ClientUser>> {
@@ -97,13 +98,13 @@ export const adminApi = {
 
   async renewClient(
     id: number,
-    payload?: { plan_id?: number | null; billing_cycle?: 'monthly' | 'yearly' | null },
+    payload?: { plan_id?: number | null; billing_cycle?: 'monthly' | 'yearly' | null; product?: AdminProduct },
   ): Promise<ApiResponse<ClientUser>> {
     return adminHttp.post<unknown, ApiResponse<ClientUser>>(`/admin/clients/${id}/renew`, payload ?? {})
   },
 
-  async unlockClient(id: number): Promise<ApiResponse<ClientUser>> {
-    return adminHttp.post<unknown, ApiResponse<ClientUser>>(`/admin/clients/${id}/unlock`)
+  async unlockClient(id: number, product: AdminProduct = 'accounting'): Promise<ApiResponse<ClientUser>> {
+    return adminHttp.post<unknown, ApiResponse<ClientUser>>(`/admin/clients/${id}/unlock`, { product })
   },
 
   async dueSoonClients(): Promise<ApiResponse<ClientDueSoonRow[]>> {

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { adminApi } from '../services/adminApi'
 import type {
+  AdminProduct,
   ClientUserListParams,
   CreateClientPayload,
   UpdateClientPayload,
@@ -24,10 +25,10 @@ export function useClientUser(id: number | null) {
   })
 }
 
-export function useAdminPlans() {
+export function useAdminPlans(product: AdminProduct = 'accounting') {
   return useQuery({
-    queryKey: ADMIN_PLANS_KEY,
-    queryFn: () => adminApi.plans(),
+    queryKey: [...ADMIN_PLANS_KEY, product],
+    queryFn: () => adminApi.plans(product),
     // Paket nyaris tidak pernah berubah selama satu sesi admin.
     staleTime: 30 * 60 * 1000,
   })
@@ -83,13 +84,14 @@ export function useClientUserMutations() {
   })
 
   const renew = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload?: { plan_id?: number | null; billing_cycle?: 'monthly' | 'yearly' | null } }) =>
+    mutationFn: ({ id, payload }: { id: number; payload?: { plan_id?: number | null; billing_cycle?: 'monthly' | 'yearly' | null; product?: AdminProduct } }) =>
       adminApi.renewClient(id, payload),
     onSuccess: invalidate,
   })
 
   const unlock = useMutation({
-    mutationFn: (id: number) => adminApi.unlockClient(id),
+    mutationFn: ({ id, product = 'accounting' }: { id: number; product?: AdminProduct }) =>
+      adminApi.unlockClient(id, product),
     onSuccess: invalidate,
   })
 
