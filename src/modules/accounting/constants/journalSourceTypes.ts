@@ -40,6 +40,7 @@ export type JournalSourceType =
   | 'pos_shift'
   | 'pos_purchase'
   | 'pos_supplier_payment'
+  | 'pos_stock_count'
 
 /**
  * Dikelompokkan per modul asal supaya mudah dipindai di modal filter.
@@ -103,6 +104,7 @@ export const JOURNAL_SOURCE_TYPE_GROUPS: MultiSelectModalGroup<JournalSourceType
       { value: 'pos_shift', label: 'Rekap Kasir' },
       { value: 'pos_purchase', label: 'Stok Masuk Kasir' },
       { value: 'pos_supplier_payment', label: 'Bayar Hutang Kasir' },
+      { value: 'pos_stock_count', label: 'Selisih Stok Kasir' },
     ],
   },
   {
