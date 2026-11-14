@@ -740,6 +740,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____ReportPrintToolbar.tsx
 | | | | |____ReportPrintDocument.tsx
 | | | | |____ReportPrintSection.tsx
+| | | | |____TrialBalanceTable.tsx
 | | | | |____ReportExportButton.tsx
 | | | |____constants/
 | | | | |____reportCategories.ts

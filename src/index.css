@@ -264,6 +264,15 @@
     border: none;
   }
 
+  /* Tabel laporan memakai lebar alaminya (`w-max min-w-full` di komponen tabel) lalu
+     dikecilkan oleh ReportPrintDocument agar muat di kertas. Aturan `table { width: 100% }`
+     di atas berada di luar layer Tailwind sehingga mengalahkan kelas `w-max`; tanpa
+     ini tabel lebar (mis. Neraca Saldo) terpotong di tepi kanan saat dicetak. */
+  .report-print-page table {
+    width: max-content;
+    min-width: 100%;
+  }
+
   /* @page size/margin untuk laporan Financial Statement diinjeksikan secara dinamis
      lewat <style id="report-page-size"> oleh ReportPrintDocument (lihat
      src/modules/reports/components/ReportPrintDocument.tsx) sesuai pilihan
