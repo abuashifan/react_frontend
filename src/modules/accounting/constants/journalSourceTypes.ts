@@ -38,6 +38,8 @@ export type JournalSourceType =
   | 'opening_balance'
   | 'opening_fixed_assets'
   | 'pos_shift'
+  | 'pos_purchase'
+  | 'pos_supplier_payment'
 
 /**
  * Dikelompokkan per modul asal supaya mudah dipindai di modal filter.
@@ -94,9 +96,14 @@ export const JOURNAL_SOURCE_TYPE_GROUPS: MultiSelectModalGroup<JournalSourceType
   },
   {
     // Jurnal sistem dari Finlite Kasir (jembatan POS -> Akuntansi): satu jurnal
-    // per shift kasir yang ditutup. Nilai ditulis `PosBridgeService::SOURCE_TYPE`.
+    // per shift kasir yang ditutup, plus stok masuk dan bayar hutang pemasok bila HPP ikut dikirim.
+    // Nilainya ditulis `PosBridgeService::KINDS`.
     label: 'Kasir (POS)',
-    options: [{ value: 'pos_shift', label: 'Rekap Kasir' }],
+    options: [
+      { value: 'pos_shift', label: 'Rekap Kasir' },
+      { value: 'pos_purchase', label: 'Stok Masuk Kasir' },
+      { value: 'pos_supplier_payment', label: 'Bayar Hutang Kasir' },
+    ],
   },
   {
     label: 'Periode & Saldo Awal',
