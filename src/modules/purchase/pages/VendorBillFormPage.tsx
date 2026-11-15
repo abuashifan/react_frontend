@@ -26,7 +26,9 @@ import { vendorBillSourceApi, type BillSourceType } from '../services/vendorBill
 import { vendorDepositApi } from '../services/vendorDepositApi'
 import { Button } from '@/components/ui/button'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
-import { produkApi } from '@/modules/master-data/services/produkApi'
+import { ProductPickerDialog } from '@/modules/master-data/components/ProductPickerDialog'
+import { ProductPickCell } from '@/modules/master-data/components/ProductLinePicker'
+import { useProductLinePicker } from '@/modules/master-data/components/useProductLinePicker'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { fixedAssetCategoryApi } from '@/modules/fixed-assets/services/fixedAssetCategoryApi'
 import { vendorBillSchema, validateVendorBillLines, type VendorBillFormValues, type VendorBillLineErrors } from '../schemas/vendorBillSchema'
@@ -122,6 +124,7 @@ function VendorBillFormPageContent() {
   const appliedVendorDepositAmount = useWatch({ control, name: 'applied_vendor_deposit_amount' })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const productPicker = useProductLinePicker<EditableLine>({ defaultLine: DEFAULT_LINE, setLines, applyProduct: (product, line) => ({ ...line, unit_price: product.purchase_price ?? 0 }) })
   const [lineErrors, setLineErrors] = useState<VendorBillLineErrors>({})
   // Terpisah dari `lineErrors` di atas: yang itu hasil validasi sisi klien dan
   // dirender per-sel, sedangkan ini error baris dari backend (lines.0.quantity)
@@ -358,17 +361,7 @@ function VendorBillFormPageContent() {
             error={lineErrors[index]?.product}
           />
         ) : (
-          <SearchableSelect
-          flush
-            value={item.product_id}
-            onChange={(v, opt) => { onUpdate('product_id', v); onUpdate('product', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null); if (opt && !item.description?.trim()) onUpdate('description', opt.label) }}
-            onSearch={produkApi.search}
-            placeholder="Pilih produk..."
-            disabled={isReadOnly}
-            size="sm"
-            selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []}
-            error={lineErrors[index]?.product}
-          />
+          <ProductPickCell product={item.product} disabled={isReadOnly} onClick={() => productPicker.openAt(index)} error={lineErrors[index]?.product} />
         ),
     },
     { id: 'description', header: 'Deskripsi', width: 150, render: ({ item, index, isReadOnly, onUpdate }) => (
@@ -571,7 +564,7 @@ function VendorBillFormPageContent() {
             <LineItemsTable
           errors={apiLineErrors}
               items={lines} columns={columns}
-              onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
+              onAdd={productPicker.openAppend}
               onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}
               onUpdate={(i, field, value) => {
                 setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))
@@ -589,6 +582,7 @@ function VendorBillFormPageContent() {
           </>
           )}
         </div>
+      <ProductPickerDialog {...productPicker.dialogProps} />
       </FormLayout>
       <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={bill?.number ?? ''} hasEffects={bill?.status !== 'draft' && bill?.status !== 'approved'} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={bill?.number ?? ''} isLoading={voidBill.isPending} />
