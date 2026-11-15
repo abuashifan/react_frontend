@@ -158,7 +158,7 @@ KOSONG      → module tanpa menu tetap render ribbon kosong 64px
 **Pembelian:**
 ```
 [ClipboardList/Permintaan] [ShoppingBag/Purchase Order]
-[Package/Penerimaan Brg] [FileText/Tagihan]
+[Package/Penerimaan Barang] [FileText/Tagihan]
 [Banknote/Pembayaran] [RotateCcw/Retur] [Building/Hutang]
 ```
 

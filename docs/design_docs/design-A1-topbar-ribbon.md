@@ -152,7 +152,7 @@ PENJUALAN
 
 PEMBELIAN
   [ClipboardList/Permintaan] [ShoppingBag/Purchase Order]
-  [Package/Penerimaan Brg] [FileText/Tagihan]
+  [Package/Penerimaan Barang] [FileText/Tagihan]
   [Banknote/Pembayaran] [RotateCcw/Retur] [Building/Hutang]
 
 PERSEDIAAN
