@@ -172,7 +172,7 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     ribbonItems: [
       { id: 'requests', label: 'Permintaan', icon: ClipboardList, path: '/purchase/requests', permission: 'purchase.requests.view' },
       { id: 'orders', label: 'Purchase Order', icon: Package, path: '/purchase/orders', permission: 'purchase.orders.view' },
-      { id: 'goods-receipts', label: 'Penerimaan Brg', icon: PackageCheck, path: '/purchase/goods-receipts', permission: 'purchase.goods_receipts.view' },
+      { id: 'goods-receipts', label: 'Penerimaan Barang', icon: PackageCheck, path: '/purchase/goods-receipts', permission: 'purchase.goods_receipts.view' },
       { id: 'bills', label: 'Tagihan', icon: FileText, path: '/purchase/bills', permission: 'purchase.bills.view' },
       { id: 'vendor-deposits', label: 'Uang muka vendor', icon: Wallet, path: '/purchase/vendor-deposits', permission: 'purchase.deposits.view' },
       { id: 'payables', label: 'Hutang', icon: BookOpen, path: '/purchase/ap/summary', permission: 'purchase.ap.view' },

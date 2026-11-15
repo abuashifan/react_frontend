@@ -68,7 +68,7 @@
   - Buku Besar: Jurnal Umum, Periode Akuntansi, Tahun Fiskal
   - Kas & Bank: Penerimaan Kas, Pengeluaran Kas, Transfer, Rekonsiliasi
   - Penjualan: Penawaran, Sales Order, Pengiriman, Proforma, Invoice, Penerimaan, Retur, Piutang
-  - Pembelian: Permintaan, Purchase Order, Penerimaan Brg, Tagihan, Pembayaran, Retur, Hutang
+  - Pembelian: Permintaan, Purchase Order, Penerimaan Barang, Tagihan, Pembayaran, Retur, Hutang
   - Persediaan: Saldo Stok, Mutasi Stok, Penyesuaian, Opname
   - Aktiva Tetap: (belum diimplementasi — placeholder, ribbonItems kosong)
   - Daftar Laporan: Buku Besar, Trial Balance, Laba Rugi, Neraca, Arus Kas, AR Aging, AP Aging
