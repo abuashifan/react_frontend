@@ -22,9 +22,12 @@ import { usePermission } from '@/hooks/usePermission'
 import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { cn, fieldErrorClass } from '@/lib/utils'
 import { useGoodsReceipt, useGoodsReceiptMutations } from '../hooks/useGoodsReceiptList'
+import { useVendorBillMutations } from '../hooks/useVendorBillList'
 import { toGoodsReceiptPayload } from '../services/goodsReceiptAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
-import { produkApi } from '@/modules/master-data/services/produkApi'
+import { ProductPickerDialog } from '@/modules/master-data/components/ProductPickerDialog'
+import { ProductPickCell } from '@/modules/master-data/components/ProductLinePicker'
+import { useProductLinePicker } from '@/modules/master-data/components/useProductLinePicker'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { goodsReceiptSchema, type GoodsReceiptFormValues } from '../schemas/goodsReceiptSchema'
 import { goodsReceiptApi } from '../services/goodsReceiptApi'
@@ -88,7 +91,8 @@ function GoodsReceiptFormPageContent() {
     } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat penerimaan barang dari PO.')) }
   }
   const { canChange } = useTransactionEditMode()
-  const { closeRecordTab, replaceRecordTab } = useRecordTab()
+  const { closeRecordTab, replaceRecordTab, openRecordTab } = useRecordTab()
+  const { createFromGoodsReceipt: createBillFromReceipt } = useVendorBillMutations()
 
   const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<GoodsReceiptFormValues>({
     resolver: zodResolver(goodsReceiptSchema),
@@ -96,6 +100,7 @@ function GoodsReceiptFormPageContent() {
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const productPicker = useProductLinePicker<EditableLine>({ defaultLine: DEFAULT_LINE, setLines })
 
   // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
 
@@ -168,6 +173,16 @@ function GoodsReceiptFormPageContent() {
     try { await receive.mutateAsync(Number(id)); toast.success('Barang berhasil diterima.') }
     catch (receiveError) { toast.error(getApiErrorMessage(receiveError, 'Gagal menerima barang.')) }
   }
+  // Tagihan dibuat dari barang yang SUDAH diterima: jumlah = diterima dikurangi yang sudah ditagih,
+  // harga dari baris PO asal, sehingga tagihan cocok dengan penerimaan.
+  const handleCreateBill = async () => {
+    try {
+      const res = await createBillFromReceipt.mutateAsync(Number(id))
+      toast.success('Tagihan dibuat dari penerimaan barang.')
+      openRecordTab({ label: res.data.bill_number ?? 'Tagihan', path: `/purchase/bills/${res.data.id}` })
+    } catch (billError) { toast.error(getApiErrorMessage(billError, 'Gagal membuat tagihan dari penerimaan barang.')) }
+  }
+  const hasUnbilled = !!gr?.lines?.some((l) => (l.billed_quantity ?? 0) < l.quantity)
   const handleCancel = async () => {
     try { await cancel.mutateAsync(Number(id)); toast.success('GR dibatalkan.') }
     catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan GR.')) }
@@ -208,6 +223,9 @@ function GoodsReceiptFormPageContent() {
     if (gr?.status === 'draft' && can('purchase.goods_receipts.approve')) {
       actions.push({ id: 'receive', label: 'Terima Barang', variant: 'primary', onClick: () => void handleReceive(), isLoading: receive.isPending })
     }
+    if ((gr?.status === 'received' || gr?.status === 'partially_billed') && hasUnbilled && can('purchase.bills.create')) {
+      actions.push({ id: 'create_bill', label: 'Buat Tagihan', variant: 'primary', onClick: () => void handleCreateBill(), isLoading: createBillFromReceipt.isPending })
+    }
     if (gr?.status === 'draft' && can('purchase.goods_receipts.edit')) {
       actions.push({ id: 'cancel', label: 'Batalkan', variant: 'destructive', onClick: () => void handleCancel(), isLoading: cancel.isPending })
     }
@@ -219,18 +237,7 @@ function GoodsReceiptFormPageContent() {
   const columns: LineItemColumn<EditableLine>[] = [
     {
       id: 'product', header: 'Produk', width: 200,
-      render: ({ item, isReadOnly, onUpdate }) => (
-        <SearchableSelect
-          flush
-          value={item.product_id}
-          onChange={(v, opt) => { onUpdate('product_id', v); onUpdate('product', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null); if (opt && !item.description?.trim()) onUpdate('description', opt.label) }}
-          onSearch={produkApi.search}
-          placeholder="Pilih produk..."
-          disabled={isReadOnly}
-          size="sm"
-          selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []}
-        />
-      ),
+      render: ({ item, index, isReadOnly }) => <ProductPickCell product={item.product} disabled={isReadOnly} onClick={() => productPicker.openAt(index)} />,
     },
     {
       id: 'description', header: 'Deskripsi', width: 200,
@@ -360,7 +367,7 @@ function GoodsReceiptFormPageContent() {
           errors={lineErrors}
               items={lines}
               columns={columns}
-              onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
+              onAdd={productPicker.openAppend}
               onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}
               onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))}
               getSubtotal={lineSubtotal}
@@ -371,6 +378,7 @@ function GoodsReceiptFormPageContent() {
           </>
           )}
         </div>
+      <ProductPickerDialog {...productPicker.dialogProps} />
       </FormLayout>
 
       <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={gr?.number ?? ''} hasEffects={!['draft', 'cancelled'].includes(gr?.status ?? 'draft')} isLoading={remove.isPending} />

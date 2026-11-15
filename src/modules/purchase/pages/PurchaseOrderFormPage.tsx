@@ -22,7 +22,9 @@ import { useVendorBillMutations } from '../hooks/useVendorBillList'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { toPurchaseOrderPayload } from '../services/purchaseOrderAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
-import { produkApi } from '@/modules/master-data/services/produkApi'
+import { ProductPickerDialog } from '@/modules/master-data/components/ProductPickerDialog'
+import { ProductPickCell } from '@/modules/master-data/components/ProductLinePicker'
+import { useProductLinePicker } from '@/modules/master-data/components/useProductLinePicker'
 import { paymentTermsApi } from '@/modules/master-data/services/paymentTermsApi'
 import { purchaseOrderSchema, type PurchaseOrderFormValues } from '../schemas/purchaseOrderSchema'
 import { purchaseOrderApi } from '../services/purchaseOrderApi'
@@ -95,6 +97,7 @@ function PurchaseOrderFormPageContent() {
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const productPicker = useProductLinePicker<EditableLine>({ defaultLine: DEFAULT_LINE, setLines, applyProduct: (product, line) => ({ ...line, unit_price: product.purchase_price ?? 0 }) })
 
   // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
 
@@ -197,6 +200,7 @@ function PurchaseOrderFormPageContent() {
   const isFollowUpStatus = !!po && !['draft', 'approved', 'cancelled', 'closed', 'void'].includes(po.status as string)
   const hasUnreceived = !!po?.lines.some((l) => (l.received_quantity ?? 0) < l.quantity)
   const hasUnbilled = !!po?.lines.some((l) => (l.billed_quantity ?? 0) < l.quantity)
+  const hasReceived = !!po?.lines.some((l) => (l.received_quantity ?? 0) > 0)
 
   const actions: DocumentActionButton[] = []
   if (!isCreate && po && can('purchase.orders.print')) {
@@ -216,7 +220,13 @@ function PurchaseOrderFormPageContent() {
       actions.push({ id: 'create_receipt', label: 'Buat Penerimaan Barang', variant: 'primary', onClick: () => void handleCreateReceipt(), isLoading: createReceipt.isPending })
     }
     if (isFollowUpStatus && hasUnbilled && can('purchase.bills.create')) {
-      actions.push({ id: 'create_bill', label: 'Buat Tagihan', variant: 'secondary', onClick: () => void handleCreateBill(), isLoading: createBill.isPending })
+      // Tagihan dari PO menagih SELURUH sisa jumlah pesanan, bukan jumlah yang diterima. Bila barang
+      // sudah diterima, tagihan harus dibuat dari Penerimaan Barang supaya jumlahnya cocok.
+      actions.push({
+        id: 'create_bill', label: 'Buat Tagihan', variant: 'secondary', onClick: () => void handleCreateBill(), isLoading: createBill.isPending,
+        disabled: hasReceived,
+        tooltip: hasReceived ? 'Barang sudah diterima. Buat tagihan dari halaman Penerimaan Barang supaya jumlah tagihan cocok dengan yang diterima.' : undefined,
+      })
     }
     if (['draft', 'approved'].includes(po?.status ?? '') && can('purchase.orders.delete')) {
       actions.push({ id: 'cancel', label: 'Batalkan', variant: 'destructive', onClick: () => void handleCancel(), isLoading: cancel.isPending })
@@ -226,18 +236,7 @@ function PurchaseOrderFormPageContent() {
   const columns: LineItemColumn<EditableLine>[] = [
     {
       id: 'product', header: 'Produk', width: 200,
-      render: ({ item, isReadOnly, onUpdate }) => (
-        <SearchableSelect
-          flush
-          value={item.product_id}
-          onChange={(v, opt) => { onUpdate('product_id', v); onUpdate('product', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null); if (opt && !item.description?.trim()) onUpdate('description', opt.label) }}
-          onSearch={produkApi.search}
-          placeholder="Pilih produk..."
-          disabled={isReadOnly}
-          size="sm"
-          selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []}
-        />
-      ),
+      render: ({ item, index, isReadOnly }) => <ProductPickCell product={item.product} disabled={isReadOnly} onClick={() => productPicker.openAt(index)} />,
     },
     {
       id: 'description', header: 'Deskripsi', width: 180,
@@ -352,7 +351,7 @@ function PurchaseOrderFormPageContent() {
           errors={lineErrors}
             items={lines}
             columns={columns}
-            onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
+            onAdd={productPicker.openAppend}
             onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}
             onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))}
             getSubtotal={lineSubtotal}
@@ -362,7 +361,8 @@ function PurchaseOrderFormPageContent() {
           <FormSummary subtotal={subtotal} grandTotal={subtotal} />
         </div>
       </div>
-    </FormLayout>
+    <ProductPickerDialog {...productPicker.dialogProps} />
+      </FormLayout>
       <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={po ? purchaseOrderPrint(po) : null} />
     </>
   )

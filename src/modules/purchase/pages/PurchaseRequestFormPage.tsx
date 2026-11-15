@@ -19,7 +19,9 @@ import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type Li
 import { cn, fieldErrorClass } from '@/lib/utils'
 import { usePurchaseRequest, usePurchaseRequestMutations } from '../hooks/usePurchaseRequestList'
 import { toPurchaseRequestPayload } from '../services/purchaseRequestAdapter'
-import { produkApi } from '@/modules/master-data/services/produkApi'
+import { ProductPickerDialog } from '@/modules/master-data/components/ProductPickerDialog'
+import { ProductPickCell } from '@/modules/master-data/components/ProductLinePicker'
+import { useProductLinePicker } from '@/modules/master-data/components/useProductLinePicker'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { purchaseRequestSchema, type PurchaseRequestFormValues } from '../schemas/purchaseRequestSchema'
 import { purchaseRequestApi } from '../services/purchaseRequestApi'
@@ -71,6 +73,7 @@ function PurchaseRequestFormPageContent() {
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const productPicker = useProductLinePicker<EditableLine>({ defaultLine: DEFAULT_LINE, setLines, applyProduct: (product, line) => ({ ...line, estimated_price: product.purchase_price ?? 0 }) })
 
   // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
 
@@ -175,18 +178,7 @@ function PurchaseRequestFormPageContent() {
   const columns: LineItemColumn<EditableLine>[] = [
     {
       id: 'product', header: 'Produk', width: 200,
-      render: ({ item, isReadOnly, onUpdate }) => (
-        <SearchableSelect
-          flush
-          value={item.product_id}
-          onChange={(v, opt) => { onUpdate('product_id', v); onUpdate('product', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null); if (opt && !item.description?.trim()) onUpdate('description', opt.label) }}
-          onSearch={produkApi.search}
-          placeholder="Pilih produk..."
-          disabled={isReadOnly}
-          size="sm"
-          selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []}
-        />
-      ),
+      render: ({ item, index, isReadOnly }) => <ProductPickCell product={item.product} disabled={isReadOnly} onClick={() => productPicker.openAt(index)} />,
     },
     {
       id: 'description', header: 'Deskripsi', width: 200,
@@ -264,7 +256,7 @@ function PurchaseRequestFormPageContent() {
           errors={lineErrors}
             items={lines}
             columns={columns}
-            onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
+            onAdd={productPicker.openAppend}
             onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}
             onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))}
             getSubtotal={lineSubtotal}
@@ -274,7 +266,8 @@ function PurchaseRequestFormPageContent() {
           <FormSummary subtotal={subtotal} grandTotal={subtotal} />
         </div>
       </div>
-    </FormLayout>
+    <ProductPickerDialog {...productPicker.dialogProps} />
+      </FormLayout>
       <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={pr ? purchaseRequestPrint(pr) : null} />
     </>
   )
