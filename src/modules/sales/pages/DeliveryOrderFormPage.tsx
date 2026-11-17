@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { salesReturnApi } from '../services/salesReturnApi'
+import { salesInvoiceApi } from '../services/salesInvoiceApi'
+import { SourceConvertPanel } from '@/components/shared/document/SourceConvertPanel'
+import { deliveryOrderSources } from '../services/salesSourceApi'
+import { useParams, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -56,6 +60,7 @@ export default function DeliveryOrderFormPage() {
 function DeliveryOrderFormPageContent() {
   const { id } = useParams()
   const isCreate = !id
+  const location = useLocation()
   const { toast } = useToast()
   const { can } = usePermission()
   const [printOpen, setPrintOpen] = useState(false)
@@ -197,7 +202,30 @@ function DeliveryOrderFormPageContent() {
     } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus delivery order.')) }
   }
 
+  const { openRecordTab: openFollowUpTab } = useRecordTab()
+  const handleCreateInvoice = async () => {
+    try {
+      const res = await salesInvoiceApi.createFromDeliveryOrder(Number(id))
+      const created = res.data as unknown as { id: number; number?: string; return_number?: string; invoice_number?: string }
+      toast.success('Invoice dibuat sebagai draft.')
+      openFollowUpTab({ label: created.number ?? created.return_number ?? created.invoice_number ?? 'Invoice', path: `/sales/invoices/${created.id}` })
+    } catch (followUpError) { toast.error(getApiErrorMessage(followUpError, 'Gagal membuat invoice.')) }
+  }
+  const handleCreateReturn = async () => {
+    try {
+      const res = await salesReturnApi.createFromDeliveryOrder(Number(id))
+      const created = res.data as unknown as { id: number; number?: string; return_number?: string; invoice_number?: string }
+      toast.success('Retur Penjualan dibuat sebagai draft.')
+      openFollowUpTab({ label: created.number ?? created.return_number ?? created.invoice_number ?? 'Retur Penjualan', path: `/sales/returns/${created.id}` })
+    } catch (followUpError) { toast.error(getApiErrorMessage(followUpError, 'Gagal membuat retur penjualan.')) }
+  }
   const actions: DocumentActionButton[] = []
+  if (!isCreate && ['delivered', 'partially_invoiced'].includes(order?.status ?? '') && can('sales.invoices.create')) {
+    actions.push({ id: 'create_invoice', label: 'Buat Invoice', variant: 'primary', onClick: () => void handleCreateInvoice() })
+  }
+  if (!isCreate && ['shipped', 'delivered', 'partially_invoiced', 'invoiced'].includes(order?.status ?? '') && can('sales.returns.create')) {
+    actions.push({ id: 'create_return', label: 'Buat Retur', variant: 'secondary', onClick: () => void handleCreateReturn() })
+  }
   if (!isCreate && order && can('sales.delivery_orders.print')) {
     actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
   }
@@ -237,7 +265,7 @@ function DeliveryOrderFormPageContent() {
       header: 'Produk',
       width: 200,
       render: ({ item, isReadOnly, onUpdate }) => (
-        <SearchableSelect
+        <SearchableSelect cacheKey="product"
           flush
           value={item.product_id}
           onChange={(v, opt) => {
@@ -301,12 +329,13 @@ function DeliveryOrderFormPageContent() {
         }
       >
         <div className="space-y-3">
+          {isCreate && <SourceConvertPanel sources={deliveryOrderSources} targetLabel="Delivery Order" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/sales/delivery-orders/${newId}`} />}
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Customer <span className="text-red-500">*</span>
               </Label>
-              <SearchableSelect
+              <SearchableSelect cacheKey="contact"
                 value={watch('customer_id') ?? null}
                 onChange={(v) => setValue('customer_id', v as number)}
                 onSearch={(q) => kontakApi.search(q, 'customer')}
@@ -327,7 +356,7 @@ function DeliveryOrderFormPageContent() {
 
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Gudang</Label>
-              <SearchableSelect
+              <SearchableSelect cacheKey="warehouse"
                 value={watch('warehouse_id') ?? null}
                 onChange={(v) => setValue('warehouse_id', v)}
                 onSearch={gudangApi.search}

@@ -41,7 +41,7 @@ export default function ArAgingPage() {
       <div className="mb-3 flex flex-wrap items-end gap-3">
         <div className="w-60">
           <Label className="mb-1 block text-[11px] font-semibold uppercase text-[#64748b]">Customer</Label>
-          <SearchableSelect
+          <SearchableSelect cacheKey="contact"
             value={filterCustomer ?? null}
             onChange={(v) => setFilterCustomer(v ?? undefined)}
             onSearch={(q) => kontakApi.search(q, 'customer')}

@@ -211,7 +211,7 @@ function BudgetPeriodDetailPageContent() {
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Departemen
               </Label>
-              <SearchableSelect
+              <SearchableSelect cacheKey="department"
                 value={departmentId}
                 onChange={(value) => setDepartmentId(value)}
                 onSearch={searchDept}

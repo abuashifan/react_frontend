@@ -239,7 +239,7 @@ function QuotationFormPageContent() {
       header: 'Produk',
       width: 200,
       render: ({ item, isReadOnly, onUpdate }) => (
-        <SearchableSelect
+        <SearchableSelect cacheKey="product"
           flush
           value={item.product_id}
           onChange={(v, opt) => {
@@ -332,7 +332,7 @@ function QuotationFormPageContent() {
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
               Customer <span className="text-red-500">*</span>
             </Label>
-            <SearchableSelect
+            <SearchableSelect cacheKey="contact"
               value={watch('customer_id') ?? null}
               onChange={(v) => setValue('customer_id', v as number)}
               onSearch={(q) => kontakApi.search(q, 'customer')}

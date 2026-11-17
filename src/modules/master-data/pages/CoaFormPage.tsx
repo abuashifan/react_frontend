@@ -226,7 +226,7 @@ function CoaFormPageContent() {
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
               Akun Induk
             </Label>
-            <SearchableSelect
+            <SearchableSelect cacheKey="coa"
               value={watch('parent_account_id') ?? null}
               onChange={(v) => setValue('parent_account_id', v)}
               onSearch={(q) => coaApi.search(q, { postable_only: false })}

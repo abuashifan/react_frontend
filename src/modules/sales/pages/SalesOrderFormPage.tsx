@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { proformaApi } from '../services/proformaApi'
+import { SourceConvertPanel } from '@/components/shared/document/SourceConvertPanel'
+import { salesOrderSources } from '../services/salesSourceApi'
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -75,6 +78,7 @@ function SalesOrderFormPageContent() {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const isCreate = !id
+  const location = useLocation()
   const { toast } = useToast()
   const { can } = usePermission()
   const [printOpen, setPrintOpen] = useState(false)
@@ -228,7 +232,18 @@ function SalesOrderFormPageContent() {
   const hasUndelivered = !!order?.lines.some((l) => (l.delivered_quantity ?? 0) < l.quantity)
   const hasUninvoiced = !!order?.lines.some((l) => (l.invoiced_quantity ?? 0) < l.quantity)
 
+  const handleCreateProforma = async () => {
+    try {
+      const res = await proformaApi.createFromSalesOrder(Number(id))
+      const created = res.data as unknown as { id: number; number?: string; return_number?: string; invoice_number?: string }
+      toast.success('Proforma dibuat sebagai draft.')
+      openRecordTab({ label: created.number ?? created.return_number ?? created.invoice_number ?? 'Proforma', path: `/sales/proformas/${created.id}` })
+    } catch (followUpError) { toast.error(getApiErrorMessage(followUpError, 'Gagal membuat proforma.')) }
+  }
   const actions: DocumentActionButton[] = []
+  if (!isCreate && ['approved', 'confirmed', 'partially_delivered', 'delivered'].includes(order?.status ?? '') && can('sales.proformas.create') && can('sales.documents.convert')) {
+    actions.push({ id: 'create_proforma', label: 'Buat Proforma', variant: 'secondary', onClick: () => void handleCreateProforma() })
+  }
   if (!isCreate && order && can('sales.orders.print')) {
     actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
   }
@@ -261,7 +276,7 @@ function SalesOrderFormPageContent() {
       header: 'Produk',
       width: 200,
       render: ({ item, isReadOnly, onUpdate }) => (
-        <SearchableSelect
+        <SearchableSelect cacheKey="product"
           flush
           value={item.product_id}
           onChange={(v, opt) => {
@@ -362,12 +377,13 @@ function SalesOrderFormPageContent() {
       }
     >
       <div className="space-y-3">
+        {isCreate && <SourceConvertPanel sources={salesOrderSources} targetLabel="Sales Order" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/sales/orders/${newId}`} />}
         <FormSection title="Header">
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
               Customer <span className="text-red-500">*</span>
             </Label>
-            <SearchableSelect
+            <SearchableSelect cacheKey="contact"
               value={customerId ?? null}
               onChange={(v) => setValue('customer_id', v as number)}
               onSearch={(q) => kontakApi.search(q, 'customer')}
@@ -388,7 +404,7 @@ function SalesOrderFormPageContent() {
 
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Syarat Pembayaran</Label>
-            <SearchableSelect
+            <SearchableSelect cacheKey="payment-term"
               value={paymentTermId ?? null}
               onChange={(v) => setValue('payment_term_id', v)}
               onSearch={paymentTermsApi.search}

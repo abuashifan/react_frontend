@@ -57,15 +57,15 @@ export function BudgetConsolidationTable({ periodId }: Props) {
         </div>
         <div className="w-44">
           <Label className="text-[11px] text-[#64748b]">Filter Departemen</Label>
-          <SearchableSelect value={deptId} onSearch={searchDept} onChange={setDeptId} placeholder="Semua dept" size="sm" />
+          <SearchableSelect cacheKey="coa" value={deptId} onSearch={searchDept} onChange={setDeptId} placeholder="Semua dept" size="sm" />
         </div>
         <div className="w-44">
           <Label className="text-[11px] text-[#64748b]">Filter Proyek</Label>
-          <SearchableSelect value={projectId} onSearch={searchProject} onChange={setProjectId} placeholder="Semua proyek" size="sm" />
+          <SearchableSelect cacheKey="coa" value={projectId} onSearch={searchProject} onChange={setProjectId} placeholder="Semua proyek" size="sm" />
         </div>
         <div className="w-44">
           <Label className="text-[11px] text-[#64748b]">Filter Akun</Label>
-          <SearchableSelect value={accountId} onSearch={searchCoa} onChange={setAccountId} placeholder="Semua akun" size="sm" />
+          <SearchableSelect cacheKey="coa" value={accountId} onSearch={searchCoa} onChange={setAccountId} placeholder="Semua akun" size="sm" />
         </div>
       </div>
 

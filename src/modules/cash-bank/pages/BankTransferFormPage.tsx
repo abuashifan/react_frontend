@@ -165,11 +165,11 @@ function BankTransferFormPageContent() {
               </FormField>
 
               <FormField label="Dari Akun" required error={errors.from_cash_bank_account_id?.message} className="w-[240px]">
-                <SearchableSelect value={fromAccountId ?? null} onChange={(v) => setValue('from_cash_bank_account_id', v as number)} onSearch={(q) => coaApi.search(q, { is_cash_bank: true })} placeholder="Pilih akun asal..." disabled={!isEditable} size="sm" selectedOptions={transfer?.from_cash_bank_account ? [{ value: transfer.from_cash_bank_account.id, label: transfer.from_cash_bank_account.name, sublabel: transfer.from_cash_bank_account.code }] : []} />
+                <SearchableSelect cacheKey="coa" value={fromAccountId ?? null} onChange={(v) => setValue('from_cash_bank_account_id', v as number)} onSearch={(q) => coaApi.search(q, { is_cash_bank: true })} placeholder="Pilih akun asal..." disabled={!isEditable} size="sm" selectedOptions={transfer?.from_cash_bank_account ? [{ value: transfer.from_cash_bank_account.id, label: transfer.from_cash_bank_account.name, sublabel: transfer.from_cash_bank_account.code }] : []} />
               </FormField>
 
               <FormField label="Ke Akun" required error={errors.to_cash_bank_account_id?.message} className="w-[240px]">
-                <SearchableSelect value={toAccountId ?? null} onChange={(v) => setValue('to_cash_bank_account_id', v as number)} onSearch={(q) => coaApi.search(q, { is_cash_bank: true })} placeholder="Pilih akun tujuan..." disabled={!isEditable} size="sm" selectedOptions={transfer?.to_cash_bank_account ? [{ value: transfer.to_cash_bank_account.id, label: transfer.to_cash_bank_account.name, sublabel: transfer.to_cash_bank_account.code }] : []} />
+                <SearchableSelect cacheKey="coa" value={toAccountId ?? null} onChange={(v) => setValue('to_cash_bank_account_id', v as number)} onSearch={(q) => coaApi.search(q, { is_cash_bank: true })} placeholder="Pilih akun tujuan..." disabled={!isEditable} size="sm" selectedOptions={transfer?.to_cash_bank_account ? [{ value: transfer.to_cash_bank_account.id, label: transfer.to_cash_bank_account.name, sublabel: transfer.to_cash_bank_account.code }] : []} />
               </FormField>
 
               <FormField label="Jumlah" required error={errors.amount?.message} className="w-[180px]">

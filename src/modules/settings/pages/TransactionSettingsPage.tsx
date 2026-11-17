@@ -146,7 +146,7 @@ export default function TransactionSettingsPage() {
         <FormSection title="Default Transaksi">
           <div className="flex flex-col gap-1">
             <Label htmlFor="transaction-settings-default-payment-term" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Syarat Pembayaran Default</Label>
-            <SearchableSelect triggerId="transaction-settings-default-payment-term" triggerAriaLabel="Syarat pembayaran default" value={paymentTermId} onChange={setPaymentTermId} onSearch={paymentTermsApi.search} placeholder="Pilih syarat pembayaran..." />
+            <SearchableSelect cacheKey="payment-term" triggerId="transaction-settings-default-payment-term" triggerAriaLabel="Syarat pembayaran default" value={paymentTermId} onChange={setPaymentTermId} onSearch={paymentTermsApi.search} placeholder="Pilih syarat pembayaran..." />
           </div>
         </FormSection>
 

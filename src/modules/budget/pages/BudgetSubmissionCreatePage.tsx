@@ -120,7 +120,7 @@ export default function BudgetSubmissionCreatePage() {
             control={control}
             name="department_id"
             render={({ field }) => (
-              <SearchableSelect
+              <SearchableSelect cacheKey="department"
                 value={field.value}
                 onChange={(v) => field.onChange(v)}
                 onSearch={searchDept}

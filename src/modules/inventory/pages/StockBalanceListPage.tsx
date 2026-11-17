@@ -106,7 +106,7 @@ export default function StockBalanceListPage() {
       }}
     >
       <FilterSection title="Gudang">
-        <SearchableSelect
+        <SearchableSelect cacheKey="warehouse"
           value={warehouseId}
           onChange={(v) => setWarehouseId(v)}
           onSearch={gudangApi.search}

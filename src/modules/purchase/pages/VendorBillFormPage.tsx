@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { purchaseReturnApi } from '../services/purchaseReturnApi'
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useForm, useWatch } from 'react-hook-form'
@@ -285,7 +286,19 @@ function VendorBillFormPageContent() {
     } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus tagihan vendor.')) }
   }
 
+  const { openRecordTab: openFollowUpTab } = useRecordTab()
+  const handleCreateReturn = async () => {
+    try {
+      const res = await purchaseReturnApi.createFromBill(Number(id))
+      const created = res.data as unknown as { id: number; number?: string; return_number?: string; invoice_number?: string }
+      toast.success('Retur Pembelian dibuat sebagai draft.')
+      openFollowUpTab({ label: created.number ?? created.return_number ?? created.invoice_number ?? 'Retur Pembelian', path: `/purchase/returns/${created.id}` })
+    } catch (followUpError) { toast.error(getApiErrorMessage(followUpError, 'Gagal membuat retur pembelian.')) }
+  }
   const actions: DocumentActionButton[] = []
+  if (!isCreate && (bill?.status === 'posted' || bill?.status === 'partially_paid') && can('purchase.returns.create')) {
+    actions.push({ id: 'create_return', label: 'Buat Retur', variant: 'secondary', onClick: () => void handleCreateReturn() })
+  }
   if (!isCreate && bill && can('purchase.bills.print')) {
     actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
   }
@@ -349,7 +362,7 @@ function VendorBillFormPageContent() {
       id: 'product', header: 'Produk / Kategori Aset', width: 200,
       render: ({ item, index, isReadOnly, onUpdate }) =>
         item.line_classification === 'fixed_asset' ? (
-          <SearchableSelect
+          <SearchableSelect cacheKey="fa-category"
           flush
             value={item.fixed_asset_category_id}
             onChange={(v) => onUpdate('fixed_asset_category_id', v)}
@@ -495,7 +508,7 @@ function VendorBillFormPageContent() {
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Vendor <span className="text-red-500">*</span></Label>
-              <SearchableSelect value={vendorId ?? null} onChange={(v) => setValue('vendor_id', v as number)} onSearch={(q) => kontakApi.search(q, 'supplier')} placeholder="Pilih vendor..." disabled={!isEditable} error={errors.vendor_id?.message} selectedOptions={bill?.vendor ? [{ value: bill.vendor.id, label: bill.vendor.name }] : []} />
+              <SearchableSelect cacheKey="contact" value={vendorId ?? null} onChange={(v) => setValue('vendor_id', v as number)} onSearch={(q) => kontakApi.search(q, 'supplier')} placeholder="Pilih vendor..." disabled={!isEditable} error={errors.vendor_id?.message} selectedOptions={bill?.vendor ? [{ value: bill.vendor.id, label: bill.vendor.name }] : []} />
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="date" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
@@ -509,7 +522,7 @@ function VendorBillFormPageContent() {
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Syarat Pembayaran</Label>
-              <SearchableSelect value={paymentTermId ?? null} onChange={(v) => setValue('payment_term_id', v)} onSearch={paymentTermsApi.search} placeholder="Pilih syarat pembayaran..." disabled={!isEditable} error={errors.payment_term_id?.message} selectedOptions={bill?.payment_term ? [{ value: bill.payment_term.id, label: bill.payment_term.name }] : []} />
+              <SearchableSelect cacheKey="payment-term" value={paymentTermId ?? null} onChange={(v) => setValue('payment_term_id', v)} onSearch={paymentTermsApi.search} placeholder="Pilih syarat pembayaran..." disabled={!isEditable} error={errors.payment_term_id?.message} selectedOptions={bill?.payment_term ? [{ value: bill.payment_term.id, label: bill.payment_term.name }] : []} />
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="applied_vendor_deposit_amount" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Deposit Vendor Terpakai</Label>

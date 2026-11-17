@@ -119,7 +119,7 @@ export default function ProformaListPage() {
         ))}
       </FilterSection>
       <FilterSection title="Customer">
-        <SearchableSelect
+        <SearchableSelect cacheKey="contact"
           value={filterCustomer}
           onChange={(v) => setFilterCustomer(v)}
           onSearch={(q) => kontakApi.search(q, 'customer')}

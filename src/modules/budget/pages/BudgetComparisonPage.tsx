@@ -58,11 +58,11 @@ export default function BudgetComparisonPage() {
       />
 
       <FormField label="Departemen" className="w-44">
-        <SearchableSelect value={deptId} onSearch={searchDept} onChange={setDeptId} placeholder="Semua dept" size="sm" />
+        <SearchableSelect cacheKey="department" value={deptId} onSearch={searchDept} onChange={setDeptId} placeholder="Semua dept" size="sm" />
       </FormField>
 
       <FormField label="Proyek" className="w-44">
-        <SearchableSelect value={projectId} onSearch={searchProject} onChange={setProjectId} placeholder="Semua proyek" size="sm" />
+        <SearchableSelect cacheKey="project" value={projectId} onSearch={searchProject} onChange={setProjectId} placeholder="Semua proyek" size="sm" />
       </FormField>
 
       <FormField label="Dari" className="w-36">

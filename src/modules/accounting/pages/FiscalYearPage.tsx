@@ -102,7 +102,7 @@ export default function FiscalYearPage() {
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Laba Ditahan</Label>
-              <SearchableSelect value={retainedEarningsId} onChange={(v) => setRetainedEarningsId(v)} onSearch={coaApi.search} placeholder="Pilih akun laba ditahan..." error={closeErrors.retained_earnings_account_id} />
+              <SearchableSelect cacheKey="coa" value={retainedEarningsId} onChange={(v) => setRetainedEarningsId(v)} onSearch={coaApi.search} placeholder="Pilih akun laba ditahan..." error={closeErrors.retained_earnings_account_id} />
             </div>
             <div className="md:col-span-2">
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-[12px] text-amber-800">

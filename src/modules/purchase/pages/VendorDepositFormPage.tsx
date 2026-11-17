@@ -181,7 +181,7 @@ function VendorDepositFormPageContent() {
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Vendor <span className="text-red-500">*</span></Label>
-              <SearchableSelect value={watch('vendor_id') ?? null} onChange={(v) => setValue('vendor_id', v as number)} onSearch={(q) => kontakApi.search(q, 'supplier')} placeholder="Pilih vendor..." disabled={!isEditable} error={errors.vendor_id?.message} selectedOptions={deposit?.vendor ? [{ value: deposit.vendor.id, label: deposit.vendor.name }] : []} />
+              <SearchableSelect cacheKey="contact" value={watch('vendor_id') ?? null} onChange={(v) => setValue('vendor_id', v as number)} onSearch={(q) => kontakApi.search(q, 'supplier')} placeholder="Pilih vendor..." disabled={!isEditable} error={errors.vendor_id?.message} selectedOptions={deposit?.vendor ? [{ value: deposit.vendor.id, label: deposit.vendor.name }] : []} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
@@ -190,7 +190,7 @@ function VendorDepositFormPageContent() {
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Kas/Bank <span className="text-red-500">*</span></Label>
-              <SearchableSelect value={watch('cash_bank_account_id') ?? null} onChange={(v) => setValue('cash_bank_account_id', v as number)} onSearch={coaApi.search} placeholder="Pilih akun kas/bank..." disabled={!isEditable} error={errors.cash_bank_account_id?.message} selectedOptions={deposit?.cash_bank_account ? [{ value: deposit.cash_bank_account.id, label: `${deposit.cash_bank_account.code} - ${deposit.cash_bank_account.name}` }] : []} />
+              <SearchableSelect cacheKey="coa" value={watch('cash_bank_account_id') ?? null} onChange={(v) => setValue('cash_bank_account_id', v as number)} onSearch={coaApi.search} placeholder="Pilih akun kas/bank..." disabled={!isEditable} error={errors.cash_bank_account_id?.message} selectedOptions={deposit?.cash_bank_account ? [{ value: deposit.cash_bank_account.id, label: `${deposit.cash_bank_account.code} - ${deposit.cash_bank_account.name}` }] : []} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jumlah <span className="text-red-500">*</span></Label>

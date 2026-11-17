@@ -146,7 +146,7 @@ export default function BudgetPeriodFormPage() {
       header: 'Departemen',
       width: 280,
       render: ({ item, isReadOnly, onUpdate }) => (
-        <SearchableSelect
+        <SearchableSelect cacheKey="department"
           value={item.department_id}
           onSearch={searchDept}
           onChange={(v, opt) => {

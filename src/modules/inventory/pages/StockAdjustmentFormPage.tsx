@@ -259,7 +259,7 @@ function StockAdjustmentFormPageContent() {
       id: 'product', header: 'Produk', width: 180,
       render: ({ item, index, isReadOnly, onUpdate }) => (
         <div>
-          <SearchableSelect
+          <SearchableSelect cacheKey="product"
           flush
             value={item.product_id}
             onChange={(v) => { onUpdate('product_id', v); setLineErrors((prev) => { const n = { ...prev }; if (n[index]) { const f = { ...n[index] }; delete f.product_id; n[index] = f } return n }) }}
@@ -277,7 +277,7 @@ function StockAdjustmentFormPageContent() {
       id: 'warehouse', header: 'Gudang', width: 150,
       render: ({ item, index, isReadOnly, onUpdate }) => (
         <div>
-          <SearchableSelect
+          <SearchableSelect cacheKey="warehouse"
           flush
             value={item.warehouse_id}
             onChange={(v) => { onUpdate('warehouse_id', v); setLineErrors((prev) => { const n = { ...prev }; if (n[index]) { const f = { ...n[index] }; delete f.warehouse_id; n[index] = f } return n }) }}
@@ -392,7 +392,7 @@ function StockAdjustmentFormPageContent() {
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Gudang Default</Label>
-              <SearchableSelect value={warehouseId ?? null} onChange={(v) => setValue('warehouse_id', v)} onSearch={gudangApi.search} placeholder="Pilih gudang..." disabled={!isEditable} error={errors.warehouse_id?.message} selectedOptions={adj?.warehouse ? [{ value: adj.warehouse.id, label: adj.warehouse.name }] : warehouseId && preloadedWarehouses.has(warehouseId) ? [preloadedWarehouses.get(warehouseId)!] : []} />
+              <SearchableSelect cacheKey="warehouse" value={warehouseId ?? null} onChange={(v) => setValue('warehouse_id', v)} onSearch={gudangApi.search} placeholder="Pilih gudang..." disabled={!isEditable} error={errors.warehouse_id?.message} selectedOptions={adj?.warehouse ? [{ value: adj.warehouse.id, label: adj.warehouse.name }] : warehouseId && preloadedWarehouses.has(warehouseId) ? [preloadedWarehouses.get(warehouseId)!] : []} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Alasan</Label>

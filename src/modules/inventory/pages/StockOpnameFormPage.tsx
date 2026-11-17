@@ -247,7 +247,7 @@ function StockOpnameFormPageContent() {
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Gudang <span className="text-red-500">*</span></Label>
               {isCreate
-                ? <SearchableSelect value={watch('warehouse_id') ?? null} onChange={(v) => setValue('warehouse_id', v as number)} onSearch={gudangApi.search} placeholder="Pilih gudang..." error={errors.warehouse_id?.message} />
+                ? <SearchableSelect cacheKey="warehouse" value={watch('warehouse_id') ?? null} onChange={(v) => setValue('warehouse_id', v as number)} onSearch={gudangApi.search} placeholder="Pilih gudang..." error={errors.warehouse_id?.message} />
                 : <span className="text-[13px] text-[#334155]">{opname?.warehouse?.name ?? '-'}</span>
               }
             </div>

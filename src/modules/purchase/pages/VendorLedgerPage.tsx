@@ -22,7 +22,7 @@ export default function VendorLedgerPage() {
     >
       <div className="mb-4 w-72">
         <Label className="mb-1 block text-[11px] font-semibold uppercase text-[#64748b]">Vendor</Label>
-        <SearchableSelect
+        <SearchableSelect cacheKey="contact"
           value={selectedVendor}
           onChange={(v) => setSelectedVendor(v)}
           onSearch={(q) => kontakApi.search(q, 'supplier')}

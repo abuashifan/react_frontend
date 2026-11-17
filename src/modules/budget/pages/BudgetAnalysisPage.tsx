@@ -230,11 +230,11 @@ function BudgetAnalysisPageContent() {
         />
 
         <FormField label="Cost Center" className="w-40">
-          <SearchableSelect value={deptId} onSearch={searchDept} onChange={setDeptId} placeholder="Semua" size="sm" />
+          <SearchableSelect cacheKey="department" value={deptId} onSearch={searchDept} onChange={setDeptId} placeholder="Semua" size="sm" />
         </FormField>
 
         <FormField label="Proyek" className="w-40">
-          <SearchableSelect value={projectId} onSearch={searchProject} onChange={setProjectId} placeholder="Semua" size="sm" />
+          <SearchableSelect cacheKey="project" value={projectId} onSearch={searchProject} onChange={setProjectId} placeholder="Semua" size="sm" />
         </FormField>
 
         <FormField label="Arah" htmlFor="analysis-direction" className="w-32">

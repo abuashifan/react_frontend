@@ -183,7 +183,7 @@ export default function FixedAssetListPage() {
       </div>
       <div className="space-y-1">
         <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kategori</Label>
-        <SearchableSelect value={categoryId} onChange={setCategoryId} onSearch={fixedAssetCategoryApi.search} placeholder="Semua kategori" size="sm" />
+        <SearchableSelect cacheKey="fa-category" value={categoryId} onChange={setCategoryId} onSearch={fixedAssetCategoryApi.search} placeholder="Semua kategori" size="sm" />
       </div>
       <div className="space-y-1">
         <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Status</Label>

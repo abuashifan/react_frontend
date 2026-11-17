@@ -105,7 +105,7 @@ function AccountField({
           name={name}
           control={control}
           render={({ field }) => (
-            <SearchableSelect
+            <SearchableSelect cacheKey="coa"
               value={field.value ?? null}
               onChange={field.onChange}
               onSearch={coaApi.search}
@@ -368,7 +368,7 @@ function ProdukFormPageContent() {
               name="product_category_id"
               control={control}
               render={({ field }) => (
-                <SearchableSelect
+                <SearchableSelect cacheKey="product-category"
                   value={field.value ?? null}
                   onChange={field.onChange}
                   onSearch={kategoriProdukApi.search}
@@ -386,7 +386,7 @@ function ProdukFormPageContent() {
               name="unit_id"
               control={control}
               render={({ field }) => (
-                <SearchableSelect
+                <SearchableSelect cacheKey="unit"
                   value={field.value ?? null}
                   onChange={field.onChange}
                   onSearch={satuanApi.search}
