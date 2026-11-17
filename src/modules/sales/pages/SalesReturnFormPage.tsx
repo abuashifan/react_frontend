@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { SourceConvertPanel } from '@/components/shared/document/SourceConvertPanel'
+import { salesReturnSources } from '../services/salesSourceApi'
+import { useParams, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -61,6 +63,7 @@ export default function SalesReturnFormPage() {
 function SalesReturnFormPageContent() {
   const { id } = useParams()
   const isCreate = !id
+  const location = useLocation()
   const { toast } = useToast()
   const { can } = usePermission()
   const [printOpen, setPrintOpen] = useState(false)
@@ -215,7 +218,7 @@ function SalesReturnFormPageContent() {
       header: 'Produk',
       width: 200,
       render: ({ item, isReadOnly, onUpdate }) => (
-        <SearchableSelect
+        <SearchableSelect cacheKey="product"
           flush
           value={item.product_id}
           onChange={(v, opt) => {
@@ -288,12 +291,13 @@ function SalesReturnFormPageContent() {
         }
       >
         <div className="space-y-3">
+          {isCreate && <SourceConvertPanel sources={salesReturnSources} targetLabel="Retur Penjualan" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/sales/returns/${newId}`} />}
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Customer <span className="text-red-500">*</span>
               </Label>
-              <SearchableSelect
+              <SearchableSelect cacheKey="contact"
                 value={watch('customer_id') ?? null}
                 onChange={(v) => setValue('customer_id', v as number)}
                 onSearch={(q) => kontakApi.search(q, 'customer')}

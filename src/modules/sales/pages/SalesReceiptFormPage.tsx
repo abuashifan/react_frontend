@@ -272,7 +272,7 @@ function SalesReceiptFormPageContent() {
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Customer <span className="text-red-500">*</span>
               </Label>
-              <SearchableSelect
+              <SearchableSelect cacheKey="contact"
                 value={watch('customer_id') ?? null}
                 onChange={(v) => { setValue('customer_id', v as number); setLines([]) }}
                 onSearch={(q) => kontakApi.search(q, 'customer')}
@@ -295,7 +295,7 @@ function SalesReceiptFormPageContent() {
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Akun Kas/Bank <span className="text-red-500">*</span>
               </Label>
-              <SearchableSelect
+              <SearchableSelect cacheKey="coa"
                 value={watch('cash_bank_account_id') ?? null}
                 onChange={(v) => setValue('cash_bank_account_id', v as number)}
                 onSearch={coaApi.search}

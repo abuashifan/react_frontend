@@ -193,7 +193,7 @@ export default function GoodsReceiptListPage() {
         }}
       />
       <FilterSection title="Vendor">
-        <SearchableSelect
+        <SearchableSelect cacheKey="contact"
           value={filterVendor}
           onChange={(v) => {
             setFilterVendor(v)

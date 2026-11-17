@@ -52,7 +52,7 @@ export function ProjectTransactionsTable({
 
         <div className="w-56">
           <Label className="text-[11px] text-[#64748b]">Akun</Label>
-          <SearchableSelect
+          <SearchableSelect cacheKey="coa"
             value={accountId}
             onSearch={searchAccount}
             onChange={setAccountId}

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { SourceConvertPanel } from '@/components/shared/document/SourceConvertPanel'
+import { purchaseOrderSources } from '../services/purchaseSourceApi'
+import { useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -75,18 +77,18 @@ export default function PurchaseOrderFormPage() {
 }
 
 function PurchaseOrderFormPageContent() {
-  // `navigate` masih dipakai alur deep link yang tidak lahir dari tab.
-  const navigate = useNavigate()
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const isCreate = !id
+  const location = useLocation()
+  const fromRequestId = searchParams.get('from_request')
   const { toast } = useToast()
   const { can } = usePermission()
   const [printOpen, setPrintOpen] = useState(false)
 
   const { data, isLoading } = usePurchaseOrder(id ? Number(id) : undefined)
   const po = data?.data
-  const { create, createFromRequest, update, approve, confirm, cancel } = usePurchaseOrderMutations()
+  const { create, update, approve, confirm, cancel } = usePurchaseOrderMutations()
   const { createFromPurchaseOrder: createReceipt } = useGoodsReceiptMutations()
   const { openRecordTab } = useRecordTab()
   const { createFromPurchaseOrder: createBill } = useVendorBillMutations()
@@ -104,23 +106,14 @@ function PurchaseOrderFormPageContent() {
   // ditolak ikut ditandai, bukan cuma toast.
 
   const [lineErrors, setLineErrors] = useState<LineItemErrorMap>({})
-  const [isCreatingFromRequest, setCreatingFromRequest] = useState(false)
 
   const status = (po?.status ?? 'draft') as DocumentStatus
   const isEditable = isCreate || po?.status === 'draft'
   const subtotal = lines.reduce((s, l) => s + lineSubtotal(l), 0)
   const showTracking = !isCreate && po
 
-  useEffect(() => {
-    const prId = searchParams.get('from_request')
-    if (prId && isCreate) {
-      setCreatingFromRequest(true)
-      createFromRequest.mutateAsync(Number(prId))
-        .then((res) => navigate(`/purchase/orders/${res.data.id}`, { replace: true }))
-        .catch((convertError: unknown) => toast.error(getApiErrorMessage(convertError, 'Gagal membuat PO dari PR.')))
-        .finally(() => setCreatingFromRequest(false))
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // `?from_request=<id>` (tombol "Buat PO" di Permintaan) memilih sumber di panel
+  // "Ambil dari Dokumen Sebelumnya"; PO dibuat setelah vendor dipilih.
 
   useEffect(() => {
     if (po) {
@@ -268,7 +261,7 @@ function PurchaseOrderFormPageContent() {
     ] : []),
   ]
 
-  if (isCreatingFromRequest || (!isCreate && isLoading)) {
+  if (!isCreate && isLoading) {
     return (
       <FormLayout title="Purchase Order" breadcrumb={[{ label: 'Pembelian' }, { label: 'Purchase Order', path: '/purchase/orders' }, { label: 'Memuat...' }]}>
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
@@ -292,10 +285,11 @@ function PurchaseOrderFormPageContent() {
       }
     >
       <div className="space-y-3">
+        {isCreate && <SourceConvertPanel sources={purchaseOrderSources} targetLabel="Purchase Order" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/purchase/orders/${newId}`} initial={fromRequestId ? { key: 'purchase_request', id: Number(fromRequestId) } : null} />}
         <FormSection title="Header">
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Vendor <span className="text-red-500">*</span></Label>
-            <SearchableSelect
+            <SearchableSelect cacheKey="contact"
               value={watch('vendor_id') ?? null}
               onChange={(v) => setValue('vendor_id', v as number)}
               onSearch={(q) => kontakApi.search(q, 'supplier')}
@@ -314,7 +308,7 @@ function PurchaseOrderFormPageContent() {
 
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Syarat Pembayaran</Label>
-            <SearchableSelect
+            <SearchableSelect cacheKey="payment-term"
               value={watch('payment_term_id') ?? null}
               onChange={(v) => setValue('payment_term_id', v)}
               onSearch={paymentTermsApi.search}

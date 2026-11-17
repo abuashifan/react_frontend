@@ -239,7 +239,7 @@ export function BudgetAllocationPanel({ periodId }: Props) {
               {editingRow ? (
                 <p className="text-[13px] text-[#1e293b]">{editingRow.department?.name}</p>
               ) : (
-                <SearchableSelect value={deptId} onChange={setDeptId} onSearch={searchDept} placeholder="Cari departemen..." size="sm" />
+                <SearchableSelect cacheKey="department" value={deptId} onChange={setDeptId} onSearch={searchDept} placeholder="Cari departemen..." size="sm" />
               )}
             </FormField>
             <FormField label="Jumlah" htmlFor="dept-amount">

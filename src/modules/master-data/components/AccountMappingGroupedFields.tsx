@@ -82,7 +82,7 @@ export function AccountMappingGroupedFields({ mappings, overrides, onOverrideCha
                     </label>
                     <div className="flex items-center gap-1.5">
                       <div className="flex-1">
-                        <SearchableSelect
+                        <SearchableSelect cacheKey="coa"
                           triggerId={`${idPrefix}-${m.mapping_key}`}
                           triggerAriaLabel={m.label ?? m.mapping_key}
                           value={current}

@@ -209,7 +209,7 @@ function StockMovementFormPageContent() {
       width: 200,
       render: ({ item, index, isReadOnly, onUpdate }) => (
         <div>
-          <SearchableSelect
+          <SearchableSelect cacheKey="product"
           flush value={item.product_id} onChange={(v, opt) => { onUpdate('product_id', v); onUpdate('product', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null); setLineErrors((prev) => { const n = { ...prev }; delete n[index]; return n }) }} onSearch={produkApi.search} placeholder="Pilih produk..." disabled={isReadOnly} size="sm" selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []} />
           {lineErrors[index]?.product_id && <p className="mt-0.5 text-[10px] text-red-500">{lineErrors[index].product_id}</p>}
         </div>
@@ -221,7 +221,7 @@ function StockMovementFormPageContent() {
       width: 160,
       render: ({ item, index, isReadOnly, onUpdate }) => (
         <div>
-          <SearchableSelect
+          <SearchableSelect cacheKey="warehouse"
           flush value={item.warehouse_id} onChange={(v, opt) => { onUpdate('warehouse_id', v); onUpdate('warehouse', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null); setLineErrors((prev) => { const n = { ...prev }; delete n[index]; return n }) }} onSearch={gudangApi.search} placeholder="Pilih gudang..." disabled={isReadOnly} size="sm" selectedOptions={item.warehouse ? [{ value: item.warehouse.id, label: item.warehouse.name, sublabel: item.warehouse.code }] : []} />
           {lineErrors[index]?.warehouse_id && <p className="mt-0.5 text-[10px] text-red-500">{lineErrors[index].warehouse_id}</p>}
         </div>

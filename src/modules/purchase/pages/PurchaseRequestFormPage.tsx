@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useRecordTab } from '@/hooks/useRecordTab'
 import { useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -155,7 +156,11 @@ function PurchaseRequestFormPageContent() {
     catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan PR.')) }
   }
 
+  const { openRecordTab: openFollowUpTab } = useRecordTab()
   const actions: DocumentActionButton[] = []
+  if (!isCreate && (pr?.status === 'submitted' || pr?.status === 'approved') && can('purchase.orders.create') && can('purchase.documents.convert')) {
+    actions.push({ id: 'create_po', label: 'Buat PO', variant: 'primary', onClick: () => openFollowUpTab({ label: 'PO Baru', path: `/purchase/orders/create?from_request=${id}` }) })
+  }
   if (!isCreate && pr && can('purchase.requests.print')) {
     actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
   }
@@ -232,7 +237,7 @@ function PurchaseRequestFormPageContent() {
 
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Departemen</Label>
-            <SearchableSelect
+            <SearchableSelect cacheKey="department"
               value={watch('department_id') ?? null}
               onChange={(v) => setValue('department_id', v)}
               onSearch={departemenApi.search}

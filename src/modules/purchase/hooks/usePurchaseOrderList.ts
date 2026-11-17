@@ -31,7 +31,7 @@ export function usePurchaseOrderMutations() {
 
   return {
     create: useMutation({ mutationFn: (p: CreatePurchaseOrderPayload) => purchaseOrderApi.create(p), onSuccess: invalidate }),
-    createFromRequest: useMutation({ mutationFn: (purchaseRequestId: number) => purchaseOrderApi.createFromRequest(purchaseRequestId), onSuccess: invalidate }),
+    createFromRequest: useMutation({ mutationFn: ({ id, vendorId }: { id: number; vendorId: number }) => purchaseOrderApi.createFromRequest(id, { vendor_id: vendorId }), onSuccess: invalidate }),
     update: useMutation({ mutationFn: ({ id, payload }: { id: number; payload: UpdatePurchaseOrderPayload }) => purchaseOrderApi.update(id, payload), onSuccess: invalidate }),
     approve: useMutation({ mutationFn: (id: number) => purchaseOrderApi.approve(id), onSuccess: invalidate }),
     confirm: useMutation({ mutationFn: (id: number) => purchaseOrderApi.confirm(id), onSuccess: invalidate }),

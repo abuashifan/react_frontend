@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { purchaseReturnApi } from '../services/purchaseReturnApi'
 import { useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useForm } from 'react-hook-form'
@@ -203,7 +204,18 @@ function GoodsReceiptFormPageContent() {
     } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus penerimaan barang.')) }
   }
 
+  const handleCreateReturn = async () => {
+    try {
+      const res = await purchaseReturnApi.createFromGoodsReceipt(Number(id))
+      const created = res.data as unknown as { id: number; number?: string; return_number?: string; invoice_number?: string }
+      toast.success('Retur Pembelian dibuat sebagai draft.')
+      openRecordTab({ label: created.number ?? created.return_number ?? created.invoice_number ?? 'Retur Pembelian', path: `/purchase/returns/${created.id}` })
+    } catch (followUpError) { toast.error(getApiErrorMessage(followUpError, 'Gagal membuat retur pembelian.')) }
+  }
   const actions: DocumentActionButton[] = []
+  if (!isCreate && (gr?.status === 'received' || gr?.status === 'partially_billed') && can('purchase.returns.create')) {
+    actions.push({ id: 'create_return', label: 'Buat Retur', variant: 'secondary', onClick: () => void handleCreateReturn() })
+  }
   if (!isCreate && gr && can('purchase.goods_receipts.print')) {
     actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
   }
@@ -317,7 +329,7 @@ function GoodsReceiptFormPageContent() {
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Vendor <span className="text-red-500">*</span></Label>
-              <SearchableSelect
+              <SearchableSelect cacheKey="contact"
                 value={watch('vendor_id') ?? null}
                 onChange={(v) => setValue('vendor_id', v as number)}
                 onSearch={(q) => kontakApi.search(q, 'supplier')}
@@ -336,7 +348,7 @@ function GoodsReceiptFormPageContent() {
 
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Gudang Tujuan</Label>
-              <SearchableSelect
+              <SearchableSelect cacheKey="warehouse"
                 value={watch('warehouse_id') ?? null}
                 onChange={(v) => setValue('warehouse_id', v)}
                 onSearch={gudangApi.search}

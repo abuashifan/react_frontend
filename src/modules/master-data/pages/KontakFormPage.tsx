@@ -248,7 +248,7 @@ function KontakFormPageContent() {
 
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Syarat Pembayaran</Label>
-            <SearchableSelect
+            <SearchableSelect cacheKey="payment-term"
               value={watch('payment_term_id') ?? null}
               onChange={(v) => setValue('payment_term_id', v)}
               onSearch={paymentTermsApi.search}

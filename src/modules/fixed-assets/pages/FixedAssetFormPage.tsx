@@ -467,7 +467,7 @@ function FixedAssetFormPageContent() {
               render={({ field }) => (
                 <div className="flex flex-col gap-1">
                   <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kategori <span className="text-red-500">*</span></Label>
-                  <SearchableSelect
+                  <SearchableSelect cacheKey="fa-category"
                     value={field.value || null}
                     onChange={field.onChange}
                     onSearch={fixedAssetCategoryApi.search}
@@ -513,7 +513,7 @@ function FixedAssetFormPageContent() {
               render={({ field }) => (
                 <div className="flex flex-col gap-1">
                   <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Departemen</Label>
-                  <SearchableSelect value={field.value ?? null} onChange={field.onChange} onSearch={departemenApi.search} placeholder="Pilih departemen..." disabled={!isEditable} error={errors.department_id?.message} selectedOptions={asset?.department ? [{ value: asset.department.id, label: asset.department.name, sublabel: asset.department.code ?? undefined }] : []} />
+                  <SearchableSelect cacheKey="department" value={field.value ?? null} onChange={field.onChange} onSearch={departemenApi.search} placeholder="Pilih departemen..." disabled={!isEditable} error={errors.department_id?.message} selectedOptions={asset?.department ? [{ value: asset.department.id, label: asset.department.name, sublabel: asset.department.code ?? undefined }] : []} />
                 </div>
               )}
             />
@@ -523,7 +523,7 @@ function FixedAssetFormPageContent() {
               render={({ field }) => (
                 <div className="flex flex-col gap-1">
                   <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Proyek</Label>
-                  <SearchableSelect value={field.value ?? null} onChange={field.onChange} onSearch={proyekApi.search} placeholder="Pilih proyek..." disabled={!isEditable} error={errors.project_id?.message} selectedOptions={asset?.project ? [{ value: asset.project.id, label: asset.project.name, sublabel: asset.project.code ?? undefined }] : []} />
+                  <SearchableSelect cacheKey="project" value={field.value ?? null} onChange={field.onChange} onSearch={proyekApi.search} placeholder="Pilih proyek..." disabled={!isEditable} error={errors.project_id?.message} selectedOptions={asset?.project ? [{ value: asset.project.id, label: asset.project.name, sublabel: asset.project.code ?? undefined }] : []} />
                 </div>
               )}
             />
@@ -845,7 +845,7 @@ function FixedAssetFormPageContent() {
                 render={({ field }) => (
                   <div className="flex flex-col gap-1 md:col-span-2">
                     <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Vendor</Label>
-                    <SearchableSelect value={field.value ?? null} onChange={field.onChange} onSearch={(query) => kontakApi.search(query, 'supplier')} placeholder="Pilih vendor..." error={capitalizeForm.formState.errors.vendor_id?.message} />
+                    <SearchableSelect cacheKey="contact" value={field.value ?? null} onChange={field.onChange} onSearch={(query) => kontakApi.search(query, 'supplier')} placeholder="Pilih vendor..." error={capitalizeForm.formState.errors.vendor_id?.message} />
                   </div>
                 )}
               />
@@ -898,7 +898,7 @@ function FixedAssetFormPageContent() {
                 render={({ field }) => (
                   <div className="flex flex-col gap-1">
                     <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Kas/Bank</Label>
-                    <SearchableSelect value={field.value ?? null} onChange={field.onChange} onSearch={coaApi.search} placeholder="Pilih akun..." error={disposeForm.formState.errors.cash_bank_account_id?.message} />
+                    <SearchableSelect cacheKey="coa" value={field.value ?? null} onChange={field.onChange} onSearch={coaApi.search} placeholder="Pilih akun..." error={disposeForm.formState.errors.cash_bank_account_id?.message} />
                   </div>
                 )}
               />
@@ -908,7 +908,7 @@ function FixedAssetFormPageContent() {
                 render={({ field }) => (
                   <div className="flex flex-col gap-1">
                     <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Akun Piutang</Label>
-                    <SearchableSelect value={field.value ?? null} onChange={field.onChange} onSearch={coaApi.search} placeholder="Pilih akun..." error={disposeForm.formState.errors.receivable_account_id?.message} />
+                    <SearchableSelect cacheKey="coa" value={field.value ?? null} onChange={field.onChange} onSearch={coaApi.search} placeholder="Pilih akun..." error={disposeForm.formState.errors.receivable_account_id?.message} />
                   </div>
                 )}
               />

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { SourceConvertPanel } from '@/components/shared/document/SourceConvertPanel'
+import { purchaseReturnSources } from '../services/purchaseSourceApi'
+import { useParams, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -64,6 +66,7 @@ export default function PurchaseReturnFormPage() {
 function PurchaseReturnFormPageContent() {
   const { id } = useParams()
   const isCreate = !id
+  const location = useLocation()
   const { toast } = useToast()
   const { can } = usePermission()
   const [printOpen, setPrintOpen] = useState(false)
@@ -221,10 +224,11 @@ function PurchaseReturnFormPageContent() {
         }
       >
         <div className="space-y-3">
+          {isCreate && <SourceConvertPanel sources={purchaseReturnSources} targetLabel="Retur Pembelian" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/purchase/returns/${newId}`} />}
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Vendor <span className="text-red-500">*</span></Label>
-              <SearchableSelect value={watch('vendor_id') ?? null} onChange={(v) => setValue('vendor_id', v as number)} onSearch={(q) => kontakApi.search(q, 'supplier')} placeholder="Pilih vendor..." disabled={!isEditable} error={errors.vendor_id?.message} selectedOptions={ret?.vendor ? [{ value: ret.vendor.id, label: ret.vendor.name }] : []} />
+              <SearchableSelect cacheKey="contact" value={watch('vendor_id') ?? null} onChange={(v) => setValue('vendor_id', v as number)} onSearch={(q) => kontakApi.search(q, 'supplier')} placeholder="Pilih vendor..." disabled={!isEditable} error={errors.vendor_id?.message} selectedOptions={ret?.vendor ? [{ value: ret.vendor.id, label: ret.vendor.name }] : []} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>

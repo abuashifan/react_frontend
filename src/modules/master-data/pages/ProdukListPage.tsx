@@ -184,7 +184,7 @@ export default function ProdukListPage() {
         />
       </div>
       <FilterSection title="Kategori">
-        <SearchableSelect
+        <SearchableSelect cacheKey="product-category"
           value={filterCategoryId}
           onChange={setFilterCategoryId}
           onSearch={kategoriProdukApi.search}

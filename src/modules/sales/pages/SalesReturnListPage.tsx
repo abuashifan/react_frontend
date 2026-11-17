@@ -183,7 +183,7 @@ export default function SalesReturnListPage() {
         }}
       />
       <FilterSection title="Customer">
-        <SearchableSelect
+        <SearchableSelect cacheKey="contact"
           value={filterCustomer}
           onChange={(v) => {
             setFilterCustomer(v)

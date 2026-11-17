@@ -39,7 +39,7 @@ export default function CustomerLedgerPage() {
       <div className="mb-3 flex flex-wrap items-end gap-3">
         <div className="w-64">
           <Label className="mb-1 block text-[11px] font-semibold uppercase text-[#64748b]">Customer</Label>
-          <SearchableSelect
+          <SearchableSelect cacheKey="contact"
             value={customerId ?? null}
             onChange={(v) => setCustomerId(v ?? undefined)}
             onSearch={(q) => kontakApi.search(q, 'customer')}

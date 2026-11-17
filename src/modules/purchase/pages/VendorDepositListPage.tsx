@@ -180,7 +180,7 @@ export default function VendorDepositListPage() {
         }}
       />
       <FilterSection title="Vendor">
-        <SearchableSelect
+        <SearchableSelect cacheKey="contact"
           value={filterVendor}
           onChange={(v) => {
             setFilterVendor(v)

@@ -23,8 +23,9 @@ export const purchaseOrderApi = {
   create: (payload: CreatePurchaseOrderPayload) =>
     http.post<unknown, ApiResponse<PurchaseOrder>>('/purchase/orders', payload),
 
-  createFromRequest: (purchaseRequestId: number) =>
-    http.post<unknown, ApiResponse<PurchaseOrder>>(`/purchase/orders/from-request/${purchaseRequestId}`),
+  /** Backend mewajibkan `vendor_id` karena Permintaan Pembelian tidak punya vendor. */
+  createFromRequest: (purchaseRequestId: number, payload: { vendor_id: number | null }) =>
+    http.post<unknown, ApiResponse<PurchaseOrder>>(`/purchase/orders/from-request/${purchaseRequestId}`, payload),
 
   update: (id: number, payload: UpdatePurchaseOrderPayload) =>
     http.patch<unknown, ApiResponse<PurchaseOrder>>(`/purchase/orders/${id}`, payload),

@@ -96,7 +96,7 @@ export default function PurchaseReturnListPage() {
         ))}
       </FilterSection>
       <FilterSection title="Vendor">
-        <SearchableSelect
+        <SearchableSelect cacheKey="contact"
           value={filterVendor}
           onChange={(v) => setFilterVendor(v)}
           onSearch={(q) => kontakApi.search(q, 'supplier')}

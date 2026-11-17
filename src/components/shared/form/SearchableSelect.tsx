@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { Check, ChevronsUpDown, Loader2, X } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import { recallSelectLabel, rememberSelectLabel } from '@/lib/selectLabelCache'
+import { useAuthStore } from '@/stores/useAuthStore'
 import type { SelectOption } from '@/types/common.types'
 
 interface SearchableSelectBaseProps {
@@ -20,6 +22,13 @@ interface SearchableSelectBaseProps {
    * Tanpa ini, sel tabel dan border trigger saling bertumpuk.
    */
   flush?: boolean
+  /**
+   * Jenis data (mis. `contact`, `warehouse`, `coa`). Bila diisi, label pilihan diingat
+   * per perusahaan supaya tetap tampil setelah form dipasang ulang (pindah tab,
+   * draft dipulihkan), bukan berubah menjadi "#ID". Pakai kunci yang sama hanya
+   * untuk data dari tabel yang sama.
+   */
+  cacheKey?: string
 }
 
 interface SearchableSelectSingleProps extends SearchableSelectBaseProps {
@@ -54,7 +63,9 @@ export function SearchableSelect({
   size = 'md',
   selectedOptions = [],
   flush = false,
+  cacheKey,
 }: SearchableSelectProps) {
+  const companyId = useAuthStore((state) => state.activeCompanyId)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [options, setOptions] = useState<SelectOption<number>[]>([])
@@ -77,12 +88,25 @@ export function SearchableSelect({
     [value],
   )
 
+  // Label dari data server (selectedOptions) ikut diingat, untuk dipakai saat
+  // form dipasang ulang tanpa data itu (mode buat + draft dipulihkan).
+  useEffect(() => {
+    if (!cacheKey) return
+    selectedOptions.forEach((option) => rememberSelectLabel(companyId, cacheKey, option))
+  }, [cacheKey, companyId, selectedOptions])
+
   const knownSelectedOptions = useMemo(() => {
     const byValue = new Map<number, SelectOption<number>>()
+    if (cacheKey) {
+      selectedValues.forEach((selectedValue) => {
+        const remembered = recallSelectLabel(companyId, cacheKey, selectedValue)
+        if (remembered) byValue.set(selectedValue, remembered)
+      })
+    }
     selectedOptions.forEach((option) => byValue.set(option.value, option))
     localSelected.forEach((option) => byValue.set(option.value, option))
     return Array.from(byValue.values())
-  }, [localSelected, selectedOptions])
+  }, [cacheKey, companyId, localSelected, selectedOptions, selectedValues])
 
   const displayLabel = useMemo(() => {
     if (selectedValues.length === 0) return null
@@ -140,6 +164,7 @@ export function SearchableSelect({
   }
 
   const handleSelect = (opt: SelectOption<number>) => {
+    if (cacheKey) rememberSelectLabel(companyId, cacheKey, opt)
     setLocalSelected((current) => {
       const withoutCurrent = current.filter((item) => item.value !== opt.value)
       return [...withoutCurrent, opt]

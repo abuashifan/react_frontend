@@ -162,7 +162,7 @@ export default function StockOpnameListPage() {
         />
       </div>
       <FilterSection title="Gudang">
-        <SearchableSelect
+        <SearchableSelect cacheKey="warehouse"
           value={filterWarehouse}
           onChange={(v) => {
             setFilterWarehouse(v)

@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { salesReturnApi } from '../services/salesReturnApi'
+import { SourceConvertPanel } from '@/components/shared/document/SourceConvertPanel'
+import { salesInvoiceSources } from '../services/salesSourceApi'
+import { useParams, useLocation } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -69,6 +72,7 @@ export default function SalesInvoiceFormPage() {
 function SalesInvoiceFormPageContent() {
   const { id } = useParams()
   const isCreate = !id
+  const location = useLocation()
   const { toast } = useToast()
   const { can } = usePermission()
   const [printOpen, setPrintOpen] = useState(false)
@@ -230,7 +234,19 @@ function SalesInvoiceFormPageContent() {
     } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus invoice.')) }
   }
 
+  const { openRecordTab: openFollowUpTab } = useRecordTab()
+  const handleCreateReturn = async () => {
+    try {
+      const res = await salesReturnApi.createFromInvoice(Number(id))
+      const created = res.data as unknown as { id: number; number?: string; return_number?: string; invoice_number?: string }
+      toast.success('Retur Penjualan dibuat sebagai draft.')
+      openFollowUpTab({ label: created.number ?? created.return_number ?? created.invoice_number ?? 'Retur Penjualan', path: `/sales/returns/${created.id}` })
+    } catch (followUpError) { toast.error(getApiErrorMessage(followUpError, 'Gagal membuat retur penjualan.')) }
+  }
   const actions: DocumentActionButton[] = []
+  if (!isCreate && ['posted', 'partially_paid', 'paid'].includes(invoice?.status ?? '') && can('sales.returns.create')) {
+    actions.push({ id: 'create_return', label: 'Buat Retur', variant: 'secondary', onClick: () => void handleCreateReturn() })
+  }
   if (!isCreate && invoice && can('sales.invoices.print')) {
     actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
   }
@@ -390,6 +406,7 @@ function SalesInvoiceFormPageContent() {
             />
           )}
 
+          {isCreate && <SourceConvertPanel sources={salesInvoiceSources} targetLabel="Invoice" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/sales/invoices/${newId}`} />}
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">No. Invoice</Label>
@@ -406,7 +423,7 @@ function SalesInvoiceFormPageContent() {
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
                 Customer <span className="text-red-500">*</span>
               </Label>
-              <SearchableSelect
+              <SearchableSelect cacheKey="contact"
                 value={customerId ?? null}
                 onChange={(v) => setValue('customer_id', v as number)}
                 onSearch={(q) => kontakApi.search(q, 'customer')}
@@ -433,7 +450,7 @@ function SalesInvoiceFormPageContent() {
 
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Syarat Pembayaran</Label>
-              <SearchableSelect
+              <SearchableSelect cacheKey="payment-term"
                 value={paymentTermId ?? null}
                 onChange={(v) => setValue('payment_term_id', v)}
                 onSearch={paymentTermsApi.search}

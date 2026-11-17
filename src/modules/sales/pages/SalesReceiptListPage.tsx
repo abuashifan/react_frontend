@@ -204,7 +204,7 @@ export default function SalesReceiptListPage() {
         }}
       />
       <FilterSection title="Customer">
-        <SearchableSelect
+        <SearchableSelect cacheKey="contact"
           value={filterCustomer}
           onChange={(v) => {
             setFilterCustomer(v)

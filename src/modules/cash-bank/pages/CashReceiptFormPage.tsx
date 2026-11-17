@@ -314,7 +314,7 @@ function CashReceiptFormPageContent() {
               </FormField>
 
               <FormField label="Akun Kas/Bank" required error={errors.cash_bank_account_id?.message} className="w-[240px]">
-                <SearchableSelect
+                <SearchableSelect cacheKey="coa"
                   value={watch('cash_bank_account_id') ?? null}
                   onChange={(v) => setValue('cash_bank_account_id', v as number)}
                   onSearch={(q) => coaApi.search(q, { is_cash_bank: true })}
@@ -326,7 +326,7 @@ function CashReceiptFormPageContent() {
               </FormField>
 
               <FormField label="Kontak" error={errors.contact_id?.message} className="w-[220px]">
-                <SearchableSelect
+                <SearchableSelect cacheKey="contact"
                   value={watch('contact_id') ?? null}
                   onChange={(v) => setValue('contact_id', v)}
                   onSearch={kontakApi.search}

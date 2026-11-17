@@ -179,7 +179,7 @@ function ProjectFinancialSummaryPageContent() {
       />
 
       <FormField label="Proyek" required className="w-56">
-        <SearchableSelect value={projectId} onSearch={searchProject} onChange={setProjectId} placeholder="Pilih proyek..." size="sm" />
+        <SearchableSelect cacheKey="project" value={projectId} onSearch={searchProject} onChange={setProjectId} placeholder="Pilih proyek..." size="sm" />
       </FormField>
 
       <Button

@@ -60,7 +60,7 @@ export default function AccountLedgerPage() {
               <Label htmlFor="account-ledger-account" className="mb-1 block text-[12px] font-medium text-[#334155]">
                 Akun
               </Label>
-              <SearchableSelect
+              <SearchableSelect cacheKey="coa"
                 triggerId="account-ledger-account"
                 triggerAriaLabel="Pilih akun"
                 value={accountId}
@@ -98,11 +98,11 @@ export default function AccountLedgerPage() {
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div>
               <Label className="mb-1 block text-[12px] font-medium text-[#334155]">Departemen</Label>
-              <SearchableSelect value={deptId} onChange={(val) => setDeptId(val)} onSearch={searchDept} placeholder="Semua departemen" size="sm" />
+              <SearchableSelect cacheKey="department" value={deptId} onChange={(val) => setDeptId(val)} onSearch={searchDept} placeholder="Semua departemen" size="sm" />
             </div>
             <div>
               <Label className="mb-1 block text-[12px] font-medium text-[#334155]">Proyek</Label>
-              <SearchableSelect value={projectId} onChange={(val) => setProjectId(val)} onSearch={searchProject} placeholder="Semua proyek" size="sm" />
+              <SearchableSelect cacheKey="project" value={projectId} onChange={(val) => setProjectId(val)} onSearch={searchProject} placeholder="Semua proyek" size="sm" />
             </div>
           </div>
           <div className="mt-3 flex justify-end gap-2">

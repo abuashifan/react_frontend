@@ -211,7 +211,7 @@ export function BudgetLineEditor({ submissionId, lines, readonly = false, onSave
         isReadOnly ? (
           <span className="text-[12px]">{item.department_label ?? '—'}</span>
         ) : (
-          <SearchableSelect
+          <SearchableSelect cacheKey="department"
           flush
             value={item.department_id}
             onSearch={searchDepartment}
@@ -237,7 +237,7 @@ export function BudgetLineEditor({ submissionId, lines, readonly = false, onSave
         isReadOnly ? (
           <span className="text-[12px]">{item.project_label ?? '—'}</span>
         ) : (
-          <SearchableSelect
+          <SearchableSelect cacheKey="project"
           flush
             value={item.project_id}
             onSearch={searchProject}

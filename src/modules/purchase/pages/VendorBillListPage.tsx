@@ -218,7 +218,7 @@ export default function VendorBillListPage() {
         }}
       />
       <FilterSection title="Vendor">
-        <SearchableSelect
+        <SearchableSelect cacheKey="contact"
           value={filterVendor}
           onChange={(v) => {
             setFilterVendor(v)
