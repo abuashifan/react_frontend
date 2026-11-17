@@ -12,10 +12,10 @@ import { reportsApi } from '../services/reportsApi'
 import { coaApi } from '@/modules/master-data/services/coaApi'
 import { departemenApi } from '@/modules/master-data/services/departemenApi'
 import { proyekApi } from '@/modules/master-data/services/proyekApi'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, todayInputValue } from '@/lib/utils'
 import type { ReportParams } from '../types/reports.types'
 
-const today = new Date().toISOString().slice(0, 10)
+const today = todayInputValue()
 const firstOfMonth = today.slice(0, 8) + '01'
 
 export default function AccountLedgerPage() {

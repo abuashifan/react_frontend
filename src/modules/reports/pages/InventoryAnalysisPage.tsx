@@ -7,10 +7,10 @@ import { ReportError } from '../components/ReportError'
 import { ReportExportButton } from '../components/ReportExportButton'
 import { toExcelNumber } from '@/lib/exportXlsx'
 import { reportsApi } from '../services/reportsApi'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, todayInputValue } from '@/lib/utils'
 import { useReportParams } from '../hooks/useReportParams'
 
-const today = new Date().toISOString().slice(0, 10)
+const today = todayInputValue()
 
 type AnalysisTab = 'valuation' | 'low_stock' | 'negative_stock'
 const TAB_LABELS: Record<AnalysisTab, string> = { valuation: 'Valuasi', low_stock: 'Stok Rendah', negative_stock: 'Stok Negatif' }

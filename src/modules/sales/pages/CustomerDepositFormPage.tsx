@@ -24,7 +24,7 @@ import { customerDepositSchema, type CustomerDepositFormValues } from '../schema
 import { customerDepositApi } from '../services/customerDepositApi'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
-import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
+import { cn, fieldErrorClass, formatCurrency, todayInputValue } from '@/lib/utils'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
@@ -56,7 +56,7 @@ function CustomerDepositFormPageContent() {
 
   const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<CustomerDepositFormValues>({
     resolver: zodResolver(customerDepositSchema),
-    defaultValues: { date: new Date().toISOString().slice(0, 10) },
+    defaultValues: { date: todayInputValue() },
   })
 
   const [isVoidOpen, setVoidOpen] = useState(false)

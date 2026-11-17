@@ -22,7 +22,7 @@ import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
-import { cn, fieldErrorClass } from '@/lib/utils'
+import { cn, fieldErrorClass, todayInputValue } from '@/lib/utils'
 import { usePurchaseReturn, usePurchaseReturnMutations } from '../hooks/usePurchaseReturnList'
 import { toPurchaseReturnPayload } from '../services/purchaseReturnAdapter'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
@@ -83,7 +83,7 @@ function PurchaseReturnFormPageContent() {
 
   const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<PurchaseReturnFormValues>({
     resolver: zodResolver(purchaseReturnSchema),
-    defaultValues: { date: new Date().toISOString().slice(0, 10) },
+    defaultValues: { date: todayInputValue() },
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])

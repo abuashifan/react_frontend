@@ -31,7 +31,7 @@ import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation, FormValidationAbort } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import type { StockAdjustmentLineType } from '../types/stockAdjustment.types'
-import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, toDateInputValue, todayInputValue } from '@/lib/utils'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
 import { stockAdjustmentPrint } from '../print/inventoryPrint'
@@ -74,7 +74,7 @@ function StockAdjustmentFormPageContent() {
 
   const { control, getValues, register, handleSubmit, setValue, reset, setError, formState: { errors, isSubmitting } } = useForm<StockAdjustmentFormValues>({
     resolver: zodResolver(stockAdjustmentSchema),
-    defaultValues: { adjustment_date: new Date().toISOString().slice(0, 10) },
+    defaultValues: { adjustment_date: todayInputValue() },
   })
   const warehouseId = useWatch({ control, name: 'warehouse_id' })
 
@@ -166,7 +166,7 @@ function StockAdjustmentFormPageContent() {
         reason: l.reason ?? '',
       })))
     } else {
-      reset({ adjustment_date: new Date().toISOString().slice(0, 10) })
+      reset({ adjustment_date: todayInputValue() })
       setLines([{ ...DEFAULT_LINE }])
     }
     formDraft.discardDraft()

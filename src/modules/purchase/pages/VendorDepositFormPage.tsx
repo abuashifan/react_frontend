@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
-import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
+import { cn, fieldErrorClass, formatCurrency, todayInputValue } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
@@ -63,7 +63,7 @@ function VendorDepositFormPageContent() {
 
   const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<VendorDepositFormValues>({
     resolver: zodResolver(vendorDepositSchema),
-    defaultValues: { date: new Date().toISOString().slice(0, 10) },
+    defaultValues: { date: todayInputValue() },
   })
 
   const status = (deposit?.status ?? 'draft') as DocumentStatus

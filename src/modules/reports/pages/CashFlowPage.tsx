@@ -6,14 +6,14 @@ import { ReportError } from '../components/ReportError'
 import { ReportPrintToolbar } from '../components/ReportPrintToolbar'
 import { ReportPrintDocument } from '../components/ReportPrintDocument'
 import { reportsApi } from '../services/reportsApi'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, todayInputValue } from '@/lib/utils'
 import { ReportExportButton } from '../components/ReportExportButton'
 import { toExcelNumber } from '@/lib/exportXlsx'
 import type { CashFlowSection } from '../types/reports.types'
 import { useReportParams } from '../hooks/useReportParams'
 import { useReportFilterSummary } from '../hooks/useReportFilterSummary'
 
-const today = new Date().toISOString().slice(0, 10)
+const today = todayInputValue()
 const firstOfMonth = today.slice(0, 8) + '01'
 
 const SECTION_LABELS: Record<string, string> = {

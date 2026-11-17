@@ -13,7 +13,7 @@ import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { MultiCheckboxFilter } from '@/components/shared/filter/MultiCheckboxFilter'
 import { DateRangeFilterSection } from '@/components/shared/filter/DateRangeFilterSection'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, todayInputValue } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { getApiErrorMessage, getBulkFailureDetail } from '@/lib/apiError'
 import { useVendorBillList, useVendorBillMutations } from '../hooks/useVendorBillList'
@@ -159,7 +159,7 @@ export default function VendorBillListPage() {
       size: 120,
       cell: ({ original }) => {
         if (!original.due_date) return '-'
-        const overdue = original.due_date < new Date().toISOString().slice(0, 10) && !['paid', 'void'].includes(original.status)
+        const overdue = original.due_date < todayInputValue() && !['paid', 'void'].includes(original.status)
         return <span className={overdue ? 'font-semibold text-red-600' : ''}>{formatDate(original.due_date)}</span>
       },
     },

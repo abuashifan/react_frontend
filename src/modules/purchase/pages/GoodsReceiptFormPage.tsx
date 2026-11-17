@@ -21,7 +21,7 @@ import { FieldError } from '@/components/shared/form/FieldError'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
-import { cn, fieldErrorClass } from '@/lib/utils'
+import { cn, fieldErrorClass, todayInputValue } from '@/lib/utils'
 import { useGoodsReceipt, useGoodsReceiptMutations } from '../hooks/useGoodsReceiptList'
 import { useVendorBillMutations } from '../hooks/useVendorBillList'
 import { toGoodsReceiptPayload } from '../services/goodsReceiptAdapter'
@@ -97,7 +97,7 @@ function GoodsReceiptFormPageContent() {
 
   const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<GoodsReceiptFormValues>({
     resolver: zodResolver(goodsReceiptSchema),
-    defaultValues: { date: new Date().toISOString().slice(0, 10) },
+    defaultValues: { date: todayInputValue() },
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])

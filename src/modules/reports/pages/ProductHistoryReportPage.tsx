@@ -7,14 +7,14 @@ import { ReportError } from '../components/ReportError'
 import { TablePagination } from '@/components/shared/table/TablePagination'
 import type { PaginationState } from '@/components/shared/table/TablePagination'
 import { reportsApi } from '../services/reportsApi'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, todayInputValue } from '@/lib/utils'
 import { ReportExportButton } from '../components/ReportExportButton'
 import { toExcelDate, toExcelNumber } from '@/lib/exportXlsx'
 import { useReportParams } from '../hooks/useReportParams'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import type { ProductHistoryDocumentType } from '../types/reports.types'
 
-const today = new Date().toISOString().slice(0, 10)
+const today = todayInputValue()
 const firstDayOfMonth = today.slice(0, 7) + '-01'
 
 const DOCUMENT_LABELS: Record<ProductHistoryDocumentType, string> = {

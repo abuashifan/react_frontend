@@ -7,10 +7,10 @@ import { ReportError } from '../components/ReportError'
 import { ReportExportButton } from '../components/ReportExportButton'
 import { toExcelDate, toExcelNumber } from '@/lib/exportXlsx'
 import { reportsApi } from '../services/reportsApi'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, todayInputValue } from '@/lib/utils'
 import { useReportParams } from '../hooks/useReportParams'
 
-const today = new Date().toISOString().slice(0, 10)
+const today = todayInputValue()
 const firstOfYear = today.slice(0, 4) + '-01-01'
 
 interface ActiveQuery {
