@@ -77,8 +77,26 @@ export interface OpenBillItem {
   vendor_bill_id: number
   bill_number: string
   balance_due: number
+  bill_date?: string
+  due_date?: string
 }
 
 export interface VendorContext {
   open_bills: OpenBillItem[]
+}
+
+export interface RawVendorContext {
+  open_bills: (Omit<OpenBillItem, 'vendor_bill_id' | 'balance_due'> & {
+    bill_id: number
+    vendor_bill_id?: number
+    balance_due: number | string
+  })[]
+}
+
+export interface VendorPaymentCashBalance {
+  account_id: number
+  balance: number
+  normal_balance: 'debit' | 'credit'
+  as_of: string
+  calculated_at: string
 }

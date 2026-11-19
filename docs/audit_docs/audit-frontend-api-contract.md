@@ -294,8 +294,15 @@ Permission granular: `purchase.{resource}.{action}`
 | PATCH | `/purchase/vendor-deposits/{id}/post\|void\|refund` | post/void/refund |
 | POST | `/purchase/vendor-deposits/{id}/allocate-to-bill/{billId}` | post |
 | GET/POST | `/purchase/payments` | `purchase.payments.view/create` |
-| GET | `/purchase/payments/vendor-context` | view |
+| GET | `/purchase/payments/vendor-context` | `purchase.payments.view\|purchase.payments.create\|purchase.payments.edit` |
+| GET | `/purchase/payments/cash-balance` | `purchase.payments.view\|purchase.payments.create\|purchase.payments.edit` |
 | PATCH | `/purchase/payments/{id}/post\|void` | post/void |
+
+Pratinjau pembayaran vendor (19 November 2026):
+
+- Setelah vendor dipilih, form langsung menampilkan tagihan belum lunas yang sudah diposting. API mengirim `open_bills[].bill_id`; adapter membentuk `vendor_bill_id` dan jumlah numerik. Pemilih menampilkan kondisi memuat, kosong dan gagal; baris dipilih dengan tombol Tambahkan. Pergantian vendor membersihkan pilihan sebelumnya.
+- `cash-balance` menerima `cash_bank_account_id`, `payment_date` (`YYYY-MM-DD`) dan `payment_id` opsional saat mengedit. Respons `data` berisi `account_id`, `balance`, `normal_balance`, `as_of`, `calculated_at`. Saldo mengikuti jurnal posted, bukan obsolete, sampai tanggal pembayaran. Saat mengedit pembayaran posted, jurnal lama dokumen itu dikecualikan agar pratinjau penggantinya tidak menghitung pembayaran dua kali.
+- Form menampilkan saldo sebelum pembayaran dan perkiraan sesudahnya. Perubahan akun/tanggal/jumlah memperbarui pratinjau. Ini informasi pada layar, tidak disimpan dalam payload transaksi atau data cetak dan disembunyikan pada media print. Angka belum memperhitungkan transaksi yang belum diposting. Akun kas/bank yang dipilih harus aktif dan dapat dipakai transaksi.
 
 ### Purchase Return
 

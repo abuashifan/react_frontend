@@ -42,3 +42,12 @@ export function useVendorPaymentMutations() {
     remove: useMutation({ mutationFn: ({ id, reason }: { id: number; reason?: string }) => vendorPaymentApi.remove(id, reason), onSuccess: invalidate }),
   }
 }
+
+export function useVendorPaymentCashBalance(accountId: number | undefined, date: string, paymentId?: number, enabled = true) {
+  return useQuery({
+    queryKey: ['purchase', 'payments', 'cash-balance', accountId, date, paymentId],
+    queryFn: () => vendorPaymentApi.cashBalance(accountId!, date, paymentId),
+    enabled: enabled && !!accountId && /^\d{4}-\d{2}-\d{2}$/.test(date),
+    staleTime: 0,
+  })
+}

@@ -22,4 +22,19 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - name: Lint payment changes
+        run: npx eslint playwright.config.ts src/modules/purchase/__tests__/vendor-payment.spec.ts src/modules/purchase/pages/VendorPaymentFormPage.tsx src/modules/purchase/hooks/useVendorPaymentList.ts src/modules/purchase/services/vendorPaymentApi.ts src/modules/purchase/types/vendorPayment.types.ts
       - run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test payment flow
+        run: npx playwright test --project=chromium
+      - name: Upload browser failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: payment-playwright-results
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
