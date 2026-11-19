@@ -1,4 +1,5 @@
 import { http } from '@/services/http'
+import { toDateInputValue } from '@/lib/utils'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type { AdjacentRecords } from '@/types/common.types'
 import type { VendorPayment, RawVendorPayment, VendorPaymentListParams, CreateVendorPaymentPayload, RawVendorContext, VendorPaymentCashBalance } from '../types/vendorPayment.types'
@@ -27,9 +28,9 @@ export const vendorPaymentApi = {
     return { ...res, data: { ...res.data, open_bills: openBills } }
   },
 
-  cashBalance: (accountId: number, date: string, paymentId?: number) =>
+  cashBalance: (accountId: number) =>
     http.get<unknown, ApiResponse<VendorPaymentCashBalance>>('/purchase/payments/cash-balance', {
-      params: { cash_bank_account_id: accountId, payment_date: date, payment_id: paymentId },
+      params: { cash_bank_account_id: accountId, payment_date: toDateInputValue(new Date()) },
     }),
 
   post: (id: number) => http.patch<unknown, ApiResponse<VendorPayment>>(`/purchase/payments/${id}/post`),

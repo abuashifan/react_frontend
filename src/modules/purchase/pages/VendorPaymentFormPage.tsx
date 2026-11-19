@@ -97,13 +97,11 @@ function VendorPaymentFormPageContent() {
   const billPages = Math.max(1, Math.ceil(matchingBills.length / 10))
   const currentBillPage = Math.min(billPage, billPages)
   const cashAccountId = watch('cash_bank_account_id')
-  const paymentDate = watch('date') ?? ''
-  const cashBalance = useVendorPaymentCashBalance(cashAccountId, paymentDate, id ? Number(id) : undefined, canAllocate)
+  const cashBalance = useVendorPaymentCashBalance(canAllocate ? cashAccountId : undefined)
   const balance = cashBalance.data?.data
 
   const status = (payment?.status ?? 'draft') as DocumentStatus
   const totalAmount = billLines.reduce((s, l) => s + l.amount, 0)
-  const estimatedBalance = balance ? Math.round((balance.balance + (balance.normal_balance === 'credit' ? totalAmount : -totalAmount)) * 100) / 100 : null
 
   useEffect(() => {
     if (payment) {
@@ -337,15 +335,9 @@ function VendorPaymentFormPageContent() {
                     </p>
                   ) : (
                     balance && (
-                      <>
-                        <p>
-                          Saldo sebelum pembayaran per {balance.as_of}: <span className="font-medium tabular-nums">{formatCurrency(balance.balance)}</span>
-                        </p>
-                        <p>
-                          Perkiraan saldo setelah pembayaran: <span className="font-medium tabular-nums">{formatCurrency(estimatedBalance ?? 0)}</span>
-                        </p>
-                        <p>Pratinjau berdasarkan transaksi yang sudah diposting. Saldo ini tidak dicetak.</p>
-                      </>
+                      <p>
+                        Saldo kas/bank saat ini <span className="font-medium tabular-nums">{formatCurrency(balance.balance)}</span>
+                      </p>
                     )
                   )}
                 </div>

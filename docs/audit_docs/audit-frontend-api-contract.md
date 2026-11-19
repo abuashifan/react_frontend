@@ -302,7 +302,7 @@ Pratinjau pembayaran vendor (19 November 2026):
 
 - Setelah vendor dipilih, form langsung menampilkan tagihan belum lunas yang sudah diposting. API mengirim `open_bills[].bill_id`; adapter membentuk `vendor_bill_id` dan jumlah numerik. Pemilih menampilkan kondisi memuat, kosong dan gagal; baris dipilih dengan tombol Tambahkan. Pergantian vendor membersihkan pilihan sebelumnya.
 - `cash-balance` menerima `cash_bank_account_id`, `payment_date` (`YYYY-MM-DD`) dan `payment_id` opsional saat mengedit. Respons `data` berisi `account_id`, `balance`, `normal_balance`, `as_of`, `calculated_at`. Saldo mengikuti jurnal posted, bukan obsolete, sampai tanggal pembayaran. Saat mengedit pembayaran posted, jurnal lama dokumen itu dikecualikan agar pratinjau penggantinya tidak menghitung pembayaran dua kali.
-- Form menampilkan saldo sebelum pembayaran dan perkiraan sesudahnya. Perubahan akun/tanggal/jumlah memperbarui pratinjau. Ini informasi pada layar, tidak disimpan dalam payload transaksi atau data cetak dan disembunyikan pada media print. Angka belum memperhitungkan transaksi yang belum diposting. Akun kas/bank yang dipilih harus aktif dan dapat dipakai transaksi.
+- Form menampilkan saldo buku kas/bank terkini berdasarkan tanggal lokal perangkat pada saat saldo dimuat. Pengambilan saldo memakai akun yang dipilih beserta seluruh jurnal aktif hingga hari itu, tanpa mengeluarkan jurnal lama saat mengedit. Tanggal dokumen dan nominal pembayaran tidak memengaruhi angka ini. Saldo hanya tampil pada layar. Akun kas/bank yang dipilih harus aktif dan dapat dipakai transaksi.
 
 ### Purchase Return
 

@@ -43,11 +43,11 @@ export function useVendorPaymentMutations() {
   }
 }
 
-export function useVendorPaymentCashBalance(accountId: number | undefined, date: string, paymentId?: number, enabled = true) {
+export function useVendorPaymentCashBalance(accountId?: number) {
   return useQuery({
-    queryKey: ['purchase', 'payments', 'cash-balance', accountId, date, paymentId],
-    queryFn: () => vendorPaymentApi.cashBalance(accountId!, date, paymentId),
-    enabled: enabled && !!accountId && /^\d{4}-\d{2}-\d{2}$/.test(date),
+    queryKey: ['purchase', 'payments', 'cash-balance', accountId],
+    queryFn: () => vendorPaymentApi.cashBalance(accountId!),
+    enabled: !!accountId,
     staleTime: 0,
   })
 }
