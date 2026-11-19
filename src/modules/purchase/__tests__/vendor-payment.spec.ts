@@ -1,5 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 
+test.use({ timezoneId: 'Asia/Jakarta' })
+
 const payment = {
   id: 77, payment_number: 'PAY-77', payment_date: '2026-11-19', vendor_id: 1,
   vendor: { id: 1, name: 'Vendor Alpha' }, cash_bank_account_id: 10,
@@ -75,21 +77,23 @@ async function choose(page: Page, trigger: string, option: string) {
   await page.getByRole('option', { name: new RegExp(option) }).click()
 }
 
-test('open bills appear immediately, partial allocation updates cash estimate, and vendor switch clears lines', async ({ page }) => {
+test('open bills appear immediately, payment amount leaves current cash balance intact, and vendor switch clears lines', async ({ page }) => {
   await setup(page)
   await createPayment(page)
   await choose(page, 'Vendor pembayaran', 'Vendor Alpha')
   await expect(page.getByText('Tagihan vendor yang belum lunas')).toBeVisible()
   await page.getByRole('button', { name: 'Tambahkan VB-101' }).click()
-  await page.getByRole('textbox', { name: 'Jumlah' }).fill('25000')
   const accountRequest = page.waitForRequest((request) => request.url().includes('/master-data/chart-of-accounts'))
   await choose(page, 'Akun kas/bank pembayaran', 'Kas Utama')
   const accountUrl = new URL((await accountRequest).url())
   expect(accountUrl.searchParams.get('is_cash_bank')).toBe('true')
   expect(accountUrl.searchParams.get('is_active')).toBe('true')
   const preview = page.getByTestId('payment-cash-preview')
+  await expect(preview).toContainText('Saldo kas/bank saat ini')
   await expect(preview).toContainText('200.000')
-  await expect(preview).toContainText('175.000')
+  await page.getByRole('textbox', { name: 'Jumlah' }).fill('25000')
+  await expect(preview).toContainText('200.000')
+  await expect(preview).not.toContainText('175.000')
   await page.emulateMedia({ media: 'print' })
   await expect(preview).toBeHidden()
   await page.emulateMedia({ media: 'screen' })
@@ -98,20 +102,20 @@ test('open bills appear immediately, partial allocation updates cash estimate, a
   await expect(page.getByText('Tidak ada tagihan terbuka.', { exact: false })).toBeVisible()
 })
 
-test('vendor context errors are visible and account/date changes refresh the balance', async ({ page }) => {
+test('vendor errors are visible and the selected account uses today instead of the payment date', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-18T18:00:00Z'))
   await setup(page)
   await createPayment(page)
   await choose(page, 'Vendor pembayaran', 'Vendor Error')
   await expect(page.getByRole('alert').filter({ hasText: 'Konteks vendor gagal dimuat' })).toBeVisible({ timeout: 15000 })
   await choose(page, 'Akun kas/bank pembayaran', 'Kas Utama')
   await expect(page.getByTestId('payment-cash-preview')).toContainText('200.000')
-  const changedDate = page.waitForRequest((request) => request.url().includes('/cash-balance') && new URL(request.url()).searchParams.get('payment_date') === '2026-10-15')
   await page.locator('input[type=date]').fill('2026-10-15')
-  await changedDate
-  await expect(page.getByTestId('payment-cash-preview')).toContainText('2026-10-15')
   const changedAccount = page.waitForRequest((request) => request.url().includes('/cash-balance') && new URL(request.url()).searchParams.get('cash_bank_account_id') === '11')
   await choose(page, 'Akun kas/bank pembayaran', 'Bank Kedua')
-  await changedAccount
+  const accountParams = new URL((await changedAccount).url()).searchParams
+  expect(accountParams.get('payment_date')).toBe('2026-11-19')
+  expect(accountParams.has('payment_id')).toBe(false)
   await expect(page.getByTestId('payment-cash-preview')).toContainText('300.000')
 })
 
@@ -122,6 +126,5 @@ test('saved payment print preview does not include cash balance fields', async (
   const dialog = page.getByRole('dialog')
   await expect(dialog).toContainText('Bukti Pembayaran')
   await expect(dialog).toContainText('VB-101')
-  await expect(dialog).not.toContainText('Saldo sebelum pembayaran')
-  await expect(dialog).not.toContainText('Perkiraan saldo setelah pembayaran')
+  await expect(dialog).not.toContainText('Saldo kas/bank saat ini')
 })
