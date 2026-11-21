@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { SettlementDiscountDialog, type SettlementDiscount } from '@/components/shared/form/SettlementDiscountDialog'
 import { FieldError } from '@/components/shared/form/FieldError'
 import { AmountInput } from '@/components/shared/form/AmountInput'
 import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/components/shared/form/LineItemsTable'
@@ -36,11 +37,12 @@ import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentH
 import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
 import { vendorPaymentPrint } from '../print/purchasePrint'
 
-interface BillLine {
+interface BillLine extends SettlementDiscount {
   vendor_bill_id: number
   bill_number: string
   balance_due: number
   amount: number
+  grand_total?: number
 }
 
 export default function VendorPaymentFormPage() {
@@ -64,6 +66,8 @@ function VendorPaymentFormPageContent() {
   // Draft selalu bisa diedit; yang sudah posted (mode open) dibuka lewat tombol Edit.
   const [editing, setEditing] = useState(false)
   const [billLines, setBillLines] = useState<BillLine[]>([])
+  const [discountId, setDiscountId] = useState<number>()
+  const discountLine = billLines.find((line) => line.vendor_bill_id === discountId)
   const [billSearch, setBillSearch] = useState('')
   const [billPage, setBillPage] = useState(1)
 
@@ -101,7 +105,9 @@ function VendorPaymentFormPageContent() {
   const balance = cashBalance.data?.data
 
   const status = (payment?.status ?? 'draft') as DocumentStatus
-  const totalAmount = billLines.reduce((s, l) => s + l.amount, 0)
+  const totalAmount = Number(billLines.reduce((sum, line) => sum + line.amount, 0).toFixed(2))
+  const totalDiscount = Number(billLines.reduce((sum, line) => sum + (line.settlement_discount_amount ?? 0), 0).toFixed(2))
+  const totalSettled = Number((totalAmount + totalDiscount).toFixed(2))
 
   useEffect(() => {
     if (payment) {
@@ -112,18 +118,21 @@ function VendorPaymentFormPageContent() {
         payment.lines.map((l) => ({
           vendor_bill_id: l.vendor_bill_id,
           bill_number: l.bill_number ?? '',
-          balance_due: (l.balance_due ?? 0) + (payment.status === 'posted' ? l.amount : 0),
+          balance_due: (l.balance_due ?? 0) + (payment.status === 'posted' ? l.amount + (l.settlement_discount_amount ?? 0) : 0),
           amount: l.amount,
+          settlement_discount_amount: l.settlement_discount_amount ?? 0,
+        settlement_discount_account_id: l.settlement_discount_account_id,
+        settlement_discount_note: l.settlement_discount_note,
+        accountOption: l.settlement_discount_account ? {
+          value: l.settlement_discount_account.id,
+          label: l.settlement_discount_account.account_name,
+          sublabel: l.settlement_discount_account.account_code,
+        } : undefined,
+        grand_total: l.grand_total,
         })),
       )
     }
   }, [payment, reset])
-
-  useEffect(() => {
-    if (isCreate) {
-      setBillLines([])
-    }
-  }, [vendorId, isCreate])
 
   useEffect(() => {
     setValue('amount', totalAmount)
@@ -132,7 +141,7 @@ function VendorPaymentFormPageContent() {
   const handleAddBill = (billId: number) => {
     const bill = openBills.find((b) => b.vendor_bill_id === billId)
     if (bill && !billLines.find((l) => l.vendor_bill_id === billId)) {
-      setBillLines((prev) => [...prev, { vendor_bill_id: bill.vendor_bill_id, bill_number: bill.bill_number, balance_due: bill.balance_due, amount: bill.balance_due }])
+      setBillLines((prev) => [...prev, { vendor_bill_id: bill.vendor_bill_id, bill_number: bill.bill_number, balance_due: bill.balance_due, amount: bill.balance_due, grand_total: bill.grand_total, settlement_discount_amount: 0 }])
     }
   }
 
@@ -141,7 +150,17 @@ function VendorPaymentFormPageContent() {
       id: 'bill_number',
       header: 'Nomor Bill',
       width: 180,
-      render: ({ item }) => <span className="text-[12px] font-medium text-[#5c9ead]">{item.bill_number}</span>,
+      render: ({ item, isReadOnly }) => (
+        <div className="flex flex-wrap items-center gap-x-2 px-2">
+          <span className="text-[12px] font-medium text-[#5c9ead]">{item.bill_number}</span>
+          {((!isReadOnly && can(isCreate ? 'purchase.payments.create' : 'purchase.payments.edit')) || !!item.settlement_discount_amount) && (
+            <Button type="button" variant="ghost" size="sm" className="h-7 px-1.5"
+              aria-label={`Potongan pelunasan ${item.bill_number}`} onClick={() => setDiscountId(item.vendor_bill_id)}>
+              {item.settlement_discount_amount ? `Potongan ${formatCurrency(item.settlement_discount_amount)}` : 'Potongan'}
+            </Button>
+          )}
+        </div>
+      ),
     },
     {
       id: 'balance_due',
@@ -168,11 +187,13 @@ function VendorPaymentFormPageContent() {
   // default export), jadi isian yang belum tersimpan dipersist ke localStorage agar
   // tidak hilang saat user pindah tab lalu kembali. Didaftarkan setelah efek reset
   // dari data server supaya draft menang atas nilai server (urutan efek = urutan deklarasi).
-  const formDraft = usePersistentFormDraft<VendorPaymentFormValues>({
+  const formDraft = usePersistentFormDraft<VendorPaymentFormValues, BillLine[]>({
     draftKey: `purchase.vendor-payment.${id ?? 'new'}`,
     control,
     getValues,
     reset,
+    extra: billLines,
+    onRestoreExtra: setBillLines,
   })
 
   const { saveAndClose, navProps } = useRecordFormNavigation<VendorPaymentFormValues>({
@@ -183,7 +204,17 @@ function VendorPaymentFormPageContent() {
     fetchAdjacent: async (recordId) => (await vendorPaymentApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values, creating) => {
-      const lines: VendorPaymentLinePayload[] = billLines.map((l) => ({ vendor_bill_id: l.vendor_bill_id, amount: l.amount }))
+      const invalid = billLines.find((line) =>
+        line.amount <= 0 || Number((line.amount + (line.settlement_discount_amount ?? 0)).toFixed(2)) > Number(line.balance_due.toFixed(2)),
+      )
+      if (invalid) {
+        const message = `Periksa ${invalid.bill_number}. Jumlah kas harus positif dan kas ditambah potongan tidak boleh melebihi sisa tagihan.`
+        setError('amount', { type: 'manual', message })
+        throw new Error(message)
+      }
+      const lines: VendorPaymentLinePayload[] = billLines.map(({ vendor_bill_id, amount, settlement_discount_amount, settlement_discount_account_id, settlement_discount_note }) => ({
+        vendor_bill_id, amount, ...(settlement_discount_amount ? { settlement_discount_amount, settlement_discount_account_id, settlement_discount_note } : {}),
+      }))
       const payload = { ...toVendorPaymentPayload(values), lines }
       if (creating) await create.mutateAsync(payload)
       else await update.mutateAsync({ id: Number(id), payload })
@@ -430,23 +461,16 @@ function VendorPaymentFormPageContent() {
               items={billLines}
               columns={billColumns}
               onRemove={(index) => setBillLines((prev) => prev.filter((_, idx) => idx !== index))}
-              onUpdate={(index, field, value) => setBillLines((prev) => prev.map((l, idx) => (idx === index ? { ...l, [field]: value } : l)))}
+              onUpdate={(index, field, value) => setBillLines((rows) => rows.map((row, i) => i === index ? { ...row, [field]: value } : row))}
               isReadOnly={!isEditable}
               emptyLabel="Belum ada tagihan dipilih"
-              footer={
-                billLines.length === 0
-                  ? undefined
-                  : (_items, cellCount) => (
-                      <tr>
-                        <td colSpan={cellCount - 2} className="px-2.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
-                          Total
-                        </td>
-                        <td className="px-2.5 py-2 text-right text-[13px] font-semibold tabular-nums text-[#24323a]">{formatCurrency(totalAmount)}</td>
-                        <td />
-                      </tr>
-                    )
-              }
             />
+            <div className="mt-3 flex flex-col items-end gap-1 text-[13px] text-[#24323a]">
+              <p>Kas dibayar: <span className="font-semibold tabular-nums">{formatCurrency(totalAmount)}</span></p>
+              <p>Potongan: <span className="tabular-nums">{formatCurrency(totalDiscount)}</span></p>
+              <p>Total mengurangi tagihan: <span className="font-semibold tabular-nums">{formatCurrency(totalSettled)}</span></p>
+              <FieldError message={errors.amount?.message} />
+            </div>
           </div>
         </div>
       </FormLayout>
@@ -465,6 +489,22 @@ function VendorPaymentFormPageContent() {
         documentNumber={payment?.number ?? ''}
         isLoading={voidPayment.isPending}
       />
+      {discountLine && (
+        <SettlementDiscountDialog
+          key={discountLine.vendor_bill_id}
+          documentNumber={discountLine.bill_number}
+          grandTotal={discountLine.grand_total}
+          balanceDue={discountLine.balance_due}
+          cashAmount={discountLine.amount}
+          value={discountLine}
+          readOnly={!isEditable || !can(isCreate ? 'purchase.payments.create' : 'purchase.payments.edit')}
+          onClose={() => setDiscountId(undefined)}
+          onSave={(discount, amount) => {
+            setBillLines((rows) => rows.map((row) => row.vendor_bill_id === discountLine.vendor_bill_id ? { ...row, ...discount, amount } : row))
+            setDiscountId(undefined)
+          }}
+        />
+      )}
       <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={payment ? vendorPaymentPrint(payment) : null} defaultPaper="half-a4" />
     </>
   )

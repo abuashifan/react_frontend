@@ -64,6 +64,7 @@ export function fromVendorBillResponse(raw: RawVendorBill): VendorBill {
     tax_amount: num(raw.tax_total),
     grand_total: num(raw.grand_total),
     paid_amount: num(raw.paid_amount),
+    settlement_discount_amount: num(raw.settlement_discount_amount),
     returned_amount: num(raw.returned_amount),
     balance_due: num(raw.balance_due),
     lines: (raw.lines ?? []).map(fromLine),

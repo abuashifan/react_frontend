@@ -10,7 +10,7 @@ const payment = {
   created_at: '2026-11-19', updated_at: '2026-11-19',
 }
 
-async function setup(page: Page) {
+async function setup(page: Page, multipleBills = false) {
   await page.addInitScript(() => {
     const permissions = ['purchase.payments.view', 'purchase.payments.create', 'purchase.payments.edit', 'purchase.payments.print']
     localStorage.setItem('seaside-auth', JSON.stringify({ state: {
@@ -43,11 +43,20 @@ async function setup(page: Page) {
     } else if (path === '/master-data/contacts') {
       await route.fulfill({ json: { data: [{ id: 1, name: 'Vendor Alpha' }, { id: 2, name: 'Vendor Empty' }, { id: 3, name: 'Vendor Error' }] } })
     } else if (path === '/master-data/chart-of-accounts') {
-      await route.fulfill({ json: { data: [{ id: 10, account_code: '1101', account_name: 'Kas Utama' }, { id: 11, account_code: '1102', account_name: 'Bank Kedua' }] } })
+      const type = url.searchParams.get('account_type')
+      const data = type === 'expense' ? [{ id: 41, account_code: '5110', account_name: 'Potongan pembelian' }]
+        : type === 'revenue' ? [{ id: 42, account_code: '4190', account_name: 'Rebate vendor' }]
+        : [{ id: 10, account_code: '1101', account_name: 'Kas Utama' }, { id: 11, account_code: '1102', account_name: 'Bank Kedua' }]
+      await route.fulfill({ json: { data } })
     } else if (path === '/purchase/payments/vendor-context') {
       const id = url.searchParams.get('vendor_id')
       if (id === '3') await route.fulfill({ status: 500, json: { message: 'Konteks vendor gagal dimuat' } })
-      else await route.fulfill({ json: { data: { open_bills: id === '1' ? [{ bill_id: 101, bill_number: 'VB-101', balance_due: '100000.00' }] : [] } } })
+      else await route.fulfill({ json: { data: {
+        open_bills: id === '1' ? [
+          { bill_id: 101, bill_number: 'VB-101', balance_due: '100000.00' },
+          ...(multipleBills ? [{ bill_id: 102, bill_number: 'VB-102', balance_due: '200000.00' }] : []),
+        ] : [],
+      } } })
     } else if (path === '/purchase/payments/cash-balance') {
       const id = Number(url.searchParams.get('cash_bank_account_id'))
       await route.fulfill({ json: { data: { account_id: id, balance: id === 10 ? 200000 : 300000, normal_balance: 'debit', as_of: url.searchParams.get('payment_date'), calculated_at: '2026-11-19T00:00:00Z' } } })
@@ -127,4 +136,42 @@ test('saved payment print preview does not include cash balance fields', async (
   await expect(dialog).toContainText('Bukti Pembayaran')
   await expect(dialog).toContainText('VB-101')
   await expect(dialog).not.toContainText('Saldo kas/bank saat ini')
+})
+
+test('discount dialog keeps the selected amount and account separate for each bill', async ({ page }) => {
+  await setup(page, true)
+  await createPayment(page)
+  await choose(page, 'Vendor pembayaran', 'Vendor Alpha')
+  await choose(page, 'Akun kas/bank pembayaran', 'Kas Utama')
+  await page.getByRole('button', { name: 'Tambahkan VB-101' }).click()
+  await page.getByRole('button', { name: 'Tambahkan VB-102' }).click()
+  for (const [bill, account, discount] of [
+    ['VB-101', 'Potongan pembelian', '5000'],
+    ['VB-102', 'Rebate vendor', '10000'],
+  ]) {
+    await page.getByRole('button', { name: `Potongan pelunasan ${bill}` }).click()
+    const dialog = page.getByRole('dialog', { name: 'Info Potongan' })
+    await expect(dialog).toContainText(bill)
+    await dialog.getByLabel('Nominal potongan').fill(discount)
+    await dialog.getByRole('button', { name: 'Simpan potongan' }).click()
+    await expect(dialog).toContainText('Pilih akun untuk potongan pelunasan.')
+    await choose(page, 'Akun potongan', account)
+    await dialog.getByRole('button', { name: 'Simpan potongan' }).click()
+    await expect(dialog).toBeHidden()
+  }
+  await expect(page.getByText(/Kas dibayar:/)).toContainText('285.000')
+  await expect(page.getByText(/Total mengurangi tagihan:/)).toContainText('300.000')
+  await page.route('**/api/purchase/payments', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
+    await route.fulfill({ status: 201, json: { data: payment } })
+  })
+  const request = page.waitForRequest((r) => r.method() === 'POST' && new URL(r.url()).pathname.endsWith('/purchase/payments'))
+  await page.getByRole('button', { name: 'Simpan & Tutup', exact: true }).click()
+  expect((await request).postDataJSON()).toMatchObject({
+    amount: 285000,
+    lines: [
+      { vendor_bill_id: 101, amount: 95000, settlement_discount_amount: 5000, settlement_discount_account_id: 41 },
+      { vendor_bill_id: 102, amount: 190000, settlement_discount_amount: 10000, settlement_discount_account_id: 42 },
+    ],
+  })
 })

@@ -30,7 +30,13 @@ export function useCustomerOpenInvoices(customerId?: number) {
 
 export function useSalesReceiptMutations() {
   const qc = useQueryClient()
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['sales', 'receipts'] })
+  const invalidate = () => Promise.all([
+    qc.invalidateQueries({ queryKey: ['sales', 'receipts'] }),
+    qc.invalidateQueries({ queryKey: ['sales', 'invoices'] }),
+    qc.invalidateQueries({ queryKey: ['sales', 'ar'] }),
+    qc.invalidateQueries({ queryKey: ['reports'] }),
+    qc.invalidateQueries({ queryKey: ['cash-bank'] }),
+  ])
 
   return {
     create: useMutation({ mutationFn: (p: CreateSalesReceiptPayload) => salesReceiptApi.create(p), onSuccess: invalidate }),

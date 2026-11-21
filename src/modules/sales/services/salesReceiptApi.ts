@@ -21,8 +21,28 @@ export const salesReceiptApi = {
   adjacent: (id?: number) =>
     http.get<unknown, ApiResponse<AdjacentRecords>>('/sales/receipts/adjacent', { params: { id } }),
 
-  get: (id: number) =>
-    http.get<unknown, ApiResponse<SalesReceipt>>(`/sales/receipts/${id}`),
+  get: async (id: number) => {
+    const response = await http.get<unknown, ApiResponse<SalesReceipt>>(`/sales/receipts/${id}`)
+    const receipt = response.data
+    return { ...response, data: {
+      ...receipt,
+      amount: Number(receipt.amount),
+      lines: receipt.lines.map((line) => {
+        const invoice = line.sales_invoice ?? line.invoice
+        return {
+          ...line,
+          amount: Number(line.amount),
+          settlement_discount_amount: Number(line.settlement_discount_amount ?? 0),
+          invoice: invoice ? {
+            id: invoice.id,
+            number: invoice.number ?? String(invoice.id),
+            grand_total: Number(invoice.grand_total),
+            balance_due: Number(invoice.balance_due),
+          } : undefined,
+        }
+      }),
+    } }
+  },
 
   /**
    * Backend mengirim invoice terbuka dengan kunci `invoice_id`; form membaca `id`.

@@ -265,6 +265,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____UnsavedFormsDialog.tsx
 | | | |____form/
 | | | | |____AmountInput.tsx
+| | | | |____SettlementDiscountDialog.tsx
 | | | | |____FieldError.tsx
 | | | | |____FormField.tsx
 | | | | |____FormSection.tsx

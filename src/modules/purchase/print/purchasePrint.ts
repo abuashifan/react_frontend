@@ -131,7 +131,9 @@ export function vendorBillPrint(b: VendorBill): TransactionPrintData {
       ...(b.discount_amount ? [{ label: 'Diskon', value: printMoney(b.discount_amount) }] : []),
       ...(b.tax_amount ? [{ label: 'Pajak', value: printMoney(b.tax_amount) }] : []),
       { label: 'Total', value: printMoney(b.grand_total), strong: true },
-      ...(b.paid_amount ? [{ label: 'Dibayar', value: printMoney(b.paid_amount) }, { label: 'Sisa hutang', value: printMoney(b.balance_due), strong: true }] : []),
+      ...(b.paid_amount ? [{ label: 'Dibayar', value: printMoney(b.paid_amount) }] : []),
+      ...(Number(b.settlement_discount_amount) > 0 ? [{ label: 'Potongan pelunasan', value: printMoney(Number(b.settlement_discount_amount)) }] : []),
+      ...(b.paid_amount ? [{ label: 'Sisa hutang', value: printMoney(b.balance_due), strong: true }] : []),
     ],
     amountInWords: terbilang(b.grand_total),
     notes: b.notes,
@@ -140,6 +142,7 @@ export function vendorBillPrint(b: VendorBill): TransactionPrintData {
 }
 
 export function vendorPaymentPrint(p: VendorPayment): TransactionPrintData {
+  const discount = p.lines.reduce((sum, line) => sum + (line.settlement_discount_amount ?? 0), 0)
   return {
     title: 'Bukti Pembayaran',
     number: p.number,
@@ -150,11 +153,22 @@ export function vendorPaymentPrint(p: VendorPayment): TransactionPrintData {
       { label: 'Dari kas/bank', value: p.cash_bank_account?.name ?? '-' },
     ],
     columns: [
-      { key: 'bill', header: 'Untuk pembayaran tagihan', width: '70%' },
-      { key: 'amount', header: 'Jumlah', align: 'right', width: '26%' },
+      { key: 'bill', header: 'Faktur / tagihan', width: discount > 0 ? '44%' : '70%' },
+      ...(discount > 0 ? [{ key: 'discount', header: 'Potongan', align: 'right' as const, width: '26%' }] : []),
+      { key: 'amount', header: 'Kas', align: 'right', width: '26%' },
     ],
-    rows: p.lines.map((l) => ({ bill: l.bill_number ?? `#${l.vendor_bill_id}`, amount: printMoney(l.amount) })),
-    totals: [{ label: 'Total dibayar', value: printMoney(p.amount), strong: true }],
+    rows: p.lines.map((l) => ({
+      bill: l.bill_number ?? `#${l.vendor_bill_id}`,
+      discount: printMoney(l.settlement_discount_amount ?? 0),
+      amount: printMoney(l.amount),
+    })),
+    totals: [
+      { label: 'Total dibayar', value: printMoney(p.amount), strong: true },
+      ...(discount > 0 ? [
+        { label: 'Potongan pelunasan', value: printMoney(discount) },
+        { label: 'Total mengurangi tagihan', value: printMoney(Number(p.amount) + discount) },
+      ] : []),
+    ],
     amountInWords: terbilang(p.amount),
     notes: p.notes,
     signatures: ['Penerima', 'Kasir', 'Disetujui'],
