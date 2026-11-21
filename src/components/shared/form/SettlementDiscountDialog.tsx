@@ -3,11 +3,10 @@ import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { AmountInput } from '@/components/shared/form/AmountInput'
-import { FieldError } from '@/components/shared/form/FieldError'
+import { FormField } from '@/components/shared/form/FormField'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency } from '@/lib/utils'
 import { coaApi } from '@/modules/master-data/services/coaApi'
@@ -98,8 +97,7 @@ export function SettlementDiscountDialog({
           <dd className="text-right font-medium tabular-nums">{formatCurrency(balanceDue)}</dd>
         </dl>
         <form className="space-y-4" onSubmit={(event) => { event.stopPropagation(); void submit(event) }}>
-          <div className="space-y-1.5">
-            <Label htmlFor={`${id}-account`}>Akun potongan</Label>
+          <FormField label="Akun potongan" htmlFor={`${id}-account`}>
             <Controller control={control} name="accountId" render={({ field }) => (
               <SearchableSelect
                 cacheKey="coa"
@@ -114,19 +112,15 @@ export function SettlementDiscountDialog({
                 error={errors.accountId?.message}
               />
             )} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor={`${id}-amount`}>Nominal potongan</Label>
+          </FormField>
+          <FormField label="Nominal potongan" htmlFor={`${id}-amount`} error={errors.amount?.message}>
             <Controller control={control} name="amount" render={({ field }) => (
               <AmountInput id={`${id}-amount`} value={field.value} onChange={field.onChange} disabled={readOnly} decimals={2} />
             )} />
-            <FieldError message={errors.amount?.message} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor={`${id}-note`}>Keterangan potongan</Label>
+          </FormField>
+          <FormField label="Keterangan potongan" htmlFor={`${id}-note`} error={errors.note?.message}>
             <Textarea id={`${id}-note`} {...register('note')} maxLength={240} rows={2} disabled={readOnly} />
-            <FieldError message={errors.note?.message} />
-          </div>
+          </FormField>
           {cashAfterDiscount !== cashAmount && (
             <p className="text-sm text-muted-foreground">
               Kas pada baris ini menjadi <span className="font-medium tabular-nums">{formatCurrency(cashAfterDiscount)}</span>.

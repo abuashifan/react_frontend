@@ -121,14 +121,14 @@ function VendorPaymentFormPageContent() {
           balance_due: (l.balance_due ?? 0) + (payment.status === 'posted' ? l.amount + (l.settlement_discount_amount ?? 0) : 0),
           amount: l.amount,
           settlement_discount_amount: l.settlement_discount_amount ?? 0,
-        settlement_discount_account_id: l.settlement_discount_account_id,
-        settlement_discount_note: l.settlement_discount_note,
-        accountOption: l.settlement_discount_account ? {
-          value: l.settlement_discount_account.id,
-          label: l.settlement_discount_account.account_name,
-          sublabel: l.settlement_discount_account.account_code,
-        } : undefined,
-        grand_total: l.grand_total,
+          settlement_discount_account_id: l.settlement_discount_account_id,
+          settlement_discount_note: l.settlement_discount_note,
+          accountOption: l.settlement_discount_account ? {
+            value: l.settlement_discount_account.id,
+            label: l.settlement_discount_account.account_name,
+            sublabel: l.settlement_discount_account.account_code,
+          } : undefined,
+          grand_total: l.grand_total,
         })),
       )
     }
