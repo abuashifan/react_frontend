@@ -7,11 +7,10 @@ import { FormSection } from '@/components/shared/form/FormSection'
 import { DocumentActionBar, type DocumentActionButton } from '@/components/shared/document/DocumentActionBar'
 import { VoidConfirmDialog } from '@/components/shared/document/VoidConfirmDialog'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
-import { SettlementDiscountDialog, type SettlementDiscount } from '@/components/shared/form/SettlementDiscountDialog'
+import { SettlementDiscountCell, SettlementDiscountDialog, type SettlementDiscount, type SettlementDiscountSelection } from '@/components/shared/form/SettlementDiscountDialog'
 import { FieldError } from '@/components/shared/form/FieldError'
 import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/components/shared/form/LineItemsTable'
 import { AmountInput } from '@/components/shared/form/AmountInput'
@@ -72,8 +71,8 @@ function SalesReceiptFormPageContent() {
   })
 
   const [lines, setLines] = useState<ReceiptLine[]>([])
-  const [discountId, setDiscountId] = useState<number>()
-  const discountLine = lines.find((line) => line.sales_invoice_id === discountId)
+  const [discountSelection, setDiscountSelection] = useState<SettlementDiscountSelection>()
+  const discountLine = lines.find((line) => line.sales_invoice_id === discountSelection?.id)
   const [isVoidOpen, setVoidOpen] = useState(false)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
   // Draft selalu bisa diedit; yang sudah posted (mode open) dibuka lewat tombol Edit.
@@ -81,6 +80,7 @@ function SalesReceiptFormPageContent() {
 
   const status = (receipt?.status ?? 'draft') as DocumentStatus
   const isEditable = isCreate || receipt?.status === 'draft' || editing
+  const canAllocate = isEditable && can(isCreate ? 'sales.receipts.create' : 'sales.receipts.edit')
 
   const customerId = watch('customer_id')
   const { data: openInvoicesData } = useCustomerOpenInvoices(customerId && isEditable ? customerId : undefined)
@@ -241,39 +241,60 @@ function SalesReceiptFormPageContent() {
 
   const lineColumns: LineItemColumn<ReceiptLine>[] = [
     {
-      id: 'invoice',
-      header: 'Invoice',
-      width: 180,
-      render: ({ item, isReadOnly }) => (
-        <div className="flex flex-wrap items-center gap-x-2 px-2">
-          <span className="text-[12px] font-medium text-[#5c9ead]">{item.invoice_number}</span>
-          {((!isReadOnly && can(isCreate ? 'sales.receipts.create' : 'sales.receipts.edit')) || !!item.settlement_discount_amount) && (
-            <Button type="button" variant="ghost" size="sm" className="h-7 px-1.5"
-              aria-label={`Potongan pelunasan ${item.invoice_number}`} onClick={() => setDiscountId(item.sales_invoice_id)}>
-              {item.settlement_discount_amount ? `Potongan ${formatCurrency(item.settlement_discount_amount)}` : 'Potongan'}
-            </Button>
-          )}
-        </div>
+      id: 'invoice_number',
+      header: 'Nomor Faktur',
+      width: 160,
+      render: ({ item }) => <span className="text-[12px] font-medium text-[#5c9ead]">{item.invoice_number}</span>,
+    },
+    {
+      id: 'grand_total',
+      header: 'Jumlah',
+      width: 120,
+      align: 'right',
+      render: ({ item }) => <span className="text-[12px]">{item.grand_total === undefined ? '—' : formatCurrency(item.grand_total)}</span>,
+    },
+    {
+      id: 'amount',
+      header: 'Diterima',
+      width: 120,
+      align: 'right',
+      render: ({ item, isReadOnly, onUpdate }) => isReadOnly ? (
+        <span className="text-[12px]">{formatCurrency(item.amount)}</span>
+      ) : (
+        <AmountInput
+          value={item.amount}
+          onChange={(amount) => onUpdate('amount', amount)}
+          decimals={2}
+          ariaLabel={`Diterima ${item.invoice_number}`}
+          className={FLUSH_INPUT_CLASS}
+        />
       ),
+    },
+    {
+      id: 'settlement_discount',
+      header: 'Discount',
+      width: 120,
+      align: 'right',
+      render: ({ item }) => canAllocate || item.settlement_discount_amount ? (
+        <SettlementDiscountCell
+          documentNumber={item.invoice_number}
+          amount={item.settlement_discount_amount}
+          onOpen={(restoreFocus) => setDiscountSelection({ id: item.sales_invoice_id, restoreFocus })}
+        />
+      ) : <span className="text-[12px]">{formatCurrency(0)}</span>,
     },
     {
       id: 'balance_due',
       header: 'Sisa Tagihan',
-      width: 140,
+      width: 130,
       align: 'right',
-      render: ({ item }) => <span className="text-[12px] tabular-nums">{formatCurrency(item.balance_due)}</span>,
-    },
-    {
-      id: 'amount',
-      header: 'Jumlah Bayar',
-      width: 140,
-      align: 'right',
-      render: ({ item, isReadOnly, onUpdate }) =>
-        isReadOnly ? (
-          <span className="text-[12px] tabular-nums">{formatCurrency(item.amount)}</span>
-        ) : (
-          <AmountInput value={item.amount} onChange={(v) => onUpdate('amount', v)} decimals={2} ariaLabel="amount" className={cn(FLUSH_INPUT_CLASS, 'text-right')} />
-        ),
+      render: ({ item }) => {
+        const remaining = status === 'void'
+          ? item.balance_due
+          : Math.max(0, Number((item.balance_due - item.amount - (item.settlement_discount_amount ?? 0)).toFixed(2)))
+
+        return <span className="text-[12px]">{formatCurrency(remaining)}</span>
+      },
     },
   ]
 
@@ -407,7 +428,7 @@ function SalesReceiptFormPageContent() {
         documentNumber={receipt?.number ?? ''}
         isLoading={voidRec.isPending}
       />
-      {discountLine && (
+      {discountSelection && discountLine && (
         <SettlementDiscountDialog
           key={discountLine.sales_invoice_id}
           documentNumber={discountLine.invoice_number}
@@ -415,11 +436,13 @@ function SalesReceiptFormPageContent() {
           balanceDue={discountLine.balance_due}
           cashAmount={discountLine.amount}
           value={discountLine}
-          readOnly={!isEditable || !can(isCreate ? 'sales.receipts.create' : 'sales.receipts.edit')}
-          onClose={() => setDiscountId(undefined)}
+          readOnly={!canAllocate}
+          preferredAccountType="revenue"
+          onClose={() => setDiscountSelection(undefined)}
+          onRestoreFocus={discountSelection.restoreFocus}
           onSave={(discount, amount) => {
             setLines((rows) => rows.map((row) => row.sales_invoice_id === discountLine.sales_invoice_id ? { ...row, ...discount, amount } : row))
-            setDiscountId(undefined)
+            setDiscountSelection(undefined)
           }}
         />
       )}
