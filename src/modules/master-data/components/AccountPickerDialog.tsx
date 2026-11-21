@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DataTable } from '@/components/shared/table/DataTable'
 import type { ColumnDef } from '@/components/shared/table/DataTable'
+import type { SelectOption } from '@/types/common.types'
 import { coaApi } from '../services/coaApi'
 import type { Coa, CoaType } from '../types/coa.types'
 
@@ -18,6 +19,8 @@ interface AccountPickerDialogProps {
   multiple?: boolean
   /** Filter opsional tipe akun (mis. mapping yang cuma mengizinkan `asset`). */
   accountType?: CoaType
+  /** Jika pemanggil mengizinkan beberapa tipe, tampilkan filter di antara tipe tersebut. */
+  accountTypes?: readonly SelectOption<CoaType>[]
 }
 
 const PAGE_SIZE = 25
@@ -42,25 +45,28 @@ export function AccountPickerDialog({
   title = 'Data Akun',
   multiple = true,
   accountType,
+  accountTypes,
 }: AccountPickerDialogProps) {
   const [codeInput, setCodeInput] = useState('')
   const [nameInput, setNameInput] = useState('')
   const [applied, setApplied] = useState({ code: '', name: '' })
   const [page, setPage] = useState(0)
+  const [selectedType, setSelectedType] = useState(accountTypes?.[0]?.value)
+  const activeType = accountType ?? selectedType
   // Akun terpilih disimpan utuh (bukan hanya id) supaya baris yang dipilih di
   // halaman lain tetap bisa dikembalikan saat Simpan walau sudah tidak ada di
   // data halaman aktif.
   const [selected, setSelected] = useState<Coa[]>([])
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['master-data', 'chart-of-accounts', 'picker', applied, page, accountType],
+    queryKey: ['master-data', 'chart-of-accounts', 'picker', applied, page, activeType],
     queryFn: () =>
       coaApi.list({
         page: page + 1,
         per_page: PAGE_SIZE,
         account_code: applied.code || undefined,
         account_name: applied.name || undefined,
-        account_type: accountType,
+        account_type: activeType,
         is_active: true,
         postable_only: true,
       }),
@@ -79,6 +85,7 @@ export function AccountPickerDialog({
     setNameInput('')
     setApplied({ code: '', name: '' })
     setPage(0)
+    setSelectedType(accountTypes?.[0]?.value)
     setSelected([])
   }
 
@@ -117,7 +124,16 @@ export function AccountPickerDialog({
       header: 'No Akun',
       size: 130,
       meta: { className: 'px-2 tabular-nums', headerClassName: 'px-2' },
-      cell: ({ original }) => original.account_code,
+      cell: ({ original }) => multiple ? original.account_code : (
+        <button
+          type="button"
+          className="text-[#326273] hover:underline focus-visible:underline"
+          aria-label={`${original.account_code} ${original.account_name}`}
+          onClick={(event) => { event.stopPropagation(); handlePick(original) }}
+        >
+          {original.account_code}
+        </button>
+      ),
     },
     {
       id: 'account_name',
@@ -133,6 +149,7 @@ export function AccountPickerDialog({
       <DialogContent className="flex max-h-[calc(100dvh-48px)] w-[calc(100vw-32px)] max-w-[640px] flex-col gap-0 overflow-hidden p-0">
         <DialogHeader className="flex-shrink-0 border-b border-[#d9e2e5] bg-[#326273] px-4 py-2.5">
           <DialogTitle className="text-[14px] font-semibold text-white">{title}</DialogTitle>
+          <DialogDescription className="sr-only">Cari dan pilih akun dari tabel.</DialogDescription>
         </DialogHeader>
 
         {/* Filter — dua kolom terpisah, dikirim ke server sebagai AND */}
@@ -169,6 +186,22 @@ export function AccountPickerDialog({
           >
             Reset
           </Button>
+          {accountTypes && (
+            <div role="group" aria-label="Tipe akun" className="flex gap-1">
+              {accountTypes.map(({ value, label }) => (
+                <Button
+                  key={value}
+                  type="button"
+                  size="sm"
+                  variant={activeType === value ? 'secondary' : 'outline'}
+                  aria-pressed={activeType === value}
+                  onClick={() => { setSelectedType(value); setPage(0) }}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="min-h-0 flex-1 px-4 py-3">

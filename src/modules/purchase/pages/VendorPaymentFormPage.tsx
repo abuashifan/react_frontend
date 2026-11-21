@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
-import { SettlementDiscountDialog, type SettlementDiscount } from '@/components/shared/form/SettlementDiscountDialog'
+import { SettlementDiscountCell, SettlementDiscountDialog, type SettlementDiscount, type SettlementDiscountSelection } from '@/components/shared/form/SettlementDiscountDialog'
 import { FieldError } from '@/components/shared/form/FieldError'
 import { AmountInput } from '@/components/shared/form/AmountInput'
 import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/components/shared/form/LineItemsTable'
@@ -66,8 +66,8 @@ function VendorPaymentFormPageContent() {
   // Draft selalu bisa diedit; yang sudah posted (mode open) dibuka lewat tombol Edit.
   const [editing, setEditing] = useState(false)
   const [billLines, setBillLines] = useState<BillLine[]>([])
-  const [discountId, setDiscountId] = useState<number>()
-  const discountLine = billLines.find((line) => line.vendor_bill_id === discountId)
+  const [discountSelection, setDiscountSelection] = useState<SettlementDiscountSelection>()
+  const discountLine = billLines.find((line) => line.vendor_bill_id === discountSelection?.id)
   const [billSearch, setBillSearch] = useState('')
   const [billPage, setBillPage] = useState(1)
 
@@ -149,37 +149,58 @@ function VendorPaymentFormPageContent() {
     {
       id: 'bill_number',
       header: 'Nomor Bill',
-      width: 180,
-      render: ({ item, isReadOnly }) => (
-        <div className="flex flex-wrap items-center gap-x-2 px-2">
-          <span className="text-[12px] font-medium text-[#5c9ead]">{item.bill_number}</span>
-          {((!isReadOnly && can(isCreate ? 'purchase.payments.create' : 'purchase.payments.edit')) || !!item.settlement_discount_amount) && (
-            <Button type="button" variant="ghost" size="sm" className="h-7 px-1.5"
-              aria-label={`Potongan pelunasan ${item.bill_number}`} onClick={() => setDiscountId(item.vendor_bill_id)}>
-              {item.settlement_discount_amount ? `Potongan ${formatCurrency(item.settlement_discount_amount)}` : 'Potongan'}
-            </Button>
-          )}
-        </div>
-      ),
+      width: 160,
+      render: ({ item }) => <span className="text-[12px] font-medium text-[#5c9ead]">{item.bill_number}</span>,
     },
     {
-      id: 'balance_due',
-      header: 'Sisa Tagihan',
-      width: 140,
+      id: 'grand_total',
+      header: 'Jumlah',
+      width: 120,
       align: 'right',
-      render: ({ item }) => <span className="text-[12px] tabular-nums">{formatCurrency(item.balance_due)}</span>,
+      render: ({ item }) => <span className="text-[12px]">{item.grand_total === undefined ? '—' : formatCurrency(item.grand_total)}</span>,
     },
     {
       id: 'amount',
       header: 'Dibayar',
-      width: 140,
+      width: 120,
       align: 'right',
-      render: ({ item, isReadOnly, onUpdate }) =>
-        isReadOnly ? (
-          <span className="text-[12px] tabular-nums">{formatCurrency(item.amount)}</span>
-        ) : (
-          <AmountInput value={item.amount} onChange={(v) => onUpdate('amount', v)} decimals={2} ariaLabel="Jumlah" className={cn(FLUSH_INPUT_CLASS, 'text-right')} />
-        ),
+      render: ({ item, isReadOnly, onUpdate }) => isReadOnly ? (
+        <span className="text-[12px]">{formatCurrency(item.amount)}</span>
+      ) : (
+        <AmountInput
+          value={item.amount}
+          onChange={(amount) => onUpdate('amount', amount)}
+          decimals={2}
+          ariaLabel={`Dibayar ${item.bill_number}`}
+          className={FLUSH_INPUT_CLASS}
+        />
+      ),
+    },
+    {
+      id: 'settlement_discount',
+      header: 'Discount',
+      width: 120,
+      align: 'right',
+      render: ({ item }) => canAllocate || item.settlement_discount_amount ? (
+        <SettlementDiscountCell
+          documentNumber={item.bill_number}
+          amount={item.settlement_discount_amount}
+          onOpen={(restoreFocus) => setDiscountSelection({ id: item.vendor_bill_id, restoreFocus })}
+        />
+      ) : <span className="text-[12px]">{formatCurrency(0)}</span>,
+    },
+    {
+      id: 'balance_due',
+      header: 'Sisa Tagihan',
+      width: 130,
+      align: 'right',
+      render: ({ item }) => {
+        const remaining = status === 'void'
+          ? item.balance_due
+          : Math.max(0, Number((item.balance_due - item.amount - (item.settlement_discount_amount ?? 0)).toFixed(2)))
+
+        return <span className="text-[12px]">{formatCurrency(remaining)}</span>
+      },
     },
   ]
 
@@ -489,7 +510,7 @@ function VendorPaymentFormPageContent() {
         documentNumber={payment?.number ?? ''}
         isLoading={voidPayment.isPending}
       />
-      {discountLine && (
+      {discountSelection && discountLine && (
         <SettlementDiscountDialog
           key={discountLine.vendor_bill_id}
           documentNumber={discountLine.bill_number}
@@ -497,11 +518,13 @@ function VendorPaymentFormPageContent() {
           balanceDue={discountLine.balance_due}
           cashAmount={discountLine.amount}
           value={discountLine}
-          readOnly={!isEditable || !can(isCreate ? 'purchase.payments.create' : 'purchase.payments.edit')}
-          onClose={() => setDiscountId(undefined)}
+          readOnly={!canAllocate}
+          preferredAccountType="expense"
+          onClose={() => setDiscountSelection(undefined)}
+          onRestoreFocus={discountSelection.restoreFocus}
           onSave={(discount, amount) => {
             setBillLines((rows) => rows.map((row) => row.vendor_bill_id === discountLine.vendor_bill_id ? { ...row, ...discount, amount } : row))
-            setDiscountId(undefined)
+            setDiscountSelection(undefined)
           }}
         />
       )}

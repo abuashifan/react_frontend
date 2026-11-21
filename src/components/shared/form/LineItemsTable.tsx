@@ -51,8 +51,8 @@ interface LineItemsTableProps<T> {
    * data alih-alih kosong.
    */
   onAdd?: () => void
-  onRemove: (index: number) => void
-  onUpdate: (index: number, field: string, value: unknown) => void
+  onRemove?: (index: number) => void
+  onUpdate?: (index: number, field: string, value: unknown) => void
   getSubtotal?: (item: T) => number
   isReadOnly?: boolean
   addLabel?: string
@@ -106,7 +106,7 @@ export function LineItemsTable<T>({
   bordered = true,
   footer,
 }: LineItemsTableProps<T>) {
-  const columnCount = columns.length + (getSubtotal ? 3 : 2)
+  const columnCount = columns.length + 1 + Number(Boolean(getSubtotal)) + Number(Boolean(onRemove))
   const dividerClass = bordered ? 'border-r border-[#e2e8f0] last:border-r-0' : undefined
   return (
     <div className="overflow-hidden rounded-lg border border-[#d9e2e5] bg-white">
@@ -137,7 +137,7 @@ export function LineItemsTable<T>({
                   Subtotal
                 </th>
               )}
-              <th className="w-8 px-2 py-2" aria-label="Aksi" />
+              {onRemove && <th className="w-8 px-2 py-2" aria-label="Aksi" />}
             </tr>
           </thead>
           <tbody>
@@ -193,7 +193,7 @@ export function LineItemsTable<T>({
                         item,
                         index,
                         isReadOnly,
-                        onUpdate: (field, value) => onUpdate(index, field, value),
+                        onUpdate: (field, value) => onUpdate?.(index, field, value),
                       })}
                     </td>
                     )
@@ -203,7 +203,7 @@ export function LineItemsTable<T>({
                       {formatCurrency(getSubtotal(item), currency)}
                     </td>
                   )}
-                  <td className="px-2 py-2 text-center">
+                  {onRemove && <td className="px-2 py-2 text-center">
                     {!isReadOnly && (
                       <button
                         type="button"
@@ -214,7 +214,7 @@ export function LineItemsTable<T>({
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     )}
-                  </td>
+                  </td>}
                 </tr>
 
                 {/* Pesan error baris ditampilkan utuh di sini — kolomnya mungkin tidak

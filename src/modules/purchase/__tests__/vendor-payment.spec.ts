@@ -47,14 +47,14 @@ async function setup(page: Page, multipleBills = false) {
       const data = type === 'expense' ? [{ id: 41, account_code: '5110', account_name: 'Potongan pembelian' }]
         : type === 'revenue' ? [{ id: 42, account_code: '4190', account_name: 'Rebate vendor' }]
         : [{ id: 10, account_code: '1101', account_name: 'Kas Utama' }, { id: 11, account_code: '1102', account_name: 'Bank Kedua' }]
-      await route.fulfill({ json: { data } })
+      await route.fulfill({ json: { data, meta: { current_page: 1, last_page: 1, per_page: 25, total: data.length } } })
     } else if (path === '/purchase/payments/vendor-context') {
       const id = url.searchParams.get('vendor_id')
       if (id === '3') await route.fulfill({ status: 500, json: { message: 'Konteks vendor gagal dimuat' } })
       else await route.fulfill({ json: { data: {
         open_bills: id === '1' ? [
-          { bill_id: 101, bill_number: 'VB-101', balance_due: '100000.00' },
-          ...(multipleBills ? [{ bill_id: 102, bill_number: 'VB-102', balance_due: '200000.00' }] : []),
+          { bill_id: 101, bill_number: 'VB-101', grand_total: '125000.00', balance_due: '100000.00' },
+          ...(multipleBills ? [{ bill_id: 102, bill_number: 'VB-102', grand_total: '200000.00', balance_due: '200000.00' }] : []),
         ] : [],
       } } })
     } else if (path === '/purchase/payments/cash-balance') {
@@ -100,7 +100,7 @@ test('open bills appear immediately, payment amount leaves current cash balance 
   const preview = page.getByTestId('payment-cash-preview')
   await expect(preview).toContainText('Saldo kas/bank saat ini')
   await expect(preview).toContainText('200.000')
-  await page.getByRole('textbox', { name: 'Jumlah' }).fill('25000')
+  await page.getByRole('textbox', { name: 'Dibayar VB-101' }).fill('25000')
   await expect(preview).toContainText('200.000')
   await expect(preview).not.toContainText('175.000')
   await page.emulateMedia({ media: 'print' })
@@ -138,29 +138,50 @@ test('saved payment print preview does not include cash balance fields', async (
   await expect(dialog).not.toContainText('Saldo kas/bank saat ini')
 })
 
-test('discount dialog keeps the selected amount and account separate for each bill', async ({ page }) => {
+test('discount cells open a tabular dialog and save the selected account per bill', async ({ page }) => {
   await setup(page, true)
   await createPayment(page)
   await choose(page, 'Vendor pembayaran', 'Vendor Alpha')
   await choose(page, 'Akun kas/bank pembayaran', 'Kas Utama')
   await page.getByRole('button', { name: 'Tambahkan VB-101' }).click()
   await page.getByRole('button', { name: 'Tambahkan VB-102' }).click()
-  for (const [bill, account, discount] of [
-    ['VB-101', 'Potongan pembelian', '5000'],
-    ['VB-102', 'Rebate vendor', '10000'],
+  const billTable = page.getByRole('table')
+  expect((await billTable.getByRole('columnheader').allTextContents()).slice(1, -1))
+    .toEqual(['Nomor Bill', 'Jumlah', 'Dibayar', 'Discount', 'Sisa Tagihan'])
+  const firstBill = billTable.getByRole('row').filter({ hasText: 'VB-101' })
+  await expect(firstBill.getByRole('cell').nth(2)).toContainText('125.000')
+  await expect(page.getByRole('button', { name: /Potongan pelunasan VB/ })).toHaveCount(0)
+
+  for (const [bill, account, discount, type] of [
+    ['VB-101', '5110 Potongan pembelian', '5000', 'Beban'],
+    ['VB-102', '4190 Rebate vendor', '10000', 'Pendapatan'],
   ]) {
-    await page.getByRole('button', { name: `Potongan pelunasan ${bill}` }).click()
+    const discountCell = billTable.getByRole('textbox', { name: `Discount ${bill}` })
+    if (bill === 'VB-101') await discountCell.focus()
+    else await discountCell.click()
     const dialog = page.getByRole('dialog', { name: 'Info Potongan' })
+    await expect(dialog).toBeVisible()
     await expect(dialog).toContainText(bill)
+    await expect(dialog.getByRole('columnheader', { name: 'Nama Akun' })).toBeVisible()
     await dialog.getByLabel('Nominal potongan').fill(discount)
     await dialog.getByRole('button', { name: 'Simpan potongan' }).click()
     await expect(dialog).toContainText('Pilih akun untuk potongan pelunasan.')
-    await choose(page, 'Akun potongan', account)
+    await dialog.getByRole('button', { name: 'Akun potongan' }).click()
+    const accountPicker = page.getByRole('dialog', { name: 'Pilih Akun Potongan' })
+    await expect(accountPicker.getByRole('columnheader', { name: 'Nama Akun' })).toBeVisible()
+    await accountPicker.getByRole('button', { name: type, exact: true }).click()
+    await accountPicker.getByRole('button', { name: account, exact: true }).click()
+    await expect(accountPicker).toBeHidden()
+    await expect(dialog.getByRole('table')).toContainText(account.slice(5))
     await dialog.getByRole('button', { name: 'Simpan potongan' }).click()
     await expect(dialog).toBeHidden()
+    await expect(discountCell).toBeFocused()
   }
-  await expect(page.getByText(/Kas dibayar:/)).toContainText('285.000')
-  await expect(page.getByText(/Total mengurangi tagihan:/)).toContainText('300.000')
+  await expect(firstBill.getByRole('textbox', { name: 'Discount VB-101' })).toHaveValue(/5\.000/)
+  await firstBill.getByRole('textbox', { name: 'Dibayar VB-101' }).fill('80000')
+  await expect(firstBill.getByRole('cell').nth(5)).toContainText('15.000')
+  await expect(page.getByText(/Kas dibayar:/)).toContainText('270.000')
+  await expect(page.getByText(/Total mengurangi tagihan:/)).toContainText('285.000')
   await page.route('**/api/purchase/payments', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback()
     await route.fulfill({ status: 201, json: { data: payment } })
@@ -168,9 +189,9 @@ test('discount dialog keeps the selected amount and account separate for each bi
   const request = page.waitForRequest((r) => r.method() === 'POST' && new URL(r.url()).pathname.endsWith('/purchase/payments'))
   await page.getByRole('button', { name: 'Simpan & Tutup', exact: true }).click()
   expect((await request).postDataJSON()).toMatchObject({
-    amount: 285000,
+    amount: 270000,
     lines: [
-      { vendor_bill_id: 101, amount: 95000, settlement_discount_amount: 5000, settlement_discount_account_id: 41 },
+      { vendor_bill_id: 101, amount: 80000, settlement_discount_amount: 5000, settlement_discount_account_id: 41 },
       { vendor_bill_id: 102, amount: 190000, settlement_discount_amount: 10000, settlement_discount_account_id: 42 },
     ],
   })
