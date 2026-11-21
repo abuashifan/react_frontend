@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { todayInputValue } from '@/lib/utils'
 import { WorkspaceLayout } from '@/components/shared/layout/WorkspaceLayout'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -9,7 +10,7 @@ import { reportsApi } from '../services/reportsApi'
 import type { ReportParams } from '../types/reports.types'
 import { getApiErrorMessage } from '@/lib/apiError'
 
-const today = new Date().toISOString().slice(0, 10)
+const today = todayInputValue()
 const firstOfMonth = today.slice(0, 8) + '01'
 
 export default function EfakturExportPage() {

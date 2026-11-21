@@ -31,7 +31,7 @@ import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation, FormValidationAbort } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import type { StockMovementType } from '../types/stockMovement.types'
-import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, toDateInputValue, todayInputValue } from '@/lib/utils'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
 import { stockMovementPrint } from '../print/inventoryPrint'
@@ -78,7 +78,7 @@ function StockMovementFormPageContent() {
 
   const { register, handleSubmit, setValue, watch, getValues, control, reset, setError, formState: { errors, isSubmitting } } = useForm<StockMovementFormValues>({
     resolver: zodResolver(stockMovementSchema),
-    defaultValues: { movement_date: new Date().toISOString().slice(0, 10), movement_type: 'adjustment_in' },
+    defaultValues: { movement_date: todayInputValue(), movement_type: 'adjustment_in' },
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
@@ -268,7 +268,7 @@ function StockMovementFormPageContent() {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'secondary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (isCreate && formDraft.isRestored) {
-    actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: () => { reset({ movement_date: new Date().toISOString().slice(0, 10), movement_type: 'adjustment_in' }); setLines([{ ...DEFAULT_LINE }]); formDraft.discardDraft(); toast.success('Draft lokal dibuang.') } })
+    actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: () => { reset({ movement_date: todayInputValue(), movement_type: 'adjustment_in' }); setLines([{ ...DEFAULT_LINE }]); formDraft.discardDraft(); toast.success('Draft lokal dibuang.') } })
   }
   if (!isCreate) {
     if (movement?.status === 'draft' && can('inventory.movements.approve')) {

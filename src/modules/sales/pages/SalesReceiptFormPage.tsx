@@ -27,7 +27,7 @@ import { DeleteDocumentDialog } from '@/components/shared/document/DeleteDocumen
 import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionEditMode'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
-import { cn, fieldErrorClass, formatCurrency, toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, formatCurrency, toDateInputValue, todayInputValue } from '@/lib/utils'
 import type { DocumentStatus } from '@/types/common.types'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
@@ -67,7 +67,7 @@ function SalesReceiptFormPageContent() {
 
   const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<SalesReceiptFormValues>({
     resolver: zodResolver(salesReceiptSchema),
-    defaultValues: { date: new Date().toISOString().slice(0, 10) },
+    defaultValues: { date: todayInputValue() },
   })
 
   const [lines, setLines] = useState<ReceiptLine[]>([])

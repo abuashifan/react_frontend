@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { coaApi } from '@/modules/master-data/services/coaApi'
-import { cn, fieldErrorClass, formatCurrency, formatDate, toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, formatCurrency, formatDate, toDateInputValue, todayInputValue } from '@/lib/utils'
 import { useBankReconciliation, useBankReconciliationMutations } from '../hooks/useCashBankList'
 import { bankReconciliationSchema, type BankReconciliationFormValues } from '../schemas/cashBankSchemas'
 import { bankReconciliationApi } from '../services/cashBankApi'
@@ -46,8 +46,8 @@ function BankReconciliationFormPageContent() {
   const reconciliation = data?.data
   const { create, update, refreshLines, markLines } = useBankReconciliationMutations()
   const [selectedLineIds, setSelectedLineIds] = useState<Set<number>>(new Set())
-  const [clearedDate, setClearedDate] = useState(new Date().toISOString().slice(0, 10))
-  const { register, handleSubmit, control, getValues, setValue, watch, reset, setError, formState: { errors, isSubmitting } } = useForm<BankReconciliationFormValues>({ resolver: zodResolver(bankReconciliationSchema), defaultValues: { statement_start_date: new Date().toISOString().slice(0, 10), statement_end_date: new Date().toISOString().slice(0, 10) } })
+  const [clearedDate, setClearedDate] = useState(todayInputValue())
+  const { register, handleSubmit, control, getValues, setValue, watch, reset, setError, formState: { errors, isSubmitting } } = useForm<BankReconciliationFormValues>({ resolver: zodResolver(bankReconciliationSchema), defaultValues: { statement_start_date: todayInputValue(), statement_end_date: todayInputValue() } })
   const status = (reconciliation?.status ?? 'draft') as DocumentStatus
   // Rekonsiliasi bank selalu berstatus draft di backend (tidak ada finalize/void).
   const isDraft = isCreate || reconciliation?.status === 'draft'

@@ -8,7 +8,7 @@ import { ReportPrintToolbar } from '../components/ReportPrintToolbar'
 import { ReportPrintDocument } from '../components/ReportPrintDocument'
 import { TrialBalanceTable } from '../components/TrialBalanceTable'
 import { reportsApi } from '../services/reportsApi'
-import { formatDate } from '@/lib/utils'
+import { formatDate, todayInputValue } from '@/lib/utils'
 import { ReportExportButton } from '../components/ReportExportButton'
 import { toExcelNumber, type XlsxCell, type XlsxFormat } from '@/lib/exportXlsx'
 import { SaveReportButton } from '../components/SaveReportButton'
@@ -16,7 +16,7 @@ import type { ColumnConfig, TrialBalanceAccount } from '../types/reports.types'
 import { useReportParams } from '../hooks/useReportParams'
 import { useReportFilterSummary } from '../hooks/useReportFilterSummary'
 
-const today = new Date().toISOString().slice(0, 10)
+const today = todayInputValue()
 const firstOfMonth = today.slice(0, 8) + '01'
 
 // Kolom Neraca Saldo (Fase 14 — column selection).

@@ -8,10 +8,10 @@ import { ReportPrintDocument } from '../components/ReportPrintDocument'
 import { ReportExportButton } from '../components/ReportExportButton'
 import { toExcelNumber } from '@/lib/exportXlsx'
 import { reportsApi } from '../services/reportsApi'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, todayInputValue } from '@/lib/utils'
 import { useReportParams } from '../hooks/useReportParams'
 
-const today = new Date().toISOString().slice(0, 10)
+const today = todayInputValue()
 const firstOfMonth = today.slice(0, 8) + '01'
 
 function KPICard({ label, value, positive }: { label: string; value: number; positive?: boolean }) {

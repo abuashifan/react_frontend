@@ -24,7 +24,7 @@ import { bankTransferApi } from '../services/cashBankApi'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
-import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, toDateInputValue, todayInputValue } from '@/lib/utils'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
 import { bankTransferPrint } from '../print/cashBankPrint'
@@ -54,7 +54,7 @@ function BankTransferFormPageContent() {
   const [isDeleteOpen, setDeleteOpen] = useState(false)
   // Mode open: dokumen yang sudah berefek dibuka untuk diedit lewat tombol Edit.
   const [editing, setEditing] = useState(false)
-  const { control, getValues, register, handleSubmit, setValue, reset, setError, formState: { errors, isSubmitting } } = useForm<BankTransferFormValues>({ resolver: zodResolver(bankTransferSchema), defaultValues: { transfer_date: new Date().toISOString().slice(0, 10) } })
+  const { control, getValues, register, handleSubmit, setValue, reset, setError, formState: { errors, isSubmitting } } = useForm<BankTransferFormValues>({ resolver: zodResolver(bankTransferSchema), defaultValues: { transfer_date: todayInputValue() } })
   const fromAccountId = useWatch({ control, name: 'from_cash_bank_account_id' })
   const toAccountId = useWatch({ control, name: 'to_cash_bank_account_id' })
   const transferAmount = useWatch({ control, name: 'amount' })
@@ -76,7 +76,7 @@ function BankTransferFormPageContent() {
   })
 
   const handleDiscardDraft = () => {
-    reset({ transfer_date: new Date().toISOString().slice(0, 10) })
+    reset({ transfer_date: todayInputValue() })
     formDraft.discardDraft()
     formDraft.clearDraft()
     toast.success('Draft lokal dibuang.')

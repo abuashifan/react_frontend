@@ -17,7 +17,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
-import { cn, fieldErrorClass, formatCurrency, toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, formatCurrency, toDateInputValue, todayInputValue } from '@/lib/utils'
 import { AccountPickerDialog } from '@/modules/master-data/components/AccountPickerDialog'
 import { useJournalEntry, useJournalEntryMutations } from '../hooks/useJournalEntryList'
 import { journalEntrySchema, type JournalEntryFormValues } from '../schemas/journalEntrySchema'
@@ -111,7 +111,7 @@ function JournalFormPageContent() {
 
   const { register, handleSubmit, control, getValues, reset, setError, formState: { errors, isSubmitting } } = useForm<JournalEntryFormValues>({
     resolver: zodResolver(journalEntrySchema),
-    defaultValues: { journal_date: new Date().toISOString().slice(0, 10) },
+    defaultValues: { journal_date: todayInputValue() },
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE, DEFAULT_LINE])

@@ -20,7 +20,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
 import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
-import { cn, fieldErrorClass } from '@/lib/utils'
+import { cn, fieldErrorClass, todayInputValue } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { useSalesReturn, useSalesReturnMutations } from '../hooks/useSalesReturnList'
@@ -76,7 +76,7 @@ function SalesReturnFormPageContent() {
 
   const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<SalesReturnFormValues>({
     resolver: zodResolver(salesReturnSchema),
-    defaultValues: { date: new Date().toISOString().slice(0, 10) },
+    defaultValues: { date: todayInputValue() },
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])

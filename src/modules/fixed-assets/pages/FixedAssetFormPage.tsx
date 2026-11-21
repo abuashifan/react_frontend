@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { useUnsavedFormTracker } from '@/hooks/useUnsavedFormTracker'
-import { cn, fieldErrorClass, formatCurrency, formatDate, toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, formatCurrency, formatDate, toDateInputValue, todayInputValue } from '@/lib/utils'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
 import { useOBStatus } from '@/modules/opening-balance/hooks/useOpeningBalance'
 import { coaApi } from '@/modules/master-data/services/coaApi'
@@ -135,7 +135,7 @@ function mapAssetToForm(asset?: FixedAsset | null): FixedAssetFormValues {
     name: asset?.name ?? '',
     description: asset?.description ?? '',
     fixed_asset_category_id: asset?.fixed_asset_category_id ?? 0,
-    acquisition_date: toDateInputValue(asset?.acquisition_date) || new Date().toISOString().slice(0, 10),
+    acquisition_date: toDateInputValue(asset?.acquisition_date) || todayInputValue(),
     acquisition_cost: Number(asset?.acquisition_cost ?? 0),
     service_start_date: toDateInputValue(asset?.service_start_date),
     useful_life_years: asset?.useful_life_years ?? null,
@@ -262,7 +262,7 @@ function FixedAssetFormPageContent() {
       salvage: Number(salvageValue ?? 0),
       lifeYears: Number(usefulLifeYears ?? 0) || selectedCategory?.default_useful_life_years || null,
       serviceStartDate: serviceStartDate || acquisitionDate || '',
-      openingDate: obStatus?.data.opening_date ?? new Date().toISOString().slice(0, 10),
+      openingDate: obStatus?.data.opening_date ?? todayInputValue(),
     })
   }, [
     markAsOpening,
@@ -290,7 +290,7 @@ function FixedAssetFormPageContent() {
   const capitalizeForm = useForm<CapitalizeFixedAssetFormValues>({
     resolver: zodResolver(capitalizeFixedAssetSchema) as unknown as Resolver<CapitalizeFixedAssetFormValues>,
     defaultValues: {
-      capitalization_date: new Date().toISOString().slice(0, 10),
+      capitalization_date: todayInputValue(),
       source_type: '',
       source_id: null,
       source_line_id: null,
@@ -302,7 +302,7 @@ function FixedAssetFormPageContent() {
   const disposeForm = useForm<DisposeFixedAssetFormValues>({
     resolver: zodResolver(disposeFixedAssetSchema) as unknown as Resolver<DisposeFixedAssetFormValues>,
     defaultValues: {
-      disposal_date: new Date().toISOString().slice(0, 10),
+      disposal_date: todayInputValue(),
       disposal_type: 'sale',
       disposed_quantity: 1,
       proceeds_amount: null,
@@ -318,7 +318,7 @@ function FixedAssetFormPageContent() {
     if (!disposeOpen || !asset) return
 
     disposeForm.reset({
-      disposal_date: new Date().toISOString().slice(0, 10),
+      disposal_date: todayInputValue(),
       disposal_type: 'sale',
       disposed_quantity: 1,
       proceeds_amount: null,

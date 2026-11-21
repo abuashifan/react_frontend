@@ -7,11 +7,11 @@ import { ReportError } from '../components/ReportError'
 import { ReportExportButton } from '../components/ReportExportButton'
 import { toExcelDate, toExcelNumber } from '@/lib/exportXlsx'
 import { reportsApi } from '../services/reportsApi'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, todayInputValue } from '@/lib/utils'
 import type { ReconciliationReport, GrniReconciliationReport, DepositReconciliationReport } from '../types/reports.types'
 import { useReportParams } from '../hooks/useReportParams'
 
-const today = new Date().toISOString().slice(0, 10)
+const today = todayInputValue()
 
 type ReconType = 'ar' | 'ap' | 'inventory' | 'grni' | 'customer_deposits' | 'vendor_deposits'
 const RECON_LABELS: Record<ReconType, string> = {

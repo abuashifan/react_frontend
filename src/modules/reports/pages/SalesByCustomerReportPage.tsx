@@ -7,12 +7,12 @@ import { ReportError } from '../components/ReportError'
 import { TablePagination } from '@/components/shared/table/TablePagination'
 import type { PaginationState } from '@/components/shared/table/TablePagination'
 import { reportsApi } from '../services/reportsApi'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, todayInputValue } from '@/lib/utils'
 import { ReportExportButton } from '../components/ReportExportButton'
 import { toExcelNumber } from '@/lib/exportXlsx'
 import { useReportParams } from '../hooks/useReportParams'
 
-const today = new Date().toISOString().slice(0, 10)
+const today = todayInputValue()
 const firstDayOfMonth = today.slice(0, 7) + '-01'
 
 export default function SalesByCustomerReportPage() {

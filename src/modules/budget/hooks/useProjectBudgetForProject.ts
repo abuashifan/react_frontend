@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { todayInputValue } from '@/lib/utils'
 import { useBudgetPeriods } from './useBudgetPeriods'
 import { useProjectFinancials } from './useProjectFinancials'
 
@@ -18,7 +19,7 @@ export function useProjectBudgetForProject(projectId: number | null, enabled = t
 
   const defaultPeriodId = useMemo(() => {
     if (periods.length === 0) return null
-    const today = new Date().toISOString().slice(0, 10)
+    const today = todayInputValue()
 
     // Prioritas: periode terbuka yang mencakup hari ini → periode terbuka mana pun
     // → periode terbaru. Tanpa urutan ini, proyek lama akan default ke periode
