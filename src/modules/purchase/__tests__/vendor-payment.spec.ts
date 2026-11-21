@@ -145,9 +145,12 @@ test('discount cells open a tabular dialog and save the selected account per bil
   await choose(page, 'Akun kas/bank pembayaran', 'Kas Utama')
   await page.getByRole('button', { name: 'Tambahkan VB-101' }).click()
   await page.getByRole('button', { name: 'Tambahkan VB-102' }).click()
-  const billTable = page.getByRole('table')
-  expect((await billTable.getByRole('columnheader').allTextContents()).slice(1, -1))
-    .toEqual(['Nomor Bill', 'Jumlah', 'Dibayar', 'Discount', 'Sisa Tagihan'])
+  const billTable = page.getByRole('table').filter({
+    has: page.getByRole('textbox', { name: 'Discount VB-101' }),
+  })
+  await expect(billTable.locator('thead th')).toHaveText([
+    '#', 'Nomor Bill', 'Jumlah', 'Dibayar', 'Discount', 'Sisa Tagihan', '',
+  ])
   const firstBill = billTable.getByRole('row').filter({ hasText: 'VB-101' })
   await expect(firstBill.getByRole('cell').nth(2)).toContainText('125.000')
   await expect(page.getByRole('button', { name: /Potongan pelunasan VB/ })).toHaveCount(0)

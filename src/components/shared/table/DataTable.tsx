@@ -171,6 +171,7 @@ export function DataTable<T extends { id: number | string }>({
                 return (
                   <th
                     key={col.id}
+                    scope="col"
                     aria-sort={sortState ? (sortState === 'asc' ? 'ascending' : 'descending') : undefined}
                     className={cn(
                       'sticky top-0 h-9 bg-[#eeeeee] px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b] whitespace-nowrap',

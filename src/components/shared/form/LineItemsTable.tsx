@@ -114,12 +114,13 @@ export function LineItemsTable<T>({
         <table className="min-w-full border-collapse text-[13px]">
           <thead>
             <tr className="bg-[#eeeeee]">
-              <th className={cn('w-8 px-2 py-2 text-center text-[11px] font-bold uppercase text-[#64748b]', dividerClass)}>
+              <th scope="col" className={cn('w-8 px-2 py-2 text-center text-[11px] font-bold uppercase text-[#64748b]', dividerClass)}>
                 #
               </th>
               {columns.map((column) => (
                 <th
                   key={column.id}
+                  scope="col"
                   className={cn(
                     'px-2.5 py-2 text-[11px] font-bold uppercase text-[#64748b]',
                     column.align === 'right' && 'text-right',
@@ -133,11 +134,11 @@ export function LineItemsTable<T>({
                 </th>
               ))}
               {getSubtotal && (
-                <th className={cn('min-w-[120px] px-2.5 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]', dividerClass)}>
+                <th scope="col" className={cn('min-w-[120px] px-2.5 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]', dividerClass)}>
                   Subtotal
                 </th>
               )}
-              {onRemove && <th className="w-8 px-2 py-2" aria-label="Aksi" />}
+              {onRemove && <th scope="col" className="w-8 px-2 py-2" aria-label="Aksi" />}
             </tr>
           </thead>
           <tbody>
