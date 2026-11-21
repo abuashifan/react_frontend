@@ -36,6 +36,7 @@ export interface SalesInvoice {
   tax_amount: number
   grand_total: number
   paid_amount: number
+  settlement_discount_amount?: number
   returned_amount: number
   balance_due: number
   lines: SalesInvoiceLine[]

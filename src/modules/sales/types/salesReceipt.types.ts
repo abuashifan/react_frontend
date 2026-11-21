@@ -1,10 +1,15 @@
 export type SalesReceiptStatus = 'draft' | 'posted' | 'void'
 
 export interface SalesReceiptLine {
+  settlement_discount_account?: { id: number; account_code: string; account_name: string } | null
   id: number
   sales_invoice_id: number
   invoice?: { id: number; number: string; grand_total: number; balance_due: number }
+  sales_invoice?: { id: number; number?: string; invoice_number?: string; grand_total: number | string; balance_due: number | string }
   amount: number
+  settlement_discount_amount?: number
+  settlement_discount_account_id?: number | null
+  settlement_discount_note?: string | null
 }
 
 export interface SalesReceipt {
@@ -39,6 +44,9 @@ export interface SalesReceiptListParams {
 export interface SalesReceiptLinePayload {
   sales_invoice_id: number
   amount: number
+  settlement_discount_amount?: number
+  settlement_discount_account_id?: number | null
+  settlement_discount_note?: string | null
 }
 
 export interface CreateSalesReceiptPayload {

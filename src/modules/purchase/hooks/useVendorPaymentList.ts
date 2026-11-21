@@ -32,7 +32,13 @@ export function useVendorOpenBills(vendorId?: number | null) {
 
 export function useVendorPaymentMutations() {
   const qc = useQueryClient()
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['purchase', 'payments'] })
+  const invalidate = () => Promise.all([
+    qc.invalidateQueries({ queryKey: ['purchase', 'payments'] }),
+    qc.invalidateQueries({ queryKey: ['purchase', 'bills'] }),
+    qc.invalidateQueries({ queryKey: ['purchase', 'ap'] }),
+    qc.invalidateQueries({ queryKey: ['reports'] }),
+    qc.invalidateQueries({ queryKey: ['cash-bank'] }),
+  ])
 
   return {
     create: useMutation({ mutationFn: (p: CreateVendorPaymentPayload) => vendorPaymentApi.create(p), onSuccess: invalidate }),

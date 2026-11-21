@@ -24,6 +24,7 @@ export const vendorPaymentApi = {
       ...bill,
       vendor_bill_id: bill.vendor_bill_id ?? bill.bill_id,
       balance_due: Number(bill.balance_due),
+      grand_total: bill.grand_total === undefined ? undefined : Number(bill.grand_total),
     }))
     return { ...res, data: { ...res.data, open_bills: openBills } }
   },

@@ -590,7 +590,7 @@ function VendorBillFormPageContent() {
               }}
               getSubtotal={lineBase} isReadOnly={!isEditable} addLabel="Tambah Item"
             />
-            <FormSummary subtotal={subtotal} taxAmount={taxAmount} grandTotal={grandTotal} paidAmount={bill?.paid_amount} balanceDue={bill?.balance_due} />
+            <FormSummary subtotal={subtotal} taxAmount={taxAmount} grandTotal={grandTotal} paidAmount={bill?.paid_amount} settlementDiscountAmount={Number(bill?.settlement_discount_amount ?? 0)} balanceDue={bill?.balance_due} />
           </div>
           </>
           )}
