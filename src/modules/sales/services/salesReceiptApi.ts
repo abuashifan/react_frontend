@@ -52,10 +52,17 @@ export const salesReceiptApi = {
     const res = await http.get<unknown, ApiResponse<{ open_invoices: SalesInvoice[] }>>('/sales/receipts/customer-context', {
       params: { customer_id: customerId },
     })
-    const open = (res.data?.open_invoices ?? []).map((inv) => ({
-      ...inv,
-      id: inv.id ?? (inv as unknown as { invoice_id: number }).invoice_id,
-    }))
+    // Backend memakai `invoice_id` dan `invoice_number`; form membaca `id` dan `number`.
+    const open = (res.data?.open_invoices ?? []).map((inv) => {
+      const raw = inv as unknown as { invoice_id?: number; invoice_number?: string }
+      return {
+        ...inv,
+        id: inv.id ?? raw.invoice_id ?? 0,
+        number: inv.number ?? raw.invoice_number ?? '',
+        balance_due: Number(inv.balance_due),
+        grand_total: inv.grand_total === undefined ? undefined : Number(inv.grand_total),
+      }
+    })
     return { ...res, data: { ...res.data, open_invoices: open } }
   },
 

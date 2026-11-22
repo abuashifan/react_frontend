@@ -670,6 +670,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____purchase/
 | | | |______tests__/
 | | | | |____vendor-payment.spec.ts  # Playwright: alokasi, saldo dan cetak pembayaran vendor
+| | | | |____sales-receipt.spec.ts  # Playwright: nomor faktur dan filter akun kas di form Penerimaan Penjualan
 | | | |____print/
 | | | | |____purchasePrint.ts
 | | | |____hooks/

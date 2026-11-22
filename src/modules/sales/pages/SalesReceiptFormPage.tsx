@@ -357,7 +357,7 @@ function SalesReceiptFormPageContent() {
               <SearchableSelect cacheKey="coa"
                 value={watch('cash_bank_account_id') ?? null}
                 onChange={(v) => setValue('cash_bank_account_id', v as number)}
-                onSearch={coaApi.search}
+                onSearch={(q) => coaApi.search(q, { is_cash_bank: true, is_active: true })}
                 placeholder="Pilih akun..."
                 disabled={!isEditable}
                 error={errors.cash_bank_account_id?.message}
