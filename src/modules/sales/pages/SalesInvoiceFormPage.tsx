@@ -494,7 +494,7 @@ function SalesInvoiceFormPageContent() {
               subtotal={subtotal}
               taxAmount={taxAmount}
               grandTotal={grandTotal}
-              paidAmount={invoice?.paid_amount}
+              paidAmount={invoice?.paid_amount} settlementDiscountAmount={Number(invoice?.settlement_discount_amount ?? 0)}
               balanceDue={invoice?.balance_due}
             />
           </div>

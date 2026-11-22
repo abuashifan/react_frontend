@@ -35,6 +35,7 @@ export interface VendorBill {
   tax_amount: number
   grand_total: number
   paid_amount: number
+  settlement_discount_amount?: number
   returned_amount: number
   balance_due: number
   lines: VendorBillLine[]
@@ -134,6 +135,7 @@ export interface RawVendorBill {
   tax_total: number | string
   grand_total: number | string
   paid_amount: number | string
+  settlement_discount_amount?: number | string
   returned_amount: number | string
   balance_due: number | string
   purchase_order_id?: number | null

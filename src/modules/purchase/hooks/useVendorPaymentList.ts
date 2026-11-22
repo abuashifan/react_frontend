@@ -32,7 +32,13 @@ export function useVendorOpenBills(vendorId?: number | null) {
 
 export function useVendorPaymentMutations() {
   const qc = useQueryClient()
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['purchase', 'payments'] })
+  const invalidate = () => Promise.all([
+    qc.invalidateQueries({ queryKey: ['purchase', 'payments'] }),
+    qc.invalidateQueries({ queryKey: ['purchase', 'bills'] }),
+    qc.invalidateQueries({ queryKey: ['purchase', 'ap'] }),
+    qc.invalidateQueries({ queryKey: ['reports'] }),
+    qc.invalidateQueries({ queryKey: ['cash-bank'] }),
+  ])
 
   return {
     create: useMutation({ mutationFn: (p: CreateVendorPaymentPayload) => vendorPaymentApi.create(p), onSuccess: invalidate }),
@@ -41,4 +47,13 @@ export function useVendorPaymentMutations() {
     update: useMutation({ mutationFn: ({ id, payload }: { id: number; payload: CreateVendorPaymentPayload }) => vendorPaymentApi.update(id, payload), onSuccess: invalidate }),
     remove: useMutation({ mutationFn: ({ id, reason }: { id: number; reason?: string }) => vendorPaymentApi.remove(id, reason), onSuccess: invalidate }),
   }
+}
+
+export function useVendorPaymentCashBalance(accountId?: number) {
+  return useQuery({
+    queryKey: ['purchase', 'payments', 'cash-balance', accountId],
+    queryFn: () => vendorPaymentApi.cashBalance(accountId!),
+    enabled: !!accountId,
+    staleTime: 0,
+  })
 }

@@ -54,7 +54,7 @@ export interface ArReconciliationRow {
 }
 
 export interface CustomerLedgerEntry {
-  id: number
+  id: string
   date: string
   type: 'invoice' | 'receipt' | 'return' | 'deposit' | 'deposit_allocation'
   number: string
@@ -65,7 +65,7 @@ export interface CustomerLedgerEntry {
 }
 
 export interface InvoiceLedgerEntry {
-  id: number
+  id: string
   date: string
   type: 'post' | 'payment' | 'return' | 'void' | 'deposit_allocation'
   number: string

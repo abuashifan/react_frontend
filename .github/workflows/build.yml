@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -22,4 +22,25 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - name: Lint receipt and payment changes
+        run: >-
+          npx eslint playwright.config.ts src/components/shared/form/SettlementDiscountDialog.tsx
+          src/components/shared/form/LineItemsTable.tsx src/modules/master-data/components/AccountPickerDialog.tsx
+          src/modules/purchase/__tests__/vendor-payment.spec.ts src/modules/purchase/pages/VendorPaymentFormPage.tsx
+          src/modules/purchase/hooks/useVendorPaymentList.ts src/modules/purchase/services/vendorPaymentApi.ts
+          src/modules/purchase/types/vendorPayment.types.ts src/modules/sales/pages/SalesReceiptFormPage.tsx
+          src/modules/sales/services/arApi.ts src/modules/sales/services/salesReceiptApi.ts
       - run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test payment flow
+        run: npx playwright test --project=chromium
+      - name: Upload browser failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: payment-playwright-results
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore

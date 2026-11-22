@@ -265,6 +265,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____UnsavedFormsDialog.tsx
 | | | |____form/
 | | | | |____AmountInput.tsx
+| | | | |____SettlementDiscountDialog.tsx
 | | | | |____FieldError.tsx
 | | | | |____FormField.tsx
 | | | | |____FormSection.tsx
@@ -667,6 +668,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____types/
 | | | | |____openingBalance.types.ts
 | | |____purchase/
+| | | |______tests__/
+| | | | |____vendor-payment.spec.ts  # Playwright: alokasi, saldo dan cetak pembayaran vendor
 | | | |____print/
 | | | | |____purchasePrint.ts
 | | | |____hooks/
@@ -926,6 +929,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 |____tsconfig.app.json
 |____tsconfig.json
 |____tsconfig.node.json
+|____playwright.config.ts  # Chromium preview untuk tes browser pembayaran
 |____vite.config.ts
 |____dist/  # generated build output, ignore for normal navigation
 |____node_modules/  # dependency tree, ignore for normal navigation

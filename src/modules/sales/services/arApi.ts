@@ -14,6 +14,44 @@ import type {
 } from '../types/ar.types'
 import type { SalesInvoice } from '../types/salesInvoice.types'
 
+type ArMovement = {
+  date: string
+  document_type: 'sales_invoice' | 'sales_receipt' | 'sales_return' | 'customer_deposit' | 'customer_deposit_allocation'
+  document_id: number
+  invoice_id?: number | null
+  document_number: string
+  description: string
+  debit: number
+  credit: number
+  balance: number
+}
+
+const customerMovementTypes: Record<ArMovement['document_type'], CustomerLedgerEntry['type']> = {
+  sales_invoice: 'invoice',
+  sales_receipt: 'receipt',
+  sales_return: 'return',
+  customer_deposit: 'deposit',
+  customer_deposit_allocation: 'deposit_allocation',
+}
+
+const invoiceMovementTypes: Record<ArMovement['document_type'], InvoiceLedgerEntry['type']> = {
+  sales_invoice: 'post',
+  sales_receipt: 'payment',
+  sales_return: 'return',
+  customer_deposit: 'deposit_allocation',
+  customer_deposit_allocation: 'deposit_allocation',
+}
+
+function ledgerFields(row: ArMovement) {
+  return {
+    id: [row.document_type, row.document_id, row.invoice_id ?? ''].join(':'),
+    date: row.date,
+    number: row.document_number,
+    description: row.description,
+    running_balance: row.balance,
+  }
+}
+
 export const arApi = {
   customerSummary: (params?: ArSummaryParams) =>
     http.get<unknown, ApiResponse<ArCustomerSummary[]>>('/sales/ar/customer-summary', { params }),
@@ -35,23 +73,43 @@ export const arApi = {
     return { ...res, data: rows }
   },
 
-  reconciliation: () =>
-    http.get<unknown, ApiResponse<ArReconciliationRow[]>>('/sales/ar/reconciliation'),
+  reconciliation: async (): Promise<ApiResponse<ArReconciliationRow[]>> => {
+    const response = await http.get<unknown, ApiResponse<{
+      gl_ar_balance: number
+      subsidiary_balance: number
+      difference: number
+    }>>('/sales/ar/reconciliation')
+    return { ...response, data: [{
+      account_code: '',
+      account_name: 'Total akun piutang',
+      gl_balance: response.data.gl_ar_balance,
+      ar_balance: response.data.subsidiary_balance,
+      difference: response.data.difference,
+    }] }
+  },
 
   openInvoices: (customerId?: number) =>
     http.get<unknown, ApiResponse<SalesInvoice[]>>('/sales/ar/open-invoices', {
       params: customerId ? { customer_id: customerId } : undefined,
     }),
 
-  customerLedger: (customerId: number, params?: CustomerLedgerParams) =>
-    http.get<unknown, ApiResponse<CustomerLedgerEntry[]>>(
+  customerLedger: async (customerId: number, params?: CustomerLedgerParams): Promise<ApiResponse<CustomerLedgerEntry[]>> => {
+    const response = await http.get<unknown, ApiResponse<{ movements: ArMovement[] }>>(
       `/sales/ar/customers/${customerId}/ledger`,
-      { params },
-    ),
+      { params: { start_date: params?.date_from, end_date: params?.date_to } },
+    )
+    return { ...response, data: response.data.movements.map((row) => ({
+      ...ledgerFields(row), type: customerMovementTypes[row.document_type], debit: row.debit, credit: row.credit,
+    })) }
+  },
 
-  invoiceLedger: (invoiceId: number, params?: InvoiceLedgerParams) =>
-    http.get<unknown, ApiResponse<InvoiceLedgerEntry[]>>(
+  invoiceLedger: async (invoiceId: number, params?: InvoiceLedgerParams): Promise<ApiResponse<InvoiceLedgerEntry[]>> => {
+    const response = await http.get<unknown, ApiResponse<{ movements: ArMovement[] }>>(
       `/sales/ar/invoices/${invoiceId}/ledger`,
-      { params },
-    ),
+      { params: { start_date: params?.date_from, end_date: params?.date_to } },
+    )
+    return { ...response, data: response.data.movements.map((row) => ({
+      ...ledgerFields(row), type: invoiceMovementTypes[row.document_type], amount: row.debit - row.credit,
+    })) }
+  },
 }

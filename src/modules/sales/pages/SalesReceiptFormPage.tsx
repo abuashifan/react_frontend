@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
+import { SettlementDiscountCell, SettlementDiscountDialog, type SettlementDiscount, type SettlementDiscountSelection } from '@/components/shared/form/SettlementDiscountDialog'
 import { FieldError } from '@/components/shared/form/FieldError'
 import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/components/shared/form/LineItemsTable'
 import { AmountInput } from '@/components/shared/form/AmountInput'
@@ -33,11 +34,12 @@ import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentH
 import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
 import { salesReceiptPrint } from '../print/salesPrint'
 
-interface ReceiptLine {
+interface ReceiptLine extends SettlementDiscount {
   sales_invoice_id: number
   invoice_number: string
   balance_due: number
   amount: number
+  grand_total?: number
 }
 
 export default function SalesReceiptFormPage() {
@@ -69,6 +71,8 @@ function SalesReceiptFormPageContent() {
   })
 
   const [lines, setLines] = useState<ReceiptLine[]>([])
+  const [discountSelection, setDiscountSelection] = useState<SettlementDiscountSelection>()
+  const discountLine = lines.find((line) => line.sales_invoice_id === discountSelection?.id)
   const [isVoidOpen, setVoidOpen] = useState(false)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
   // Draft selalu bisa diedit; yang sudah posted (mode open) dibuka lewat tombol Edit.
@@ -76,10 +80,13 @@ function SalesReceiptFormPageContent() {
 
   const status = (receipt?.status ?? 'draft') as DocumentStatus
   const isEditable = isCreate || receipt?.status === 'draft' || editing
+  const canAllocate = isEditable && can(isCreate ? 'sales.receipts.create' : 'sales.receipts.edit')
 
   const customerId = watch('customer_id')
   const { data: openInvoicesData } = useCustomerOpenInvoices(customerId && isEditable ? customerId : undefined)
-  const totalAmount = lines.reduce((s, l) => s + l.amount, 0)
+  const totalAmount = Number(lines.reduce((sum, line) => sum + line.amount, 0).toFixed(2))
+  const totalDiscount = Number(lines.reduce((sum, line) => sum + (line.settlement_discount_amount ?? 0), 0).toFixed(2))
+  const totalSettled = Number((totalAmount + totalDiscount).toFixed(2))
 
   useEffect(() => {
     if (receipt) {
@@ -95,8 +102,17 @@ function SalesReceiptFormPageContent() {
         invoice_number: l.invoice?.number ?? String(l.sales_invoice_id),
         // Penerimaan posted sudah mengurangi sisa tagihan; saat diedit, jumlah
         // miliknya sendiri dikembalikan supaya batas bayarnya benar.
-        balance_due: (l.invoice?.balance_due ?? 0) + (receipt.status === 'posted' ? l.amount : 0),
+        balance_due: (l.invoice?.balance_due ?? 0) + (receipt.status === 'posted' ? l.amount + (l.settlement_discount_amount ?? 0) : 0),
         amount: l.amount,
+        settlement_discount_amount: l.settlement_discount_amount ?? 0,
+        settlement_discount_account_id: l.settlement_discount_account_id,
+        settlement_discount_note: l.settlement_discount_note,
+        accountOption: l.settlement_discount_account ? {
+          value: l.settlement_discount_account.id,
+          label: l.settlement_discount_account.account_name,
+          sublabel: l.settlement_discount_account.account_code,
+        } : undefined,
+        grand_total: l.invoice?.grand_total,
       })))
     }
   }, [receipt, reset])
@@ -129,9 +145,19 @@ function SalesReceiptFormPageContent() {
     fetchAdjacent: async (recordId) => (await salesReceiptApi.adjacent(recordId)).data,
     handleSubmit,
     save: async (values, creating) => {
+      const invalid = lines.find((line) =>
+        line.amount <= 0 || Number((line.amount + (line.settlement_discount_amount ?? 0)).toFixed(2)) > Number(line.balance_due.toFixed(2)),
+      )
+      if (invalid) {
+        const message = `Periksa ${invalid.invoice_number}. Jumlah kas harus positif dan kas ditambah potongan tidak boleh melebihi sisa tagihan.`
+        setError('amount', { type: 'manual', message })
+        throw new Error(message)
+      }
       const payload = {
         ...values,
-        lines: lines.map(({ sales_invoice_id, amount }) => ({ sales_invoice_id, amount })),
+        lines: lines.map(({ sales_invoice_id, amount, settlement_discount_amount, settlement_discount_account_id, settlement_discount_note }) => ({
+          sales_invoice_id, amount, ...(settlement_discount_amount ? { settlement_discount_amount, settlement_discount_account_id, settlement_discount_note } : {}),
+        })),
       }
       if (creating) await create.mutateAsync(payload)
       else await update.mutateAsync({ id: Number(id), payload })
@@ -208,34 +234,67 @@ function SalesReceiptFormPageContent() {
       invoice_number: inv.number,
       balance_due: inv.balance_due,
       amount: inv.balance_due,
+      grand_total: inv.grand_total === undefined ? undefined : Number(inv.grand_total),
+      settlement_discount_amount: 0,
     }])
   }
 
   const lineColumns: LineItemColumn<ReceiptLine>[] = [
     {
-      id: 'invoice',
-      header: 'Invoice',
-      width: 180,
+      id: 'invoice_number',
+      header: 'Nomor Faktur',
+      width: 160,
       render: ({ item }) => <span className="text-[12px] font-medium text-[#5c9ead]">{item.invoice_number}</span>,
+    },
+    {
+      id: 'grand_total',
+      header: 'Jumlah',
+      width: 120,
+      align: 'right',
+      render: ({ item }) => <span className="text-[12px]">{item.grand_total === undefined ? '—' : formatCurrency(item.grand_total)}</span>,
+    },
+    {
+      id: 'amount',
+      header: 'Diterima',
+      width: 120,
+      align: 'right',
+      render: ({ item, isReadOnly, onUpdate }) => isReadOnly ? (
+        <span className="text-[12px]">{formatCurrency(item.amount)}</span>
+      ) : (
+        <AmountInput
+          value={item.amount}
+          onChange={(amount) => onUpdate('amount', amount)}
+          decimals={2}
+          ariaLabel={`Diterima ${item.invoice_number}`}
+          className={FLUSH_INPUT_CLASS}
+        />
+      ),
+    },
+    {
+      id: 'settlement_discount',
+      header: 'Discount',
+      width: 120,
+      align: 'right',
+      render: ({ item }) => canAllocate || item.settlement_discount_amount ? (
+        <SettlementDiscountCell
+          documentNumber={item.invoice_number}
+          amount={item.settlement_discount_amount}
+          onOpen={(restoreFocus) => setDiscountSelection({ id: item.sales_invoice_id, restoreFocus })}
+        />
+      ) : <span className="text-[12px]">{formatCurrency(0)}</span>,
     },
     {
       id: 'balance_due',
       header: 'Sisa Tagihan',
-      width: 140,
+      width: 130,
       align: 'right',
-      render: ({ item }) => <span className="text-[12px] tabular-nums">{formatCurrency(item.balance_due)}</span>,
-    },
-    {
-      id: 'amount',
-      header: 'Jumlah Bayar',
-      width: 140,
-      align: 'right',
-      render: ({ item, isReadOnly, onUpdate }) =>
-        isReadOnly ? (
-          <span className="text-[12px] tabular-nums">{formatCurrency(item.amount)}</span>
-        ) : (
-          <AmountInput value={item.amount} onChange={(v) => onUpdate('amount', v)} decimals={2} ariaLabel="amount" className={cn(FLUSH_INPUT_CLASS, 'text-right')} />
-        ),
+      render: ({ item }) => {
+        const remaining = status === 'void'
+          ? item.balance_due
+          : Math.max(0, Number((item.balance_due - item.amount - (item.settlement_discount_amount ?? 0)).toFixed(2)))
+
+        return <span className="text-[12px]">{formatCurrency(remaining)}</span>
+      },
     },
   ]
 
@@ -324,7 +383,7 @@ function SalesReceiptFormPageContent() {
               items={lines}
               columns={lineColumns}
               onRemove={(index) => setLines((prev) => prev.filter((_, idx) => idx !== index))}
-              onUpdate={(index, field, value) => setLines((prev) => prev.map((l, idx) => (idx === index ? { ...l, [field]: value } : l)))}
+              onUpdate={(index, field, value) => setLines((rows) => rows.map((row, i) => i === index ? { ...row, [field]: value } : row))}
               isReadOnly={!isEditable}
               emptyLabel={customerId ? 'Pilih invoice untuk dibayar' : 'Pilih customer terlebih dahulu'}
             />
@@ -351,10 +410,10 @@ function SalesReceiptFormPageContent() {
 
             {/* `amount` tidak punya input sendiri — nilainya dihitung dari baris invoice,
                 jadi error-nya ditandai di baris total ini supaya tetap terlihat. */}
-            <div className="mt-3 flex flex-col items-end gap-1">
-              <div className="text-[14px] font-semibold text-[#24323a]">
-                Total: <span className="tabular-nums">{formatCurrency(totalAmount)}</span>
-              </div>
+            <div className="mt-3 flex flex-col items-end gap-1 text-[13px] text-[#24323a]">
+              <p>Kas diterima: <span className="font-semibold tabular-nums">{formatCurrency(totalAmount)}</span></p>
+              <p>Potongan: <span className="tabular-nums">{formatCurrency(totalDiscount)}</span></p>
+              <p>Total mengurangi tagihan: <span className="font-semibold tabular-nums">{formatCurrency(totalSettled)}</span></p>
               <FieldError message={errors.amount?.message} />
             </div>
           </div>
@@ -369,6 +428,24 @@ function SalesReceiptFormPageContent() {
         documentNumber={receipt?.number ?? ''}
         isLoading={voidRec.isPending}
       />
+      {discountSelection && discountLine && (
+        <SettlementDiscountDialog
+          key={discountLine.sales_invoice_id}
+          documentNumber={discountLine.invoice_number}
+          grandTotal={discountLine.grand_total}
+          balanceDue={discountLine.balance_due}
+          cashAmount={discountLine.amount}
+          value={discountLine}
+          readOnly={!canAllocate}
+          preferredAccountType="revenue"
+          onClose={() => setDiscountSelection(undefined)}
+          onRestoreFocus={discountSelection.restoreFocus}
+          onSave={(discount, amount) => {
+            setLines((rows) => rows.map((row) => row.sales_invoice_id === discountLine.sales_invoice_id ? { ...row, ...discount, amount } : row))
+            setDiscountSelection(undefined)
+          }}
+        />
+      )}
       <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={receipt ? salesReceiptPrint(receipt) : null} defaultPaper="half-a4" />
     </>
   )

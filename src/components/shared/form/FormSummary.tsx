@@ -7,6 +7,7 @@ interface FormSummaryProps {
   dppAmount?: number
   grandTotal: number
   paidAmount?: number
+  settlementDiscountAmount?: number
   balanceDue?: number
   currency?: string
 }
@@ -40,6 +41,7 @@ export function FormSummary({
   dppAmount,
   grandTotal,
   paidAmount,
+  settlementDiscountAmount = 0,
   balanceDue,
   currency = 'IDR',
 }: FormSummaryProps) {
@@ -79,6 +81,9 @@ export function FormSummary({
               currency={currency}
               valueClassName="text-[#065F46]"
             />
+            {settlementDiscountAmount > 0 && (
+              <SummaryRow label="Potongan pelunasan" value={settlementDiscountAmount} currency={currency} />
+            )}
             {balanceDue !== undefined && (
               <SummaryRow
                 label="Sisa"

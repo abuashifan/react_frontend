@@ -218,6 +218,7 @@ docs/struktur_frontend.md                  ← peta file project saat ini
 
 | Audit | Tanggal | Cakupan | Status | Hasil |
 |---|---|---|---|---|
+| Pembayaran vendor | 2026-11-19 | Pemeriksaan runtime Edge headless dan kontrak tagihan/saldo kas | Pemeriksaan selesai; validasi perubahan di CI | Server mengembalikan tagihan posted, tetapi UI lama baru menampilkannya di dropdown Tambah tagihan. Form kini menampilkan daftar langsung serta pratinjau saldo per tanggal yang dikecualikan dari cetakan. Kontrak di `audit-frontend-api-contract.md`; pemeriksaan build/lint/Playwright pada PR perbaikan pembayaran. Tidak membuat atau memposting transaksi pada audit live. |
 | Audit 01–10 | sebelum 2026-06-14 | Backend architecture, ERD, workflow, API contract, business rules | ✅ Selesai | `docs/audit_docs/audit-00..audit-10*` |
 | Audit-11 | 2026-06-16 | Frontend vs Backend global contract map | ✅ Selesai, fixes ⏳ | 18 issue (A11-01..A11-18) — `audit-11-frontend-global-contract-map-16-06-26.md` |
 | Audit-12 | 2026-06-16 | Frontend UX/workflow/filter/tabs/reports audit berdasarkan temuan user | ✅ Selesai, fixes ⏳ | 16 issue (A12-01..A12-16) — `audit-12-frontend-ux-workflow-audit-16-06-26.md` |
