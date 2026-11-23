@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { todayInputValue } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -49,7 +50,7 @@ export function PeriodSelector({ onApply, isLoading, actions }: Props) {
   }
   const addPeriod = () => {
     if (periods.length >= MAX_PERIODS) return
-    const today = new Date().toISOString().slice(0, 10)
+    const today = todayInputValue()
     setPeriods((prev) => [...prev, { start_date: today.slice(0, 8) + '01', end_date: today, label: `Periode ${prev.length + 1}` }])
   }
   const removePeriod = (i: number) => setPeriods((prev) => (prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev))

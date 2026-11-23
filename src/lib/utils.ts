@@ -94,6 +94,15 @@ export function toDateInputValue(value: string | Date | null | undefined): strin
   return `${year}-${month}-${day}`
 }
 
+/**
+ * Tanggal hari ini menurut jam perangkat (WIB/WITA/WIT), format `YYYY-MM-DD` untuk
+ * nilai awal input tanggal. Jangan pakai `new Date().toISOString().slice(0, 10)`:
+ * itu tanggal UTC, sehingga pukul 00.00-07.00 WIB terisi tanggal kemarin.
+ */
+export function todayInputValue(): string {
+  return toDateInputValue(new Date())
+}
+
 export function formatNumber(value: number | string | null | undefined, decimals = 0): string {
   const n = toFiniteNumber(value)
   if (n === null) return EMPTY_VALUE

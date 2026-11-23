@@ -7,13 +7,13 @@ import { ReportError } from '../components/ReportError'
 import { TablePagination } from '@/components/shared/table/TablePagination'
 import type { PaginationState } from '@/components/shared/table/TablePagination'
 import { reportsApi } from '../services/reportsApi'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, todayInputValue } from '@/lib/utils'
 import { ReportExportButton } from '../components/ReportExportButton'
 import { toExcelNumber } from '@/lib/exportXlsx'
 import type { ReportParams } from '../types/reports.types'
 import { useReportParams } from '../hooks/useReportParams'
 
-const today = new Date().toISOString().slice(0, 10)
+const today = todayInputValue()
 
 export default function InventoryAgingReportPage() {
   const { params, setParams, activeParams, setActiveParams, showFilter, setShowFilter } = useReportParams({ as_of_date: today })

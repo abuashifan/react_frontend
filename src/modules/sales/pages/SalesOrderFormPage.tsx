@@ -17,7 +17,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
 import { FieldError } from '@/components/shared/form/FieldError'
 import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
-import { cn, fieldErrorClass } from '@/lib/utils'
+import { cn, fieldErrorClass, todayInputValue } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { useSalesOrder, useSalesOrderMutations } from '../hooks/useSalesOrderList'
@@ -92,7 +92,7 @@ function SalesOrderFormPageContent() {
 
   const { control, register, handleSubmit, getValues, setValue, setError, reset, formState: { errors, isSubmitting } } = useForm<SalesOrderFormValues>({
     resolver: zodResolver(salesOrderSchema),
-    defaultValues: { date: new Date().toISOString().slice(0, 10) },
+    defaultValues: { date: todayInputValue() },
   })
   const customerId = useWatch({ control, name: 'customer_id' })
   const paymentTermId = useWatch({ control, name: 'payment_term_id' })

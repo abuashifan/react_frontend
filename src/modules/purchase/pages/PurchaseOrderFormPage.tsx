@@ -33,7 +33,7 @@ import { purchaseOrderApi } from '../services/purchaseOrderApi'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
-import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, toDateInputValue, todayInputValue } from '@/lib/utils'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
 import { purchaseOrderPrint } from '../print/purchasePrint'
@@ -95,7 +95,7 @@ function PurchaseOrderFormPageContent() {
 
   const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<PurchaseOrderFormValues>({
     resolver: zodResolver(purchaseOrderSchema),
-    defaultValues: { date: new Date().toISOString().slice(0, 10) },
+    defaultValues: { date: todayInputValue() },
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])

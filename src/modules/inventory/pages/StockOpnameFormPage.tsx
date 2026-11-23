@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
-import { cn, fieldErrorClass, formatNumber, formatDate } from '@/lib/utils'
+import { cn, fieldErrorClass, formatNumber, formatDate, todayInputValue } from '@/lib/utils'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
 import { useStockOpname, useStockOpnameMutations } from '../hooks/useStockOpnameList'
 import { stockOpnameSchema, type StockOpnameFormValues } from '../schemas/stockOpnameSchema'
@@ -57,7 +57,7 @@ function StockOpnameFormPageContent() {
 
   const { register, handleSubmit, control, getValues, setValue, watch, reset, setError, formState: { errors, isSubmitting } } = useForm<StockOpnameFormValues>({
     resolver: zodResolver(stockOpnameSchema),
-    defaultValues: { opname_date: new Date().toISOString().slice(0, 10) },
+    defaultValues: { opname_date: todayInputValue() },
   })
 
   const [isVoidOpen, setVoidOpen] = useState(false)
@@ -193,7 +193,7 @@ function StockOpnameFormPageContent() {
     actions.push({ id: 'save', label: 'Simpan & Tutup', variant: 'primary', onClick: saveAndClose, isLoading: isSubmitting })
   }
   if (isCreate && formDraft.isRestored) {
-    actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: () => { reset({ opname_date: new Date().toISOString().slice(0, 10) }); formDraft.discardDraft(); toast.success('Draft lokal dibuang.') } })
+    actions.push({ id: 'discard_draft', label: 'Buang Draft', variant: 'neutral', onClick: () => { reset({ opname_date: todayInputValue() }); formDraft.discardDraft(); toast.success('Draft lokal dibuang.') } })
   }
   if (!isCreate) {
     if (opname?.status === 'draft' && can('inventory.opname.edit')) {

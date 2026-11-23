@@ -35,7 +35,7 @@ import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import type { DocumentStatus } from '@/types/common.types'
-import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, toDateInputValue, todayInputValue } from '@/lib/utils'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
 import { salesInvoicePrint } from '../print/salesPrint'
@@ -85,7 +85,7 @@ function SalesInvoiceFormPageContent() {
 
   const { control, getValues, register, handleSubmit, setValue, setError, reset, formState: { errors, isSubmitting } } = useForm<SalesInvoiceFormValues>({
     resolver: zodResolver(salesInvoiceSchema),
-    defaultValues: { date: new Date().toISOString().slice(0, 10) },
+    defaultValues: { date: todayInputValue() },
   })
   const customerId = useWatch({ control, name: 'customer_id' })
   const paymentTermId = useWatch({ control, name: 'payment_term_id' })
@@ -167,7 +167,7 @@ function SalesInvoiceFormPageContent() {
         tax_percent: l.tax_percent,
       })))
     } else {
-      reset({ date: new Date().toISOString().slice(0, 10) })
+      reset({ date: todayInputValue() })
       setLines([{ ...DEFAULT_LINE }])
     }
     formDraft.discardDraft()

@@ -9,14 +9,14 @@ import { TablePagination } from '@/components/shared/table/TablePagination'
 import type { PaginationState } from '@/components/shared/table/TablePagination'
 import { Button } from '@/components/ui/button'
 import { reportsApi } from '../services/reportsApi'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, todayInputValue } from '@/lib/utils'
 import { ReportExportButton } from '../components/ReportExportButton'
 import { toExcelDate, toExcelNumber, type XlsxCell, type XlsxFormat } from '@/lib/exportXlsx'
 import { SaveReportButton } from '../components/SaveReportButton'
 import type { ColumnConfig, GeneralLedgerAccountSummary, GeneralLedgerDetailAccount } from '../types/reports.types'
 import { useReportParams } from '../hooks/useReportParams'
 
-const today = new Date().toISOString().slice(0, 10)
+const today = todayInputValue()
 const firstOfMonth = today.slice(0, 8) + '01'
 
 // Kolom mode ringkasan (Fase 14 — column selection).

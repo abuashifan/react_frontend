@@ -15,7 +15,7 @@ import { SettlementDiscountCell, SettlementDiscountDialog, type SettlementDiscou
 import { FieldError } from '@/components/shared/form/FieldError'
 import { AmountInput } from '@/components/shared/form/AmountInput'
 import { LineItemsTable, type LineItemColumn, FLUSH_INPUT_CLASS } from '@/components/shared/form/LineItemsTable'
-import { cn, fieldErrorClass, formatCurrency } from '@/lib/utils'
+import { cn, fieldErrorClass, formatCurrency, todayInputValue } from '@/lib/utils'
 import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { applyApiValidationErrors, getApiErrorMessage } from '@/lib/apiError'
@@ -89,7 +89,7 @@ function VendorPaymentFormPageContent() {
     formState: { errors, isSubmitting },
   } = useForm<VendorPaymentFormValues>({
     resolver: zodResolver(vendorPaymentSchema),
-    defaultValues: { date: new Date().toISOString().slice(0, 10) },
+    defaultValues: { date: todayInputValue() },
   })
 
   const isEditable = isCreate || payment?.status === 'draft' || editing

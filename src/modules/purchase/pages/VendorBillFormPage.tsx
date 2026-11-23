@@ -37,7 +37,7 @@ import { vendorBillApi } from '../services/vendorBillApi'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
 import { useRecordFormNavigation, FormValidationAbort } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
-import { cn, fieldErrorClass, toDateInputValue, formatCurrency } from '@/lib/utils'
+import { cn, fieldErrorClass, toDateInputValue, formatCurrency, todayInputValue } from '@/lib/utils'
 import type { VendorBillLineClassification } from '../types/vendorBill.types'
 import { applyApiValidationErrors, getApiErrorMessage, isApiNotFound, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { NotFoundPage, ServerErrorPage } from '@/modules/errors/ErrorPage'
@@ -118,7 +118,7 @@ function VendorBillFormPageContent() {
 
   const { control, getValues, register, handleSubmit, setValue, reset, setError, formState: { errors, isSubmitting } } = useForm<VendorBillFormValues>({
     resolver: zodResolver(vendorBillSchema),
-    defaultValues: { date: new Date().toISOString().slice(0, 10), applied_vendor_deposit_amount: 0 },
+    defaultValues: { date: todayInputValue(), applied_vendor_deposit_amount: 0 },
   })
   const vendorId = useWatch({ control, name: 'vendor_id' })
   const paymentTermId = useWatch({ control, name: 'payment_term_id' })
@@ -215,7 +215,7 @@ function VendorBillFormPageContent() {
         tax_percent: l.tax_percent,
       })))
     } else {
-      reset({ date: new Date().toISOString().slice(0, 10), applied_vendor_deposit_amount: 0 })
+      reset({ date: todayInputValue(), applied_vendor_deposit_amount: 0 })
       setLines([{ ...DEFAULT_LINE }])
     }
     formDraft.discardDraft()

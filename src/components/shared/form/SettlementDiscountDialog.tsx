@@ -106,7 +106,13 @@ export function SettlementDiscountDialog({
   })
   const amount = useWatch({ control, name: 'amount' })
   const remainingAfterDiscount = Number((balanceDue - amount).toFixed(2))
-  const cashAfterDiscount = Math.min(cashAmount, Math.max(0, remainingAfterDiscount))
+  // Baris yang tadinya melunasi sisa penuh (kas + potongan lama = sisa) tetap melunasi penuh
+  // saat potongan diubah, termasuk saat potongan dikurangi atau dihapus. Kas yang sengaja
+  // diisi lebih kecil hanya dipangkas bila melebihi sisa.
+  const settlesInFull = Number((cashAmount + (value.settlement_discount_amount ?? 0)).toFixed(2)) >= balanceDue
+  const cashAfterDiscount = settlesInFull
+    ? Math.max(0, remainingAfterDiscount)
+    : Math.min(cashAmount, Math.max(0, remainingAfterDiscount))
   const accountCode = accountOption?.sublabel
   const accountName = accountOption?.label
   const accountTypes = preferredAccountType === 'expense'

@@ -28,7 +28,7 @@ import { useTransactionEditMode } from '@/modules/settings/hooks/useTransactionE
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
-import { cn, fieldErrorClass, formatCurrency, toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, formatCurrency, toDateInputValue, todayInputValue } from '@/lib/utils'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
@@ -58,7 +58,7 @@ function CashPaymentFormPageContent() {
   const { create, update, remove, post, void: voidPayment } = useCashPaymentMutations()
   const { canChange } = useTransactionEditMode()
   const { closeRecordTab } = useRecordTab()
-  const { register, handleSubmit, control, getValues, setValue, watch, reset, setError, formState: { errors, isSubmitting } } = useForm<CashPaymentFormValues>({ resolver: zodResolver(cashPaymentSchema), defaultValues: { payment_date: new Date().toISOString().slice(0, 10) } })
+  const { register, handleSubmit, control, getValues, setValue, watch, reset, setError, formState: { errors, isSubmitting } } = useForm<CashPaymentFormValues>({ resolver: zodResolver(cashPaymentSchema), defaultValues: { payment_date: todayInputValue() } })
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
   const [pickerRow, setPickerRow] = useState<number | null>(null)
   // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang

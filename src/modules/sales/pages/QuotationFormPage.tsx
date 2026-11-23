@@ -26,7 +26,7 @@ import { quotationApi } from '../services/quotationApi'
 import { quotationSchema, type QuotationFormValues } from '../schemas/quotationSchema'
 import { useRecordFormNavigation } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
-import { cn, fieldErrorClass, toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, toDateInputValue, todayInputValue } from '@/lib/utils'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
 import { quotationPrint } from '../print/salesPrint'
@@ -70,7 +70,7 @@ function QuotationFormPageContent() {
 
   const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<QuotationFormValues>({
     resolver: zodResolver(quotationSchema),
-    defaultValues: { date: new Date().toISOString().slice(0, 10) },
+    defaultValues: { date: todayInputValue() },
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])

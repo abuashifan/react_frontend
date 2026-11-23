@@ -7,14 +7,14 @@ import { ReportPrintToolbar } from '../components/ReportPrintToolbar'
 import { ReportPrintDocument } from '../components/ReportPrintDocument'
 import { ReportPrintSection } from '../components/ReportPrintSection'
 import { reportsApi } from '../services/reportsApi'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, todayInputValue } from '@/lib/utils'
 import { ReportExportButton } from '../components/ReportExportButton'
 import { toExcelNumber, type XlsxCell } from '@/lib/exportXlsx'
 import { SaveReportButton } from '../components/SaveReportButton'
 import { useReportParams } from '../hooks/useReportParams'
 import { useReportFilterSummary } from '../hooks/useReportFilterSummary'
 
-const today = new Date().toISOString().slice(0, 10)
+const today = todayInputValue()
 
 export default function BalanceSheetPage() {
   const { params, setParams, activeParams, setActiveParams, showFilter, setShowFilter } = useReportParams({ as_of_date: today })

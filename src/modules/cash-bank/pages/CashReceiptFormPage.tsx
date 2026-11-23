@@ -28,7 +28,7 @@ import { useRecordTab } from '@/hooks/useRecordTab'
 import { useRecordFormNavigation, FormValidationAbort } from '@/hooks/useRecordFormNavigation'
 import type { DocumentStatus } from '@/types/common.types'
 import type { Coa } from '@/modules/master-data/types/coa.types'
-import { cn, fieldErrorClass, formatCurrency, toDateInputValue } from '@/lib/utils'
+import { cn, fieldErrorClass, formatCurrency, toDateInputValue, todayInputValue } from '@/lib/utils'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { DocumentHistoryButton } from '@/modules/accounting/components/DocumentHistoryButton'
 import { DocumentPrintDialog } from '@/components/shared/print/DocumentPrintDialog'
@@ -59,7 +59,7 @@ function CashReceiptFormPageContent() {
   const { create, update, remove, post, void: voidReceipt } = useCashReceiptMutations()
   const { canChange } = useTransactionEditMode()
   const { closeRecordTab } = useRecordTab()
-  const { register, handleSubmit, control, getValues, setValue, watch, reset, setError, clearErrors, formState: { errors, isSubmitting } } = useForm<CashReceiptFormValues>({ resolver: zodResolver(cashReceiptSchema), defaultValues: { receipt_date: new Date().toISOString().slice(0, 10) } })
+  const { register, handleSubmit, control, getValues, setValue, watch, reset, setError, clearErrors, formState: { errors, isSubmitting } } = useForm<CashReceiptFormValues>({ resolver: zodResolver(cashReceiptSchema), defaultValues: { receipt_date: todayInputValue() } })
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
   // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
   // ditolak ikut ditandai, bukan cuma toast.
