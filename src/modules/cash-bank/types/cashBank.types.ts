@@ -28,6 +28,7 @@ export interface CashReceipt {
 }
 
 export interface CashPayment {
+  workspace_disbursement_exists?: boolean
   id: number
   number: string
   payment_date: string
