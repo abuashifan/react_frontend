@@ -37,6 +37,20 @@ export interface BudgetPeriod {
   updated_at: string
 }
 
+export interface WorkspaceBudgetPeriod {
+  id: number
+  name: string
+  period_from: string
+  period_to: string
+  limit_minor: string | null
+  committed_minor: string | null
+}
+
+export interface WorkspaceBudgetPeriods {
+  periods: WorkspaceBudgetPeriod[]
+  workspace_url: string
+}
+
 /**
  * Pagu top-down (Gap A) — dua tingkat saja: root (`department_id: null`,
  * pagu perusahaan, dihitung otomatis = SUM anaknya, tidak pernah diinput

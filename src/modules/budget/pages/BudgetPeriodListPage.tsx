@@ -12,6 +12,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { useListSort } from '@/hooks/useListSort'
 import { formatDate } from '@/lib/utils'
+import { useAuthStore } from '@/stores/useAuthStore'
+import { WorkspacePeriodsDialog } from '../components/WorkspacePeriodsDialog'
 import { budgetApi } from '../services/budgetApi'
 import { useBudgetPeriods } from '../hooks/useBudgetPeriods'
 import type { BudgetPeriod, BudgetPeriodStatus } from '../types/budget.types'
@@ -31,6 +33,15 @@ const STATUS_OPTIONS: { value: BudgetPeriodStatus | undefined; label: string }[]
 
 export default function BudgetPeriodListPage() {
   const { openRecordTab } = useRecordTab()
+  const companyId = useAuthStore((state) => state.activeCompanyId)
+  const workspaceActive = useAuthStore((state) =>
+    state.companies.find((company) => company.id === state.activeCompanyId)?.products?.includes('workspace') ?? false)
+  const workspacePeriods = useQuery({
+    queryKey: ['budget', 'workspace-periods', companyId],
+    queryFn: budgetApi.listWorkspacePeriods,
+    enabled: companyId !== null,
+    retry: false,
+  })
 
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<BudgetPeriodStatus | undefined>(undefined)
@@ -69,6 +80,13 @@ export default function BudgetPeriodListPage() {
   // sedang difilter ke "Ditutup" sehingga pagu terbuka tidak ikut terlihat.
   const { periods: allPeriods } = useBudgetPeriods()
   const openPeriod = allPeriods.find((p) => p.status === 'open')
+  const source = workspacePeriods.data?.data
+  const today = new Date().toISOString().slice(0, 10)
+  const workspacePeriod = source?.periods.find((period) => period.period_from <= today && period.period_to >= today)
+  const checkingSource = workspaceActive && workspacePeriods.isLoading
+  const disabledReason = workspacePeriod
+    ? 'Pagu ' + workspacePeriod.name + ' dikelola di Finlite Workspace.'
+    : openPeriod ? 'Tutup periode ' + openPeriod.name + ' sebelum membuat pagu baru.' : undefined
 
   const columns: ColumnDef<BudgetPeriod>[] = [
     {
@@ -146,32 +164,27 @@ export default function BudgetPeriodListPage() {
       breadcrumb={[{ label: 'Anggaran' }, { label: 'Pagu Anggaran' }]}
       sidebar={sidebar}
       action={
-        <PermissionGuard permission="budget.periods.manage">
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              {/* Bungkus dengan <span> supaya tooltip tetap muncul saat hover —
-                  <button disabled> menekan pointer events di sebagian besar
-                  browser, jadi TooltipTrigger tidak akan pernah menyala kalau
-                  langsung dipasang di tombolnya sendiri. */}
-              <TooltipTrigger asChild>
-                <span tabIndex={openPeriod ? 0 : undefined}>
-                  <Button
-                    className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]"
-                    disabled={!!openPeriod}
-                    onClick={() => openRecordTab({ label: 'Pagu Baru', path: '/budget/periods/new' })}
-                  >
-                    <Plus className="mr-1 h-3.5 w-3.5" /> Buat Pagu
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {openPeriod && (
-                <TooltipContent className="max-w-64 text-[12px]">
-                  Sudah ada pagu &amp; periode aktif: <strong>{openPeriod.name}</strong>. Tutup periode ini dulu untuk membuat yang baru.
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
-        </PermissionGuard>
+        <>
+          {source && source.periods.length > 0 && <WorkspacePeriodsDialog periods={source.periods} workspaceUrl={source.workspace_url} />}
+          <PermissionGuard permission="budget.periods.manage">
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={disabledReason ? 0 : undefined}>
+                    <Button
+                      className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]"
+                      disabled={!!disabledReason || checkingSource}
+                      onClick={() => openRecordTab({ label: 'Pagu Baru', path: '/budget/periods/new' })}
+                    >
+                      <Plus className="mr-1 h-3.5 w-3.5" /> Buat Pagu
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {disabledReason && <TooltipContent className="max-w-64 text-[12px]">{disabledReason}</TooltipContent>}
+              </Tooltip>
+            </TooltipProvider>
+          </PermissionGuard>
+        </>
       }
     >
       <DataTable

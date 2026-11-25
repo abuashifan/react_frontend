@@ -2,6 +2,7 @@ import { http } from '@/services/http'
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type {
   BudgetPeriod,
+  WorkspaceBudgetPeriods,
   BudgetAllocation,
   BudgetAllocationInput,
   BudgetSubmission,
@@ -26,6 +27,8 @@ import type {
 // dipakai langsung — jangan meng-unwrap sekali lagi di service.
 export const budgetApi = {
   // --- Budget Periods ---
+  listWorkspacePeriods: () => http.get<unknown, ApiResponse<WorkspaceBudgetPeriods>>('/budget/workspace-periods'),
+
   // Tanpa params: koleksi utuh (dipakai dropdown `BudgetPeriodSelect`).
   listPeriods: () =>
     http.get<unknown, ApiResponse<BudgetPeriod[]>>('/budget-periods'),
