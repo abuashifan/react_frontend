@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { useListSort } from '@/hooks/useListSort'
 import { formatDate } from '@/lib/utils'
-import { useCompanyStore } from '@/stores/useCompanyStore'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { WorkspacePeriodsDialog } from '../components/WorkspacePeriodsDialog'
 import { budgetApi } from '../services/budgetApi'
 import { useBudgetPeriods } from '../hooks/useBudgetPeriods'
@@ -33,11 +33,13 @@ const STATUS_OPTIONS: { value: BudgetPeriodStatus | undefined; label: string }[]
 
 export default function BudgetPeriodListPage() {
   const { openRecordTab } = useRecordTab()
-  const company = useCompanyStore((state) => state.activeCompany)
+  const companyId = useAuthStore((state) => state.activeCompanyId)
+  const workspaceActive = useAuthStore((state) =>
+    state.companies.find((company) => company.id === state.activeCompanyId)?.products?.includes('workspace') ?? false)
   const workspacePeriods = useQuery({
-    queryKey: ['budget', 'workspace-periods', company?.id],
+    queryKey: ['budget', 'workspace-periods', companyId],
     queryFn: budgetApi.listWorkspacePeriods,
-    enabled: company !== null,
+    enabled: companyId !== null,
     retry: false,
   })
 
@@ -81,7 +83,7 @@ export default function BudgetPeriodListPage() {
   const source = workspacePeriods.data?.data
   const today = new Date().toISOString().slice(0, 10)
   const workspacePeriod = source?.periods.find((period) => period.period_from <= today && period.period_to >= today)
-  const checkingSource = company?.products?.includes('workspace') && workspacePeriods.isLoading
+  const checkingSource = workspaceActive && workspacePeriods.isLoading
   const disabledReason = workspacePeriod
     ? 'Pagu ' + workspacePeriod.name + ' dikelola di Finlite Workspace.'
     : openPeriod ? 'Tutup periode ' + openPeriod.name + ' sebelum membuat pagu baru.' : undefined
