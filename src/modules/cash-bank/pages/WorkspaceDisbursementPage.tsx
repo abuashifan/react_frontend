@@ -23,11 +23,14 @@ export default function WorkspaceDisbursementPage() {
     queryKey: [...key, 'list', pagination, filter],
     queryFn: () => workspaceDisbursementApi.list(pagination.pageIndex + 1, pagination.pageSize, filter === 'all' ? undefined : filter),
     placeholderData: (previous, query) => query?.queryKey[2] === companyId ? keepPreviousData(previous) : undefined,
+    // Status posting dan void berubah dari layar Kas Keluar, jadi daftar selalu dibaca ulang.
+    staleTime: 0,
   })
   const detail = useQuery({
     queryKey: [...key, 'detail', selected],
     queryFn: () => workspaceDisbursementApi.detail(selected!),
     enabled: selected !== undefined,
+    staleTime: 0,
   })
   const rows = list.data?.data
   const record = detail.data?.data

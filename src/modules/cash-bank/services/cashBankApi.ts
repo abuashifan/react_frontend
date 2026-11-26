@@ -7,14 +7,37 @@ import type {
   CreateBankTransferPayload, CreateBankReconciliationPayload,
 } from '../types/cashBank.types'
 
+type AccountRef = { id: number; code: string; name: string }
+type RawAccountRef = { id: number; code?: string; name?: string; account_code?: string; account_name?: string } | null | undefined
+
+/**
+ * Backend mengirim akun COA dengan `account_code`/`account_name`, sedangkan form
+ * Kas & Bank membaca `code`/`name`. Tanpa penyesuaian ini dokumen tersimpan
+ * menampilkan "#id" dan "Pilih akun..." walau akunnya sudah terisi.
+ */
+function accountRef(raw: RawAccountRef): AccountRef | undefined {
+  if (!raw) return undefined
+  return { id: raw.id, code: raw.code ?? raw.account_code ?? '', name: raw.name ?? raw.account_name ?? '' }
+}
+
+function withAccountRefs<T extends { cash_bank_account?: AccountRef; lines?: { account?: AccountRef }[] }>(document: T): T {
+  return {
+    ...document,
+    cash_bank_account: accountRef(document.cash_bank_account),
+    lines: document.lines?.map((line) => ({ ...line, account: accountRef(line.account) })),
+  }
+}
+
 export const cashReceiptApi = {
   list: (params: CashBankListParams) =>
     http.get<unknown, PaginatedResponse<CashReceipt>>('/cash-bank/cash-receipts', { params }),
   /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
   adjacent: (id?: number) =>
     http.get<unknown, ApiResponse<AdjacentRecords>>('/cash-bank/cash-receipts/adjacent', { params: { id } }),
-  get: (id: number) =>
-    http.get<unknown, ApiResponse<CashReceipt>>(`/cash-bank/cash-receipts/${id}`),
+  get: async (id: number) => {
+    const response = await http.get<unknown, ApiResponse<CashReceipt>>(`/cash-bank/cash-receipts/${id}`)
+    return { ...response, data: withAccountRefs(response.data) }
+  },
   create: (payload: CreateCashReceiptPayload) =>
     http.post<unknown, ApiResponse<CashReceipt>>('/cash-bank/cash-receipts', payload),
   post: (id: number) =>
@@ -35,8 +58,10 @@ export const cashPaymentApi = {
   /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
   adjacent: (id?: number) =>
     http.get<unknown, ApiResponse<AdjacentRecords>>('/cash-bank/cash-payments/adjacent', { params: { id } }),
-  get: (id: number) =>
-    http.get<unknown, ApiResponse<CashPayment>>(`/cash-bank/cash-payments/${id}`),
+  get: async (id: number) => {
+    const response = await http.get<unknown, ApiResponse<CashPayment>>(`/cash-bank/cash-payments/${id}`)
+    return { ...response, data: withAccountRefs(response.data) }
+  },
   create: (payload: CreateCashPaymentPayload) =>
     http.post<unknown, ApiResponse<CashPayment>>('/cash-bank/cash-payments', payload),
   post: (id: number) =>
@@ -57,8 +82,14 @@ export const bankTransferApi = {
   /** Tetangga record untuk navigasi Prev/Next di form — hanya id + label. */
   adjacent: (id?: number) =>
     http.get<unknown, ApiResponse<AdjacentRecords>>('/cash-bank/bank-transfers/adjacent', { params: { id } }),
-  get: (id: number) =>
-    http.get<unknown, ApiResponse<BankTransfer>>(`/cash-bank/bank-transfers/${id}`),
+  get: async (id: number) => {
+    const response = await http.get<unknown, ApiResponse<BankTransfer>>(`/cash-bank/bank-transfers/${id}`)
+    return { ...response, data: {
+      ...response.data,
+      from_cash_bank_account: accountRef(response.data.from_cash_bank_account),
+      to_cash_bank_account: accountRef(response.data.to_cash_bank_account),
+    } }
+  },
   create: (payload: CreateBankTransferPayload) =>
     http.post<unknown, ApiResponse<BankTransfer>>('/cash-bank/bank-transfers', payload),
   post: (id: number) =>

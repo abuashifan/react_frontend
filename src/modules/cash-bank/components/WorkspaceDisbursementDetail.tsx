@@ -21,9 +21,9 @@ const eventLabel: Record<string, string> = {
   record_disbursement: 'Pencairan dicatat', approve_qc: 'QC disetujui', reject_qc: 'QC dikembalikan', reopen_qc: 'QC dibuka kembali',
 }
 const dimensions = [
-  { id: 'account_id', type: 'expense', label: 'Akun biaya' },
-  { id: 'department_id', type: 'department', label: 'Departemen' },
-  { id: 'project_id', type: 'project', label: 'Proyek' },
+  { id: 'account_id', type: 'expense', label: 'Akun biaya', suggestion: 'account' },
+  { id: 'department_id', type: 'department', label: 'Departemen', suggestion: 'department' },
+  { id: 'project_id', type: 'project', label: 'Proyek', suggestion: 'project' },
 ] as const
 
 function schema(action?: Action) {
@@ -56,12 +56,22 @@ export function WorkspaceDisbursementDetail({ row, onChange, onClose }: {
   const { openRecordTab } = useRecordTab()
   const [action, setAction] = useState<Action>()
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 100 })
+  const suggestions = new Map((row.suggested_lines ?? []).map((line) => [line.source_line_id, line]))
   const defaults = {
     disbursed_on: row.disbursed_on ?? '',
     cash_bank_account_id: row.cash_bank_account_id,
     payment_reference: row.payment_reference ?? '',
     note: '',
-    lines: row.source_lines.map((line) => ({ source_line_id: line.id, account_id: null, department_id: null, project_id: null })),
+    // Akun dan dimensi diisi dari QC terakhir untuk kode pos yang sama; QC tetap bisa menggantinya.
+    lines: row.source_lines.map((line) => {
+      const suggested = suggestions.get(line.id)
+      return {
+        source_line_id: line.id,
+        account_id: suggested?.account?.value ?? null,
+        department_id: suggested?.department?.value ?? null,
+        project_id: suggested?.project?.value ?? null,
+      }
+    }),
   }
   const { control, register, handleSubmit, reset, formState: { errors } } = useForm({
     resolver: zodResolver(schema(action)), defaultValues: defaults,
@@ -91,12 +101,14 @@ export function WorkspaceDisbursementDetail({ row, onChange, onClose }: {
     { id: 'amount', header: 'Nominal', size: 120, meta: { className: 'text-right tabular-nums whitespace-nowrap', headerClassName: 'text-right' }, cell: ({ original }) => disbursementAmount(original.amount_minor) },
   ]
   if (action === 'approve') {
-    columns.push(...dimensions.map(({ id, type, label }): ColumnDef<SourceLine> => ({
+    columns.push(...dimensions.map(({ id, type, label, suggestion }): ColumnDef<SourceLine> => ({
       id, header: label, size: 170, cell: ({ original }) => {
         const index = positions.get(original.id)!
+        const suggested = suggestions.get(original.id)?.[suggestion]
         return (
           <Controller name={`lines.${index}.${id}`} control={control} render={({ field }) => (
             <SearchableSelect value={field.value} onChange={field.onChange} onSearch={(q) => workspaceDisbursementApi.options(type, q)}
+              selectedOptions={suggested ? [suggested] : []}
               triggerAriaLabel={label + ' untuk ' + original.description} placeholder={'Pilih ' + label.toLowerCase()}
               size="sm" error={errors.lines?.[index]?.[id]?.message} />
           )} />
@@ -127,6 +139,12 @@ export function WorkspaceDisbursementDetail({ row, onChange, onClose }: {
           {payment && <div><dt className="text-muted-foreground">Kas keluar</dt><dd>{payment.payment_number}</dd></div>}
         </dl>
         {row.qc_note && <p className="whitespace-pre-wrap break-words text-sm">{row.qc_note}</p>}
+        {row.qc_status === 'rejected' && !action && (
+          <p role="status" className="text-sm text-muted-foreground">QC dikembalikan. Koreksi pencairan untuk mengirimnya lagi ke antrean QC.</p>
+        )}
+        {payment?.status === 'void' && !action && (
+          <p role="status" className="text-sm text-muted-foreground">Kas keluar sudah dibatalkan. Buka kembali QC untuk membuat draf kas keluar yang baru.</p>
+        )}
         {action === 'record' && (
           <div className="grid gap-3 sm:grid-cols-3">
             <FormField label="Tanggal pencairan" htmlFor="workspace-disb-date" required error={errors.disbursed_on?.message}>
@@ -181,7 +199,7 @@ export function WorkspaceDisbursementDetail({ row, onChange, onClose }: {
               <Button type="button" variant="outline" onClick={choose('reject')}>Kembalikan QC</Button>
               {row.disbursed_on && <Button type="button" onClick={choose('approve')}>Periksa dan setujui</Button>}
             </>}
-            {payment?.status === 'draft' && can(disbursementPermissions.review) && <Button type="button" variant="outline" onClick={choose('reopen')}>Buka kembali QC</Button>}
+            {(payment?.status === 'draft' || payment?.status === 'void') && can(disbursementPermissions.review) && <Button type="button" variant="outline" onClick={choose('reopen')}>Buka kembali QC</Button>}
             {payment && can('cash_bank.payments.view') && <Button type="button" onClick={() => {
               onClose()
               openRecordTab({ label: payment.payment_number, path: '/cash-bank/cash-payments/' + payment.id })

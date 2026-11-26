@@ -39,6 +39,15 @@ export interface WorkspaceDisbursement extends WorkspaceDisbursementRow {
   cash_bank_account: { id: number; account_code: string; account_name: string } | null
   qc_note: string | null
   history: { action: string; created_at: string; user_id: number; details: { note?: string } }[]
+  /** Usulan akun dan dimensi dari QC terakhir untuk kode pos yang sama. */
+  suggested_lines?: SuggestedLine[]
+}
+
+export interface SuggestedLine {
+  source_line_id: number
+  account: SelectOption<number> | null
+  department: SelectOption<number> | null
+  project: SelectOption<number> | null
 }
 
 interface RecordInput { disbursed_on: string; cash_bank_account_id: number; payment_reference: string }
