@@ -138,6 +138,7 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     ribbonItems: [
       { id: 'cash-receipts', label: 'Penerimaan Kas', icon: TrendingUp, path: '/cash-bank/cash-receipts', permission: 'cash_bank.receipts.view' },
       { id: 'cash-payments', label: 'Pengeluaran Kas', icon: TrendingDown, path: '/cash-bank/cash-payments', permission: 'cash_bank.payments.view' },
+      { id: 'workspace-disbursements', label: 'Pencairan Workspace', icon: ClipboardList, path: '/cash-bank/workspace-disbursements', permission: 'cash_bank.workspace_disbursements.view' },
       { id: 'transfers', label: 'Transfer', icon: ArrowLeftRight, path: '/cash-bank/bank-transfers', permission: 'cash_bank.transfers.view' },
       { id: 'reconciliations', label: 'Rekonsiliasi', icon: CheckSquare, path: '/cash-bank/bank-reconciliations', permission: 'cash_bank.reconciliations.view' },
     ],

@@ -460,6 +460,9 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | |____types/
 | | | | |____budget.types.ts
 | | |____cash-bank/
+| | | |____components/WorkspaceDisbursementDetail.tsx
+| | | |____pages/WorkspaceDisbursementPage.tsx
+| | | |____services/workspaceDisbursementApi.ts
 | | | |____print/
 | | | | |____cashBankPrint.ts
 | | | |____hooks/

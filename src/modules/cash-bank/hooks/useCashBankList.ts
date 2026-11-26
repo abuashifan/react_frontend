@@ -30,7 +30,11 @@ export function useCashPayment(id?: number) {
 }
 export function useCashPaymentMutations() {
   const qc = useQueryClient()
-  const inv = () => qc.invalidateQueries({ queryKey: ['cash-bank', 'payments'] })
+  // Kas keluar dari Pencairan Workspace ikut mengubah status di daftar pencairan.
+  const inv = () => Promise.all([
+    qc.invalidateQueries({ queryKey: ['cash-bank', 'payments'] }),
+    qc.invalidateQueries({ queryKey: ['cash-bank', 'workspace-disbursements'] }),
+  ])
   return {
     create: useMutation({ mutationFn: (p: CreateCashPaymentPayload) => cashPaymentApi.create(p), onSuccess: inv }),
     post: useMutation({ mutationFn: (id: number) => cashPaymentApi.post(id), onSuccess: inv }),

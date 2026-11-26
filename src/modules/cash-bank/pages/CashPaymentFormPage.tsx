@@ -69,7 +69,8 @@ function CashPaymentFormPageContent() {
   // Draft selalu bisa diedit; yang sudah posted (mode open) dibuka lewat tombol Edit.
   const [editing, setEditing] = useState(false)
   const status = (payment?.status ?? 'draft') as DocumentStatus
-  const isEditable = isCreate || payment?.status === 'draft' || editing
+  const workspaceManaged = payment?.workspace_disbursement_exists === true
+  const isEditable = !workspaceManaged && (isCreate || payment?.status === 'draft' || editing)
 
   useEffect(() => {
     if (payment) {
@@ -204,7 +205,7 @@ function CashPaymentFormPageContent() {
   if (!isCreate && payment && can('cash_bank.payments.print')) {
     actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
   }
-  if (!isCreate && canChange(payment?.status)) {
+  if (!isCreate && !workspaceManaged && canChange(payment?.status)) {
     if (payment?.status !== 'draft' && !editing && can('cash_bank.payments.edit')) actions.push({ id: 'edit', label: 'Edit', variant: 'secondary', onClick: () => setEditing(true) })
     if (can('cash_bank.payments.delete')) actions.push({ id: 'delete', label: 'Hapus', variant: 'destructive', onClick: () => setDeleteOpen(true) })
   }
@@ -227,6 +228,7 @@ function CashPaymentFormPageContent() {
           </>
         }>
         <div className="space-y-2.5 [@media(max-height:620px)]:space-y-2">
+          {workspaceManaged && <p role="status" className="rounded-md border border-border px-3 py-2 text-sm">Kas keluar dari Pencairan Workspace. Koreksi draf dilakukan melalui QC Accounting.</p>}
           {/* Header ringkas — mengikuti pola form jurnal: identitas dokumen
               satu baris agar tabel baris alokasi mendapat sisa tinggi layar. */}
           <section className="rounded-lg border border-[#d9e2e5] bg-white px-3 py-2.5 lg:px-4 [@media(max-height:620px)]:py-2">

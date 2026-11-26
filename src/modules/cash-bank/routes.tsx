@@ -3,6 +3,7 @@ import { lazy } from 'react'
 import { ProtectedRoute } from '@/router/guards'
 import type { RouteObject } from 'react-router-dom'
 
+const WorkspaceDisbursementPage = lazy(() => import('./pages/WorkspaceDisbursementPage'))
 const CashReceiptListPage = lazy(() => import('./pages/CashReceiptListPage'))
 const CashReceiptFormPage = lazy(() => import('./pages/CashReceiptFormPage'))
 const CashPaymentListPage = lazy(() => import('./pages/CashPaymentListPage'))
@@ -13,6 +14,7 @@ const BankReconciliationListPage = lazy(() => import('./pages/BankReconciliation
 const BankReconciliationFormPage = lazy(() => import('./pages/BankReconciliationFormPage'))
 
 export const cashBankRoutes: RouteObject[] = [
+  { path: '/cash-bank/workspace-disbursements', element: <ProtectedRoute permission="cash_bank.workspace_disbursements.view"><WorkspaceDisbursementPage /></ProtectedRoute> },
   { path: '/cash-bank/cash-receipts', element: <ProtectedRoute permission="cash_bank.receipts.view"><CashReceiptListPage /></ProtectedRoute> },
   { path: '/cash-bank/cash-receipts/create', element: <ProtectedRoute permission="cash_bank.receipts.create"><CashReceiptFormPage /></ProtectedRoute> },
   { path: '/cash-bank/cash-receipts/:id', element: <ProtectedRoute permission="cash_bank.receipts.view"><CashReceiptFormPage /></ProtectedRoute> },
