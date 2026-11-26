@@ -9,14 +9,14 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { getApiErrorMessage } from '@/lib/apiError'
 import { formatDate } from '@/lib/utils'
 import { WorkspaceDisbursementDetail } from '../components/WorkspaceDisbursementDetail'
-import { disbursementAmount, qcLabels, workspaceDisbursementApi, type QcStatus, type WorkspaceDisbursementRow } from '../services/workspaceDisbursementApi'
+import { disbursementAmount, stateLabels, workspaceDisbursementApi, type DisbursementState, type WorkspaceDisbursementRow } from '../services/workspaceDisbursementApi'
 
 export default function WorkspaceDisbursementPage() {
   const companyId = useAuthStore((state) => state.activeCompanyId)
   const client = useQueryClient()
   const [selected, setSelected] = useState<number>()
   const [launcher, setLauncher] = useState<HTMLElement>()
-  const [filter, setFilter] = useState<QcStatus | 'all'>('all')
+  const [filter, setFilter] = useState<DisbursementState | 'all'>('all')
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 25 })
   const key = ['cash-bank', 'workspace-disbursements', companyId]
   const list = useQuery({
@@ -44,27 +44,25 @@ export default function WorkspaceDisbursementPage() {
       }}>{original.title}</Button>
     ) },
     { id: 'unit', header: 'Unit', size: 180, cell: ({ original }) => original.unit_name },
-    { id: 'disbursed', header: 'Pencairan', size: 135, cell: ({ original }) => original.disbursed_on ? formatDate(original.disbursed_on) : 'Belum dicatat' },
-    { id: 'qc', header: 'QC Accounting', size: 145, cell: ({ original }) => qcLabels[original.qc_status] },
-    {
-      id: 'posting', header: 'Posting', size: 145, cell: ({ original }) => original.cash_payment?.status === 'posted'
-        ? 'Diposting' : original.cash_payment?.status === 'void' ? 'Dibatalkan' : '—',
-    },
-    { id: 'amount', header: 'Nominal', size: 145, meta: { className: 'text-right tabular-nums whitespace-nowrap', headerClassName: 'text-right' }, cell: ({ original }) => disbursementAmount(original.amount_minor) },
+    { id: 'date', header: 'Tanggal kegiatan', size: 135, cell: ({ original }) => formatDate(original.activity_date) },
+    { id: 'state', header: 'Status', size: 190, cell: ({ original }) => stateLabels[original.state] + (original.tranche_count > 1 ? ' · ' + original.tranche_count + ' tahap' : '') },
+    { id: 'amount', header: 'RAB', size: 140, meta: { className: 'text-right tabular-nums whitespace-nowrap', headerClassName: 'text-right' }, cell: ({ original }) => disbursementAmount(original.amount_minor) },
+    { id: 'disbursed', header: 'Dicairkan', size: 140, meta: { className: 'text-right tabular-nums whitespace-nowrap', headerClassName: 'text-right' }, cell: ({ original }) => disbursementAmount(original.disbursed_minor) },
+    { id: 'realized', header: 'Biaya posted', size: 140, meta: { className: 'text-right tabular-nums whitespace-nowrap', headerClassName: 'text-right' }, cell: ({ original }) => disbursementAmount(original.realized_minor) },
   ]
 
   return (
     <WorkspaceLayout title="Pencairan Workspace" breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Pencairan Workspace' }]}
       toolbar={<div className="flex items-center gap-2 px-4 py-2">
-        <label className="text-xs font-medium" htmlFor="workspace-qc-filter">Status QC</label>
+        <label className="text-xs font-medium" htmlFor="workspace-qc-filter">Status</label>
         <Select value={filter} onValueChange={(value) => {
-          setFilter(value as QcStatus | 'all')
+          setFilter(value as DisbursementState | 'all')
           setPagination((current) => ({ ...current, pageIndex: 0 }))
         }}>
-          <SelectTrigger id="workspace-qc-filter" className="h-8 w-48"><SelectValue /></SelectTrigger>
+          <SelectTrigger id="workspace-qc-filter" className="h-8 w-64"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Semua status</SelectItem>
-            {Object.entries(qcLabels).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
+            {Object.entries(stateLabels).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>}>
