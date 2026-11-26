@@ -1,50 +1,26 @@
-import { useState, type MouseEvent } from 'react'
+import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Controller, useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { DialogFooter } from '@/components/ui/dialog'
-import { FormField } from '@/components/shared/form/FormField'
-import { SearchableSelect } from '@/components/shared/form/SearchableSelect'
-import { DataTable, type ColumnDef, type PaginationState } from '@/components/shared/table/DataTable'
 import { usePermission } from '@/hooks/usePermission'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { getApiErrorMessage } from '@/lib/apiError'
-import { formatDate, todayInputValue } from '@/lib/utils'
-import { disbursementAmount, disbursementPermissions, qcLabels, workspaceDisbursementApi, type SourceLine, type WorkspaceDisbursement } from '../services/workspaceDisbursementApi'
+import { formatDate } from '@/lib/utils'
+import {
+  disbursementAmount, disbursementPermissions, kindLabels, stateLabels, trancheStateLabels, workspaceDisbursementApi,
+  type Tranche, type WorkspaceDisbursement,
+} from '../services/workspaceDisbursementApi'
+import { FORM_ID, NoteForm, QcApproveForm, SettlementForm, TrancheForm } from './workspace-disbursement/TrancheForms'
 
-type Action = 'record' | 'approve' | 'reject' | 'reopen'
-const actionLabel: Record<Action, string> = { record: 'Simpan pencairan', approve: 'Setujui QC', reject: 'Kembalikan QC', reopen: 'Buka kembali QC' }
-const eventLabel: Record<string, string> = {
-  record_disbursement: 'Pencairan dicatat', approve_qc: 'QC disetujui', reject_qc: 'QC dikembalikan', reopen_qc: 'QC dibuka kembali',
+type Action = 'create' | 'edit' | 'cancel' | 'approve' | 'reject' | 'reopen' | 'settle' | 'unsettle'
+const actionLabel: Record<Action, string> = {
+  create: 'Simpan tahap', edit: 'Simpan koreksi', cancel: 'Batalkan tahap', approve: 'Setujui QC', reject: 'Kembalikan QC',
+  reopen: 'Buka kembali QC', settle: 'Selesaikan dana muka', unsettle: 'Batalkan penyelesaian',
 }
-const dimensions = [
-  { id: 'account_id', type: 'expense', label: 'Akun biaya', suggestion: 'account' },
-  { id: 'department_id', type: 'department', label: 'Departemen', suggestion: 'department' },
-  { id: 'project_id', type: 'project', label: 'Proyek', suggestion: 'project' },
-] as const
-
-function schema(action?: Action) {
-  const id = z.number().int().positive().nullable()
-  return z.object({
-    disbursed_on: z.string(), cash_bank_account_id: id, payment_reference: z.string().trim().max(160),
-    note: z.string().trim().max(1000),
-    lines: z.array(z.object({ source_line_id: z.number(), account_id: id, department_id: id, project_id: id })),
-  }).superRefine((data, context) => {
-    if (action === 'record') {
-      if (!data.disbursed_on) context.addIssue({ code: 'custom', path: ['disbursed_on'], message: 'Pilih tanggal pencairan.' })
-      if (!data.cash_bank_account_id) context.addIssue({ code: 'custom', path: ['cash_bank_account_id'], message: 'Pilih akun kas/bank.' })
-      if (!data.payment_reference) context.addIssue({ code: 'custom', path: ['payment_reference'], message: 'Masukkan referensi pencairan.' })
-    }
-    if ((action === 'reject' || action === 'reopen') && !data.note) context.addIssue({ code: 'custom', path: ['note'], message: 'Masukkan alasan.' })
-    if (action === 'approve') {
-      data.lines.forEach((line, index) => {
-        if (line.account_id === null) context.addIssue({ code: 'custom', path: ['lines', index, 'account_id'], message: 'Pilih akun biaya.' })
-      })
-    }
-  })
+const eventLabel: Record<string, string> = {
+  record_tranche: 'Tahap dicatat', record_disbursement: 'Tahap dikoreksi', cancel_tranche: 'Tahap dibatalkan',
+  approve_qc: 'QC disetujui', reject_qc: 'QC dikembalikan', reopen_qc: 'QC dibuka kembali',
+  settle_advance: 'Dana muka diselesaikan', cancel_settlement: 'Penyelesaian dibatalkan', close_activity: 'Kegiatan diselesaikan di Workspace',
 }
 
 export function WorkspaceDisbursementDetail({ row, onChange, onClose }: {
@@ -54,159 +30,171 @@ export function WorkspaceDisbursementDetail({ row, onChange, onClose }: {
 }) {
   const { can } = usePermission()
   const { openRecordTab } = useRecordTab()
+  const [selectedId, setSelectedId] = useState<number | undefined>(row.tranches.find((tranche) => tranche.state !== 'cancelled' && tranche.state !== 'complete')?.id)
   const [action, setAction] = useState<Action>()
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 100 })
-  const suggestions = new Map((row.suggested_lines ?? []).map((line) => [line.source_line_id, line]))
-  const defaults = {
-    disbursed_on: row.disbursed_on ?? '',
-    cash_bank_account_id: row.cash_bank_account_id,
-    payment_reference: row.payment_reference ?? '',
-    note: '',
-    // Akun dan dimensi diisi dari QC terakhir untuk kode pos yang sama; QC tetap bisa menggantinya.
-    lines: row.source_lines.map((line) => {
-      const suggested = suggestions.get(line.id)
-      return {
-        source_line_id: line.id,
-        account_id: suggested?.account?.value ?? null,
-        department_id: suggested?.department?.value ?? null,
-        project_id: suggested?.project?.value ?? null,
-      }
-    }),
-  }
-  const { control, register, handleSubmit, reset, formState: { errors } } = useForm({
-    resolver: zodResolver(schema(action)), defaultValues: defaults,
-  })
+  const selected = row.tranches.find((tranche) => tranche.id === selectedId)
+  const closed = row.closed_at !== null
+  const canRecord = can(disbursementPermissions.record) && !closed
+  const canReview = can(disbursementPermissions.review)
+  const remaining = row.source_lines.reduce((sum, line) => sum + line.remaining_minor, 0)
+
   const mutation = useMutation({
-    mutationFn: async (data: z.infer<ReturnType<typeof schema>>) => {
-      if (action === 'record' && data.cash_bank_account_id !== null) {
-        return workspaceDisbursementApi.record(row.id, {
-          disbursed_on: data.disbursed_on, cash_bank_account_id: data.cash_bank_account_id, payment_reference: data.payment_reference,
-        })
-      }
-      if (action === 'approve') {
-        return workspaceDisbursementApi.review(row.id, action, {
-          note: data.note || undefined,
-          lines: data.lines.flatMap((line) => line.account_id === null ? [] : [{ ...line, account_id: line.account_id }]),
-        })
-      }
-      if (action === 'reject' || action === 'reopen') return workspaceDisbursementApi.review(row.id, action, { note: data.note })
-      throw new Error('Pilih tindakan pencairan.')
+    mutationFn: (call: () => Promise<{ data: WorkspaceDisbursement }>) => call(),
+    onSuccess: ({ data }) => {
+      setAction(undefined)
+      if (action === 'create') setSelectedId(data.tranches[data.tranches.length - 1]?.id)
+      onChange(data)
     },
-    onSuccess: ({ data }) => { setAction(undefined); onChange(data) },
   })
-  const positions = new Map(row.source_lines.map((line, index) => [line.id, index]))
-  const columns: ColumnDef<SourceLine>[] = [
-    { id: 'budget', header: 'Pos', size: 90, cell: ({ original }) => original.budget_code },
-    { id: 'description', header: 'Deskripsi', size: 175, cell: ({ original }) => original.description },
-    { id: 'amount', header: 'Nominal', size: 120, meta: { className: 'text-right tabular-nums whitespace-nowrap', headerClassName: 'text-right' }, cell: ({ original }) => disbursementAmount(original.amount_minor) },
-  ]
-  if (action === 'approve') {
-    columns.push(...dimensions.map(({ id, type, label, suggestion }): ColumnDef<SourceLine> => ({
-      id, header: label, size: 170, cell: ({ original }) => {
-        const index = positions.get(original.id)!
-        const suggested = suggestions.get(original.id)?.[suggestion]
-        return (
-          <Controller name={`lines.${index}.${id}`} control={control} render={({ field }) => (
-            <SearchableSelect value={field.value} onChange={field.onChange} onSearch={(q) => workspaceDisbursementApi.options(type, q)}
-              selectedOptions={suggested ? [suggested] : []}
-              triggerAriaLabel={label + ' untuk ' + original.description} placeholder={'Pilih ' + label.toLowerCase()}
-              size="sm" error={errors.lines?.[index]?.[id]?.message} />
-          )} />
-        )
-      },
-    })))
+  const run = (call: () => Promise<{ data: WorkspaceDisbursement }>) => mutation.mutate(call)
+  const choose = (next?: Action) => { mutation.reset(); setAction(next) }
+  const tranche = selected!
+
+  const form = () => {
+    switch (action) {
+      case 'create': return <TrancheForm row={row} onSubmit={(input) => run(() => workspaceDisbursementApi.createTranche(row.id, input))} />
+      case 'edit': return <TrancheForm row={row} tranche={tranche} onSubmit={(input) => run(() => workspaceDisbursementApi.updateTranche(row.id, tranche.id, input))} />
+      case 'approve': return <QcApproveForm row={row} tranche={tranche} onSubmit={(input) => run(() => workspaceDisbursementApi.review(row.id, tranche.id, 'approve', input))} />
+      case 'settle': return <SettlementForm row={row} tranche={tranche} onSubmit={(input) => run(() => workspaceDisbursementApi.settle(row.id, tranche.id, input))} />
+      case 'reject': return <NoteForm label="Alasan" onSubmit={(note) => run(() => workspaceDisbursementApi.review(row.id, tranche.id, 'reject', { note }))} />
+      case 'reopen': return <NoteForm label="Alasan" hint={tranche.cash_payment?.status === 'void' ? 'Kas keluar void tetap tersimpan. Persetujuan QC berikutnya membuat draf baru.' : 'Draf kas keluar tahap ini akan dihapus.'}
+        onSubmit={(note) => run(() => workspaceDisbursementApi.review(row.id, tranche.id, 'reopen', { note }))} />
+      case 'cancel': return <NoteForm label="Alasan pembatalan" hint="Tahap yang dibatalkan tidak dihitung dalam batas pencairan dan tetap tercatat di riwayat."
+        onSubmit={(note) => run(() => workspaceDisbursementApi.cancelTranche(row.id, tranche.id, note))} />
+      case 'unsettle': return <NoteForm label="Alasan" hint="Jurnal penyelesaian akan di-void dan dana muka kembali menunggu penyelesaian."
+        onSubmit={(note) => run(() => workspaceDisbursementApi.cancelSettlement(row.id, tranche.id, note))} />
+      default: return null
+    }
   }
-  const choose = (next?: Action) => (event: MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault()
-    reset(defaults)
-    mutation.reset()
-    setAction(next)
+
+  const trancheActions = (item: Tranche) => {
+    const actions: { action?: Action; label: string; primary?: boolean; onClick?: () => void }[] = []
+    const editable = item.state === 'awaiting_qc' || item.state === 'returned'
+    if (editable && canRecord) actions.push({ action: 'edit', label: 'Koreksi' }, { action: 'cancel', label: 'Batalkan tahap' })
+    if (editable && canReview) actions.push({ action: 'reject', label: 'Kembalikan QC' }, { action: 'approve', label: 'Periksa dan setujui', primary: true })
+    if ((item.state === 'awaiting_posting' || item.state === 'payment_void') && canReview && !closed) actions.push({ action: 'reopen', label: 'Buka kembali QC' })
+    if (item.state === 'awaiting_settlement' && canReview) actions.push({ action: 'settle', label: 'Selesaikan dana muka', primary: true })
+    if (item.state === 'complete' && item.kind === 'advance' && canReview && !closed) actions.push({ action: 'unsettle', label: 'Batalkan penyelesaian' })
+    if (item.cash_payment && can('cash_bank.payments.view')) {
+      actions.push({ label: 'Buka kas keluar', primary: item.state === 'awaiting_posting', onClick: () => {
+        onClose()
+        openRecordTab({ label: item.cash_payment!.payment_number, path: '/cash-bank/cash-payments/' + item.cash_payment!.id })
+      } })
+    }
+    return actions
   }
-  const first = pagination.pageIndex * pagination.pageSize
-  const payment = row.cash_payment
-  const awaitingQc = row.qc_status !== 'approved'
 
   return (
-    <form className="flex min-h-0 flex-col" onSubmit={handleSubmit((data) => mutation.mutate(data))}>
+    <div className="flex min-h-0 flex-col">
       <div className="min-h-0 space-y-3 overflow-y-auto px-4 py-3">
         <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
           <div><dt className="text-muted-foreground">RAB Workspace</dt><dd>#{row.workspace_document_id} · v{row.source_version}</dd></div>
           <div><dt className="text-muted-foreground">Unit</dt><dd>{row.unit_name}</dd></div>
           <div><dt className="text-muted-foreground">Tanggal kegiatan</dt><dd>{formatDate(row.activity_date)}</dd></div>
-          <div><dt className="text-muted-foreground">Pencairan</dt><dd>{row.disbursed_on ? formatDate(row.disbursed_on) : 'Belum dicatat'}</dd></div>
-          <div><dt className="text-muted-foreground">Status</dt><dd>{qcLabels[row.qc_status]}</dd></div>
-          {row.payment_reference && <div><dt className="text-muted-foreground">Referensi pencairan</dt><dd>{row.payment_reference}</dd></div>}
-          {payment && <div><dt className="text-muted-foreground">Kas keluar</dt><dd>{payment.payment_number}</dd></div>}
+          <div><dt className="text-muted-foreground">Status</dt><dd>{stateLabels[row.state]}</dd></div>
+          <div><dt className="text-muted-foreground">RAB disetujui</dt><dd className="tabular-nums">{disbursementAmount(row.amount_minor)}</dd></div>
+          <div><dt className="text-muted-foreground">Dicairkan</dt><dd className="tabular-nums">{disbursementAmount(row.disbursed_minor)}</dd></div>
+          <div><dt className="text-muted-foreground">Biaya posted</dt><dd className="tabular-nums">{disbursementAmount(row.realized_minor)}</dd></div>
+          <div><dt className="text-muted-foreground">Dikembalikan</dt><dd className="tabular-nums">{disbursementAmount(row.refund_minor)}</dd></div>
         </dl>
-        {row.qc_note && <p className="whitespace-pre-wrap break-words text-sm">{row.qc_note}</p>}
-        {row.qc_status === 'rejected' && !action && (
-          <p role="status" className="text-sm text-muted-foreground">QC dikembalikan. Koreksi pencairan untuk mengirimnya lagi ke antrean QC.</p>
-        )}
-        {payment?.status === 'void' && !action && (
-          <p role="status" className="text-sm text-muted-foreground">Kas keluar sudah dibatalkan. Buka kembali QC untuk membuat draf kas keluar yang baru.</p>
-        )}
-        {action === 'record' && (
-          <div className="grid gap-3 sm:grid-cols-3">
-            <FormField label="Tanggal pencairan" htmlFor="workspace-disb-date" required error={errors.disbursed_on?.message}>
-              <Input id="workspace-disb-date" type="date" max={todayInputValue()} {...register('disbursed_on')} />
-            </FormField>
-            <FormField label="Akun kas/bank" htmlFor="workspace-disb-cash" required error={errors.cash_bank_account_id?.message}>
-              <Controller name="cash_bank_account_id" control={control} render={({ field }) => (
-                <SearchableSelect value={field.value} onChange={field.onChange} onSearch={(q) => workspaceDisbursementApi.options('cash', q)}
-                  triggerId="workspace-disb-cash" triggerAriaLabel="Akun kas/bank" placeholder="Pilih kas/bank" selectedOptions={row.cash_bank_account
-                    ? [{ value: row.cash_bank_account.id, label: row.cash_bank_account.account_name, sublabel: row.cash_bank_account.account_code }] : []} />
-              )} />
-            </FormField>
-            <FormField label="Referensi pencairan" htmlFor="workspace-disb-reference" required error={errors.payment_reference?.message}>
-              <Input id="workspace-disb-reference" maxLength={160} {...register('payment_reference')} />
-            </FormField>
-          </div>
-        )}
-        <div className="max-h-64 overflow-auto rounded-md border border-border">
-          <DataTable columns={columns} data={row.source_lines.slice(first, first + pagination.pageSize)} totalRows={row.source_lines.length}
-            pagination={pagination} onPaginationChange={setPagination} />
-        </div>
-        {row.source_lines.some((_, index) => errors.lines?.[index]?.account_id) && <p role="alert" className="text-sm text-red-600">Pilih akun biaya untuk setiap baris.</p>}
-        <p className="text-right text-sm font-semibold tabular-nums">Total {disbursementAmount(row.amount_minor)}</p>
-        {action && action !== 'record' && (
-          <FormField label={action === 'approve' ? 'Catatan QC' : 'Alasan'} htmlFor="workspace-qc-note" required={action !== 'approve'} error={errors.note?.message}>
-            <Input id="workspace-qc-note" maxLength={1000} {...register('note')} />
-          </FormField>
-        )}
-        {!action && row.history.length > 0 && (
-          <details className="text-sm">
-            <summary className="cursor-pointer font-medium">Riwayat pencairan dan QC</summary>
-            <ol className="space-y-1 pt-2">{row.history.map((event, index) => (
-              <li key={event.action + index}>{formatDate(event.created_at)} · {eventLabel[event.action] ?? event.action} · Pengguna #{event.user_id}
-                {event.details.note && <span className="block text-muted-foreground">{event.details.note}</span>}
-              </li>
-            ))}</ol>
-          </details>
+        {closed && <p role="status" className="rounded-md border border-border px-3 py-2 text-sm">Kegiatan sudah diselesaikan di Workspace. Tahap baru tidak dapat dicatat.</p>}
+
+        {action ? (
+          <section aria-label={actionLabel[action]} className="space-y-2">
+            <h3 className="text-sm font-semibold">{action === 'create' ? 'Tahap baru' : actionLabel[action] + ' · tahap ' + tranche.sequence}</h3>
+            {form()}
+          </section>
+        ) : (
+          <>
+            <div className="overflow-x-auto rounded-md border border-border">
+              <table className="min-w-full text-sm">
+                <caption className="sr-only">Baris RAB dan sisa yang bisa dicairkan</caption>
+                <thead><tr className="bg-muted text-left text-xs uppercase text-muted-foreground">
+                  <th scope="col" className="px-3 py-2">Pos</th><th scope="col" className="px-3 py-2">Rincian</th>
+                  <th scope="col" className="px-3 py-2 text-right">RAB</th><th scope="col" className="px-3 py-2 text-right">Sudah dicairkan</th><th scope="col" className="px-3 py-2 text-right">Sisa</th>
+                </tr></thead>
+                <tbody>{row.source_lines.map((line) => (
+                  <tr key={line.id} className="border-t border-border">
+                    <td className="px-3 py-2">{line.budget_code}</td><td className="px-3 py-2">{line.description}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{disbursementAmount(line.amount_minor)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{disbursementAmount(line.allocated_minor)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{disbursementAmount(line.remaining_minor)}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold">Tahap pencairan</h3>
+              {canRecord && remaining > 0 && <Button type="button" size="sm" onClick={() => choose('create')}>Catat pencairan</Button>}
+            </div>
+            {row.tranches.length === 0 ? <p className="text-sm text-muted-foreground">Belum ada pencairan. Catat setelah dana dikeluarkan.</p> : (
+              <div className="overflow-x-auto rounded-md border border-border">
+                <table className="min-w-full text-sm">
+                  <caption className="sr-only">Tahap pencairan</caption>
+                  <thead><tr className="bg-muted text-left text-xs uppercase text-muted-foreground">
+                    <th scope="col" className="px-3 py-2">Tahap</th><th scope="col" className="px-3 py-2">Jenis</th><th scope="col" className="px-3 py-2">Tanggal</th>
+                    <th scope="col" className="px-3 py-2 text-right">Nominal</th><th scope="col" className="px-3 py-2">Status</th><th scope="col" className="px-3 py-2">Dokumen</th>
+                  </tr></thead>
+                  <tbody>{row.tranches.map((item) => (
+                    <tr key={item.id} aria-selected={item.id === selectedId} className={'border-t border-border ' + (item.id === selectedId ? 'bg-[#eef6f8]' : '')}>
+                      <td className="px-3 py-2"><Button type="button" variant="link" className="h-auto p-0" onClick={() => setSelectedId(item.id)}>Tahap {item.sequence}</Button></td>
+                      <td className="px-3 py-2">{kindLabels[item.kind]}</td>
+                      <td className="px-3 py-2">{formatDate(item.disbursed_on)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{disbursementAmount(item.amount_minor)}</td>
+                      <td className="px-3 py-2">{trancheStateLabels[item.state]}</td>
+                      <td className="px-3 py-2 text-xs">{[item.cash_payment?.payment_number, item.settlement_journal?.journal_number].filter(Boolean).join(' · ') || '—'}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            )}
+
+            {selected && (
+              <section aria-label={'Tahap ' + selected.sequence} className="space-y-2 rounded-md border border-border p-3 text-sm">
+                <h3 className="font-semibold">Tahap {selected.sequence} · {kindLabels[selected.kind]} · {trancheStateLabels[selected.state]}</h3>
+                <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div><dt className="text-muted-foreground">Referensi</dt><dd>{selected.payment_reference}</dd></div>
+                  <div><dt className="text-muted-foreground">Kas/bank</dt><dd>{selected.cash_bank_account?.account_name ?? '—'}</dd></div>
+                  {selected.advance_account && <div><dt className="text-muted-foreground">Akun uang muka</dt><dd>{selected.advance_account.account_code} · {selected.advance_account.account_name}</dd></div>}
+                  {selected.journal && <div><dt className="text-muted-foreground">Jurnal kas keluar</dt><dd>{selected.journal.journal_number}</dd></div>}
+                  {selected.settled_on && <div><dt className="text-muted-foreground">Diselesaikan</dt><dd>{formatDate(selected.settled_on)} · kembali {disbursementAmount(selected.refund_minor)}</dd></div>}
+                </dl>
+                {selected.qc_note && <p className="whitespace-pre-wrap break-words">{selected.qc_note}</p>}
+                {selected.state === 'returned' && <p role="status" className="text-muted-foreground">QC dikembalikan. Koreksi tahap ini untuk mengirimnya lagi ke antrean QC.</p>}
+                {selected.state === 'payment_void' && <p role="status" className="text-muted-foreground">Kas keluar tahap ini dibatalkan. Buka kembali QC untuk membuat draf baru.</p>}
+                {selected.state === 'awaiting_settlement' && <p role="status" className="text-muted-foreground">Dana muka sudah keluar. Selesaikan dengan biaya terverifikasi dan pengembalian sisa.</p>}
+                <div className="flex flex-wrap gap-2">
+                  {trancheActions(selected).map((item) => (
+                    <Button key={item.label} type="button" size="sm" variant={item.primary ? 'default' : 'outline'} onClick={item.onClick ?? (() => choose(item.action))}>{item.label}</Button>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {row.history.length > 0 && (
+              <details className="text-sm">
+                <summary className="cursor-pointer font-medium">Riwayat pencairan dan QC</summary>
+                <ol className="space-y-1 pt-2">{row.history.map((event, index) => (
+                  <li key={event.action + index}>{formatDate(event.created_at)} · {eventLabel[event.action] ?? event.action}
+                    {event.details.tranche ? ' · tahap ' + event.details.tranche : ''} · Pengguna #{event.user_id}
+                    {event.details.note && <span className="block text-muted-foreground">{event.details.note}</span>}
+                  </li>
+                ))}</ol>
+              </details>
+            )}
+          </>
         )}
         {mutation.error && <p role="alert" className="text-sm text-red-600">{getApiErrorMessage(mutation.error, 'Tindakan gagal disimpan.')}</p>}
       </div>
       <DialogFooter className="shrink-0 flex-wrap gap-2 border-t border-border px-4 py-3">
         {action ? (
           <>
-            <Button type="button" variant="outline" disabled={mutation.isPending} onClick={choose()}>Kembali</Button>
-            <Button type="submit" disabled={mutation.isPending}>{actionLabel[action]}</Button>
+            <Button type="button" variant="outline" disabled={mutation.isPending} onClick={() => choose()}>Kembali</Button>
+            <Button type="submit" form={FORM_ID} disabled={mutation.isPending}>{actionLabel[action]}</Button>
           </>
-        ) : (
-          <>
-            <Button type="button" variant="outline" onClick={onClose}>Tutup</Button>
-            {awaitingQc && can(disbursementPermissions.record) && <Button type="button" variant="outline" onClick={choose('record')}>{row.disbursed_on ? 'Koreksi pencairan' : 'Catat pencairan'}</Button>}
-            {awaitingQc && can(disbursementPermissions.review) && <>
-              <Button type="button" variant="outline" onClick={choose('reject')}>Kembalikan QC</Button>
-              {row.disbursed_on && <Button type="button" onClick={choose('approve')}>Periksa dan setujui</Button>}
-            </>}
-            {(payment?.status === 'draft' || payment?.status === 'void') && can(disbursementPermissions.review) && <Button type="button" variant="outline" onClick={choose('reopen')}>Buka kembali QC</Button>}
-            {payment && can('cash_bank.payments.view') && <Button type="button" onClick={() => {
-              onClose()
-              openRecordTab({ label: payment.payment_number, path: '/cash-bank/cash-payments/' + payment.id })
-            }}>Buka kas keluar</Button>}
-          </>
-        )}
+        ) : <Button type="button" variant="outline" onClick={onClose}>Tutup</Button>}
       </DialogFooter>
-    </form>
+    </div>
   )
 }
