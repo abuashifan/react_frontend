@@ -16,20 +16,20 @@ interface KpiCardProps {
 
 function KpiCard({ title, value, trend, icon: Icon, iconBg, iconColor, isLoading }: KpiCardProps) {
   if (isLoading) return (
-    <div className="rounded-lg border border-[#d9e2e5] bg-white p-4">
+    <div className="rounded-lg border border-[#d9e2e5] bg-white p-3 md:p-4">
       <div className="mb-3 h-3 w-24 animate-pulse rounded bg-[#e2e8f0]" />
       <div className="h-6 w-36 animate-pulse rounded bg-[#e2e8f0]" />
     </div>
   )
   return (
-    <div className="rounded-lg border border-[#d9e2e5] bg-white p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">{title}</span>
+    <div className="min-w-0 rounded-lg border border-[#d9e2e5] bg-white p-3 md:p-4">
+      <div className="mb-2 flex items-center justify-between gap-2 md:mb-3">
+        <span className="min-w-0 text-[10px] font-semibold uppercase leading-tight tracking-wide text-[#64748b] md:text-[11px]">{title}</span>
         <div className={`flex h-8 w-8 items-center justify-center rounded-md ${iconBg}`}>
           <Icon className={`h-4 w-4 ${iconColor}`} />
         </div>
       </div>
-      <p className="text-[20px] font-bold tabular-nums text-[#1e293b]">{formatCurrency(value)}</p>
+      <p className="text-[16px] font-bold tabular-nums text-[#1e293b] [overflow-wrap:anywhere] min-[400px]:text-[18px] md:text-[20px]">{formatCurrency(value)}</p>
       {trend !== undefined && trend !== null && (
         <p className={`mt-1 text-[11px] font-medium ${trend >= 0 ? 'text-green-700' : 'text-red-600'}`}>
           {trend >= 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}% vs bulan lalu

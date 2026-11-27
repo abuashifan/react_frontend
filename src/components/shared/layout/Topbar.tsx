@@ -1,11 +1,5 @@
 import { DatabaseBackup, LogOut, User } from 'lucide-react'
 import {
-  Database, BookMarked, Wallet, Banknote,
-  ShoppingCart, ShoppingBag, Boxes, Building, FileBarChart2, Settings,
-} from 'lucide-react'
-import type { FC, SVGProps } from 'react'
-type LucideIcon = FC<SVGProps<SVGSVGElement> & { size?: number | string; strokeWidth?: number | string }>
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -23,6 +17,7 @@ import { useCompanyStore } from '@/stores/useCompanyStore'
 import { useTabStore } from '@/stores/useTabStore'
 import type { ModuleKey } from '@/stores/useTabStore'
 import { MODULE_MAP, TOP_MODULES, isModuleVisible } from '@/router/moduleConfig'
+import { MODULE_ICONS } from '@/router/moduleIcons'
 import { usePermission } from '@/hooks/usePermission'
 import { useOpenPrimaryTab } from '@/hooks/useOpenPrimaryTab'
 import { useCompanySession } from '@/hooks/useCompanySession'
@@ -31,23 +26,6 @@ import { SubscriptionWarningBadge } from './SubscriptionWarningBadge'
 import { cn } from '@/lib/utils'
 import { APP_NAME } from '@/lib/constants'
 import { useHiddenModules } from '@/modules/settings/hooks/useCompanySettings'
-
-// Ikon modul topbar TIDAK diambil dari `ModuleConfig` — petanya di sini,
-// dikunci id modul. Menambah modul di moduleConfig.ts tanpa menambah entri di
-// sini membuat tombolnya muncul tanpa ikon, tanpa error apa pun: pemakaiannya
-// `{Icon && <Icon />}`.
-const MODULE_ICONS: Record<string, LucideIcon> = {
-  'master-data': Database,
-  accounting:   BookMarked,
-  budget:       Wallet,
-  'cash-bank':  Banknote,
-  sales:        ShoppingCart,
-  purchase:     ShoppingBag,
-  inventory:    Boxes,
-  'fixed-assets': Building,
-  reports:      FileBarChart2,
-  settings:     Settings,
-}
 
 function UserAvatar({ name }: { name: string }) {
   const initials = name
@@ -67,7 +45,8 @@ function UserAvatar({ name }: { name: string }) {
 export function Topbar() {
   const { user } = useAuthStore()
   const { activeCompany } = useCompanyStore()
-  const { activeModule, isRibbonOpen, setActiveModule, openRibbon, closeRibbon } = useTabStore()
+  const { activeModule, isRibbonOpen, setActiveModule, openRibbon, closeRibbon, primaryTabs, activePrimaryTabId } = useTabStore()
+  const activeTabLabel = primaryTabs.find((tab) => tab.id === activePrimaryTabId)?.label ?? APP_NAME
   const openTab = useOpenPrimaryTab()
   const hiddenModules = useHiddenModules()
   const { can, permissionsLoaded } = usePermission()
@@ -109,7 +88,7 @@ export function Topbar() {
   return (
     <header className="fixed top-0 left-0 right-0 h-[52px] bg-[#326273] z-50 flex items-center px-4 gap-2">
       {/* Logo mark + product name */}
-      <div className="flex items-center gap-2 mr-3 flex-shrink-0">
+      <div className="flex items-center gap-2 mr-1 md:mr-3 flex-shrink-0">
         <div className="w-6 h-6 rounded-[6px] bg-[#5c9ead] flex items-center justify-center flex-shrink-0">
           <div className="w-[9px] h-[9px] rounded-[2px] bg-white/92" />
         </div>
@@ -118,13 +97,19 @@ export function Topbar() {
         </span>
       </div>
 
+      {/* HP: judul halaman aktif dan perusahaan menggantikan deretan ikon modul. */}
+      <div className="min-w-0 flex-1 md:hidden">
+        <p className="truncate text-[15px] font-semibold leading-tight text-white">{activeTabLabel}</p>
+        {activeCompany && <p className="truncate text-[11px] leading-tight text-white/70">{activeCompany.name}</p>}
+      </div>
+
       {/* Divider antara logo dan nav */}
-      <div className="w-px h-5 bg-white/20 flex-shrink-0 mx-1" />
+      <div className="hidden md:block w-px h-5 bg-white/20 flex-shrink-0 mx-1" />
 
       {/* Module tabs — icon only with tooltip */}
       <TooltipProvider delayDuration={300}>
         <nav
-          className="flex items-stretch flex-1 overflow-x-auto no-scrollbar"
+          className="hidden md:flex items-stretch flex-1 overflow-x-auto no-scrollbar"
           aria-label="Modul"
           onClick={(event) => {
             if (event.target === event.currentTarget) closeRibbon()
@@ -170,7 +155,7 @@ export function Topbar() {
       </TooltipProvider>
 
       {/* Right: subscription warning + company name + avatar */}
-      <div className="flex items-center gap-3 ml-2 flex-shrink-0">
+      <div className="flex items-center gap-2 md:gap-3 md:ml-2 flex-shrink-0">
         <SubscriptionWarningBadge />
         {activeCompany && (
           <span className="text-white/70 text-[13px] hidden md:block max-w-[140px] truncate">

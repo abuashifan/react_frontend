@@ -28,7 +28,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto px-4 py-4 md:px-6">
+    <div className="h-full overflow-y-auto px-3 py-3 md:px-6 md:py-4">
       <div className="mx-auto max-w-[1400px] space-y-5">
         {hardError ? (
           <section className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800">

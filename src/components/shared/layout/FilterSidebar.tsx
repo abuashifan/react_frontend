@@ -55,7 +55,7 @@ export function FilterSidebar({ children, activeCount = 0, onReset, hint }: Filt
   if (isDashboard || isFormView) return null
 
   return (
-    <aside className="h-full w-[220px] shrink-0 overflow-y-auto border-r border-[#d9e2e5] bg-white">
+    <aside className="h-full w-full shrink-0 overflow-y-auto bg-white md:w-[220px] md:border-r md:border-[#d9e2e5]">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#d9e2e5]">
         <div className="flex items-center gap-2">

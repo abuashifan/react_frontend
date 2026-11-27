@@ -31,7 +31,7 @@ export function TablePagination({ pagination, totalRows, onChange, isFetching }:
   const goTo = (index: number) => onChange({ ...pagination, pageIndex: index })
 
   return (
-    <div className="flex min-h-11 flex-shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[#d9e2e5] bg-white px-3 py-1.5 md:px-4">
+    <div className="flex min-h-11 flex-shrink-0 flex-nowrap items-center justify-between gap-2 sm:gap-3 md:flex-wrap border-t border-[#d9e2e5] bg-white px-3 py-1.5 md:px-4">
       <div className="flex items-center gap-2 min-w-0">
         <span className="hidden whitespace-nowrap text-[12px] text-[#64748b] sm:inline">Baris per halaman</span>
         <Select
@@ -56,14 +56,14 @@ export function TablePagination({ pagination, totalRows, onChange, isFetching }:
 
       <div className="flex items-center gap-2 md:gap-3">
         <span className="whitespace-nowrap text-[12px] text-[#64748b]">
-          Menampilkan {from}–{to} dari {totalRows.toLocaleString('id-ID')} data
+          <span className="hidden sm:inline">Menampilkan </span>{from}–{to} dari {totalRows.toLocaleString('id-ID')}<span className="hidden sm:inline"> data</span>
         </span>
 
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="hidden h-7 w-7 md:inline-flex"
             onClick={() => goTo(0)}
             disabled={pageIndex === 0 || isFetching}
             aria-label="Halaman pertama"
@@ -96,7 +96,7 @@ export function TablePagination({ pagination, totalRows, onChange, isFetching }:
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="hidden h-7 w-7 md:inline-flex"
             onClick={() => goTo(totalPages - 1)}
             disabled={currentPage >= totalPages || isFetching}
             aria-label="Halaman terakhir"

@@ -164,7 +164,7 @@ export default function JournalListPage() {
       size: 140,
       sortable: true,
       sortKey: 'journal_number',
-      meta: { className: 'px-2', headerClassName: 'px-2' },
+      meta: { className: 'px-2', headerClassName: 'px-2', mobileTitle: true },
       cell: ({ original }) => (
         <button type="button" onClick={() => openRecordTab({ label: original.journal_number, path: `/accounting/journals/${original.id}` })} className="font-medium text-[#5c9ead] hover:underline">
           {original.journal_number}
