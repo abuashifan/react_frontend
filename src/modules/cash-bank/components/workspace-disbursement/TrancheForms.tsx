@@ -284,7 +284,7 @@ export function SettlementForm({ row, tranche, onSubmit }: { row: WorkspaceDisbu
           })}</tbody>
         </table>
       </div>
-      <dl className="grid grid-cols-3 gap-2 text-sm">
+      <dl className="grid grid-cols-1 gap-2 sm:grid-cols-3 text-sm">
         <div><dt className="text-muted-foreground">Dana muka</dt><dd className="tabular-nums">{disbursementAmount(tranche.amount_minor)}</dd></div>
         <div><dt className="text-muted-foreground">Biaya terverifikasi</dt><dd className="tabular-nums">{disbursementAmount(spent)}</dd></div>
         <div><dt className="text-muted-foreground">Dikembalikan</dt><dd className={'tabular-nums ' + (refund < 0 ? 'text-red-600' : '')}>{disbursementAmount(refund)}</dd></div>

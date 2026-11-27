@@ -285,7 +285,10 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | | | |____FixedBottomBar.tsx
 | | | | |____FormLayout.tsx
 | | | | |____FormSaveActions.tsx
+| | | | |____MobileNav.tsx
+| | | | |____MobileSheet.tsx
 | | | | |____PrimaryTabs.tsx
+| | | | |____ReportZoomViewport.tsx
 | | | | |____RibbonPanel.tsx
 | | | | |____SecondaryTabs.tsx
 | | | | |____SubscriptionWarningBadge.tsx
@@ -327,6 +330,8 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____useCompanySession.ts
 | | |____useCompanySettings.ts
 | | |____useDocumentActions.ts
+| | |____useIsMobile.ts
+| | |____useIsPrinting.ts
 | | |____useListSort.ts
 | | |____useOpenPrimaryTab.ts
 | | |____usePermission.ts
@@ -914,6 +919,7 @@ Gunakan file ini dulu saat mencari lokasi file. Fokus ke file yang ditulis di ba
 | | |____guards.tsx
 | | |____index.tsx
 | | |____moduleConfig.ts
+| | |____moduleIcons.ts
 | | |____placeholders.tsx
 | | |____legacy/
 | | | |____reportsRibbon.legacy.ts

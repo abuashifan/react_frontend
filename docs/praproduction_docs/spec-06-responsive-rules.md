@@ -255,14 +255,25 @@ Desktop (1024px+):
 
 ## Mobile-Specific Rules (<768px)
 
-Mobile bukan prioritas utama, tapi harus tetap fungsional:
+Di bawah 768 px (HP 360–430 px) aplikasi memakai tata letak HP khusus. Tablet dan desktop tidak
+berubah. Pemicunya `useIsMobile()` (`src/hooks/useIsMobile.ts`, `max-width: 767px`).
 
-1. **Form**: single column, field full width
-2. **Table**: horizontal scroll, hanya tampilkan kolom prioritas (nomor, nama, status, total)
-3. **Sidebar filter**: drawer overlay, tidak langsung tampil
-4. **Ribbon**: disembunyikan, pakai bottom navigation
-5. **Action button**: full width di bottom bar
-6. **Touch target**: minimum 44px height untuk semua interactive element
+| Area | Perilaku di HP | Komponen |
+|---|---|---|
+| Navigasi | Topbar memuat judul halaman aktif dan perusahaan. Ikon modul, ribbon, dan deretan tab primer diganti navigasi bawah: **Beranda**, **Menu** (modul → halaman), **Tab** (halaman yang sedang dibuka, bisa ditutup). Navigasi bawah disembunyikan di tampilan formulir karena formulir punya aksi sendiri. | `MobileNav`, `MobileSheet`, `AppShell`, `Topbar` |
+| Tab sekunder | Hanya tampil bila ada lebih dari satu (daftar + formulir) supaya jalan kembali ke daftar tetap ada. | `AppShell`, `SecondaryTabs` |
+| Daftar | `DataTable` menampilkan kartu: kolom pertama jadi judul (atau kolom ber-`meta.mobileTitle`), kolom lain pasangan label–nilai, kolom `actions` di kaki kartu, pilihan urutan di atas. `mobileCards={false}` mempertahankan tabel. | `DataTable` |
+| Filter | Sidebar filter pindah ke sheet dari bawah lewat tombol **Filter**. | `WorkspaceLayout`, `FilterSidebar` |
+| Formulir | Satu kolom. Baris item (`LineItemsTable`) menjadi kartu bertumpuk, label di atas isian, tanpa gulir horizontal. | `FormLayout`, `LineItemsTable` |
+| Dialog | Dialog Radix biasa memenuhi layar; `AlertDialog` tetap di tengah; sheet bawah memakai `data-mobile-sheet`. Isian 16 px agar iOS tidak memperbesar halaman. | `src/index.css` |
+| Laporan | **Tidak disusun ulang.** Halaman laporan (`/reports`, `/fixed-assets/reports`, `/sales/ar`, `/purchase/ap`) tampil seperti membuka PDF: selebar kertas A4 lalu diperkecil (CSS `zoom`) sampai pas dengan lebar layar, dapat dicubit untuk memperbesar. Tabel yang lebih lebar dari kertas melebarkan dasarnya supaya tidak terpotong. Saat mencetak, perbesaran dikembalikan. | `ReportZoomViewport`, `WorkspaceLayout` |
+| Dashboard | Kartu KPI dua kolom dengan angka yang mengecil, padding rapat. | `KpiCards`, `DashboardPage` |
+
+Aturan tambahan:
+
+1. **Touch target** minimum 40–44 px untuk tombol dan baris yang bisa diketuk.
+2. **Jangan** menambah `user-scalable=no`; laporan bergantung pada cubit-zoom.
+3. Halaman baru yang memakai `DataTable`, `LineItemsTable`, `WorkspaceLayout`, dan `FormLayout` otomatis mengikuti tata letak HP. Halaman dengan tabel buatan sendiri perlu diperiksa di 390 px.
 
 ---
 

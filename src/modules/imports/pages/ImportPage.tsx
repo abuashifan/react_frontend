@@ -705,7 +705,7 @@ export default function ImportPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-4 gap-3 my-4 text-center">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 my-4 text-center">
               <SummaryTile label="Total Baris" value={batch.total_rows} />
               <SummaryTile label="Valid" value={batch.valid_rows} tone="success" />
               <SummaryTile label="Gagal" value={batch.failed_rows} tone="danger" />
@@ -1036,7 +1036,7 @@ function Stepper({ step }: { step: Step }) {
   const activeIndex = steps.findIndex((s) => s.key === step)
 
   return (
-    <div className="flex items-center gap-2 text-[12px]">
+    <div className="flex items-center gap-1.5 text-[12px] md:gap-2">
       {steps.map((s, index) => (
         <div key={s.key} className="flex items-center gap-2">
           <span
@@ -1049,7 +1049,7 @@ function Stepper({ step }: { step: Step }) {
                   : 'bg-[#F1F5F9] text-[#94a3b8]',
             )}
           >
-            {index + 1}. {s.label}
+            {index + 1}<span className="hidden md:inline">. {s.label}</span>{index === activeIndex && <span className="md:hidden">. {s.label}</span>}
           </span>
           {index < steps.length - 1 && <span className="text-[#cbd5e1]">›</span>}
         </div>
