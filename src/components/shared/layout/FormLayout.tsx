@@ -66,7 +66,7 @@ export function FormLayout({
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Document header */}
-      <div className="flex-shrink-0 bg-white border-b border-[#d9e2e5] px-4 lg:px-6 py-3">
+      <div className="flex-shrink-0 bg-white border-b border-[#d9e2e5] px-3 md:px-4 lg:px-6 py-2.5 md:py-3">
         {breadcrumb && <Breadcrumb items={breadcrumb} />}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3 flex-wrap">
@@ -77,14 +77,14 @@ export function FormLayout({
             {status && <DocumentStatusBadge status={status} />}
             {isSystemGenerated && <SystemGeneratedBadge />}
           </div>
-          {headerActions && <div className="flex items-center gap-2">{headerActions}</div>}
+          {headerActions && <div className="flex flex-wrap items-center gap-2 max-md:w-full max-md:[&_button]:min-h-10">{headerActions}</div>}
         </div>
       </div>
 
       {/* Form content */}
       <div
         className={cn(
-          'min-h-0 flex-1 overflow-y-auto p-4 lg:p-6',
+          'min-h-0 flex-1 overflow-y-auto p-3 md:p-4 lg:p-6',
           bottomBar && 'pb-[calc(var(--shell-bottom-bar-actual-h,56px)+32px)]',
         )}
       >

@@ -2,6 +2,7 @@ import { Fragment } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn, formatCurrency } from '@/lib/utils'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import type { LineItemErrorMap } from '@/lib/apiError'
 
 /**
@@ -106,7 +107,17 @@ export function LineItemsTable<T>({
   bordered = true,
   footer,
 }: LineItemsTableProps<T>) {
+  const isMobile = useIsMobile()
   const columnCount = columns.length + 1 + Number(Boolean(getSubtotal)) + Number(Boolean(onRemove))
+  if (isMobile) {
+    return (
+      <MobileLineItems
+        items={items} columns={columns} onAdd={onAdd} onRemove={onRemove} onUpdate={onUpdate} getSubtotal={getSubtotal}
+        isReadOnly={isReadOnly} addLabel={addLabel} emptyLabel={emptyLabel} currency={currency} errors={errors}
+        footer={footer} columnCount={columnCount}
+      />
+    )
+  }
   const dividerClass = bordered ? 'border-r border-[#e2e8f0] last:border-r-0' : undefined
   return (
     <div className="overflow-hidden rounded-lg border border-[#d9e2e5] bg-white">
@@ -256,6 +267,94 @@ export function LineItemsTable<T>({
           className="h-10 w-full justify-start rounded-none border-t border-[#d9e2e5] bg-[#f8fafc] px-3 text-[13px] font-medium text-[#5c9ead] hover:bg-[#eef2f5] hover:text-[#326273]"
         >
           <Plus className="h-3.5 w-3.5" />
+          {addLabel}
+        </Button>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Tampilan HP: tiap baris item menjadi kartu bertumpuk (label di atas isian) dan tidak ada
+ * gulir horizontal. Kontrol sel memakai gaya "flush" tanpa border, jadi dibungkus kotak
+ * berbingkai supaya tetap terbaca sebagai kolom isian.
+ */
+function MobileLineItems<T>({
+  items, columns, onAdd, onRemove, onUpdate, getSubtotal, isReadOnly, addLabel, emptyLabel, currency, errors, footer, columnCount,
+}: Omit<LineItemsTableProps<T>, 'bordered'> & { isReadOnly: boolean; addLabel: string; emptyLabel: string; currency: string; columnCount: number }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-[#d9e2e5] bg-white">
+      {items.length === 0 ? (
+        <p className="px-3 py-8 text-center text-[13px] text-[#94a3b8]">{emptyLabel}</p>
+      ) : (
+        <ul className="divide-y divide-[#e2e8f0]">
+          {items.map((item, index) => {
+            const rowErrors = errors?.[index]
+            const rowMessages = rowErrors ? Object.values(rowErrors) : []
+            return (
+              <li key={index} className={cn('space-y-2.5 p-3', rowMessages.length > 0 && 'bg-red-50/60')}>
+                <div className="flex items-center justify-between">
+                  <span className={cn('text-[12px] font-semibold text-[#64748b]', rowMessages.length > 0 && 'text-red-600')}>Item {index + 1}</span>
+                  {onRemove && !isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={() => onRemove(index)}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded text-[#94a3b8] hover:bg-[#fee2e2] hover:text-[#ef4444]"
+                      aria-label={`Hapus item ${index + 1}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-x-2.5 gap-y-2.5">
+                  {columns.map((column) => {
+                    const cellHasError = rowErrors ? Object.keys(rowErrors).some((field) => fieldMatchesColumn(field, column.id)) : false
+                    // Kolom angka (jumlah, harga, diskon) berdampingan dua-dua; kolom teks/pilihan selebar kartu.
+                    const half = column.align === 'right' || (column.width !== undefined && column.width <= 130)
+                    return (
+                      <div key={column.id} className={cn('min-w-0', half ? 'col-span-1' : 'col-span-2')}>
+                        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">{column.header}</p>
+                        <div
+                          className={cn(
+                            'min-h-10 overflow-hidden rounded-md border border-[#d9e2e5] bg-white [&_input]:h-10 [&_button]:min-h-10',
+                            column.align === 'right' && 'text-right tabular-nums',
+                            isReadOnly && 'border-transparent bg-[#f8fafc]',
+                            cellHasError && 'border-red-400 ring-1 ring-red-400',
+                          )}
+                        >
+                          {column.render({ item, index, isReadOnly, onUpdate: (field, value) => onUpdate?.(index, field, value) })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                {getSubtotal && (
+                  <div className="flex items-center justify-between border-t border-dashed border-[#e2e8f0] pt-2 text-[13px]">
+                    <span className="text-[#64748b]">Subtotal</span>
+                    <span className="font-semibold tabular-nums text-[#24323a]">{formatCurrency(getSubtotal(item), currency)}</span>
+                  </div>
+                )}
+                {rowMessages.map((message) => (
+                  <p key={message} className="text-[11px] text-red-500">{message}</p>
+                ))}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {footer && (
+        <table className="w-full border-t border-[#d9e2e5] bg-[#f8fafc] text-[13px]">
+          <tfoot>{footer(items, columnCount)}</tfoot>
+        </table>
+      )}
+      {!isReadOnly && onAdd && (
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onAdd}
+          className="h-11 w-full justify-start rounded-none border-t border-[#d9e2e5] bg-[#f8fafc] px-3 text-[13px] font-medium text-[#5c9ead] hover:bg-[#eef2f5] hover:text-[#326273]"
+        >
+          <Plus className="h-4 w-4" />
           {addLabel}
         </Button>
       )}

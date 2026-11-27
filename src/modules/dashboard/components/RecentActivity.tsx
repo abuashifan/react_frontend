@@ -61,19 +61,19 @@ export function RecentActivity({ activities, isLoading, isUnavailable }: Props) 
             const bg = ICON_BG[module] ?? ICON_BG.default
             return (
               <Link key={activity.id} to={activity.href}>
-                <div className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[#f8fafc]">
+                <div className="flex items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-[#f8fafc] md:gap-3 md:px-4">
                   <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${bg}`}>
                     <Icon className="h-4 w-4 text-[#64748b]" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[12px] font-medium text-[#1e293b]">{activity.title}</p>
-                    <p className="text-[11px] text-[#64748b]">{activity.subtitle}</p>
+                    <p className="truncate text-[11px] text-[#64748b]">{activity.subtitle}</p>
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-[12px] font-medium tabular-nums text-[#1e293b]">{formatCurrency(activity.amount)}</p>
                     <p className="text-[10px] text-[#94a3b8]">{formatTimeAgo(activity.created_at)}</p>
                   </div>
-                  <DocumentStatusBadge status={activity.status as DocumentStatus} />
+                  <span className="hidden shrink-0 sm:inline-flex"><DocumentStatusBadge status={activity.status as DocumentStatus} /></span>
                 </div>
               </Link>
             )

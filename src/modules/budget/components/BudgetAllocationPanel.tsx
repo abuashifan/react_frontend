@@ -156,7 +156,7 @@ export function BudgetAllocationPanel({ periodId }: Props) {
             )}
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-[#e2e8f0]">
+          <div className="overflow-x-auto rounded-lg border border-[#e2e8f0]">
             <table className="w-full text-[12px]">
               <thead className="bg-[#1e293b]">
                 <tr>

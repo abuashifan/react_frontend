@@ -70,6 +70,7 @@ const columns: ColumnDef<Kontak>[] = [
     id: 'name',
     header: 'Nama',
     size: 200,
+    meta: { mobileTitle: true },
     cell: ({ original }) => original.name,
   },
   {
