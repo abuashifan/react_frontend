@@ -184,7 +184,7 @@ export default function KategoriProdukPage() {
   return (
     <WorkspaceLayout
       title="Kategori Produk"
-      breadcrumb={[{ label: 'Master Data' }, { label: 'Kategori Produk' }]}
+      breadcrumb={[{ label: 'Data Utama' }, { label: 'Kategori Produk' }]}
       sidebar={sidebar}
       action={
         <PermissionGuard permission="master_data.products.create">

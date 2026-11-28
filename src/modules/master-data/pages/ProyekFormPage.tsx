@@ -112,7 +112,7 @@ function ProyekFormPageContent() {
     <FormLayout
       title={isCreate ? 'Buat Proyek' : (proyek?.name ?? 'Proyek')}
       breadcrumb={[
-        { label: 'Master Data' },
+        { label: 'Data Utama' },
         { label: 'Proyek', path: '/master-data/projects' },
         { label: isCreate ? 'Buat' : 'Edit' },
       ]}

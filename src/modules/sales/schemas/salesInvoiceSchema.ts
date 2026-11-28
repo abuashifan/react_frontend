@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const salesInvoiceSchema = z.object({
   invoice_number: z.string().nullable().optional(),
-  customer_id: z.number({ message: 'Customer wajib dipilih' }),
+  customer_id: z.number({ message: 'Pelanggan wajib dipilih' }),
   date: z.string().min(1, 'Tanggal wajib diisi'),
   due_date: z.string().nullable().optional(),
   payment_term_id: z.number().nullable().optional(),

@@ -148,7 +148,7 @@ function VendorPaymentFormPageContent() {
   const billColumns: LineItemColumn<BillLine>[] = [
     {
       id: 'bill_number',
-      header: 'Nomor Bill',
+      header: 'Nomor Faktur',
       width: 160,
       render: ({ item }) => <span className="text-[12px] font-medium text-[#5c9ead]">{item.bill_number}</span>,
     },
@@ -220,7 +220,7 @@ function VendorPaymentFormPageContent() {
   const { saveAndClose, navProps } = useRecordFormNavigation<VendorPaymentFormValues>({
     id,
     basePath: '/purchase/payments',
-    createLabel: 'Pembayaran Vendor Baru',
+    createLabel: 'Pembayaran Pembelian Baru',
     sequenceQueryKey: ['purchase', 'payments', 'adjacent'],
     fetchAdjacent: async (recordId) => (await vendorPaymentApi.adjacent(recordId)).data,
     handleSubmit,
@@ -244,11 +244,11 @@ function VendorPaymentFormPageContent() {
       formDraft.clearDraft()
       setEditing(false)
     },
-    successMessage: (creating) => (creating ? 'Pembayaran vendor berhasil dibuat.' : 'Pembayaran vendor berhasil diperbarui.'),
+    successMessage: (creating) => (creating ? 'Pembayaran pemasok berhasil dibuat.' : 'Pembayaran pemasok berhasil diperbarui.'),
     onError: (saveError) => {
       // Backend memakai nama kolom DB (`payment_date`), form memakai `date`.
       applyApiValidationErrors(saveError, setError, { payment_date: 'date' })
-      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan pembayaran vendor.'))
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan pembayaran pembelian.'))
     },
     canSave: isEditable,
   })
@@ -271,11 +271,11 @@ function VendorPaymentFormPageContent() {
   const handleDelete = async (reason?: string) => {
     try {
       await remove.mutateAsync({ id: Number(id), reason })
-      toast.success('Pembayaran vendor berhasil dihapus.')
+      toast.success('Pembayaran pemasok berhasil dihapus.')
       setDeleteOpen(false)
       closeRecordTab(window.location.pathname, '/purchase/payments')
     } catch (deleteError) {
-      toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus pembayaran vendor.'))
+      toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus pembayaran pembelian.'))
     }
   }
 
@@ -306,7 +306,7 @@ function VendorPaymentFormPageContent() {
 
   if (!isCreate && isLoading) {
     return (
-      <FormLayout title="Pembayaran Vendor" breadcrumb={[{ label: 'Pembelian' }, { label: 'Pembayaran', path: '/purchase/payments' }, { label: 'Memuat...' }]}>
+      <FormLayout title="Pembayaran Pembelian" breadcrumb={[{ label: 'Pembelian' }, { label: 'Pembayaran Pembelian', path: '/purchase/payments' }, { label: 'Memuat...' }]}>
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
       </FormLayout>
     )
@@ -315,10 +315,10 @@ function VendorPaymentFormPageContent() {
   return (
     <>
       <FormLayout
-        title={isCreate ? 'Buat Pembayaran Vendor' : 'Pembayaran Vendor'}
+        title={isCreate ? 'Buat Pembayaran Pembelian' : 'Pembayaran Pembelian'}
         documentNumber={payment?.number}
         status={status}
-        breadcrumb={[{ label: 'Pembelian' }, { label: 'Pembayaran', path: '/purchase/payments' }, { label: isCreate ? 'Buat Pembayaran' : (payment?.number ?? '') }]}
+        breadcrumb={[{ label: 'Pembelian' }, { label: 'Pembayaran Pembelian', path: '/purchase/payments' }, { label: isCreate ? 'Buat Pembayaran' : (payment?.number ?? '') }]}
         headerActions={
           <>
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
@@ -331,11 +331,11 @@ function VendorPaymentFormPageContent() {
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
-                Vendor <span className="text-red-500">*</span>
+                Pemasok <span className="text-red-500">*</span>
               </Label>
               <SearchableSelect
                 cacheKey="contact"
-                triggerAriaLabel="Vendor pembayaran"
+                triggerAriaLabel="Pemasok yang dibayar"
                 value={vendorId ?? null}
                 onChange={(v) => {
                   if (v !== vendorId) setBillLines([])
@@ -344,7 +344,7 @@ function VendorPaymentFormPageContent() {
                   setBillPage(1)
                 }}
                 onSearch={(q) => kontakApi.search(q, 'supplier')}
-                placeholder="Pilih vendor..."
+                placeholder="Pilih pemasok..."
                 disabled={!canAllocate}
                 error={errors.vendor_id?.message}
                 selectedOptions={payment?.vendor ? [{ value: payment.vendor.id, label: payment.vendor.name }] : []}
@@ -414,27 +414,27 @@ function VendorPaymentFormPageContent() {
 
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tagihan yang Dibayar</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Faktur Pembelian yang Dibayar</p>
             </div>
             {canAllocate && vendorId && (
               <div className="mb-3 space-y-2 rounded border border-[#e2e8f0] p-3 print:hidden">
-                <p className="text-[12px] font-semibold">Tagihan vendor yang belum lunas</p>
+                <p className="text-[12px] font-semibold">Faktur pembelian yang belum lunas</p>
                 {billsLoading ? (
-                  <p className="text-[12px]">Memuat tagihan vendor...</p>
+                  <p className="text-[12px]">Memuat faktur pembelian...</p>
                 ) : billsError ? (
                   <p role="alert" className="text-[12px]">
-                    {getApiErrorMessage(billsError, 'Daftar tagihan belum dapat dimuat.')}{' '}
+                    {getApiErrorMessage(billsError, 'Daftar faktur pembelian belum dapat dimuat.')}{' '}
                     <Button type="button" variant="ghost" size="sm" onClick={() => void reloadBills()}>
                       Coba lagi
                     </Button>
                   </p>
                 ) : openBills.length === 0 ? (
-                  <p className="text-[12px] text-[#64748b]">Tidak ada tagihan terbuka. Tagihan yang bisa dibayar harus sudah diposting dan masih memiliki sisa pembayaran.</p>
+                  <p className="text-[12px] text-[#64748b]">Tidak ada faktur pembelian terbuka. Faktur Pembelian yang bisa dibayar harus sudah diposting dan masih memiliki sisa pembayaran.</p>
                 ) : (
                   <>
                     <Input
-                      aria-label="Cari tagihan vendor"
-                      placeholder="Cari nomor tagihan..."
+                      aria-label="Cari faktur pembelian"
+                      placeholder="Cari nomor faktur..."
                       value={billSearch}
                       onChange={(event) => {
                         setBillSearch(event.target.value)
@@ -460,7 +460,7 @@ function VendorPaymentFormPageContent() {
                         </Button>
                       </div>
                     ))}
-                    {matchingBills.length === 0 && <p className="text-[12px]">Nomor tagihan tidak ditemukan.</p>}
+                    {matchingBills.length === 0 && <p className="text-[12px]">Nomor faktur tidak ditemukan.</p>}
                     {billPages > 1 && (
                       <div className="flex items-center gap-2 text-[12px]">
                         <Button type="button" variant="outline" size="sm" disabled={currentBillPage <= 1} onClick={() => setBillPage(currentBillPage - 1)}>
@@ -484,7 +484,7 @@ function VendorPaymentFormPageContent() {
               onRemove={(index) => setBillLines((prev) => prev.filter((_, idx) => idx !== index))}
               onUpdate={(index, field, value) => setBillLines((rows) => rows.map((row, i) => i === index ? { ...row, [field]: value } : row))}
               isReadOnly={!isEditable}
-              emptyLabel="Belum ada tagihan dipilih"
+              emptyLabel="Belum ada faktur pembelian dipilih"
             />
             <div className="mt-3 flex flex-col items-end gap-1 text-[13px] text-[#24323a]">
               <p>Kas dibayar: <span className="font-semibold tabular-nums">{formatCurrency(totalAmount)}</span></p>

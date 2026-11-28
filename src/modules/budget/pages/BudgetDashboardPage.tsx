@@ -24,7 +24,7 @@ export default function BudgetDashboardPage() {
   const chartData = useMemo(
     () =>
       (result?.rows ?? []).map((row) => ({
-        name: row.department_name ?? 'Tanpa Cost Center',
+        name: row.department_name ?? 'Tanpa Departemen',
         Anggaran: parseFloat(row.budget_amount),
         Realisasi: parseFloat(row.actual_amount),
       })),
@@ -78,7 +78,7 @@ export default function BudgetDashboardPage() {
 
             <div className="rounded-lg border border-[#e2e8f0] bg-white p-4">
               <p className="mb-3 text-[11px] font-bold uppercase tracking-wide text-[#64748b]">
-                Anggaran vs Realisasi per Cost Center
+                Anggaran vs Realisasi per Departemen
               </p>
               {chartData.length === 0 ? (
                 <p className="py-8 text-center text-[13px] text-[#94a3b8]">Belum ada data anggaran.</p>

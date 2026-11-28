@@ -32,10 +32,10 @@ const STATUSES: GoodsReceiptStatus[] = ['draft', 'received', 'partially_billed',
  */
 const EXPORT_COLUMNS: ExportColumn<GoodsReceipt>[] = [
   { header: 'ID', value: (row) => row.id },
-  { header: 'Nomor GR', value: (row) => row.number },
-  { header: 'Nomor PO', value: (row) => row.purchase_order_number },
+  { header: 'Nomor Penerimaan Barang', value: (row) => row.number },
+  { header: 'Nomor Pesanan', value: (row) => row.purchase_order_number },
   { header: 'Tanggal', value: (row) => toExcelDate(row.date), format: 'date' },
-  { header: 'Vendor', value: (row) => row.vendor?.name },
+  { header: 'Pemasok', value: (row) => row.vendor?.name },
   { header: 'Gudang', value: (row) => row.warehouse?.name },
   { header: 'Status', value: (row) => row.status },
 ]
@@ -141,7 +141,7 @@ export default function GoodsReceiptListPage() {
   const columns: ColumnDef<GoodsReceipt>[] = [
     {
       id: 'number',
-      header: 'Nomor GR',
+      header: 'Nomor Penerimaan Barang',
       size: 140,
       meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => (
@@ -150,9 +150,9 @@ export default function GoodsReceiptListPage() {
         </button>
       ),
     },
-    { id: 'po', header: 'Nomor PO', size: 130, cell: ({ original }) => original.purchase_order_number ?? '-' },
+    { id: 'po', header: 'Nomor Pesanan', size: 130, cell: ({ original }) => original.purchase_order_number ?? '-' },
     { id: 'date', header: 'Tanggal', size: 110, cell: ({ original }) => formatDate(original.date) },
-    { id: 'vendor', header: 'Vendor', size: 200, cell: ({ original }) => original.vendor?.name ?? '-' },
+    { id: 'vendor', header: 'Pemasok', size: 200, cell: ({ original }) => original.vendor?.name ?? '-' },
     { id: 'warehouse', header: 'Gudang', size: 150, cell: ({ original }) => original.warehouse?.name ?? '-' },
     { id: 'status', header: 'Status', size: 120, cell: ({ original }) => <DocumentStatusBadge status={original.status} /> },
   ]
@@ -171,7 +171,7 @@ export default function GoodsReceiptListPage() {
         <ListSearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Cari nomor GR, vendor..."
+          placeholder="Cari nomor penerimaan, pemasok..."
           className="w-full max-w-none"
         />
       </div>
@@ -192,7 +192,7 @@ export default function GoodsReceiptListPage() {
           resetSelection()
         }}
       />
-      <FilterSection title="Vendor">
+      <FilterSection title="Pemasok">
         <SearchableSelect cacheKey="contact"
           value={filterVendor}
           onChange={(v) => {
@@ -200,7 +200,7 @@ export default function GoodsReceiptListPage() {
             resetSelection()
           }}
           onSearch={(q) => kontakApi.search(q, 'supplier')}
-          placeholder="Semua vendor"
+          placeholder="Semua pemasok"
         />
       </FilterSection>
     </FilterSidebar>
@@ -228,7 +228,7 @@ export default function GoodsReceiptListPage() {
             />
             <PermissionGuard permission="purchase.goods_receipts.create">
               <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Penerimaan Baru', path: '/purchase/goods-receipts/create' })}>
-                <Plus className="mr-1 h-3.5 w-3.5" /> Buat GR
+                <Plus className="mr-1 h-3.5 w-3.5" /> Buat Penerimaan Barang
               </Button>
             </PermissionGuard>
           </>
@@ -249,7 +249,7 @@ export default function GoodsReceiptListPage() {
           onRowSelect={setSelectedRows}
           bulkActions={bulkActions}
           emptyTitle="Belum ada penerimaan barang"
-          emptyDescription="Buat GR dari Purchase Order yang sudah dikonfirmasi."
+          emptyDescription="Buat Penerimaan Barang dari Pesanan Pembelian yang sudah dikonfirmasi."
         />
       </WorkspaceLayout>
 

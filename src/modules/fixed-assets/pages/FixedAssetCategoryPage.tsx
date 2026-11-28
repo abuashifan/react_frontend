@@ -27,7 +27,7 @@ const CLASS_LABEL = {
 } as const
 
 const DEPRECIATION_LABEL = {
-  depreciation: 'Depresiasi',
+  depreciation: 'Penyusutan',
   amortization: 'Amortisasi',
   none: 'Tidak Ada',
   impairment_only: 'Impairment Only',
@@ -42,12 +42,12 @@ type AccountFieldName =
   | 'disposal_loss_account_id'
 
 const ACCOUNT_FIELDS: { name: AccountFieldName; label: string }[] = [
-  { name: 'asset_account_id', label: 'Akun Aktiva' },
-  { name: 'accumulated_depreciation_account_id', label: 'Akun Akumulasi Depresiasi' },
-  { name: 'depreciation_expense_account_id', label: 'Akun Beban Depresiasi' },
+  { name: 'asset_account_id', label: 'Akun Aset' },
+  { name: 'accumulated_depreciation_account_id', label: 'Akun Akumulasi Penyusutan' },
+  { name: 'depreciation_expense_account_id', label: 'Akun Beban Penyusutan' },
   { name: 'clearing_account_id', label: 'Akun Clearing' },
-  { name: 'disposal_gain_account_id', label: 'Akun Laba Disposal' },
-  { name: 'disposal_loss_account_id', label: 'Akun Rugi Disposal' },
+  { name: 'disposal_gain_account_id', label: 'Akun Laba Pelepasan' },
+  { name: 'disposal_loss_account_id', label: 'Akun Rugi Pelepasan' },
 ]
 
 type AccountSearchType = 'asset' | 'expense' | 'revenue'
@@ -159,17 +159,17 @@ export default function FixedAssetCategoryPage() {
     try {
       if (editingItem) {
         await mutations.update.mutateAsync({ id: editingItem.id, payload: values })
-        toast.success('Kategori aktiva berhasil diperbarui.')
+        toast.success('Kategori aset berhasil diperbarui.')
       } else {
         await mutations.create.mutateAsync(values)
-        toast.success('Kategori aktiva berhasil dibuat.')
+        toast.success('Kategori aset berhasil dibuat.')
       }
       setDialogOpen(false)
     } catch (saveError) {
       // Tandai field penyebab dari backend (mis. kode kategori duplikat) supaya
       // user tahu isian mana yang salah, bukan hanya toast generik.
       applyApiValidationErrors(saveError, setError)
-      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan kategori aktiva.'))
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan kategori aset.'))
     }
   }
 
@@ -195,7 +195,7 @@ export default function FixedAssetCategoryPage() {
     },
     {
       id: 'depreciation_type',
-      header: 'Tipe Depresiasi',
+      header: 'Jenis Penyusutan',
       size: 150,
       cell: ({ original }) => DEPRECIATION_LABEL[original.depreciation_type],
     },
@@ -228,8 +228,8 @@ export default function FixedAssetCategoryPage() {
 
   return (
     <WorkspaceLayout
-      title="Kategori Aktiva"
-      breadcrumb={[{ label: 'Aktiva Tetap' }, { label: 'Kategori' }]}
+      title="Kategori Aset"
+      breadcrumb={[{ label: 'Aset Tetap' }, { label: 'Kategori' }]}
       action={
         <PermissionGuard permission="fixed_assets.settings.create">
           <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={openCreate}>
@@ -247,15 +247,15 @@ export default function FixedAssetCategoryPage() {
         isFetching={isFetching}
         pagination={{ pageIndex: 0, pageSize: 25 }}
         onPaginationChange={() => {}}
-        emptyTitle="Belum ada kategori aktiva"
-        emptyDescription="Kategori menentukan mapping akun dan default depresiasi."
+        emptyTitle="Belum ada kategori aset"
+        emptyDescription="Kategori menentukan mapping akun dan default penyusutan."
       />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle className="text-[15px]">{editingItem ? 'Edit Kategori Aktiva' : 'Tambah Kategori Aktiva'}</DialogTitle>
-            <DialogDescription className="text-[13px] text-[#64748b]">Atur akun aset, akumulasi penyusutan, dan beban untuk kategori aktiva ini.</DialogDescription>
+            <DialogTitle className="text-[15px]">{editingItem ? 'Edit Kategori Aset' : 'Tambah Kategori Aset'}</DialogTitle>
+            <DialogDescription className="text-[13px] text-[#64748b]">Atur akun aset, akumulasi penyusutan, dan beban untuk kategori aset ini.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-1">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -278,9 +278,9 @@ export default function FixedAssetCategoryPage() {
                 <FieldError message={errors.asset_class?.message} />
               </div>
               <div className="flex flex-col gap-1">
-                <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tipe Depresiasi</Label>
+                <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jenis Penyusutan</Label>
                 <select {...register('depreciation_type')} className={cn('h-9 rounded-md border border-[#d9e2e5] bg-white px-2 text-[13px]', fieldErrorClass(errors.depreciation_type))}>
-                  <option value="depreciation">Depresiasi</option>
+                  <option value="depreciation">Penyusutan</option>
                   <option value="amortization">Amortisasi</option>
                   <option value="none">Tidak Ada</option>
                   <option value="impairment_only">Impairment Only</option>

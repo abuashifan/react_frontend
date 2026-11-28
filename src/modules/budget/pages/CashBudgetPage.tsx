@@ -51,7 +51,7 @@ export default function CashBudgetPage() {
         <ReportExportButton
           variant="outline"
           filename={`cash-budget-${cash.period.name}`}
-          sheetName="Cash Budget"
+          sheetName="Anggaran Kas"
           headers={['Bagian', 'Keterangan', 'Anggaran', 'Realisasi']}
           rows={() => [
             ['Ringkasan', 'Saldo Awal Kas', toExcelNumber(cash.beginning_cash), toExcelNumber(cash.beginning_cash)],
@@ -82,7 +82,7 @@ export default function CashBudgetPage() {
 
         {isError && (
           <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-[12px] text-red-700">
-            Gagal memuat cash budget.
+            Gagal memuat anggaran kas.
           </div>
         )}
 

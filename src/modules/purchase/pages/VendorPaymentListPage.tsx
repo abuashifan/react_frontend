@@ -85,7 +85,7 @@ export default function VendorPaymentListPage() {
   const handleBulkVoid = async (reason: string) => {
     const selectedPayments = rows.filter((payment) => bulkVoidIds.includes(String(payment.id)))
     if (selectedPayments.length === 0) {
-      toast.warning('Tidak ada pembayaran vendor valid untuk di-void.')
+      toast.warning('Tidak ada pembayaran pembelian valid untuk di-void.')
       setBulkVoidOpen(false)
       setBulkVoidIds([])
       return
@@ -98,11 +98,11 @@ export default function VendorPaymentListPage() {
       const failureDetail = getBulkFailureDetail(results)
 
       if (failureCount === 0) {
-        toast.success(`${successCount} pembayaran vendor berhasil di-void.`)
+        toast.success(`${successCount} pembayaran pembelian berhasil di-void.`)
       } else if (successCount === 0) {
-        toast.error(`Gagal void ${failureCount} pembayaran vendor.${failureDetail ? ` ${failureDetail}` : ''}`)
+        toast.error(`Gagal void ${failureCount} pembayaran pembelian.${failureDetail ? ` ${failureDetail}` : ''}`)
       } else {
-        toast.warning(`${successCount} pembayaran vendor berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
+        toast.warning(`${successCount} pembayaran pembelian berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
       }
     } catch (bulkError) {
       toast.error(getApiErrorMessage(bulkError, 'Gagal memproses bulk void.'))
@@ -126,7 +126,7 @@ export default function VendorPaymentListPage() {
       ),
     },
     { id: 'date', header: 'Tanggal', size: 110, cell: ({ original }) => formatDate(original.date) },
-    { id: 'vendor', header: 'Vendor', size: 200, cell: ({ original }) => original.vendor?.name ?? '-' },
+    { id: 'vendor', header: 'Pemasok', size: 200, cell: ({ original }) => original.vendor?.name ?? '-' },
     {
       id: 'amount',
       header: 'Jumlah',
@@ -151,7 +151,7 @@ export default function VendorPaymentListPage() {
         <ListSearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Cari nomor pembayaran, vendor..."
+          placeholder="Cari nomor pembayaran, pemasok..."
           className="w-full max-w-none"
         />
       </div>
@@ -172,7 +172,7 @@ export default function VendorPaymentListPage() {
           resetSelection()
         }}
       />
-      <FilterSection title="Vendor">
+      <FilterSection title="Pemasok">
         <SearchableSelect cacheKey="contact"
           value={filterVendor}
           onChange={(v) => {
@@ -180,7 +180,7 @@ export default function VendorPaymentListPage() {
             resetSelection()
           }}
           onSearch={(q) => kontakApi.search(q, 'supplier')}
-          placeholder="Semua vendor"
+          placeholder="Semua pemasok"
         />
       </FilterSection>
     </FilterSidebar>
@@ -189,13 +189,13 @@ export default function VendorPaymentListPage() {
   return (
     <>
       <WorkspaceLayout
-        title="Pembayaran Vendor"
-        breadcrumb={[{ label: 'Pembelian' }, { label: 'Pembayaran' }]}
+        title="Pembayaran Pembelian"
+        breadcrumb={[{ label: 'Pembelian' }, { label: 'Pembayaran Pembelian' }]}
         sidebar={sidebar}
         action={
           <PermissionGuard permission="purchase.payments.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Pembayaran Baru', path: '/purchase/payments/create' })}>
-              <Plus className="mr-1 h-3.5 w-3.5" /> Buat Pembayaran
+            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Pembayaran Pembelian Baru', path: '/purchase/payments/create' })}>
+              <Plus className="mr-1 h-3.5 w-3.5" /> Buat Pembayaran Pembelian
             </Button>
           </PermissionGuard>
         }
@@ -214,8 +214,8 @@ export default function VendorPaymentListPage() {
           selectedRows={selectedRows}
           onRowSelect={setSelectedRows}
           bulkActions={bulkActions}
-          emptyTitle="Belum ada pembayaran vendor"
-          emptyDescription="Buat pembayaran untuk menyelesaikan tagihan vendor."
+          emptyTitle="Belum ada pembayaran pembelian"
+          emptyDescription="Buat pembayaran untuk menyelesaikan faktur pembelian."
         />
       </WorkspaceLayout>
 

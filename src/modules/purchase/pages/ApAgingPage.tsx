@@ -10,8 +10,8 @@ export default function ApAgingPage() {
 
   return (
     <WorkspaceLayout
-      title="AP Aging"
-      breadcrumb={[{ label: 'Pembelian' }, { label: 'AP' }, { label: 'Aging' }]}
+      title="Umur Utang"
+      breadcrumb={[{ label: 'Pembelian' }, { label: 'Utang' }, { label: 'Aging' }]}
     >
       {report && <p className="mb-3 text-[12px] text-[#64748b]">As of {report.as_of_date}</p>}
       <div className="overflow-hidden rounded-lg border border-[#d9e2e5] bg-white">
@@ -19,7 +19,7 @@ export default function ApAgingPage() {
           <table className="min-w-full border-collapse text-[13px]">
             <thead>
               <tr className="bg-[#eeeeee]">
-                <th className="px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b]">Vendor</th>
+                <th className="px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b]">Pemasok</th>
                 <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">Current</th>
                 <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">1–30 Hari</th>
                 <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">31–60 Hari</th>

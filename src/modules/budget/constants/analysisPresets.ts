@@ -19,13 +19,13 @@ export interface AnalysisPreset {
 }
 
 export const ANALYSIS_PRESETS: Record<string, AnalysisPreset> = {
-  'vs-actual': { label: 'Budget vs Actual', groupBy: ['account'], mode: 'summary' },
-  variance: { label: 'Analisis Variance', groupBy: ['account'], mode: 'variance' },
+  'vs-actual': { label: 'Anggaran vs Realisasi', groupBy: ['account'], mode: 'summary' },
+  variance: { label: 'Analisis Selisih', groupBy: ['account'], mode: 'variance' },
   utilization: { label: 'Serapan Anggaran', groupBy: ['account'], mode: 'summary', sortByUtilization: true },
   // group_by kosong = satu baris total; drill-down yang menurunkannya per dimensi.
   summary: { label: 'Ringkasan Anggaran', groupBy: [], mode: 'summary' },
   'by-account': { label: 'Anggaran per Akun', groupBy: ['account'], mode: 'summary' },
-  'by-cost-center': { label: 'Anggaran per Cost Center', groupBy: ['department'], mode: 'summary' },
+  'by-cost-center': { label: 'Anggaran per Departemen', groupBy: ['department'], mode: 'summary' },
   'by-project': { label: 'Anggaran per Proyek', groupBy: ['project'], mode: 'summary' },
   'by-period': { label: 'Anggaran per Bulan', groupBy: ['period'], mode: 'summary' },
   revenue: { label: 'Anggaran Pendapatan', groupBy: ['account'], mode: 'summary', direction: 'revenue' },

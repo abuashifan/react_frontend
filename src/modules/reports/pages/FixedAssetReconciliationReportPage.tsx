@@ -78,7 +78,7 @@ export default function FixedAssetReconciliationReportPage() {
               <ReportExportButton
                 variant="outline"
                 filename={`rekonsiliasi-aktiva-tetap-${activeQuery?.as_of_period ?? ''}`}
-                sheetName="Rekonsiliasi Aktiva Tetap"
+                sheetName="Rekonsiliasi Aset Tetap"
                 headers={['Komponen', 'Register Aset', 'Buku Besar (GL)', 'Selisih']}
                 rows={() => rows.map((row) => [
                   row.label,

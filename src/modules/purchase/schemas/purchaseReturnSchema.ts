@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const purchaseReturnSchema = z.object({
-  vendor_id: z.number({ message: 'Vendor wajib dipilih' }),
+  vendor_id: z.number({ message: 'Pemasok wajib dipilih' }),
   date: z.string().min(1, 'Tanggal wajib diisi'),
   notes: z.string().optional(),
 })

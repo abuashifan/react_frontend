@@ -225,14 +225,14 @@ export default function CashPaymentListPage() {
   return (
     <>
       <WorkspaceLayout
-        title="Pengeluaran Kas"
-        breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Pengeluaran Kas' }]}
+        title="Pembayaran Lainnya"
+        breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Pembayaran Lainnya' }]}
         sidebar={sidebar}
         action={
           <>
             <ListExportButton permission="cash_bank.payments.export"
               filename="pengeluaran-kas"
-              sheetName="Pengeluaran Kas"
+              sheetName="Pembayaran Lainnya"
               columns={EXPORT_COLUMNS}
               totalRows={data?.meta.total}
               fetchPage={(exportPage, exportPerPage) => cashPaymentApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}

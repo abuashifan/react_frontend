@@ -154,7 +154,7 @@ export default function ProductHistoryReportPage() {
                   variant="outline"
                   filename={`riwayat-produk-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}`}
                   sheetName="Riwayat Produk"
-                  headers={['Tanggal', 'Dokumen', 'Jenis', 'Pelanggan/Supplier', 'Qty', 'Harga', 'Total']}
+                  headers={['Tanggal', 'Dokumen', 'Jenis', 'Pelanggan/Pemasok', 'Qty', 'Harga', 'Total']}
                   rows={() => allRows.map((r) => [toExcelDate(r.date), r.document_number, DOCUMENT_LABELS[r.document_type], r.contact_name ?? '', toExcelNumber(r.quantity), toExcelNumber(r.unit_price), toExcelNumber(r.line_total)])}
                   formats={['date', 'text', 'text', 'text', 'number', 'currency', 'currency']}
                 />
@@ -199,7 +199,7 @@ export default function ProductHistoryReportPage() {
                     <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal</th>
                     <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Dokumen</th>
                     <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jenis</th>
-                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pelanggan / Supplier</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pelanggan / Pemasok</th>
                     <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Qty</th>
                     <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Harga</th>
                     <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Total</th>

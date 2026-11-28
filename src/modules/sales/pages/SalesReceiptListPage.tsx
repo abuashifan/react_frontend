@@ -33,7 +33,7 @@ const EXPORT_COLUMNS: ExportColumn<SalesReceipt>[] = [
   { header: 'ID', value: (row) => row.id },
   { header: 'Nomor', value: (row) => row.number },
   { header: 'Tanggal', value: (row) => toExcelDate(row.date), format: 'date' },
-  { header: 'Customer', value: (row) => row.customer?.name },
+  { header: 'Pelanggan', value: (row) => row.customer?.name },
   { header: 'Akun', value: (row) => row.cash_bank_account?.name },
   { header: 'Jumlah', value: (row) => row.amount, format: 'currency' },
   { header: 'Status', value: (row) => row.status },
@@ -151,7 +151,7 @@ export default function SalesReceiptListPage() {
       ),
     },
     { id: 'date', header: 'Tanggal', size: 110, cell: ({ original }) => formatDate(original.date) },
-    { id: 'customer', header: 'Customer', size: 180, cell: ({ original }) => original.customer?.name ?? '-' },
+    { id: 'customer', header: 'Pelanggan', size: 180, cell: ({ original }) => original.customer?.name ?? '-' },
     { id: 'account', header: 'Akun', size: 150, cell: ({ original }) => original.cash_bank_account?.name ?? '-' },
     {
       id: 'amount',
@@ -182,7 +182,7 @@ export default function SalesReceiptListPage() {
         <ListSearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Cari nomor penerimaan, customer..."
+          placeholder="Cari nomor penerimaan, pelanggan..."
           className="w-full max-w-none"
         />
       </div>
@@ -203,7 +203,7 @@ export default function SalesReceiptListPage() {
           resetSelection()
         }}
       />
-      <FilterSection title="Customer">
+      <FilterSection title="Pelanggan">
         <SearchableSelect cacheKey="contact"
           value={filterCustomer}
           onChange={(v) => {
@@ -211,7 +211,7 @@ export default function SalesReceiptListPage() {
             resetSelection()
           }}
           onSearch={(q) => kontakApi.search(q, 'customer')}
-          placeholder="Semua customer"
+          placeholder="Semua pelanggan"
         />
       </FilterSection>
     </FilterSidebar>
@@ -221,19 +221,19 @@ export default function SalesReceiptListPage() {
     <>
       <WorkspaceLayout
         title="Penerimaan Penjualan"
-        breadcrumb={[{ label: 'Sales' }, { label: 'Penerimaan' }]}
+        breadcrumb={[{ label: 'Penjualan' }, { label: 'Penerimaan Penjualan' }]}
         sidebar={sidebar}
         action={
           <>
             <ListExportButton permission="sales.receipts.export"
               filename="penerimaan-penjualan"
-              sheetName="Penerimaan"
+              sheetName="Penerimaan Penjualan"
               columns={EXPORT_COLUMNS}
               totalRows={data?.meta.total}
               fetchPage={(exportPage, exportPerPage) => salesReceiptApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}
             />
             <PermissionGuard permission="sales.receipts.create">
-              <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Penerimaan Baru', path: '/sales/receipts/create' })}>
+              <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Penerimaan Penjualan Baru', path: '/sales/receipts/create' })}>
                 <Plus className="mr-1 h-3.5 w-3.5" /> Catat Penerimaan
               </Button>
             </PermissionGuard>
@@ -255,7 +255,7 @@ export default function SalesReceiptListPage() {
           onRowSelect={setSelectedRows}
           bulkActions={bulkActions}
           emptyTitle="Belum ada penerimaan"
-          emptyDescription="Catat pembayaran yang diterima dari customer."
+          emptyDescription="Catat pembayaran yang diterima dari pelanggan."
         />
       </WorkspaceLayout>
 

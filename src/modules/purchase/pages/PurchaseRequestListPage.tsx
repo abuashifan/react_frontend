@@ -119,8 +119,8 @@ export default function PurchaseRequestListPage() {
 
   return (
     <WorkspaceLayout
-      title="Purchase Request"
-      breadcrumb={[{ label: 'Pembelian' }, { label: 'Purchase Request' }]}
+      title="Permintaan Pembelian"
+      breadcrumb={[{ label: 'Pembelian' }, { label: 'Permintaan Pembelian' }]}
       sidebar={sidebar}
       action={
         <>
@@ -138,7 +138,7 @@ export default function PurchaseRequestListPage() {
           />
           <PermissionGuard permission="purchase.requests.create">
             <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Permintaan Baru', path: '/purchase/requests/create' })}>
-              <Plus className="mr-1 h-3.5 w-3.5" /> Buat PR
+              <Plus className="mr-1 h-3.5 w-3.5" /> Buat Permintaan Pembelian
             </Button>
           </PermissionGuard>
         </>
@@ -152,8 +152,8 @@ export default function PurchaseRequestListPage() {
         isFetching={isFetching}
         pagination={{ pageIndex: page, pageSize: 25 }}
         onPaginationChange={(p) => setPage(p.pageIndex)}
-        emptyTitle="Belum ada purchase request"
-        emptyDescription="Buat PR pertama untuk memulai proses pembelian."
+        emptyTitle="Belum ada permintaan pembelian"
+        emptyDescription="Buat Permintaan Pembelian pertama untuk memulai proses pembelian."
       />
     </WorkspaceLayout>
   )

@@ -201,7 +201,7 @@ export default function SatuanPage() {
   return (
     <WorkspaceLayout
       title="Satuan"
-      breadcrumb={[{ label: 'Master Data' }, { label: 'Satuan' }]}
+      breadcrumb={[{ label: 'Data Utama' }, { label: 'Satuan' }]}
       sidebar={sidebar}
       action={
         <PermissionGuard permission="master_data.units.create">

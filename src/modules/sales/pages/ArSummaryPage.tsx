@@ -22,17 +22,17 @@ export default function ArSummaryPage() {
 
   return (
     <WorkspaceLayout
-      title="AR Customer Summary"
-      breadcrumb={[{ label: 'Sales' }, { label: 'AR' }, { label: 'Customer Summary' }]}
+      title="Ringkasan Piutang per Pelanggan"
+      breadcrumb={[{ label: 'Penjualan' }, { label: 'Piutang' }, { label: 'Ringkasan Pelanggan' }]}
     >
       <div className="mb-3 flex flex-wrap items-end gap-3">
         <div className="w-60">
-          <Label className="mb-1 block text-[11px] font-semibold uppercase text-[#64748b]">Customer</Label>
+          <Label className="mb-1 block text-[11px] font-semibold uppercase text-[#64748b]">Pelanggan</Label>
           <SearchableSelect cacheKey="contact"
             value={filterCustomer ?? null}
             onChange={(v) => setFilterCustomer(v ?? undefined)}
             onSearch={(q) => kontakApi.search(q, 'customer')}
-            placeholder="Semua customer"
+            placeholder="Semua pelanggan"
           />
         </div>
         <div>
@@ -46,11 +46,11 @@ export default function ArSummaryPage() {
           <table className="min-w-full border-collapse text-[13px]">
             <thead>
               <tr className="bg-[#eeeeee]">
-                <th className="px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b]">Customer</th>
+                <th className="px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b]">Pelanggan</th>
                 <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">Total Piutang</th>
                 <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">Overdue</th>
-                <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">Saldo Deposit</th>
-                <th className="px-3 py-2 text-center text-[11px] font-bold uppercase text-[#64748b]">Invoice Terbuka</th>
+                <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">Saldo Uang Muka</th>
+                <th className="px-3 py-2 text-center text-[11px] font-bold uppercase text-[#64748b]">Faktur Penjualan Terbuka</th>
               </tr>
             </thead>
             <tbody>

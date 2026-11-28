@@ -207,14 +207,14 @@ export default function CoaListPage() {
 
   return (
     <WorkspaceLayout
-      title="Chart of Accounts"
-      breadcrumb={[{ label: 'Master Data' }, { label: 'COA' }]}
+      title="Daftar Akun"
+      breadcrumb={[{ label: 'Data Utama' }, { label: 'Daftar Akun' }]}
       sidebar={sidebar}
       action={
         <>
           <ListExportButton permission="master_data.coa.export"
             filename="coa"
-            sheetName="Chart of Accounts"
+            sheetName="Daftar Akun"
             columns={EXPORT_COLUMNS}
             totalRows={data?.meta.total}
             fetchPage={(exportPage, exportPerPage) => coaApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}

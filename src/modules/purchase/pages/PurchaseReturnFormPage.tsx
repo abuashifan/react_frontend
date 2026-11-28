@@ -227,8 +227,8 @@ function PurchaseReturnFormPageContent() {
           {isCreate && <SourceConvertPanel sources={purchaseReturnSources} targetLabel="Retur Pembelian" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/purchase/returns/${newId}`} />}
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Vendor <span className="text-red-500">*</span></Label>
-              <SearchableSelect cacheKey="contact" value={watch('vendor_id') ?? null} onChange={(v) => setValue('vendor_id', v as number)} onSearch={(q) => kontakApi.search(q, 'supplier')} placeholder="Pilih vendor..." disabled={!isEditable} error={errors.vendor_id?.message} selectedOptions={ret?.vendor ? [{ value: ret.vendor.id, label: ret.vendor.name }] : []} />
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pemasok <span className="text-red-500">*</span></Label>
+              <SearchableSelect cacheKey="contact" value={watch('vendor_id') ?? null} onChange={(v) => setValue('vendor_id', v as number)} onSearch={(q) => kontakApi.search(q, 'supplier')} placeholder="Pilih pemasok..." disabled={!isEditable} error={errors.vendor_id?.message} selectedOptions={ret?.vendor ? [{ value: ret.vendor.id, label: ret.vendor.name }] : []} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>

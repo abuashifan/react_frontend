@@ -224,14 +224,14 @@ export default function CashReceiptListPage() {
   return (
     <>
       <WorkspaceLayout
-        title="Penerimaan Kas"
-        breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Penerimaan Kas' }]}
+        title="Penerimaan Lainnya"
+        breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Penerimaan Lainnya' }]}
         sidebar={sidebar}
         action={
           <>
             <ListExportButton permission="cash_bank.receipts.export"
               filename="penerimaan-kas"
-              sheetName="Penerimaan Kas"
+              sheetName="Penerimaan Lainnya"
               columns={EXPORT_COLUMNS}
               totalRows={data?.meta.total}
               fetchPage={(exportPage, exportPerPage) => cashReceiptApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}

@@ -126,7 +126,7 @@ function QuotationFormPageContent() {
   const { saveAndClose, navProps } = useRecordFormNavigation<QuotationFormValues>({
     id,
     basePath: '/sales/quotations',
-    createLabel: 'Quotation Baru',
+    createLabel: 'Penawaran Penjualan Baru',
     // Prefix harus sama dengan yang di-invalidate mutation (`['sales', 'quotations']`)
     // supaya urutan ikut disegarkan begitu ada record baru tersimpan.
     sequenceQueryKey: ['sales', 'quotations', 'adjacent'],
@@ -157,40 +157,40 @@ function QuotationFormPageContent() {
     try {
       await send.mutateAsync(Number(id))
       formDraft.clearDraft()
-      toast.success('Quotation berhasil dikirim.')
-    } catch (sendError) { toast.error(getApiErrorMessage(sendError, 'Gagal mengirim quotation.')) }
+      toast.success('Penawaran berhasil dikirim.')
+    } catch (sendError) { toast.error(getApiErrorMessage(sendError, 'Gagal mengirim penawaran.')) }
   }
 
   const handleApprove = async () => {
     try {
       await approve.mutateAsync(Number(id))
       formDraft.clearDraft()
-      toast.success('Quotation berhasil di-approve.')
-    } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve quotation.')) }
+      toast.success('Penawaran berhasil di-approve.')
+    } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve penawaran.')) }
   }
 
   const handleAccept = async () => {
     try {
       await accept.mutateAsync(Number(id))
       formDraft.clearDraft()
-      toast.success('Quotation diterima.')
-    } catch (acceptError) { toast.error(getApiErrorMessage(acceptError, 'Gagal menerima quotation.')) }
+      toast.success('Penawaran diterima.')
+    } catch (acceptError) { toast.error(getApiErrorMessage(acceptError, 'Gagal menerima penawaran.')) }
   }
 
   const handleReject = async () => {
     try {
       await reject.mutateAsync(Number(id))
       formDraft.clearDraft()
-      toast.success('Quotation ditolak.')
-    } catch (rejectError) { toast.error(getApiErrorMessage(rejectError, 'Gagal menolak quotation.')) }
+      toast.success('Penawaran ditolak.')
+    } catch (rejectError) { toast.error(getApiErrorMessage(rejectError, 'Gagal menolak penawaran.')) }
   }
 
   const handleCancel = async () => {
     try {
       await cancel.mutateAsync(Number(id))
       formDraft.clearDraft()
-      toast.success('Quotation dibatalkan.')
-    } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan quotation.')) }
+      toast.success('Penawaran dibatalkan.')
+    } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan penawaran.')) }
   }
 
   const handleConvertToSO = async () => {
@@ -198,11 +198,11 @@ function QuotationFormPageContent() {
     try {
       const res = await salesOrderApi.createFromQuotation(Number(id))
       formDraft.clearDraft()
-      toast.success('Sales Order berhasil dibuat.')
+      toast.success('Pesanan Penjualan berhasil dibuat.')
       // Hasil konversi jadi tab baru, bukan menggantikan tab quotation asalnya —
       // user biasanya masih perlu melihat dokumen sumbernya.
       openRecordTab({ label: res.data.number, path: `/sales/orders/${res.data.id}` })
-    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat Sales Order.')) }
+    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat Pesanan Penjualan.')) }
     finally { setConverting(false) }
   }
 
@@ -226,7 +226,7 @@ function QuotationFormPageContent() {
       actions.push({ id: 'reject', label: 'Tolak', variant: 'neutral', onClick: () => void handleReject(), isLoading: reject.isPending })
     }
     if (quotation?.status === 'accepted' && can('sales.orders.create')) {
-      actions.push({ id: 'convert', label: 'Convert ke SO', variant: 'primary', onClick: () => void handleConvertToSO(), isLoading: isConverting })
+      actions.push({ id: 'convert', label: 'Ubah jadi Pesanan Penjualan', variant: 'primary', onClick: () => void handleConvertToSO(), isLoading: isConverting })
     }
     if (['draft', 'sent', 'approved'].includes(quotation?.status ?? '') && can('sales.quotations.edit')) {
       actions.push({ id: 'cancel', label: 'Batalkan', variant: 'destructive', onClick: () => void handleCancel(), isLoading: cancel.isPending })
@@ -301,7 +301,7 @@ function QuotationFormPageContent() {
 
   if (!isCreate && isLoading) {
     return (
-      <FormLayout title="Quotation" breadcrumb={[{ label: 'Sales' }, { label: 'Quotation', path: '/sales/quotations' }, { label: 'Memuat...' }]}>
+      <FormLayout title="Penawaran Penjualan" breadcrumb={[{ label: 'Penjualan' }, { label: 'Penawaran Penjualan', path: '/sales/quotations' }, { label: 'Memuat...' }]}>
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
       </FormLayout>
     )
@@ -310,14 +310,14 @@ function QuotationFormPageContent() {
   return (
     <>
     <FormLayout
-      title={isCreate ? 'Buat Quotation' : 'Quotation'}
+      title={isCreate ? 'Buat Penawaran Penjualan' : 'Penawaran Penjualan'}
       documentNumber={quotation?.number}
       status={status}
       readOnly={!isEditable}
       breadcrumb={[
-        { label: 'Sales' },
-        { label: 'Quotation', path: '/sales/quotations' },
-        { label: isCreate ? 'Buat Quotation' : (quotation?.number ?? '') },
+        { label: 'Penjualan' },
+        { label: 'Penawaran Penjualan', path: '/sales/quotations' },
+        { label: isCreate ? 'Buat Penawaran Penjualan' : (quotation?.number ?? '') },
       ]}
       headerActions={
         <>
@@ -330,13 +330,13 @@ function QuotationFormPageContent() {
         <FormSection title="Header">
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
-              Customer <span className="text-red-500">*</span>
+              Pelanggan <span className="text-red-500">*</span>
             </Label>
             <SearchableSelect cacheKey="contact"
               value={watch('customer_id') ?? null}
               onChange={(v) => setValue('customer_id', v as number)}
               onSearch={(q) => kontakApi.search(q, 'customer')}
-              placeholder="Pilih customer..."
+              placeholder="Pilih pelanggan..."
               disabled={!isEditable}
               error={errors.customer_id?.message}
               selectedOptions={quotation?.customer ? [{ value: quotation.customer.id, label: quotation.customer.name }] : []}

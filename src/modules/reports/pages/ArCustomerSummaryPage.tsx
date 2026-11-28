@@ -57,7 +57,7 @@ export default function ArCustomerSummaryPage() {
                   variant="outline"
                   filename={`ringkasan-piutang-${activeParams?.as_of_date ?? today}`}
                   sheetName="Ringkasan Pelanggan"
-                  headers={['Pelanggan', 'Debit', 'Kredit', 'Saldo Piutang', 'Deposit Belum Dialokasikan', 'Net Exposure']}
+                  headers={['Pelanggan', 'Debit', 'Kredit', 'Saldo Piutang', 'Uang Muka Belum Dipakai', 'Net Exposure']}
                   rows={() => allRows.map((r) => [r.customer_name, toExcelNumber(r.debit), toExcelNumber(r.credit), toExcelNumber(r.balance), toExcelNumber(r.unapplied_deposit_total), toExcelNumber(r.net_customer_exposure)])}
                   formats={['text', 'currency', 'currency', 'currency', 'currency', 'currency']}
                 />
@@ -72,7 +72,7 @@ export default function ArCustomerSummaryPage() {
                     <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Debit</th>
                     <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kredit</th>
                     <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Saldo Piutang</th>
-                    <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Deposit Belum Dialokasi</th>
+                    <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Uang Muka Belum Dialokasi</th>
                     <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Net Exposure</th>
                   </tr>
                 </thead>

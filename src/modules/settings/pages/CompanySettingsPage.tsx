@@ -27,7 +27,7 @@ const MODULE_LABELS: { key: keyof CompanyModuleSettings; label: string }[] = [
   { key: 'cash_bank_enabled', label: 'Kas & Bank' },
   { key: 'inventory_enabled', label: 'Persediaan' },
   { key: 'warehouse_enabled', label: 'Gudang' },
-  { key: 'fixed_asset_enabled', label: 'Aktiva Tetap' },
+  { key: 'fixed_asset_enabled', label: 'Aset Tetap' },
   { key: 'approval_enabled', label: 'Approval' },
   { key: 'tax_enabled', label: 'Pajak' },
   { key: 'reports_enabled', label: 'Laporan' },

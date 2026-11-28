@@ -72,13 +72,13 @@ async function setup(page: Page, multipleBills = false) {
   })
   await page.goto('/')
   await page.getByRole('navigation', { name: 'Modul' }).getByRole('button', { name: 'Pembelian' }).click()
-  await page.getByRole('button', { name: 'Pembayaran', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Buat Pembayaran', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Pembayaran Pembelian', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Buat Pembayaran Pembelian', exact: true })).toBeVisible()
 }
 
 async function createPayment(page: Page) {
-  await page.getByRole('button', { name: 'Buat Pembayaran', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Vendor pembayaran' })).toBeVisible()
+  await page.getByRole('button', { name: 'Buat Pembayaran Pembelian', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Pemasok yang dibayar' })).toBeVisible()
 }
 
 async function choose(page: Page, trigger: string, option: string) {
@@ -89,8 +89,8 @@ async function choose(page: Page, trigger: string, option: string) {
 test('open bills appear immediately, payment amount leaves current cash balance intact, and vendor switch clears lines', async ({ page }) => {
   await setup(page)
   await createPayment(page)
-  await choose(page, 'Vendor pembayaran', 'Vendor Alpha')
-  await expect(page.getByText('Tagihan vendor yang belum lunas')).toBeVisible()
+  await choose(page, 'Pemasok yang dibayar', 'Vendor Alpha')
+  await expect(page.getByText('Faktur pembelian yang belum lunas')).toBeVisible()
   await page.getByRole('button', { name: 'Tambahkan VB-101' }).click()
   const accountRequest = page.waitForRequest((request) => request.url().includes('/master-data/chart-of-accounts'))
   await choose(page, 'Akun kas/bank pembayaran', 'Kas Utama')
@@ -106,16 +106,16 @@ test('open bills appear immediately, payment amount leaves current cash balance 
   await page.emulateMedia({ media: 'print' })
   await expect(preview).toBeHidden()
   await page.emulateMedia({ media: 'screen' })
-  await choose(page, 'Vendor pembayaran', 'Vendor Empty')
-  await expect(page.getByText('Belum ada tagihan dipilih')).toBeVisible()
-  await expect(page.getByText('Tidak ada tagihan terbuka.', { exact: false })).toBeVisible()
+  await choose(page, 'Pemasok yang dibayar', 'Vendor Empty')
+  await expect(page.getByText('Belum ada faktur pembelian dipilih')).toBeVisible()
+  await expect(page.getByText('Tidak ada faktur pembelian terbuka.', { exact: false })).toBeVisible()
 })
 
 test('vendor errors are visible and the selected account uses today instead of the payment date', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-11-18T18:00:00Z'))
   await setup(page)
   await createPayment(page)
-  await choose(page, 'Vendor pembayaran', 'Vendor Error')
+  await choose(page, 'Pemasok yang dibayar', 'Vendor Error')
   await expect(page.getByRole('alert').filter({ hasText: 'Konteks vendor gagal dimuat' })).toBeVisible({ timeout: 15000 })
   await choose(page, 'Akun kas/bank pembayaran', 'Kas Utama')
   await expect(page.getByTestId('payment-cash-preview')).toContainText('200.000')
@@ -141,7 +141,7 @@ test('saved payment print preview does not include cash balance fields', async (
 test('discount cells open a tabular dialog and save the selected account per bill', async ({ page }) => {
   await setup(page, true)
   await createPayment(page)
-  await choose(page, 'Vendor pembayaran', 'Vendor Alpha')
+  await choose(page, 'Pemasok yang dibayar', 'Vendor Alpha')
   await choose(page, 'Akun kas/bank pembayaran', 'Kas Utama')
   await page.getByRole('button', { name: 'Tambahkan VB-101' }).click()
   await page.getByRole('button', { name: 'Tambahkan VB-102' }).click()
@@ -149,7 +149,7 @@ test('discount cells open a tabular dialog and save the selected account per bil
     has: page.getByRole('textbox', { name: 'Discount VB-101' }),
   })
   await expect(billTable.locator('thead th')).toHaveText([
-    '#', 'Nomor Bill', 'Jumlah', 'Dibayar', 'Discount', 'Sisa Tagihan', '',
+    '#', 'Nomor Faktur', 'Jumlah', 'Dibayar', 'Discount', 'Sisa Tagihan', '',
   ])
   const firstBill = billTable.getByRole('row').filter({ hasText: 'VB-101' })
   await expect(firstBill.getByRole('cell').nth(2)).toContainText('125.000')
@@ -203,7 +203,7 @@ test('discount cells open a tabular dialog and save the selected account per bil
 test('removing or lowering a discount gives the cash back when the row settled the bill in full', async ({ page }) => {
   await setup(page)
   await createPayment(page)
-  await choose(page, 'Vendor pembayaran', 'Vendor Alpha')
+  await choose(page, 'Pemasok yang dibayar', 'Vendor Alpha')
   await choose(page, 'Akun kas/bank pembayaran', 'Kas Utama')
   await page.getByRole('button', { name: 'Tambahkan VB-101' }).click()
   const billTable = page.getByRole('table').filter({ has: page.getByRole('textbox', { name: 'Discount VB-101' }) })
@@ -235,7 +235,7 @@ test('removing or lowering a discount gives the cash back when the row settled t
 test('a cash amount typed lower on purpose stays lower when a discount is added', async ({ page }) => {
   await setup(page)
   await createPayment(page)
-  await choose(page, 'Vendor pembayaran', 'Vendor Alpha')
+  await choose(page, 'Pemasok yang dibayar', 'Vendor Alpha')
   await choose(page, 'Akun kas/bank pembayaran', 'Kas Utama')
   await page.getByRole('button', { name: 'Tambahkan VB-101' }).click()
   const row = page.getByRole('row').filter({ hasText: 'VB-101' })

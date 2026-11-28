@@ -87,7 +87,7 @@ export default function BudgetComparisonPage() {
           variant="outline"
           filename={`realisasi-vs-anggaran-${result.period.name}`}
           sheetName="Realisasi vs Anggaran"
-          headers={['Kode Akun', 'Akun', 'Anggaran', 'Realisasi', 'Selisih', 'Selisih %', 'Over Budget']}
+          headers={['Kode Akun', 'Akun', 'Anggaran', 'Realisasi', 'Selisih', 'Selisih %', 'Melebihi Anggaran']}
           rows={() => [
             ...result.rows.map((row) => [
               row.account_code ?? '',

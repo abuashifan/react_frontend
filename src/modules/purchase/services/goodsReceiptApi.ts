@@ -29,7 +29,7 @@ export const goodsReceiptApi = {
     })
     return res.data
       .filter((po) => ['confirmed', 'partially_received', 'partially_billed', 'billed'].includes(po.status))
-      .map((po) => ({ value: po.id, label: po.order_number ?? `PO #${po.id}`, sublabel: po.vendor?.name ?? undefined }))
+      .map((po) => ({ value: po.id, label: po.order_number ?? `Pesanan Pembelian #${po.id}`, sublabel: po.vendor?.name ?? undefined }))
   },
 
   createFromPurchaseOrder: (purchaseOrderId: number) =>

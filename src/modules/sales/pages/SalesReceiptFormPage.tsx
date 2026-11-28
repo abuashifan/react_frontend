@@ -140,7 +140,7 @@ function SalesReceiptFormPageContent() {
   const { saveAndClose, navProps } = useRecordFormNavigation<SalesReceiptFormValues>({
     id,
     basePath: '/sales/receipts',
-    createLabel: 'Penerimaan Baru',
+    createLabel: 'Penerimaan Penjualan Baru',
     sequenceQueryKey: ['sales', 'receipts', 'adjacent'],
     fetchAdjacent: async (recordId) => (await salesReceiptApi.adjacent(recordId)).data,
     handleSubmit,
@@ -300,7 +300,7 @@ function SalesReceiptFormPageContent() {
 
   if (!isCreate && isLoading) {
     return (
-      <FormLayout title="Penerimaan" breadcrumb={[{ label: 'Sales' }, { label: 'Penerimaan', path: '/sales/receipts' }, { label: 'Memuat...' }]}>
+      <FormLayout title="Penerimaan Penjualan" breadcrumb={[{ label: 'Penjualan' }, { label: 'Penerimaan Penjualan', path: '/sales/receipts' }, { label: 'Memuat...' }]}>
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
       </FormLayout>
     )
@@ -309,13 +309,13 @@ function SalesReceiptFormPageContent() {
   return (
     <>
       <FormLayout
-        title={isCreate ? 'Buat Penerimaan' : 'Penerimaan Penjualan'}
+        title={isCreate ? 'Buat Penerimaan Penjualan' : 'Penerimaan Penjualan'}
         documentNumber={receipt?.number}
         status={status}
         breadcrumb={[
-          { label: 'Sales' },
-          { label: 'Penerimaan', path: '/sales/receipts' },
-          { label: isCreate ? 'Buat Penerimaan' : (receipt?.number ?? '') },
+          { label: 'Penjualan' },
+          { label: 'Penerimaan Penjualan', path: '/sales/receipts' },
+          { label: isCreate ? 'Buat Penerimaan Penjualan' : (receipt?.number ?? '') },
         ]}
         headerActions={
           <>
@@ -329,13 +329,13 @@ function SalesReceiptFormPageContent() {
           <FormSection title="Informasi Penerimaan">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
-                Customer <span className="text-red-500">*</span>
+                Pelanggan <span className="text-red-500">*</span>
               </Label>
               <SearchableSelect cacheKey="contact"
                 value={watch('customer_id') ?? null}
                 onChange={(v) => { setValue('customer_id', v as number); setLines([]) }}
                 onSearch={(q) => kontakApi.search(q, 'customer')}
-                placeholder="Pilih customer..."
+                placeholder="Pilih pelanggan..."
                 disabled={!isEditable}
                 error={errors.customer_id?.message}
                 selectedOptions={receipt?.customer ? [{ value: receipt.customer.id, label: receipt.customer.name }] : []}
@@ -374,7 +374,7 @@ function SalesReceiptFormPageContent() {
 
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Invoice yang Dibayar</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Faktur Penjualan yang Dibayar</p>
             </div>
 
             {/* Baris ditambahkan dari chip "Invoice terbuka" di bawah tabel (barisnya
@@ -385,12 +385,12 @@ function SalesReceiptFormPageContent() {
               onRemove={(index) => setLines((prev) => prev.filter((_, idx) => idx !== index))}
               onUpdate={(index, field, value) => setLines((rows) => rows.map((row, i) => i === index ? { ...row, [field]: value } : row))}
               isReadOnly={!isEditable}
-              emptyLabel={customerId ? 'Pilih invoice untuk dibayar' : 'Pilih customer terlebih dahulu'}
+              emptyLabel={customerId ? 'Pilih faktur penjualan untuk dibayar' : 'Pilih pelanggan terlebih dahulu'}
             />
 
             {isEditable && openInvoices.length > 0 && (
               <div className="mt-2 rounded-lg border border-[#d9e2e5] bg-white p-2">
-                <p className="mb-1.5 text-[11px] text-[#64748b]">Invoice terbuka:</p>
+                <p className="mb-1.5 text-[11px] text-[#64748b]">Faktur Penjualan terbuka:</p>
                 <div className="flex flex-wrap gap-1.5">
                   {openInvoices
                     .filter((inv) => !lines.find((l) => l.sales_invoice_id === inv.id))

@@ -34,11 +34,11 @@ const STATUSES: VendorBillStatus[] = ['draft', 'approved', 'posted', 'partially_
  */
 const EXPORT_COLUMNS: ExportColumn<VendorBill>[] = [
   { header: 'ID', value: (row) => row.id },
-  { header: 'Nomor Bill', value: (row) => row.number },
+  { header: 'Nomor Faktur', value: (row) => row.number },
   { header: 'Tanggal', value: (row) => toExcelDate(row.date), format: 'date' },
   { header: 'Jatuh Tempo', value: (row) => toExcelDate(row.due_date), format: 'date' },
-  { header: 'Vendor', value: (row) => row.vendor?.name },
-  { header: 'Nomor PO', value: (row) => row.purchase_order_number },
+  { header: 'Pemasok', value: (row) => row.vendor?.name },
+  { header: 'Nomor Pesanan', value: (row) => row.purchase_order_number },
   { header: 'Total', value: (row) => row.grand_total, format: 'currency' },
   { header: 'Dibayar', value: (row) => row.paid_amount, format: 'currency' },
   { header: 'Sisa', value: (row) => row.balance_due, format: 'currency' },
@@ -112,7 +112,7 @@ export default function VendorBillListPage() {
   const handleBulkVoid = async (reason: string) => {
     const selectedBills = rows.filter((bill) => bulkVoidIds.includes(String(bill.id)))
     if (selectedBills.length === 0) {
-      toast.warning('Tidak ada tagihan vendor valid untuk di-void.')
+      toast.warning('Tidak ada faktur pembelian valid untuk di-void.')
       setBulkVoidOpen(false)
       setBulkVoidIds([])
       return
@@ -125,11 +125,11 @@ export default function VendorBillListPage() {
       const failureDetail = getBulkFailureDetail(results)
 
       if (failureCount === 0) {
-        toast.success(`${successCount} tagihan vendor berhasil di-void.`)
+        toast.success(`${successCount} faktur pembelian berhasil di-void.`)
       } else if (successCount === 0) {
-        toast.error(`Gagal void ${failureCount} tagihan vendor.${failureDetail ? ` ${failureDetail}` : ''}`)
+        toast.error(`Gagal void ${failureCount} faktur pembelian.${failureDetail ? ` ${failureDetail}` : ''}`)
       } else {
-        toast.warning(`${successCount} tagihan vendor berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
+        toast.warning(`${successCount} faktur pembelian berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
       }
     } catch (bulkError) {
       toast.error(getApiErrorMessage(bulkError, 'Gagal memproses bulk void.'))
@@ -143,7 +143,7 @@ export default function VendorBillListPage() {
   const columns: ColumnDef<VendorBill>[] = [
     {
       id: 'number',
-      header: 'Nomor Bill',
+      header: 'Nomor Faktur',
       size: 140,
       meta: { sticky: true, stickyLeft: 32 },
       cell: ({ original }) => (
@@ -163,7 +163,7 @@ export default function VendorBillListPage() {
         return <span className={overdue ? 'font-semibold text-red-600' : ''}>{formatDate(original.due_date)}</span>
       },
     },
-    { id: 'vendor', header: 'Vendor', size: 190, cell: ({ original }) => original.vendor?.name ?? '-' },
+    { id: 'vendor', header: 'Pemasok', size: 190, cell: ({ original }) => original.vendor?.name ?? '-' },
     {
       id: 'grand_total',
       header: 'Total',
@@ -196,7 +196,7 @@ export default function VendorBillListPage() {
         <ListSearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Cari nomor bill, vendor..."
+          placeholder="Cari nomor faktur, pemasok..."
           className="w-full max-w-none"
         />
       </div>
@@ -217,7 +217,7 @@ export default function VendorBillListPage() {
           resetSelection()
         }}
       />
-      <FilterSection title="Vendor">
+      <FilterSection title="Pemasok">
         <SearchableSelect cacheKey="contact"
           value={filterVendor}
           onChange={(v) => {
@@ -225,7 +225,7 @@ export default function VendorBillListPage() {
             resetSelection()
           }}
           onSearch={(q) => kontakApi.search(q, 'supplier')}
-          placeholder="Semua vendor"
+          placeholder="Semua pemasok"
         />
       </FilterSection>
     </FilterSidebar>
@@ -234,14 +234,14 @@ export default function VendorBillListPage() {
   return (
     <>
       <WorkspaceLayout
-        title="Tagihan Vendor"
-        breadcrumb={[{ label: 'Pembelian' }, { label: 'Tagihan' }]}
+        title="Faktur Pembelian"
+        breadcrumb={[{ label: 'Pembelian' }, { label: 'Faktur Pembelian' }]}
         sidebar={sidebar}
         action={
           <>
             <ListExportButton permission="purchase.bills.export"
               filename="tagihan-vendor"
-              sheetName="Tagihan Vendor"
+              sheetName="Faktur Pembelian"
               columns={EXPORT_COLUMNS}
               totalRows={data?.meta.total}
               fetchPage={async (exportPage, exportPerPage) => {
@@ -252,8 +252,8 @@ export default function VendorBillListPage() {
               }}
             />
             <PermissionGuard permission="purchase.bills.create">
-              <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Tagihan Baru', path: '/purchase/bills/create' })}>
-                <Plus className="mr-1 h-3.5 w-3.5" /> Buat Bill
+              <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Faktur Pembelian Baru', path: '/purchase/bills/create' })}>
+                <Plus className="mr-1 h-3.5 w-3.5" /> Buat Faktur Pembelian
               </Button>
             </PermissionGuard>
           </>
@@ -262,7 +262,7 @@ export default function VendorBillListPage() {
         {isError ? (
           <EmptyState
             icon={AlertTriangle}
-            title="Gagal memuat tagihan vendor"
+            title="Gagal memuat faktur pembelian"
             description="Terjadi kesalahan saat mengambil data. Periksa koneksi lalu coba lagi."
             action={
               <Button variant="outline" className="h-8 px-3 text-[13px]" onClick={() => void refetch()}>
@@ -286,8 +286,8 @@ export default function VendorBillListPage() {
             selectedRows={selectedRows}
             onRowSelect={setSelectedRows}
             bulkActions={bulkActions}
-            emptyTitle="Belum ada tagihan vendor"
-            emptyDescription="Buat tagihan dari PO atau GR yang sudah diterima."
+            emptyTitle="Belum ada faktur pembelian"
+            emptyDescription="Buat faktur pembelian dari Pesanan Pembelian atau Penerimaan Barang yang sudah diterima."
           />
         )}
       </WorkspaceLayout>

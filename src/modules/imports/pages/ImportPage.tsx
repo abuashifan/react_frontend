@@ -485,7 +485,7 @@ export default function ImportPage() {
   return (
     <WorkspaceLayout
       title="Impor Data"
-      breadcrumb={[{ label: 'Master Data' }, { label: 'Impor Data' }]}
+      breadcrumb={[{ label: 'Data Utama' }, { label: 'Impor Data' }]}
     >
       <div className="max-w-3xl mx-auto p-6 flex flex-col gap-4">
         <ReturnToSetupBanner />

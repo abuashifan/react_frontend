@@ -22,7 +22,7 @@ export default function ArAgingReportPage() {
   const tools = !isLoading && !isError && report && report.lines.length > 0 ? (
     <ReportExportButton
       filename={`ar-aging-${activeParams?.as_of_date ?? today}`}
-      sheetName="AR Aging"
+      sheetName="Umur Piutang"
       headers={['Pelanggan', 'Belum Jatuh Tempo', '1-30 Hari', '31-60 Hari', '61-90 Hari', '>90 Hari', 'Total']}
       rows={() => [
         ...report.lines.map((line) => [

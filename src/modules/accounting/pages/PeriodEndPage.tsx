@@ -29,7 +29,7 @@ const CHECKLIST_LABEL: Record<string, string> = {
   unposted_journals: 'Jurnal belum diposting',
   open_documents: 'Dokumen transaksi terbuka',
   inventory_closing: 'Penutupan persediaan',
-  fixed_asset_depreciation: 'Depresiasi aktiva tetap',
+  fixed_asset_depreciation: 'Penyusutan aset tetap',
   exchange_revaluation: 'Revaluasi kurs',
   tax_review: 'Pemeriksaan pajak',
 }

@@ -85,7 +85,7 @@ export default function VendorDepositListPage() {
   const handleBulkVoid = async (reason: string) => {
     const selectedDeposits = rows.filter((deposit) => bulkVoidIds.includes(String(deposit.id)))
     if (selectedDeposits.length === 0) {
-      toast.warning('Tidak ada deposit vendor valid untuk di-void.')
+      toast.warning('Tidak ada uang muka pemasok valid untuk di-void.')
       setBulkVoidOpen(false)
       setBulkVoidIds([])
       return
@@ -98,11 +98,11 @@ export default function VendorDepositListPage() {
       const failureDetail = getBulkFailureDetail(results)
 
       if (failureCount === 0) {
-        toast.success(`${successCount} deposit vendor berhasil di-void.`)
+        toast.success(`${successCount} uang muka pemasok berhasil di-void.`)
       } else if (successCount === 0) {
-        toast.error(`Gagal void ${failureCount} deposit vendor.${failureDetail ? ` ${failureDetail}` : ''}`)
+        toast.error(`Gagal void ${failureCount} uang muka pemasok.${failureDetail ? ` ${failureDetail}` : ''}`)
       } else {
-        toast.warning(`${successCount} deposit vendor berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
+        toast.warning(`${successCount} uang muka pemasok berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
       }
     } catch (bulkError) {
       toast.error(getApiErrorMessage(bulkError, 'Gagal memproses bulk void.'))
@@ -126,7 +126,7 @@ export default function VendorDepositListPage() {
       ),
     },
     { id: 'date', header: 'Tanggal', size: 110, cell: ({ original }) => formatDate(original.date) },
-    { id: 'vendor', header: 'Vendor', size: 200, cell: ({ original }) => original.vendor?.name ?? '-' },
+    { id: 'vendor', header: 'Pemasok', size: 200, cell: ({ original }) => original.vendor?.name ?? '-' },
     {
       id: 'amount',
       header: 'Jumlah',
@@ -158,7 +158,7 @@ export default function VendorDepositListPage() {
         <ListSearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Cari nomor deposit, vendor..."
+          placeholder="Cari nomor uang muka, pemasok..."
           className="w-full max-w-none"
         />
       </div>
@@ -179,7 +179,7 @@ export default function VendorDepositListPage() {
           resetSelection()
         }}
       />
-      <FilterSection title="Vendor">
+      <FilterSection title="Pemasok">
         <SearchableSelect cacheKey="contact"
           value={filterVendor}
           onChange={(v) => {
@@ -187,7 +187,7 @@ export default function VendorDepositListPage() {
             resetSelection()
           }}
           onSearch={(q) => kontakApi.search(q, 'supplier')}
-          placeholder="Semua vendor"
+          placeholder="Semua pemasok"
         />
       </FilterSection>
     </FilterSidebar>
@@ -196,13 +196,13 @@ export default function VendorDepositListPage() {
   return (
     <>
       <WorkspaceLayout
-        title="Deposit Vendor"
-        breadcrumb={[{ label: 'Pembelian' }, { label: 'Deposit Vendor' }]}
+        title="Uang Muka Pemasok"
+        breadcrumb={[{ label: 'Pembelian' }, { label: 'Uang Muka Pemasok' }]}
         sidebar={sidebar}
         action={
           <PermissionGuard permission="purchase.deposits.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Deposit Baru', path: '/purchase/vendor-deposits/create' })}>
-              <Plus className="mr-1 h-3.5 w-3.5" /> Buat Deposit
+            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Uang Muka Baru', path: '/purchase/vendor-deposits/create' })}>
+              <Plus className="mr-1 h-3.5 w-3.5" /> Buat Uang Muka
             </Button>
           </PermissionGuard>
         }
@@ -221,8 +221,8 @@ export default function VendorDepositListPage() {
           selectedRows={selectedRows}
           onRowSelect={setSelectedRows}
           bulkActions={bulkActions}
-          emptyTitle="Belum ada deposit vendor"
-          emptyDescription="Deposit digunakan untuk uang muka pembayaran ke vendor."
+          emptyTitle="Belum ada uang muka pemasok"
+          emptyDescription="Uang muka yang dibayar ke pemasok sebelum faktur pembelian terbit."
         />
       </WorkspaceLayout>
 

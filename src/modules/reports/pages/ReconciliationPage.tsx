@@ -16,11 +16,11 @@ const today = todayInputValue()
 type ReconType = 'ar' | 'ap' | 'inventory' | 'grni' | 'customer_deposits' | 'vendor_deposits'
 const RECON_LABELS: Record<ReconType, string> = {
   ar: 'Piutang (AR)',
-  ap: 'Hutang (AP)',
+  ap: 'Utang (AP)',
   inventory: 'Inventori',
   grni: 'GRNI',
-  customer_deposits: 'Deposit Pelanggan',
-  vendor_deposits: 'Deposit Pemasok',
+  customer_deposits: 'Uang Muka Pelanggan',
+  vendor_deposits: 'Uang Muka Pemasok',
 }
 
 // ─── Sub-ledger vs GL table (AR / AP / Inventory) ───────────────────────────
@@ -139,7 +139,7 @@ function DepositTable({ report, contactLabel }: { report: DepositReconciliationR
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2">
-          <p className="text-[11px] text-[#64748b]">Total Deposit</p>
+          <p className="text-[11px] text-[#64748b]">Total Uang Muka</p>
           <p className="text-[14px] font-semibold tabular-nums text-[#334155]">{formatCurrency(s.total_deposit)}</p>
         </div>
         <div className="rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2">
@@ -155,7 +155,7 @@ function DepositTable({ report, contactLabel }: { report: DepositReconciliationR
         <table className="w-full text-[12px]">
           <thead className="bg-[#f8fafc]">
             <tr>
-              <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">No Deposit</th>
+              <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">No Uang Muka</th>
               <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal</th>
               <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">{contactLabel}</th>
               <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jumlah</th>
@@ -166,7 +166,7 @@ function DepositTable({ report, contactLabel }: { report: DepositReconciliationR
           </thead>
           <tbody className="divide-y divide-[#f1f5f9]">
             {report.data.length === 0 && (
-              <tr><td colSpan={7} className="px-3 py-6 text-center text-[12px] text-[#64748b]">Tidak ada data deposit</td></tr>
+              <tr><td colSpan={7} className="px-3 py-6 text-center text-[12px] text-[#64748b]">Tidak ada data uang muka</td></tr>
             )}
             {report.data.map((r) => (
               <tr key={r.deposit_id} className={`hover:bg-[#f8fafc] ${r.remaining_amount > 0 ? 'bg-amber-50/20' : ''}`}>
@@ -299,7 +299,7 @@ export default function ReconciliationPage() {
           variant="outline"
           filename={`rekonsiliasi-${activeType.replace(/_/g, '-')}-${suffix}`}
           sheetName={RECON_LABELS[activeType]}
-          headers={['No Deposit', 'Tanggal', contactLabel, 'Jumlah', 'Dialokasikan', 'Sisa', 'Status']}
+          headers={['No Uang Muka', 'Tanggal', contactLabel, 'Jumlah', 'Dialokasikan', 'Sisa', 'Status']}
           rows={() => deposits.data.map((r) => [
             r.deposit_number,
             toExcelDate(r.deposit_date),

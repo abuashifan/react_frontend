@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const vendorBillSchema = z.object({
   bill_number: z.string().nullable().optional(),
-  vendor_id: z.number({ message: 'Vendor wajib dipilih' }),
+  vendor_id: z.number({ message: 'Pemasok wajib dipilih' }),
   date: z.string().min(1, 'Tanggal wajib diisi'),
   due_date: z.string().optional(),
   payment_term_id: z.number().nullable().optional(),
@@ -10,11 +10,11 @@ export const vendorBillSchema = z.object({
   notes: z.string().optional(),
 }).superRefine((values, ctx) => {
   if (values.due_date && values.date && values.due_date < values.date) {
-    ctx.addIssue({ code: 'custom', path: ['due_date'], message: 'Jatuh tempo harus sama atau setelah tanggal bill' })
+    ctx.addIssue({ code: 'custom', path: ['due_date'], message: 'Jatuh tempo harus sama atau setelah tanggal faktur' })
   }
 
   if (values.applied_vendor_deposit_amount != null && values.applied_vendor_deposit_amount < 0) {
-    ctx.addIssue({ code: 'custom', path: ['applied_vendor_deposit_amount'], message: 'Deposit terpakai tidak boleh negatif' })
+    ctx.addIssue({ code: 'custom', path: ['applied_vendor_deposit_amount'], message: 'Uang Muka terpakai tidak boleh negatif' })
   }
 })
 

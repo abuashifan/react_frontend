@@ -11,10 +11,10 @@ import type { PurchaseReturn } from '../types/purchaseReturn.types'
 
 export function purchaseOrderPrint(po: PurchaseOrder): TransactionPrintData {
   return {
-    title: 'Purchase Order',
+    title: 'Pesanan Pembelian',
     number: po.number,
     status: po.status,
-    party: contactParty('Kepada vendor', po.vendor),
+    party: contactParty('Kepada pemasok', po.vendor),
     meta: [
       { label: 'Tanggal', value: printDate(po.date) },
       { label: 'Tgl kirim diharapkan', value: printDate(po.expected_delivery_date) },
@@ -43,7 +43,7 @@ export function purchaseOrderPrint(po: PurchaseOrder): TransactionPrintData {
     ],
     amountInWords: terbilang(po.grand_total),
     notes: po.notes,
-    signatures: ['Dibuat oleh', 'Disetujui oleh', 'Vendor'],
+    signatures: ['Dibuat oleh', 'Disetujui oleh', 'Pemasok'],
   }
 }
 
@@ -81,11 +81,11 @@ export function goodsReceiptPrint(g: GoodsReceipt): TransactionPrintData {
     title: 'Bukti Penerimaan Barang',
     number: g.number,
     status: g.status,
-    party: contactParty('Dari vendor', g.vendor),
+    party: contactParty('Dari pemasok', g.vendor),
     meta: [
       { label: 'Tanggal', value: printDate(g.date) },
       { label: 'Gudang', value: g.warehouse?.name ?? '-' },
-      ...(g.purchase_order_number ? [{ label: 'No. PO', value: g.purchase_order_number }] : []),
+      ...(g.purchase_order_number ? [{ label: 'No. Pesanan', value: g.purchase_order_number }] : []),
     ],
     columns: [
       { key: 'item', header: 'Barang', width: '66%' },
@@ -100,14 +100,14 @@ export function goodsReceiptPrint(g: GoodsReceipt): TransactionPrintData {
 
 export function vendorBillPrint(b: VendorBill): TransactionPrintData {
   return {
-    title: 'Tagihan Vendor',
+    title: 'Faktur Pembelian',
     number: b.number,
     status: b.status,
-    party: contactParty('Vendor', b.vendor),
+    party: contactParty('Pemasok', b.vendor),
     meta: [
       { label: 'Tanggal', value: printDate(b.date) },
       { label: 'Jatuh tempo', value: printDate(b.due_date) },
-      ...(b.purchase_order_number ? [{ label: 'No. PO', value: b.purchase_order_number }] : []),
+      ...(b.purchase_order_number ? [{ label: 'No. Pesanan', value: b.purchase_order_number }] : []),
       ...(b.goods_receipt_number ? [{ label: 'No. Penerimaan', value: b.goods_receipt_number }] : []),
     ],
     columns: [
@@ -133,7 +133,7 @@ export function vendorBillPrint(b: VendorBill): TransactionPrintData {
       { label: 'Total', value: printMoney(b.grand_total), strong: true },
       ...(b.paid_amount ? [{ label: 'Dibayar', value: printMoney(b.paid_amount) }] : []),
       ...(Number(b.settlement_discount_amount) > 0 ? [{ label: 'Potongan pelunasan', value: printMoney(Number(b.settlement_discount_amount)) }] : []),
-      ...(b.paid_amount ? [{ label: 'Sisa hutang', value: printMoney(b.balance_due), strong: true }] : []),
+      ...(b.paid_amount ? [{ label: 'Sisa utang', value: printMoney(b.balance_due), strong: true }] : []),
     ],
     amountInWords: terbilang(b.grand_total),
     notes: b.notes,
@@ -153,7 +153,7 @@ export function vendorPaymentPrint(p: VendorPayment): TransactionPrintData {
       { label: 'Dari kas/bank', value: p.cash_bank_account?.name ?? '-' },
     ],
     columns: [
-      { key: 'bill', header: 'Faktur / tagihan', width: discount > 0 ? '44%' : '70%' },
+      { key: 'bill', header: 'Faktur pembelian', width: discount > 0 ? '44%' : '70%' },
       ...(discount > 0 ? [{ key: 'discount', header: 'Potongan', align: 'right' as const, width: '26%' }] : []),
       { key: 'amount', header: 'Kas', align: 'right', width: '26%' },
     ],
@@ -177,7 +177,7 @@ export function vendorPaymentPrint(p: VendorPayment): TransactionPrintData {
 
 export function vendorDepositPrint(d: VendorDeposit): TransactionPrintData {
   return {
-    title: 'Bukti Uang Muka Vendor',
+    title: 'Bukti Uang Muka Pemasok',
     number: d.number,
     status: d.status,
     party: contactParty('Dibayarkan kepada', d.vendor),
@@ -202,10 +202,10 @@ export function purchaseReturnPrint(r: PurchaseReturn): TransactionPrintData {
     title: 'Retur Pembelian',
     number: r.number,
     status: r.status,
-    party: contactParty('Kepada vendor', r.vendor),
+    party: contactParty('Kepada pemasok', r.vendor),
     meta: [
       { label: 'Tanggal', value: printDate(r.date) },
-      ...(r.vendor_bill_number ? [{ label: 'No. Tagihan', value: r.vendor_bill_number }] : []),
+      ...(r.vendor_bill_number ? [{ label: 'No. Faktur', value: r.vendor_bill_number }] : []),
       ...(r.goods_receipt_number ? [{ label: 'No. Penerimaan', value: r.goods_receipt_number }] : []),
     ],
     columns: [
@@ -217,6 +217,6 @@ export function purchaseReturnPrint(r: PurchaseReturn): TransactionPrintData {
     rows: r.lines.map((l) => ({ item: lineItem(l.product, l.description), qty: printQty(l.quantity), price: printMoney(l.unit_price), total: lineAmount(l) })),
     totals: [{ label: 'Total', value: printMoney(r.total), strong: true }],
     notes: r.notes,
-    signatures: ['Dikirim gudang', 'Diterima vendor', 'Disetujui'],
+    signatures: ['Dikirim gudang', 'Diterima pemasok', 'Disetujui'],
   }
 }

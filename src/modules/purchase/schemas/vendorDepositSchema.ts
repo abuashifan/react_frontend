@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const vendorDepositSchema = z.object({
-  vendor_id: z.number({ message: 'Vendor wajib dipilih' }),
+  vendor_id: z.number({ message: 'Pemasok wajib dipilih' }),
   date: z.string().min(1, 'Tanggal wajib diisi'),
   cash_bank_account_id: z.number({ message: 'Akun kas/bank wajib dipilih' }),
   amount: z.number().positive('Jumlah harus lebih dari 0'),

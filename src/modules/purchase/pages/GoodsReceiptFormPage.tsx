@@ -87,9 +87,9 @@ function GoodsReceiptFormPageContent() {
     if (!sourcePoId) return
     try {
       const res = await createFromPurchaseOrder.mutateAsync(sourcePoId)
-      toast.success('Penerimaan barang dibuat dari PO.')
+      toast.success('Penerimaan barang dibuat dari Pesanan Pembelian.')
       replaceRecordTab('/purchase/goods-receipts/create', { label: res.data.number ?? 'Penerimaan Barang', path: `/purchase/goods-receipts/${res.data.id}` })
-    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat penerimaan barang dari PO.')) }
+    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat penerimaan barang dari Pesanan Pembelian.')) }
   }
   const { canChange } = useTransactionEditMode()
   const { closeRecordTab, replaceRecordTab, openRecordTab } = useRecordTab()
@@ -179,19 +179,19 @@ function GoodsReceiptFormPageContent() {
   const handleCreateBill = async () => {
     try {
       const res = await createBillFromReceipt.mutateAsync(Number(id))
-      toast.success('Tagihan dibuat dari penerimaan barang.')
-      openRecordTab({ label: res.data.bill_number ?? 'Tagihan', path: `/purchase/bills/${res.data.id}` })
-    } catch (billError) { toast.error(getApiErrorMessage(billError, 'Gagal membuat tagihan dari penerimaan barang.')) }
+      toast.success('Faktur Pembelian dibuat dari penerimaan barang.')
+      openRecordTab({ label: res.data.bill_number ?? 'Faktur Pembelian', path: `/purchase/bills/${res.data.id}` })
+    } catch (billError) { toast.error(getApiErrorMessage(billError, 'Gagal membuat faktur pembelian dari penerimaan barang.')) }
   }
   const hasUnbilled = !!gr?.lines?.some((l) => (l.billed_quantity ?? 0) < l.quantity)
   const handleCancel = async () => {
-    try { await cancel.mutateAsync(Number(id)); toast.success('GR dibatalkan.') }
-    catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan GR.')) }
+    try { await cancel.mutateAsync(Number(id)); toast.success('Penerimaan Barang dibatalkan.') }
+    catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan Penerimaan Barang.')) }
   }
   const handleVoid = async (reason: string) => {
     await voidGr.mutateAsync({ id: Number(id), reason })
     formDraft.clearDraft()
-    toast.success('GR berhasil di-void.')
+    toast.success('Penerimaan Barang berhasil di-void.')
     setVoidOpen(false)
   }
 
@@ -236,7 +236,7 @@ function GoodsReceiptFormPageContent() {
       actions.push({ id: 'receive', label: 'Terima Barang', variant: 'primary', onClick: () => void handleReceive(), isLoading: receive.isPending })
     }
     if ((gr?.status === 'received' || gr?.status === 'partially_billed') && hasUnbilled && can('purchase.bills.create')) {
-      actions.push({ id: 'create_bill', label: 'Buat Tagihan', variant: 'primary', onClick: () => void handleCreateBill(), isLoading: createBillFromReceipt.isPending })
+      actions.push({ id: 'create_bill', label: 'Buat Faktur Pembelian', variant: 'primary', onClick: () => void handleCreateBill(), isLoading: createBillFromReceipt.isPending })
     }
     if (gr?.status === 'draft' && can('purchase.goods_receipts.edit')) {
       actions.push({ id: 'cancel', label: 'Batalkan', variant: 'destructive', onClick: () => void handleCancel(), isLoading: cancel.isPending })
@@ -283,7 +283,7 @@ function GoodsReceiptFormPageContent() {
         title={isCreate ? 'Buat Penerimaan Barang' : 'Penerimaan Barang'}
         documentNumber={gr?.number}
         status={status}
-        breadcrumb={[{ label: 'Pembelian' }, { label: 'Penerimaan Barang', path: '/purchase/goods-receipts' }, { label: isCreate ? 'Buat GR' : (gr?.number ?? '') }]}
+        breadcrumb={[{ label: 'Pembelian' }, { label: 'Penerimaan Barang', path: '/purchase/goods-receipts' }, { label: isCreate ? 'Buat Penerimaan Barang' : (gr?.number ?? '') }]}
         headerActions={
           <>
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
@@ -297,7 +297,7 @@ function GoodsReceiptFormPageContent() {
             <FormSection title="Sumber Dokumen">
               <div className="flex flex-col gap-2 md:col-span-2">
                 <div className="flex gap-1">
-                  {([['none', 'Tanpa Sumber'], ['purchase_order', 'Dari Purchase Order']] as const).map(([mode, label]) => (
+                  {([['none', 'Tanpa Sumber'], ['purchase_order', 'Dari Pesanan Pembelian']] as const).map(([mode, label]) => (
                     <button
                       key={mode}
                       type="button"
@@ -310,16 +310,16 @@ function GoodsReceiptFormPageContent() {
                 </div>
                 {isSourceMode ? (
                   <>
-                    <SearchableSelect value={sourcePoId} onChange={(v) => setSourcePoId(v)} onSearch={goodsReceiptApi.searchReceivableOrders} placeholder="Pilih purchase order..." />
-                    <p className="text-[11px] text-[#94a3b8]">Item, sisa qty, harga, dan gudang diambil dari PO. Periksa lalu klik Terima Barang.</p>
+                    <SearchableSelect value={sourcePoId} onChange={(v) => setSourcePoId(v)} onSearch={goodsReceiptApi.searchReceivableOrders} placeholder="Pilih pesanan pembelian..." />
+                    <p className="text-[11px] text-[#94a3b8]">Item, sisa qty, harga, dan gudang diambil dari Pesanan Pembelian. Periksa lalu klik Terima Barang.</p>
                     <div>
                       <Button type="button" className="h-8 bg-[#5c9ead] px-3 text-[13px] hover:bg-[#4a8593]" disabled={!sourcePoId || createFromPurchaseOrder.isPending} onClick={() => void handleCreateFromPo()}>
-                        {createFromPurchaseOrder.isPending ? 'Memproses...' : 'Buat dari PO'}
+                        {createFromPurchaseOrder.isPending ? 'Memproses...' : 'Buat dari Pesanan Pembelian'}
                       </Button>
                     </div>
                   </>
                 ) : (
-                  <p className="text-[11px] text-[#94a3b8]">Penerimaan tanpa PO dinilai dengan harga rata-rata persediaan saat ini.</p>
+                  <p className="text-[11px] text-[#94a3b8]">Penerimaan tanpa Pesanan Pembelian dinilai dengan harga rata-rata persediaan saat ini.</p>
                 )}
               </div>
             </FormSection>
@@ -328,12 +328,12 @@ function GoodsReceiptFormPageContent() {
           <>
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Vendor <span className="text-red-500">*</span></Label>
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pemasok <span className="text-red-500">*</span></Label>
               <SearchableSelect cacheKey="contact"
                 value={watch('vendor_id') ?? null}
                 onChange={(v) => setValue('vendor_id', v as number)}
                 onSearch={(q) => kontakApi.search(q, 'supplier')}
-                placeholder="Pilih vendor..."
+                placeholder="Pilih pemasok..."
                 disabled={!isEditable}
                 error={errors.vendor_id?.message}
                 selectedOptions={gr?.vendor ? [{ value: gr.vendor.id, label: gr.vendor.name }] : []}
@@ -361,7 +361,7 @@ function GoodsReceiptFormPageContent() {
 
             {gr?.purchase_order_number && (
               <div className="flex flex-col gap-1">
-                <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Dari PO</Label>
+                <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Dari Pesanan Pembelian</Label>
                 <p className="text-[13px] font-medium text-[#5c9ead]">{gr.purchase_order_number}</p>
               </div>
             )}

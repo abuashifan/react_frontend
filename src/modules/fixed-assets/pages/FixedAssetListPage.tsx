@@ -24,7 +24,7 @@ const STATUS_LABEL: Record<FixedAssetStatus, string> = {
   capitalized: 'Dikapitalisasi',
   active: 'Aktif',
   fully_depreciated: 'Terdepresiasi',
-  partially_disposed: 'Sebagian Disposal',
+  partially_disposed: 'Pelepasan Sebagian',
   disposed: 'Disposed',
 }
 
@@ -55,7 +55,7 @@ function StatusBadge({ status }: { status: FixedAssetStatus }) {
  */
 const EXPORT_COLUMNS: ExportColumn<FixedAsset>[] = [
   { header: 'ID', value: (row) => row.id },
-  { header: 'Kode Aktiva', value: (row) => row.asset_number ?? row.number ?? `FA-${row.id}` },
+  { header: 'Kode Aset', value: (row) => row.asset_number ?? row.number ?? `FA-${row.id}` },
   { header: 'Nama', value: (row) => row.name },
   { header: 'Kategori', value: (row) => row.category?.name },
   { header: 'Tgl Perolehan', value: (row) => toExcelDate(row.acquisition_date), format: 'date' },
@@ -111,7 +111,7 @@ export default function FixedAssetListPage() {
   const columns: ColumnDef<FixedAsset>[] = [
     {
       id: 'asset_number',
-      header: 'Kode Aktiva',
+      header: 'Kode Aset',
       size: 150,
       meta: { sticky: true, stickyLeft: 0 },
       cell: ({ original }) => {
@@ -205,14 +205,14 @@ export default function FixedAssetListPage() {
 
   return (
     <WorkspaceLayout
-      title="Aktiva Tetap"
-      breadcrumb={[{ label: 'Aktiva Tetap' }, { label: 'Daftar Aktiva' }]}
+      title="Aset Tetap"
+      breadcrumb={[{ label: 'Aset Tetap' }, { label: 'Daftar Aset' }]}
       sidebar={sidebar}
       action={
         <div className="flex items-center gap-2">
           <ListExportButton permission="fixed_assets.assets.export"
             filename="aktiva-tetap"
-            sheetName="Aktiva Tetap"
+            sheetName="Aset Tetap"
             columns={EXPORT_COLUMNS}
             totalRows={data?.meta && typeof data.meta.total === 'number' ? data.meta.total : undefined}
             fetchPage={async (exportPage, exportPerPage) => {
@@ -244,10 +244,10 @@ export default function FixedAssetListPage() {
           <PermissionGuard permission="fixed_assets.assets.create">
             <Button
               className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]"
-              onClick={() => openRecordTab({ label: 'Aktiva Baru', path: '/fixed-assets/create' })}
+              onClick={() => openRecordTab({ label: 'Aset Baru', path: '/fixed-assets/create' })}
             >
               <Plus className="mr-1 h-3.5 w-3.5" />
-              Tambah Aktiva
+              Tambah Aset
             </Button>
           </PermissionGuard>
         </div>
@@ -261,8 +261,8 @@ export default function FixedAssetListPage() {
         isFetching={isFetching}
         pagination={pagination}
         onPaginationChange={setPagination}
-        emptyTitle="Belum ada aktiva tetap"
-        emptyDescription="Tambah aktiva tetap atau kapitalisasi dari pembelian."
+        emptyTitle="Belum ada aset tetap"
+        emptyDescription="Tambah aset tetap atau kapitalisasi dari pembelian."
       />
     </WorkspaceLayout>
   )

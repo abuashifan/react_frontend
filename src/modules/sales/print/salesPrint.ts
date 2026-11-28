@@ -12,7 +12,7 @@ import type { CustomerDeposit } from '../types/customerDeposit.types'
 
 export function salesInvoicePrint(inv: SalesInvoice): TransactionPrintData {
   return {
-    title: 'Invoice',
+    title: 'Faktur Penjualan',
     number: inv.number,
     status: inv.status,
     party: contactParty('Kepada', inv.customer),
@@ -20,8 +20,8 @@ export function salesInvoicePrint(inv: SalesInvoice): TransactionPrintData {
       { label: 'Tanggal', value: printDate(inv.date) },
       { label: 'Jatuh tempo', value: printDate(inv.due_date) },
       { label: 'Syarat bayar', value: inv.payment_term?.name ?? '-' },
-      ...(inv.sales_order_number ? [{ label: 'No. SO', value: inv.sales_order_number }] : []),
-      ...(inv.delivery_order_number ? [{ label: 'No. Surat Jalan', value: inv.delivery_order_number }] : []),
+      ...(inv.sales_order_number ? [{ label: 'No. Pesanan', value: inv.sales_order_number }] : []),
+      ...(inv.delivery_order_number ? [{ label: 'No. Pengiriman', value: inv.delivery_order_number }] : []),
     ],
     columns: [
       { key: 'item', header: 'Barang / Jasa', width: '40%' },
@@ -56,13 +56,13 @@ export function salesInvoicePrint(inv: SalesInvoice): TransactionPrintData {
 
 export function deliveryOrderPrint(d: DeliveryOrder): TransactionPrintData {
   return {
-    title: 'Surat Jalan',
+    title: 'Pengiriman Barang',
     number: d.number,
     status: d.status,
     party: contactParty('Dikirim kepada', d.customer, [d.delivery_address]),
     meta: [
       { label: 'Tanggal', value: printDate(d.date) },
-      ...(d.sales_order_number ? [{ label: 'No. SO', value: d.sales_order_number }] : []),
+      ...(d.sales_order_number ? [{ label: 'No. Pesanan', value: d.sales_order_number }] : []),
       { label: 'Gudang', value: d.warehouse?.name ?? '-' },
     ],
     columns: [
@@ -88,7 +88,7 @@ export function salesReceiptPrint(r: SalesReceipt): TransactionPrintData {
       { label: 'Kas/Bank', value: r.cash_bank_account?.name ?? '-' },
     ],
     columns: [
-      { key: 'invoice', header: 'Faktur / tagihan', width: discount > 0 ? '44%' : '70%' },
+      { key: 'invoice', header: 'Faktur pembelian', width: discount > 0 ? '44%' : '70%' },
       ...(discount > 0 ? [{ key: 'discount', header: 'Potongan', align: 'right' as const, width: '26%' }] : []),
       { key: 'amount', header: 'Kas', align: 'right', width: '26%' },
     ],
@@ -143,12 +143,12 @@ function pricedTotals(d: PricedDoc) {
 
 export function quotationPrint(q: SalesQuotation): TransactionPrintData {
   return {
-    title: 'Penawaran Harga', number: q.number, status: q.status,
+    title: 'Penawaran Penjualan', number: q.number, status: q.status,
     party: contactParty('Kepada', q.customer),
     meta: [
       { label: 'Tanggal', value: printDate(q.date) },
       { label: 'Berlaku sampai', value: printDate(q.expiry_date) },
-      ...(q.sales_person?.name ? [{ label: 'Sales', value: q.sales_person.name }] : []),
+      ...(q.sales_person?.name ? [{ label: 'Penjualan', value: q.sales_person.name }] : []),
     ],
     ...pricedLines(q.lines, true),
     totals: pricedTotals(q), amountInWords: terbilang(q.grand_total), notes: q.notes,
@@ -158,7 +158,7 @@ export function quotationPrint(q: SalesQuotation): TransactionPrintData {
 
 export function salesOrderPrint(o: SalesOrder): TransactionPrintData {
   return {
-    title: 'Sales Order', number: o.number, status: o.status,
+    title: 'Pesanan Penjualan', number: o.number, status: o.status,
     party: contactParty('Pelanggan', o.customer, [o.delivery_address ? `Kirim ke: ${o.delivery_address}` : null]),
     meta: [
       { label: 'Tanggal', value: printDate(o.date) },
@@ -173,11 +173,11 @@ export function salesOrderPrint(o: SalesOrder): TransactionPrintData {
 
 export function proformaPrint(p: ProformaInvoice): TransactionPrintData {
   return {
-    title: 'Proforma Invoice', number: p.number, status: p.status,
+    title: 'Faktur Sementara', number: p.number, status: p.status,
     party: contactParty('Kepada', p.customer),
     meta: [
       { label: 'Tanggal', value: printDate(p.date) },
-      ...(p.sales_order_number ? [{ label: 'No. SO', value: p.sales_order_number }] : []),
+      ...(p.sales_order_number ? [{ label: 'No. Pesanan', value: p.sales_order_number }] : []),
     ],
     ...pricedLines(p.lines, true),
     totals: pricedTotals(p), amountInWords: terbilang(p.grand_total), notes: p.notes,
@@ -191,8 +191,8 @@ export function salesReturnPrint(r: SalesReturn): TransactionPrintData {
     party: contactParty('Pelanggan', r.customer),
     meta: [
       { label: 'Tanggal', value: printDate(r.date) },
-      ...(r.sales_invoice_number ? [{ label: 'No. Invoice', value: r.sales_invoice_number }] : []),
-      ...(r.delivery_order_number ? [{ label: 'No. Surat Jalan', value: r.delivery_order_number }] : []),
+      ...(r.sales_invoice_number ? [{ label: 'No. Faktur', value: r.sales_invoice_number }] : []),
+      ...(r.delivery_order_number ? [{ label: 'No. Pengiriman', value: r.delivery_order_number }] : []),
     ],
     ...pricedLines(r.lines, false),
     totals: pricedTotals(r), notes: r.notes,

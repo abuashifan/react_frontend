@@ -124,7 +124,7 @@ function ProformaFormPageContent() {
   const { saveAndClose, navProps } = useRecordFormNavigation<ProformaFormValues>({
     id,
     basePath: '/sales/proformas',
-    createLabel: 'Proforma Baru',
+    createLabel: 'Faktur Sementara Baru',
     sequenceQueryKey: ['sales', 'proformas', 'adjacent'],
     fetchAdjacent: async (recordId) => (await proformaApi.adjacent(recordId)).data,
     handleSubmit,
@@ -136,12 +136,12 @@ function ProformaFormPageContent() {
       formDraft.clearDraft()
       setLineErrors({})
     },
-    successMessage: (creating) => (creating ? 'Proforma berhasil dibuat.' : 'Proforma berhasil diperbarui.'),
+    successMessage: (creating) => (creating ? 'Faktur Sementara berhasil dibuat.' : 'Faktur Sementara berhasil diperbarui.'),
     onError: (saveError) => {
       // Backend memvalidasi tanggal sebagai `proforma_date`, form memakai `date`.
       setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { proforma_date: 'date' })
-      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Proforma.'))
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Faktur Sementara.'))
     },
     canSave: isEditable,
   })
@@ -150,24 +150,24 @@ function ProformaFormPageContent() {
     try {
       await issue.mutateAsync(Number(id))
       formDraft.clearDraft()
-      toast.success('Proforma berhasil diterbitkan.')
-    } catch (issueError) { toast.error(getApiErrorMessage(issueError, 'Gagal menerbitkan proforma.')) }
+      toast.success('Faktur Sementara berhasil diterbitkan.')
+    } catch (issueError) { toast.error(getApiErrorMessage(issueError, 'Gagal menerbitkan faktur sementara.')) }
   }
 
   const handleAccept = async () => {
     try {
       await accept.mutateAsync(Number(id))
       formDraft.clearDraft()
-      toast.success('Proforma diterima.')
-    } catch (acceptError) { toast.error(getApiErrorMessage(acceptError, 'Gagal menerima proforma.')) }
+      toast.success('Faktur Sementara diterima.')
+    } catch (acceptError) { toast.error(getApiErrorMessage(acceptError, 'Gagal menerima faktur sementara.')) }
   }
 
   const handleCancel = async () => {
     try {
       await cancel.mutateAsync(Number(id))
       formDraft.clearDraft()
-      toast.success('Proforma dibatalkan.')
-    } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan proforma.')) }
+      toast.success('Faktur Sementara dibatalkan.')
+    } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan faktur sementara.')) }
   }
 
   const handleConvertToInvoice = async () => {
@@ -175,10 +175,10 @@ function ProformaFormPageContent() {
     try {
       const res = await salesInvoiceApi.createFromProforma(Number(id))
       formDraft.clearDraft()
-      toast.success('Invoice berhasil dibuat dari proforma.')
+      toast.success('Faktur Penjualan berhasil dibuat dari faktur sementara.')
       // Hasil konversi jadi tab baru, bukan menggantikan tab proforma asalnya.
       openRecordTab({ label: res.data.number, path: `/sales/invoices/${res.data.id}` })
-    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat invoice dari proforma.')) }
+    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat faktur penjualan dari faktur sementara.')) }
     finally { setConverting(false) }
   }
 
@@ -197,7 +197,7 @@ function ProformaFormPageContent() {
       actions.push({ id: 'accept', label: 'Terima', variant: 'primary', onClick: () => void handleAccept(), isLoading: accept.isPending })
     }
     if (proforma?.status === 'accepted' && can('sales.invoices.create')) {
-      actions.push({ id: 'convert', label: 'Convert ke Invoice', variant: 'primary', onClick: () => void handleConvertToInvoice(), isLoading: isConverting })
+      actions.push({ id: 'convert', label: 'Ubah jadi Faktur Penjualan', variant: 'primary', onClick: () => void handleConvertToInvoice(), isLoading: isConverting })
     }
     if (['draft', 'issued'].includes(proforma?.status ?? '') && can('sales.proformas.edit')) {
       actions.push({ id: 'cancel', label: 'Batalkan', variant: 'destructive', onClick: () => void handleCancel(), isLoading: cancel.isPending })
@@ -266,7 +266,7 @@ function ProformaFormPageContent() {
 
   if (!isCreate && isLoading) {
     return (
-      <FormLayout title="Proforma Invoice" breadcrumb={[{ label: 'Sales' }, { label: 'Proforma', path: '/sales/proformas' }, { label: 'Memuat...' }]}>
+      <FormLayout title="Faktur Sementara" breadcrumb={[{ label: 'Penjualan' }, { label: 'Faktur Sementara', path: '/sales/proformas' }, { label: 'Memuat...' }]}>
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
       </FormLayout>
     )
@@ -275,13 +275,13 @@ function ProformaFormPageContent() {
   return (
     <>
     <FormLayout
-      title={isCreate ? 'Buat Proforma Invoice' : 'Proforma Invoice'}
+      title={isCreate ? 'Buat Faktur Sementara' : 'Faktur Sementara'}
       documentNumber={proforma?.number}
       status={status}
       breadcrumb={[
-        { label: 'Sales' },
-        { label: 'Proforma', path: '/sales/proformas' },
-        { label: isCreate ? 'Buat Proforma' : (proforma?.number ?? '') },
+        { label: 'Penjualan' },
+        { label: 'Faktur Sementara', path: '/sales/proformas' },
+        { label: isCreate ? 'Buat Faktur Sementara' : (proforma?.number ?? '') },
       ]}
       headerActions={
         <>
@@ -291,17 +291,17 @@ function ProformaFormPageContent() {
       }
     >
       <div className="space-y-3">
-        {isCreate && <SourceConvertPanel sources={proformaSources} targetLabel="Proforma" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/sales/proformas/${newId}`} />}
+        {isCreate && <SourceConvertPanel sources={proformaSources} targetLabel="Faktur Sementara" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/sales/proformas/${newId}`} />}
         <FormSection title="Header">
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
-              Customer <span className="text-red-500">*</span>
+              Pelanggan <span className="text-red-500">*</span>
             </Label>
             <SearchableSelect cacheKey="contact"
               value={watch('customer_id') ?? null}
               onChange={(v) => setValue('customer_id', v as number)}
               onSearch={(q) => kontakApi.search(q, 'customer')}
-              placeholder="Pilih customer..."
+              placeholder="Pilih pelanggan..."
               disabled={!isEditable}
               error={errors.customer_id?.message}
               selectedOptions={proforma?.customer ? [{ value: proforma.customer.id, label: proforma.customer.name }] : []}
@@ -318,7 +318,7 @@ function ProformaFormPageContent() {
 
           {proforma?.sales_order_number && (
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Dari Sales Order</Label>
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Dari Pesanan Penjualan</Label>
               <p className="text-[13px] font-medium text-[#5c9ead]">{proforma.sales_order_number}</p>
             </div>
           )}

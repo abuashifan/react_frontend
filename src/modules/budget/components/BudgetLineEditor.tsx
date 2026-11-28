@@ -205,7 +205,7 @@ export function BudgetLineEditor({ submissionId, lines, readonly = false, onSave
     },
     {
       id: 'department',
-      header: 'Cost Center',
+      header: 'Departemen',
       width: 170,
       render: ({ item, isReadOnly, onUpdate }) =>
         isReadOnly ? (

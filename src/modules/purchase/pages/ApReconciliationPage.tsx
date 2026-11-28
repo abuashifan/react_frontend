@@ -9,7 +9,7 @@ export default function ApReconciliationPage() {
   return (
     <WorkspaceLayout
       title="AP Rekonsiliasi"
-      breadcrumb={[{ label: 'Pembelian' }, { label: 'AP' }, { label: 'Rekonsiliasi' }]}
+      breadcrumb={[{ label: 'Pembelian' }, { label: 'Utang' }, { label: 'Rekonsiliasi' }]}
     >
       {isLoading ? (
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>

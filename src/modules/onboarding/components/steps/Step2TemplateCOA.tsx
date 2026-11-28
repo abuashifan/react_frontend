@@ -136,7 +136,7 @@ export function Step2TemplateCOA({ currentTemplate, currentAccountCount, onCompl
       onComplete(selected, selectedTemplateDef.label, (customAccounts ?? selectedTemplateDef.accounts).length)
     } catch (continueError) {
       if (axios.isAxiosError(continueError) && continueError.response?.status === 409) {
-        setReplaceConflict(getApiErrorMessage(continueError, 'Chart of Accounts sudah diterapkan.'))
+        setReplaceConflict(getApiErrorMessage(continueError, 'Daftar akun sudah diterapkan.'))
         return
       }
       toast.error(getApiErrorMessage(continueError, 'Gagal menerapkan template COA. Coba lagi.'))
@@ -266,7 +266,7 @@ export function Step2TemplateCOA({ currentTemplate, currentAccountCount, onCompl
       <AlertDialog open={!!replaceConflict} onOpenChange={() => setReplaceConflict(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Ganti Chart of Accounts yang sudah ada?</AlertDialogTitle>
+            <AlertDialogTitle>Ganti daftar akun yang sudah ada?</AlertDialogTitle>
             <AlertDialogDescription>
               {replaceConflict} Melanjutkan akan menghapus akun hasil template sebelumnya, lalu
               Account Mapping disesuaikan ulang. Pilih Batal untuk mempertahankan COA saat ini.

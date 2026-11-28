@@ -10,19 +10,19 @@ export default function ApSummaryPage() {
 
   return (
     <WorkspaceLayout
-      title="AP Vendor Summary"
-      breadcrumb={[{ label: 'Pembelian' }, { label: 'AP' }, { label: 'Vendor Summary' }]}
+      title="Ringkasan Utang per Pemasok"
+      breadcrumb={[{ label: 'Pembelian' }, { label: 'Utang' }, { label: 'Ringkasan Pemasok' }]}
     >
       <div className="overflow-hidden rounded-lg border border-[#d9e2e5] bg-white">
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse text-[13px]">
             <thead>
               <tr className="bg-[#eeeeee]">
-                <th className="px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b]">Vendor</th>
+                <th className="px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b]">Pemasok</th>
                 <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">Debit</th>
                 <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">Kredit</th>
                 <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">Saldo</th>
-                <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">Deposit</th>
+                <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">Uang Muka</th>
                 <th className="px-3 py-2 text-right text-[11px] font-bold uppercase text-[#64748b]">Eksposur Neto</th>
                 <th className="px-3 py-2 text-center text-[11px] font-bold uppercase text-[#64748b]">Akun AP</th>
               </tr>

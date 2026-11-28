@@ -30,10 +30,10 @@ const STATUSES: PurchaseOrderStatus[] = ['draft', 'approved', 'confirmed', 'canc
  */
 const EXPORT_COLUMNS: ExportColumn<PurchaseOrder>[] = [
   { header: 'ID', value: (row) => row.id },
-  { header: 'Nomor PO', value: (row) => row.number },
+  { header: 'Nomor Pesanan', value: (row) => row.number },
   { header: 'Nomor PR', value: (row) => row.purchase_request_number },
   { header: 'Tanggal', value: (row) => toExcelDate(row.date), format: 'date' },
-  { header: 'Vendor', value: (row) => row.vendor?.name },
+  { header: 'Pemasok', value: (row) => row.vendor?.name },
   { header: 'Total', value: (row) => row.grand_total, format: 'currency' },
   { header: 'Status', value: (row) => row.status },
 ]
@@ -75,7 +75,7 @@ export default function PurchaseOrderListPage() {
   const columns: ColumnDef<PurchaseOrder>[] = [
     {
       id: 'number',
-      header: 'Nomor PO',
+      header: 'Nomor Pesanan',
       size: 140,
       meta: { sticky: true, stickyLeft: 0 },
       cell: ({ original }) => (
@@ -86,7 +86,7 @@ export default function PurchaseOrderListPage() {
     },
     { id: 'pr', header: 'Nomor PR', size: 130, cell: ({ original }) => original.purchase_request_number ?? '-' },
     { id: 'date', header: 'Tanggal', size: 110, cell: ({ original }) => formatDate(original.date) },
-    { id: 'vendor', header: 'Vendor', size: 200, cell: ({ original }) => original.vendor?.name ?? '-' },
+    { id: 'vendor', header: 'Pemasok', size: 200, cell: ({ original }) => original.vendor?.name ?? '-' },
     {
       id: 'grand_total',
       header: 'Total',
@@ -103,7 +103,7 @@ export default function PurchaseOrderListPage() {
         <ListSearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Cari nomor PO, vendor..."
+          placeholder="Cari nomor pesanan, pemasok..."
           className="w-full max-w-none"
         />
       </div>
@@ -115,12 +115,12 @@ export default function PurchaseOrderListPage() {
           </label>
         ))}
       </FilterSection>
-      <FilterSection title="Vendor">
+      <FilterSection title="Pemasok">
         <SearchableSelect cacheKey="contact"
           value={filterVendor}
           onChange={(v) => setFilterVendor(v)}
           onSearch={(q) => kontakApi.search(q, 'supplier')}
-          placeholder="Semua vendor"
+          placeholder="Semua pemasok"
         />
       </FilterSection>
       <DateRangeFilterSection
@@ -134,14 +134,14 @@ export default function PurchaseOrderListPage() {
 
   return (
     <WorkspaceLayout
-      title="Purchase Order"
-      breadcrumb={[{ label: 'Pembelian' }, { label: 'Purchase Order' }]}
+      title="Pesanan Pembelian"
+      breadcrumb={[{ label: 'Pembelian' }, { label: 'Pesanan Pembelian' }]}
       sidebar={sidebar}
       action={
         <>
           <ListExportButton permission="purchase.orders.export"
             filename="purchase-order"
-            sheetName="Purchase Order"
+            sheetName="Pesanan Pembelian"
             columns={EXPORT_COLUMNS}
             totalRows={data?.meta.total}
             fetchPage={async (exportPage, exportPerPage) => {
@@ -152,8 +152,8 @@ export default function PurchaseOrderListPage() {
             }}
           />
           <PermissionGuard permission="purchase.orders.create">
-            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Purchase Order Baru', path: '/purchase/orders/create' })}>
-              <Plus className="mr-1 h-3.5 w-3.5" /> Buat PO
+            <Button className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]" onClick={() => openRecordTab({ label: 'Pesanan Pembelian Baru', path: '/purchase/orders/create' })}>
+              <Plus className="mr-1 h-3.5 w-3.5" /> Buat Pesanan Pembelian
             </Button>
           </PermissionGuard>
         </>
@@ -167,8 +167,8 @@ export default function PurchaseOrderListPage() {
         isFetching={isFetching}
         pagination={{ pageIndex: page, pageSize: 25 }}
         onPaginationChange={(p) => setPage(p.pageIndex)}
-        emptyTitle="Belum ada purchase order"
-        emptyDescription="Buat PO baru atau konversi dari Purchase Request."
+        emptyTitle="Belum ada pesanan pembelian"
+        emptyDescription="Buat Pesanan Pembelian baru atau konversi dari Permintaan Pembelian."
       />
     </WorkspaceLayout>
   )

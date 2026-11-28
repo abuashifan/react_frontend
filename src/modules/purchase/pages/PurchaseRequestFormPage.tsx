@@ -116,7 +116,7 @@ function PurchaseRequestFormPageContent() {
   const { saveAndClose, navProps } = useRecordFormNavigation<PurchaseRequestFormValues>({
     id,
     basePath: '/purchase/requests',
-    createLabel: 'Purchase Request Baru',
+    createLabel: 'Permintaan Pembelian Baru',
     sequenceQueryKey: ['purchase', 'requests', 'adjacent'],
     fetchAdjacent: async (recordId) => (await purchaseRequestApi.adjacent(recordId)).data,
     handleSubmit,
@@ -129,12 +129,12 @@ function PurchaseRequestFormPageContent() {
       formDraft.clearDraft()
       setLineErrors({})
     },
-    successMessage: (creating) => (creating ? 'Purchase Request berhasil dibuat.' : 'Purchase Request berhasil diperbarui.'),
+    successMessage: (creating) => (creating ? 'Permintaan Pembelian berhasil dibuat.' : 'Permintaan Pembelian berhasil diperbarui.'),
     onError: (saveError) => {
       // Backend memakai nama kolom DB (`request_date`), form memakai `date`.
       setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { request_date: 'date' })
-      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Purchase Request.'))
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Permintaan Pembelian.'))
     },
     canSave: isEditable,
   })
@@ -159,7 +159,7 @@ function PurchaseRequestFormPageContent() {
   const { openRecordTab: openFollowUpTab } = useRecordTab()
   const actions: DocumentActionButton[] = []
   if (!isCreate && (pr?.status === 'submitted' || pr?.status === 'approved') && can('purchase.orders.create') && can('purchase.documents.convert')) {
-    actions.push({ id: 'create_po', label: 'Buat PO', variant: 'primary', onClick: () => openFollowUpTab({ label: 'PO Baru', path: `/purchase/orders/create?from_request=${id}` }) })
+    actions.push({ id: 'create_po', label: 'Buat Pesanan Pembelian', variant: 'primary', onClick: () => openFollowUpTab({ label: 'Pesanan Pembelian Baru', path: `/purchase/orders/create?from_request=${id}` }) })
   }
   if (!isCreate && pr && can('purchase.requests.print')) {
     actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
@@ -207,7 +207,7 @@ function PurchaseRequestFormPageContent() {
 
   if (!isCreate && isLoading) {
     return (
-      <FormLayout title="Purchase Request" breadcrumb={[{ label: 'Pembelian' }, { label: 'Purchase Request', path: '/purchase/requests' }, { label: 'Memuat...' }]}>
+      <FormLayout title="Permintaan Pembelian" breadcrumb={[{ label: 'Pembelian' }, { label: 'Permintaan Pembelian', path: '/purchase/requests' }, { label: 'Memuat...' }]}>
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
       </FormLayout>
     )
@@ -216,10 +216,10 @@ function PurchaseRequestFormPageContent() {
   return (
     <>
     <FormLayout
-      title={isCreate ? 'Buat Purchase Request' : 'Purchase Request'}
+      title={isCreate ? 'Buat Permintaan Pembelian' : 'Permintaan Pembelian'}
       documentNumber={pr?.number}
       status={status}
-      breadcrumb={[{ label: 'Pembelian' }, { label: 'Purchase Request', path: '/purchase/requests' }, { label: isCreate ? 'Buat PR' : (pr?.number ?? '') }]}
+      breadcrumb={[{ label: 'Pembelian' }, { label: 'Permintaan Pembelian', path: '/purchase/requests' }, { label: isCreate ? 'Buat Permintaan Pembelian' : (pr?.number ?? '') }]}
       headerActions={
         <>
           <RecordNavButtons {...navProps} isBusy={isSubmitting} />

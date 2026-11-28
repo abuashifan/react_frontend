@@ -108,10 +108,10 @@ function VendorBillFormPageContent() {
       if (sourceMode === 'purchase_order') await createFromPurchaseOrder.mutateAsync(sourceId)
       else await createFromGoodsReceipt.mutateAsync(sourceId)
       formDraft.clearDraft()
-      toast.success('Tagihan dibuat dari dokumen sumber.')
+      toast.success('Faktur Pembelian dibuat dari dokumen sumber.')
       closeRecordTab('/purchase/bills/create', '/purchase/bills')
     } catch (convertError) {
-      toast.error(getApiErrorMessage(convertError, 'Gagal membuat tagihan dari dokumen sumber.'))
+      toast.error(getApiErrorMessage(convertError, 'Gagal membuat faktur pembelian dari dokumen sumber.'))
     }
   }
   const isConverting = createFromPurchaseOrder.isPending || createFromGoodsReceipt.isPending
@@ -226,7 +226,7 @@ function VendorBillFormPageContent() {
   const { saveAndClose, navProps } = useRecordFormNavigation<VendorBillFormValues>({
     id,
     basePath: '/purchase/bills',
-    createLabel: 'Tagihan Vendor Baru',
+    createLabel: 'Faktur Pembelian Baru',
     sequenceQueryKey: ['purchase', 'bills', 'adjacent'],
     fetchAdjacent: async (recordId) => (await vendorBillApi.adjacent(recordId)).data,
     handleSubmit,
@@ -254,25 +254,25 @@ function VendorBillFormPageContent() {
       setApiLineErrors({})
       setEditing(false)
     },
-    successMessage: (creating) => (creating ? 'Tagihan vendor berhasil dibuat.' : 'Tagihan vendor berhasil diperbarui.'),
+    successMessage: (creating) => (creating ? 'Faktur pembelian berhasil dibuat.' : 'Faktur pembelian berhasil diperbarui.'),
     onError: (saveError) => {
       setApiLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { bill_date: 'date' })
-      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan tagihan vendor.'))
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan faktur pembelian.'))
     },
     canSave: isEditable,
   })
 
-  const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); formDraft.clearDraft(); toast.success('Bill di-approve.') } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve bill.')) } finally { setConfirmAction(null) } }
-  const handlePost = async () => { try { await post.mutateAsync(Number(id)); formDraft.clearDraft(); toast.success('Bill berhasil diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting bill.')) } finally { setConfirmAction(null) } }
+  const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); formDraft.clearDraft(); toast.success('Faktur Pembelian di-approve.') } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve faktur pembelian.')) } finally { setConfirmAction(null) } }
+  const handlePost = async () => { try { await post.mutateAsync(Number(id)); formDraft.clearDraft(); toast.success('Faktur Pembelian berhasil diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting faktur pembelian.')) } finally { setConfirmAction(null) } }
   const handleVoid = async (reason: string) => {
     try {
       await voidBill.mutateAsync({ id: Number(id), reason })
       formDraft.clearDraft()
-      toast.success('Bill berhasil di-void.')
+      toast.success('Faktur Pembelian berhasil di-void.')
       setVoidOpen(false)
     } catch (voidError) {
-      toast.error(getApiErrorMessage(voidError, 'Gagal void bill.'))
+      toast.error(getApiErrorMessage(voidError, 'Gagal void faktur pembelian.'))
     }
   }
 
@@ -280,10 +280,10 @@ function VendorBillFormPageContent() {
     try {
       await remove.mutateAsync({ id: Number(id), reason })
       formDraft.clearDraft()
-      toast.success('Tagihan vendor berhasil dihapus.')
+      toast.success('Faktur pembelian berhasil dihapus.')
       setDeleteOpen(false)
       closeRecordTab(window.location.pathname, '/purchase/bills')
-    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus tagihan vendor.')) }
+    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus faktur pembelian.')) }
   }
 
   const { openRecordTab: openFollowUpTab } = useRecordTab()
@@ -396,7 +396,7 @@ function VendorBillFormPageContent() {
 
   if (!isCreate && isLoading) {
     return (
-      <FormLayout title="Tagihan Vendor" breadcrumb={[{ label: 'Pembelian' }, { label: 'Tagihan', path: '/purchase/bills' }, { label: 'Memuat...' }]}>
+      <FormLayout title="Faktur Pembelian" breadcrumb={[{ label: 'Pembelian' }, { label: 'Faktur Pembelian', path: '/purchase/bills' }, { label: 'Memuat...' }]}>
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
       </FormLayout>
     )
@@ -413,11 +413,11 @@ function VendorBillFormPageContent() {
   return (
     <>
       <FormLayout
-        title={isCreate ? 'Buat Tagihan Vendor' : 'Tagihan Vendor'}
+        title={isCreate ? 'Buat Faktur Pembelian' : 'Faktur Pembelian'}
         documentNumber={bill?.number}
         status={status}
         readOnly={!isEditable}
-        breadcrumb={[{ label: 'Pembelian' }, { label: 'Tagihan', path: '/purchase/bills' }, { label: isCreate ? 'Buat Bill' : (bill?.number ?? '') }]}
+        breadcrumb={[{ label: 'Pembelian' }, { label: 'Faktur Pembelian', path: '/purchase/bills' }, { label: isCreate ? 'Buat Faktur Pembelian' : (bill?.number ?? '') }]}
         headerActions={
           <>
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
@@ -436,7 +436,7 @@ function VendorBillFormPageContent() {
             <FormSection title="Sumber Dokumen">
               <div className="flex flex-col gap-2 md:col-span-2">
                 <div className="flex gap-1">
-                  {([['none', 'Tanpa Sumber'], ['purchase_order', 'Dari Purchase Order'], ['goods_receipt', 'Dari Goods Receipt']] as const).map(([mode, label]) => (
+                  {([['none', 'Tanpa Sumber'], ['purchase_order', 'Dari Pesanan Pembelian'], ['goods_receipt', 'Dari Penerimaan Barang']] as const).map(([mode, label]) => (
                     <button
                       key={mode}
                       type="button"
@@ -453,7 +453,7 @@ function VendorBillFormPageContent() {
                       value={sourceId}
                       onChange={(v) => setSourceId(v)}
                       onSearch={(q) => vendorBillSourceApi.search(sourceMode as BillSourceType, q)}
-                      placeholder={sourceMode === 'purchase_order' ? 'Pilih purchase order...' : 'Pilih goods receipt...'}
+                      placeholder={sourceMode === 'purchase_order' ? 'Pilih pesanan pembelian...' : 'Pilih penerimaan barang...'}
                     />
                     {sourceId && (
                       <div className="rounded-md border border-[#e2e8f0] bg-[#f8fafc] p-3 text-[12px]">
@@ -490,7 +490,7 @@ function VendorBillFormPageContent() {
                         disabled={!sourcePreview?.hasRemaining || isConverting}
                         onClick={() => void handleConvertFromSource()}
                       >
-                        {isConverting ? 'Memproses...' : 'Buat Tagihan dari Sumber'}
+                        {isConverting ? 'Memproses...' : 'Buat Faktur Pembelian dari Sumber'}
                       </Button>
                     </div>
                   </>
@@ -502,13 +502,13 @@ function VendorBillFormPageContent() {
           <>
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
-              <Label htmlFor="bill_number" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">No. Tagihan</Label>
+              <Label htmlFor="bill_number" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">No. Faktur</Label>
               <Input {...register('bill_number')} id="bill_number" disabled={!isEditable} placeholder="Otomatis (kosongkan)" className={cn('h-9 text-[13px] tabular-nums', fieldErrorClass(errors.bill_number))} />
               <FieldError message={errors.bill_number?.message} />
             </div>
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Vendor <span className="text-red-500">*</span></Label>
-              <SearchableSelect cacheKey="contact" value={vendorId ?? null} onChange={(v) => setValue('vendor_id', v as number)} onSearch={(q) => kontakApi.search(q, 'supplier')} placeholder="Pilih vendor..." disabled={!isEditable} error={errors.vendor_id?.message} selectedOptions={bill?.vendor ? [{ value: bill.vendor.id, label: bill.vendor.name }] : []} />
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pemasok <span className="text-red-500">*</span></Label>
+              <SearchableSelect cacheKey="contact" value={vendorId ?? null} onChange={(v) => setValue('vendor_id', v as number)} onSearch={(q) => kontakApi.search(q, 'supplier')} placeholder="Pilih pemasok..." disabled={!isEditable} error={errors.vendor_id?.message} selectedOptions={bill?.vendor ? [{ value: bill.vendor.id, label: bill.vendor.name }] : []} />
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="date" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
@@ -525,7 +525,7 @@ function VendorBillFormPageContent() {
               <SearchableSelect cacheKey="payment-term" value={paymentTermId ?? null} onChange={(v) => setValue('payment_term_id', v)} onSearch={paymentTermsApi.search} placeholder="Pilih syarat pembayaran..." disabled={!isEditable} error={errors.payment_term_id?.message} selectedOptions={bill?.payment_term ? [{ value: bill.payment_term.id, label: bill.payment_term.name }] : []} />
             </div>
             <div className="flex flex-col gap-1">
-              <Label htmlFor="applied_vendor_deposit_amount" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Deposit Vendor Terpakai</Label>
+              <Label htmlFor="applied_vendor_deposit_amount" className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Uang Muka Pemasok Terpakai</Label>
               <Input {...register('applied_vendor_deposit_amount', { valueAsNumber: true })} id="applied_vendor_deposit_amount" type="number" min={0} disabled={!isEditable} className={cn('h-9 text-[13px]', fieldErrorClass(errors.applied_vendor_deposit_amount))} />
               <FieldError message={errors.applied_vendor_deposit_amount?.message} />
             </div>
@@ -543,7 +543,7 @@ function VendorBillFormPageContent() {
             <div className="md:col-span-2 rounded-md border border-[#e2e8f0] bg-[#f8fafc] p-3 text-[12px] text-[#334155]">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="font-semibold text-[#24323a]">Deposit vendor tersedia</p>
+                  <p className="font-semibold text-[#24323a]">Uang muka pemasok tersedia</p>
                   <p className="text-[#64748b]">{isDepositSummaryLoading ? 'Memuat summary...' : `Total belum terpakai: ${formatCurrency(depositSummary?.data.unapplied_total ?? 0)}${appliedVendorDepositAmount ? ` · Dipakai: ${formatCurrency(appliedVendorDepositAmount)}` : ''}`}</p>
                 </div>
                 {depositSummary?.data.deposits?.length ? <span className="rounded-full bg-white px-2 py-1 text-[11px] font-medium text-[#64748b]">{depositSummary.data.deposits.length} deposit</span> : null}
@@ -568,7 +568,7 @@ function VendorBillFormPageContent() {
                   </table>
                 </div>
               ) : (
-                <p className="mt-2 text-[#94a3b8]">Belum ada deposit vendor yang dapat diaplikasikan.</p>
+                <p className="mt-2 text-[#94a3b8]">Belum ada uang muka pemasok yang dapat diaplikasikan.</p>
               )}
             </div>
           </FormSection>
@@ -603,8 +603,8 @@ function VendorBillFormPageContent() {
         isOpen={confirmAction === 'approve'}
         onClose={() => setConfirmAction(null)}
         onConfirm={() => void handleApprove()}
-        title="Approve Tagihan"
-        description={<>Setujui tagihan {bill?.number ?? ''}? Tagihan akan masuk tahap siap-posting dan tidak dapat diedit lagi.</>}
+        title="Approve Faktur Pembelian"
+        description={<>Setujui faktur pembelian {bill?.number ?? ''}? Faktur Pembelian akan masuk tahap siap-posting dan tidak dapat diedit lagi.</>}
         confirmLabel="Approve"
         loadingLabel="Memproses..."
         isLoading={approve.isPending}
@@ -613,8 +613,8 @@ function VendorBillFormPageContent() {
         isOpen={confirmAction === 'post'}
         onClose={() => setConfirmAction(null)}
         onConfirm={() => void handlePost()}
-        title="Posting Tagihan"
-        description={<>Posting tagihan {bill?.number ?? ''}? Jurnal Hutang Usaha (AP) akan dibuat dan saldo hutang vendor bertambah. Pembatalan hanya bisa lewat void.</>}
+        title="Posting Faktur Pembelian"
+        description={<>Posting faktur pembelian {bill?.number ?? ''}? Jurnal Utang Usaha (AP) akan dibuat dan saldo utang pemasok bertambah. Pembatalan hanya bisa lewat void.</>}
         confirmLabel="Post"
         loadingLabel="Memposting..."
         isLoading={post.isPending}

@@ -296,7 +296,7 @@ function ProdukFormPageContent() {
 
   if (!isCreate && isLoading) {
     return (
-      <FormLayout title="Produk" breadcrumb={[{ label: 'Master Data' }, { label: 'Produk', path: '/master-data/products' }, { label: 'Loading...' }]}>
+      <FormLayout title="Produk" breadcrumb={[{ label: 'Data Utama' }, { label: 'Produk', path: '/master-data/products' }, { label: 'Memuat...' }]}>
         <div className="h-32 flex items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
       </FormLayout>
     )
@@ -307,7 +307,7 @@ function ProdukFormPageContent() {
       title={isCreate ? 'Tambah Produk' : 'Edit Produk'}
       documentNumber={isCreate ? undefined : (produk?.product_code ?? undefined)}
       breadcrumb={[
-        { label: 'Master Data' },
+        { label: 'Data Utama' },
         { label: 'Produk', path: '/master-data/products' },
         { label: isCreate ? 'Tambah Produk' : (produk?.product_name ?? '') },
       ]}

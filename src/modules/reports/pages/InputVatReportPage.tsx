@@ -52,7 +52,7 @@ export default function InputVatReportPage() {
               variant="outline"
               filename={`ppn-masukan-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}`}
               sheetName="PPN Masukan"
-              headers={['No Bill', 'No Faktur Pajak', 'Tanggal', 'Pemasok', 'DPP', 'PPN', 'Total']}
+              headers={['No. Faktur', 'No Faktur Pajak', 'Tanggal', 'Pemasok', 'DPP', 'PPN', 'Total']}
               rows={() => rows.map((r) => [r.bill_number, r.vendor_invoice_number ?? '', toExcelDate(r.bill_date), r.vendor_name ?? '', toExcelNumber(r.dpp), toExcelNumber(r.ppn), toExcelNumber(r.total)])}
               formats={['text', 'text', 'date', 'text', 'currency', 'currency', 'currency']}
             />
@@ -64,7 +64,7 @@ export default function InputVatReportPage() {
             <table className="w-full text-[12px]">
               <thead className="bg-[#f8fafc]">
                 <tr>
-                  <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">No Bill</th>
+                  <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">No. Faktur</th>
                   <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">No Faktur Pajak</th>
                   <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal</th>
                   <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pemasok</th>

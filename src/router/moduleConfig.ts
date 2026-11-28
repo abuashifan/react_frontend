@@ -54,16 +54,16 @@ export interface ModuleConfig {
 export const MODULE_CONFIGS: ModuleConfig[] = [
   {
     id: 'dashboard',
-    label: 'Dashboard',
+    label: 'Beranda',
     path: '/',
     ribbonItems: [],
   },
   {
     id: 'master-data',
-    label: 'Master Data',
+    label: 'Data Utama',
     path: '/master-data',
     ribbonItems: [
-      { id: 'chart-of-accounts', label: 'Akun (COA)', icon: Landmark, path: '/master-data/coa', permission: 'master_data.coa.view' },
+      { id: 'chart-of-accounts', label: 'Daftar Akun', icon: Landmark, path: '/master-data/coa', permission: 'master_data.coa.view' },
       { id: 'contacts', label: 'Kontak', icon: Users, path: '/master-data/contacts', permission: 'master_data.contacts.view' },
       { id: 'products', label: 'Produk', icon: Package, path: '/master-data/products', permission: 'master_data.products.view' },
       // Halaman & route-nya sudah lama ada, tapi entri menunya tidak pernah
@@ -72,7 +72,7 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
       { id: 'product-categories', label: 'Kategori Produk', icon: Tags, path: '/master-data/product-categories', permission: 'master_data.products.view' },
       { id: 'units', label: 'Satuan', icon: Ruler, path: '/master-data/units', permission: 'master_data.units.view' },
       { id: 'warehouses', label: 'Gudang', icon: Warehouse, path: '/master-data/warehouses', permission: 'master_data.warehouses.view' },
-      { id: 'payment-terms', label: 'Syarat Bayar', icon: CalendarClock, path: '/master-data/payment-terms', permission: 'master_data.payment_terms.view' },
+      { id: 'payment-terms', label: 'Syarat Pembayaran', icon: CalendarClock, path: '/master-data/payment-terms', permission: 'master_data.payment_terms.view' },
       { id: 'departments', label: 'Departemen', icon: Building2, path: '/master-data/departments', permission: 'master_data.departments.view' },
       { id: 'projects', label: 'Proyek', icon: FolderKanban, path: '/master-data/projects', permission: 'master_data.projects.view' },
       { id: 'import', label: 'Impor Data', icon: Upload, path: '/master-data/import', permission: ['master_data.import.execute', 'accounting.journals.import', 'sales.invoices.import', 'purchase.bills.import'] },
@@ -94,9 +94,9 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
       // keadaan (belum ada batch → tombol mulai; sudah diposting/dikunci →
       // "Lihat Detail"), jadi aman tampil permanen.
       { id: 'opening-balance', label: 'Saldo Awal', icon: Archive, path: '/opening-balance', permission: 'accounting.opening_balance.view' },
-      { id: 'period-locks', label: 'Periode Akuntansi', icon: Calendar, path: '/accounting/period-locks', permission: 'accounting.period_locks.view' },
-      { id: 'period-end', label: 'Akhir Periode', icon: CheckSquare, path: '/accounting/period-end', permission: 'accounting.period_end.view' },
-      { id: 'fiscal-years', label: 'Tahun Fiskal', icon: CalendarDays, path: '/accounting/fiscal-years', permission: 'accounting.fiscal_year.view' },
+      { id: 'period-locks', label: 'Kunci Periode', icon: Calendar, path: '/accounting/period-locks', permission: 'accounting.period_locks.view' },
+      { id: 'period-end', label: 'Tutup Buku', icon: CheckSquare, path: '/accounting/period-end', permission: 'accounting.period_end.view' },
+      { id: 'fiscal-years', label: 'Tahun Buku', icon: CalendarDays, path: '/accounting/fiscal-years', permission: 'accounting.fiscal_year.view' },
     ],
   },
   {
@@ -110,25 +110,25 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
       // Urutan mengikuti alur proses: pagu top-down (Tahap 1-2) dulu, baru
       // pengajuan RAB bottom-up (Tahap 4) — bukan urutan CRUD submission yang
       // jadi objek utama modul ini secara teknis.
-      { id: 'budget-periods', group: 'Budget', label: 'Pagu Anggaran', icon: CalendarRange, path: '/budget/periods', permission: 'budget.submissions.view' },
-      { id: 'budget-list', group: 'Budget', label: 'Daftar Budget', icon: ClipboardList, path: '/budget/submissions', permission: 'budget.submissions.view' },
-      { id: 'budget-create', group: 'Budget', label: 'Buat Budget', icon: FilePlus, path: '/budget/submissions/new', permission: 'budget.submissions.create' },
+      { id: 'budget-periods', group: 'Anggaran', label: 'Pagu Anggaran', icon: CalendarRange, path: '/budget/periods', permission: 'budget.submissions.view' },
+      { id: 'budget-list', group: 'Anggaran', label: 'Daftar Anggaran', icon: ClipboardList, path: '/budget/submissions', permission: 'budget.submissions.view' },
+      { id: 'budget-create', group: 'Anggaran', label: 'Buat Anggaran', icon: FilePlus, path: '/budget/submissions/new', permission: 'budget.submissions.create' },
 
       // Empat entri Monitoring adalah preset dari SATU halaman analisis, bukan
       // empat halaman. Yang berbeda hanya `group_by` dan `mode` awalnya.
-      { id: 'budget-vs-actual', group: 'Monitoring', label: 'Budget vs Actual', icon: GitCompare, path: '/budget/analysis?preset=vs-actual', permission: 'budget.submissions.view' },
-      { id: 'budget-variance', group: 'Monitoring', label: 'Variance', icon: TrendingDown, path: '/budget/analysis?preset=variance', permission: 'budget.submissions.view' },
-      { id: 'budget-utilization', group: 'Monitoring', label: 'Utilization', icon: BarChart3, path: '/budget/analysis?preset=utilization', permission: 'budget.submissions.view' },
-      { id: 'budget-summary', group: 'Monitoring', label: 'Summary', icon: LayoutDashboard, path: '/budget/analysis?preset=summary', permission: 'budget.submissions.view' },
+      { id: 'budget-vs-actual', group: 'Pemantauan', label: 'Anggaran vs Realisasi', icon: GitCompare, path: '/budget/analysis?preset=vs-actual', permission: 'budget.submissions.view' },
+      { id: 'budget-variance', group: 'Pemantauan', label: 'Selisih Anggaran', icon: TrendingDown, path: '/budget/analysis?preset=variance', permission: 'budget.submissions.view' },
+      { id: 'budget-utilization', group: 'Pemantauan', label: 'Penyerapan Anggaran', icon: BarChart3, path: '/budget/analysis?preset=utilization', permission: 'budget.submissions.view' },
+      { id: 'budget-summary', group: 'Pemantauan', label: 'Ringkasan Anggaran', icon: LayoutDashboard, path: '/budget/analysis?preset=summary', permission: 'budget.submissions.view' },
 
       // Lima entri Project juga satu halaman, bertab.
-      { id: 'budget-project-budget', group: 'Project', label: 'Project Budget', icon: FolderKanban, path: '/budget/projects?tab=budget', permission: 'budget.submissions.view' },
-      { id: 'budget-project-actual', group: 'Project', label: 'Project Actual', icon: Receipt, path: '/budget/projects?tab=actual', permission: 'budget.submissions.view' },
-      { id: 'budget-project-profit', group: 'Project', label: 'Project Profitability', icon: TrendingUp, path: '/budget/projects?tab=profitability', permission: 'budget.submissions.view' },
-      { id: 'budget-project-cash', group: 'Project', label: 'Project Cash Flow', icon: Banknote, path: '/budget/projects?tab=cash-flow', permission: 'budget.submissions.view' },
-      { id: 'budget-project-tx', group: 'Project', label: 'Project Transactions', icon: BookOpen, path: '/budget/projects?tab=transactions', permission: 'budget.submissions.view' },
+      { id: 'budget-project-budget', group: 'Proyek', label: 'Anggaran Proyek', icon: FolderKanban, path: '/budget/projects?tab=budget', permission: 'budget.submissions.view' },
+      { id: 'budget-project-actual', group: 'Proyek', label: 'Realisasi Proyek', icon: Receipt, path: '/budget/projects?tab=actual', permission: 'budget.submissions.view' },
+      { id: 'budget-project-profit', group: 'Proyek', label: 'Laba Proyek', icon: TrendingUp, path: '/budget/projects?tab=profitability', permission: 'budget.submissions.view' },
+      { id: 'budget-project-cash', group: 'Proyek', label: 'Arus Kas Proyek', icon: Banknote, path: '/budget/projects?tab=cash-flow', permission: 'budget.submissions.view' },
+      { id: 'budget-project-tx', group: 'Proyek', label: 'Transaksi Proyek', icon: BookOpen, path: '/budget/projects?tab=transactions', permission: 'budget.submissions.view' },
 
-      { id: 'budget-cash', group: 'Cash', label: 'Cash Budget', icon: Wallet, path: '/budget/cash', permission: 'budget.submissions.view' },
+      { id: 'budget-cash', group: 'Kas', label: 'Anggaran Kas', icon: Wallet, path: '/budget/cash', permission: 'budget.submissions.view' },
     ],
   },
   {
@@ -136,11 +136,11 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     label: 'Kas & Bank',
     path: '/cash-bank',
     ribbonItems: [
-      { id: 'cash-receipts', label: 'Penerimaan Kas', icon: TrendingUp, path: '/cash-bank/cash-receipts', permission: 'cash_bank.receipts.view' },
-      { id: 'cash-payments', label: 'Pengeluaran Kas', icon: TrendingDown, path: '/cash-bank/cash-payments', permission: 'cash_bank.payments.view' },
+      { id: 'cash-receipts', label: 'Penerimaan Lainnya', icon: TrendingUp, path: '/cash-bank/cash-receipts', permission: 'cash_bank.receipts.view' },
+      { id: 'cash-payments', label: 'Pembayaran Lainnya', icon: TrendingDown, path: '/cash-bank/cash-payments', permission: 'cash_bank.payments.view' },
       { id: 'workspace-disbursements', label: 'Pencairan Workspace', icon: ClipboardList, path: '/cash-bank/workspace-disbursements', permission: 'cash_bank.workspace_disbursements.view' },
-      { id: 'transfers', label: 'Transfer', icon: ArrowLeftRight, path: '/cash-bank/bank-transfers', permission: 'cash_bank.transfers.view' },
-      { id: 'reconciliations', label: 'Rekonsiliasi', icon: CheckSquare, path: '/cash-bank/bank-reconciliations', permission: 'cash_bank.reconciliations.view' },
+      { id: 'transfers', label: 'Transfer Antar Rekening', icon: ArrowLeftRight, path: '/cash-bank/bank-transfers', permission: 'cash_bank.transfers.view' },
+      { id: 'reconciliations', label: 'Rekonsiliasi Bank', icon: CheckSquare, path: '/cash-bank/bank-reconciliations', permission: 'cash_bank.reconciliations.view' },
     ],
   },
   {
@@ -148,15 +148,15 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     label: 'Penjualan',
     path: '/sales',
     ribbonItems: [
-      { id: 'quotations', label: 'Penawaran', icon: FileQuestion, path: '/sales/quotations', permission: 'sales.quotations.view' },
-      { id: 'orders', label: 'Sales Order', icon: ShoppingCart, path: '/sales/orders', permission: 'sales.orders.view' },
-      { id: 'delivery-orders', label: 'Pengiriman', icon: Truck, path: '/sales/delivery-orders', permission: 'sales.delivery_orders.view' },
-      { id: 'proformas', label: 'Proforma', icon: FileOutput, path: '/sales/proformas', permission: 'sales.proformas.view' },
-      { id: 'invoices', label: 'Invoice', icon: Receipt, path: '/sales/invoices', permission: 'sales.invoices.view' },
-      { id: 'customer-deposits', label: 'Uang muka pelanggan', icon: Wallet, path: '/sales/customer-deposits', permission: 'sales.deposits.view' },
-      { id: 'receivables', label: 'Piutang', icon: BookOpen, path: '/sales/ar/summary', permission: 'sales.ar.view' },
-      { id: 'receipts', label: 'Penerimaan', icon: Banknote, path: '/sales/receipts', permission: 'sales.receipts.view' },
-      { id: 'returns', label: 'Retur', icon: RotateCcw, path: '/sales/returns', permission: 'sales.returns.view' },
+      { id: 'quotations', label: 'Penawaran Penjualan', icon: FileQuestion, path: '/sales/quotations', permission: 'sales.quotations.view' },
+      { id: 'orders', label: 'Pesanan Penjualan', icon: ShoppingCart, path: '/sales/orders', permission: 'sales.orders.view' },
+      { id: 'delivery-orders', label: 'Pengiriman Barang', icon: Truck, path: '/sales/delivery-orders', permission: 'sales.delivery_orders.view' },
+      { id: 'proformas', label: 'Faktur Sementara', icon: FileOutput, path: '/sales/proformas', permission: 'sales.proformas.view' },
+      { id: 'invoices', label: 'Faktur Penjualan', icon: Receipt, path: '/sales/invoices', permission: 'sales.invoices.view' },
+      { id: 'customer-deposits', label: 'Uang Muka Pelanggan', icon: Wallet, path: '/sales/customer-deposits', permission: 'sales.deposits.view' },
+      { id: 'receivables', label: 'Piutang Usaha', icon: BookOpen, path: '/sales/ar/summary', permission: 'sales.ar.view' },
+      { id: 'receipts', label: 'Penerimaan Penjualan', icon: Banknote, path: '/sales/receipts', permission: 'sales.receipts.view' },
+      { id: 'returns', label: 'Retur Penjualan', icon: RotateCcw, path: '/sales/returns', permission: 'sales.returns.view' },
       // Tidak ada item "Piutang" di sini — laporan piutang tinggal di menu
       // Laporan (kategori Piutang: AR Aging, Faktur Belum Lunas, Ringkasan
       // Pelanggan, dan Rekonsiliasi). Item ribbon lama menunjuk `/sales/ar`
@@ -171,14 +171,14 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     label: 'Pembelian',
     path: '/purchase',
     ribbonItems: [
-      { id: 'requests', label: 'Permintaan', icon: ClipboardList, path: '/purchase/requests', permission: 'purchase.requests.view' },
-      { id: 'orders', label: 'Purchase Order', icon: Package, path: '/purchase/orders', permission: 'purchase.orders.view' },
+      { id: 'requests', label: 'Permintaan Pembelian', icon: ClipboardList, path: '/purchase/requests', permission: 'purchase.requests.view' },
+      { id: 'orders', label: 'Pesanan Pembelian', icon: Package, path: '/purchase/orders', permission: 'purchase.orders.view' },
       { id: 'goods-receipts', label: 'Penerimaan Barang', icon: PackageCheck, path: '/purchase/goods-receipts', permission: 'purchase.goods_receipts.view' },
-      { id: 'bills', label: 'Tagihan', icon: FileText, path: '/purchase/bills', permission: 'purchase.bills.view' },
-      { id: 'vendor-deposits', label: 'Uang muka vendor', icon: Wallet, path: '/purchase/vendor-deposits', permission: 'purchase.deposits.view' },
-      { id: 'payables', label: 'Hutang', icon: BookOpen, path: '/purchase/ap/summary', permission: 'purchase.ap.view' },
-      { id: 'payments', label: 'Pembayaran', icon: CreditCard, path: '/purchase/payments', permission: 'purchase.payments.view' },
-      { id: 'returns', label: 'Retur', icon: RotateCcw, path: '/purchase/returns', permission: 'purchase.returns.view' },
+      { id: 'bills', label: 'Faktur Pembelian', icon: FileText, path: '/purchase/bills', permission: 'purchase.bills.view' },
+      { id: 'vendor-deposits', label: 'Uang Muka Pemasok', icon: Wallet, path: '/purchase/vendor-deposits', permission: 'purchase.deposits.view' },
+      { id: 'payables', label: 'Utang Usaha', icon: BookOpen, path: '/purchase/ap/summary', permission: 'purchase.ap.view' },
+      { id: 'payments', label: 'Pembayaran Pembelian', icon: CreditCard, path: '/purchase/payments', permission: 'purchase.payments.view' },
+      { id: 'returns', label: 'Retur Pembelian', icon: RotateCcw, path: '/purchase/returns', permission: 'purchase.returns.view' },
       // Tidak ada item "Hutang" di sini — alasannya sama dengan Piutang di modul
       // Penjualan; laporannya ada di menu Laporan kategori Hutang.
     ],
@@ -190,26 +190,26 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     ribbonItems: [
       { id: 'stock-balances', label: 'Saldo Stok', icon: BarChart3, path: '/inventory/stock-balances', permission: 'inventory.stock.view' },
       { id: 'movements', label: 'Mutasi Stok', icon: ArrowLeftRight, path: '/inventory/movements', permission: 'inventory.movements.view' },
-      { id: 'adjustments', label: 'Penyesuaian', icon: SlidersHorizontal, path: '/inventory/adjustments', permission: 'inventory.adjustments.view' },
-      { id: 'opnames', label: 'Opname', icon: ClipboardCheck, path: '/inventory/opnames', permission: 'inventory.opname.view' },
+      { id: 'adjustments', label: 'Penyesuaian Stok', icon: SlidersHorizontal, path: '/inventory/adjustments', permission: 'inventory.adjustments.view' },
+      { id: 'opnames', label: 'Stok Opname', icon: ClipboardCheck, path: '/inventory/opnames', permission: 'inventory.opname.view' },
     ],
   },
   {
     id: 'fixed-assets',
-    label: 'Aktiva Tetap',
+    label: 'Aset Tetap',
     path: '/fixed-assets',
     ribbonItems: [
-      { id: 'assets', label: 'Daftar Aktiva', icon: Building2, path: '/fixed-assets', permission: 'fixed_assets.assets.view' },
-      { id: 'categories', label: 'Kategori', icon: Archive, path: '/fixed-assets/categories', permission: 'fixed_assets.settings.view' },
-      { id: 'register-report', label: 'Register', icon: FileText, path: '/fixed-assets/reports/register', permission: 'reports.fixed_assets.view' },
-      { id: 'depreciation-report', label: 'Depresiasi', icon: TrendingDown, path: '/fixed-assets/reports/depreciation', permission: 'reports.fixed_assets.view' },
-      { id: 'disposals-report', label: 'Disposal', icon: RotateCcw, path: '/fixed-assets/reports/disposals', permission: 'reports.fixed_assets.view' },
-      { id: 'reconciliation-report', label: 'Rekonsiliasi', icon: CheckSquare, path: '/fixed-assets/reports/reconciliation', permission: 'reports.fixed_assets.view' },
+      { id: 'assets', label: 'Daftar Aset', icon: Building2, path: '/fixed-assets', permission: 'fixed_assets.assets.view' },
+      { id: 'categories', label: 'Kategori Aset', icon: Archive, path: '/fixed-assets/categories', permission: 'fixed_assets.settings.view' },
+      { id: 'register-report', label: 'Buku Aset', icon: FileText, path: '/fixed-assets/reports/register', permission: 'reports.fixed_assets.view' },
+      { id: 'depreciation-report', label: 'Penyusutan', icon: TrendingDown, path: '/fixed-assets/reports/depreciation', permission: 'reports.fixed_assets.view' },
+      { id: 'disposals-report', label: 'Pelepasan Aset', icon: RotateCcw, path: '/fixed-assets/reports/disposals', permission: 'reports.fixed_assets.view' },
+      { id: 'reconciliation-report', label: 'Rekonsiliasi Aset', icon: CheckSquare, path: '/fixed-assets/reports/reconciliation', permission: 'reports.fixed_assets.view' },
     ],
   },
   {
     id: 'reports',
-    label: 'Daftar Laporan',
+    label: 'Laporan',
     path: '/reports',
     // Ribbon Laporan dinonaktifkan — kategori kini jadi sidebar di ReportListPage.
     // Model lamanya diarsipkan di src/router/legacy/reportsRibbon.legacy.ts.
@@ -224,7 +224,7 @@ export const MODULE_CONFIGS: ModuleConfig[] = [
     path: '/settings',
     ribbonItems: [
       { id: 'company', label: 'Perusahaan', icon: Building, path: '/settings/company', permission: 'settings.company.view' },
-      { id: 'transactions', label: 'Transaksi', icon: RefreshCcw, path: '/settings/transactions', permission: 'settings.transactions.view' },
+      { id: 'transactions', label: 'Pengaturan Transaksi', icon: RefreshCcw, path: '/settings/transactions', permission: 'settings.transactions.view' },
       { id: 'account-mapping', label: 'Pemetaan Akun', icon: Map, path: '/settings/account-mapping', permission: 'settings.account_mapping.view' },
       { id: 'accounting-period', label: 'Periode Akuntansi', icon: CalendarDays, path: '/settings/accounting-period', permission: 'accounting.period_locks.view' },
       { id: 'users', label: 'Pengguna', icon: UserCog, path: '/settings/users', permission: 'access.users.view' },

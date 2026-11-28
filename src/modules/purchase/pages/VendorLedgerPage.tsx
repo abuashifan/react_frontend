@@ -17,16 +17,16 @@ export default function VendorLedgerPage() {
 
   return (
     <WorkspaceLayout
-      title="Ledger Vendor"
-      breadcrumb={[{ label: 'Pembelian' }, { label: 'AP' }, { label: 'Ledger Vendor' }]}
+      title="Buku Besar Pemasok"
+      breadcrumb={[{ label: 'Pembelian' }, { label: 'Utang' }, { label: 'Buku Besar Pemasok' }]}
     >
       <div className="mb-4 w-72">
-        <Label className="mb-1 block text-[11px] font-semibold uppercase text-[#64748b]">Vendor</Label>
+        <Label className="mb-1 block text-[11px] font-semibold uppercase text-[#64748b]">Pemasok</Label>
         <SearchableSelect cacheKey="contact"
           value={selectedVendor}
           onChange={(v) => setSelectedVendor(v)}
           onSearch={(q) => kontakApi.search(q, 'supplier')}
-          placeholder="Pilih vendor..."
+          placeholder="Pilih pemasok..."
         />
       </div>
 
@@ -52,7 +52,7 @@ export default function VendorLedgerPage() {
               {isLoading ? (
                 <tr><td colSpan={7} className="px-3 py-8 text-center text-[#94a3b8]">Memuat data...</td></tr>
               ) : !vendorId ? (
-                <tr><td colSpan={7} className="px-3 py-8 text-center text-[#94a3b8]">Pilih vendor untuk melihat ledger</td></tr>
+                <tr><td colSpan={7} className="px-3 py-8 text-center text-[#94a3b8]">Pilih pemasok untuk melihat buku besar</td></tr>
               ) : !ledger?.entries.length ? (
                 <tr><td colSpan={7} className="px-3 py-8 text-center text-[#94a3b8]">Tidak ada transaksi</td></tr>
               ) : ledger.entries.map((entry, i) => (

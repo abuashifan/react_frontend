@@ -60,7 +60,7 @@ export default function CustomerDepositListPage() {
       ),
     },
     { id: 'date', header: 'Tanggal', size: 110, cell: ({ original }) => formatDate(original.date) },
-    { id: 'customer', header: 'Customer', size: 180, cell: ({ original }) => original.customer?.name ?? '-' },
+    { id: 'customer', header: 'Pelanggan', size: 180, cell: ({ original }) => original.customer?.name ?? '-' },
     {
       id: 'amount',
       header: 'Jumlah',
@@ -89,7 +89,7 @@ export default function CustomerDepositListPage() {
         <ListSearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Cari nomor deposit, customer..."
+          placeholder="Cari nomor uang muka, pelanggan..."
           className="w-full max-w-none"
         />
       </div>
@@ -101,12 +101,12 @@ export default function CustomerDepositListPage() {
           </label>
         ))}
       </FilterSection>
-      <FilterSection title="Customer">
+      <FilterSection title="Pelanggan">
         <SearchableSelect cacheKey="contact"
           value={filterCustomer}
           onChange={(v) => setFilterCustomer(v)}
           onSearch={(q) => kontakApi.search(q, 'customer')}
-          placeholder="Semua customer"
+          placeholder="Semua pelanggan"
         />
       </FilterSection>
       <DateRangeFilterSection
@@ -120,13 +120,13 @@ export default function CustomerDepositListPage() {
 
   return (
     <WorkspaceLayout
-      title="Deposit Customer"
-      breadcrumb={[{ label: 'Sales' }, { label: 'Deposit Customer' }]}
+      title="Uang Muka Pelanggan"
+      breadcrumb={[{ label: 'Penjualan' }, { label: 'Uang Muka Pelanggan' }]}
       sidebar={sidebar}
       action={
         <PermissionGuard permission="sales.deposits.create">
-          <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => openRecordTab({ label: 'Deposit Baru', path: '/sales/customer-deposits/create' })}>
-            <Plus className="w-3.5 h-3.5 mr-1" /> Buat Deposit
+          <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => openRecordTab({ label: 'Uang Muka Baru', path: '/sales/customer-deposits/create' })}>
+            <Plus className="w-3.5 h-3.5 mr-1" /> Buat Uang Muka
           </Button>
         </PermissionGuard>
       }
@@ -139,8 +139,8 @@ export default function CustomerDepositListPage() {
         isFetching={isFetching}
         pagination={{ pageIndex: page, pageSize: 25 }}
         onPaginationChange={(p) => setPage(p.pageIndex)}
-        emptyTitle="Belum ada deposit customer"
-        emptyDescription="Catat uang muka/deposit dari customer."
+        emptyTitle="Belum ada uang muka pelanggan"
+        emptyDescription="Catat uang muka dari pelanggan."
       />
     </WorkspaceLayout>
   )

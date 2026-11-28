@@ -199,7 +199,7 @@ export default function PaymentTermsPage() {
   return (
     <WorkspaceLayout
       title="Syarat Pembayaran"
-      breadcrumb={[{ label: 'Master Data' }, { label: 'Syarat Pembayaran' }]}
+      breadcrumb={[{ label: 'Data Utama' }, { label: 'Syarat Pembayaran' }]}
       sidebar={sidebar}
       action={
         <PermissionGuard permission="master_data.payment_terms.create">

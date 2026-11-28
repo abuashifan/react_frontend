@@ -99,8 +99,8 @@ export const salesOrderSources: SourceConvertOption[] = [
 export const deliveryOrderSources: SourceConvertOption[] = [
   {
     key: 'sales_order',
-    label: 'Dari Sales Order',
-    placeholder: 'Pilih sales order...',
+    label: 'Dari Pesanan Penjualan',
+    placeholder: 'Pilih pesanan penjualan...',
     ...pickerSource('sales.delivery-orders', 'sales_order'),
     convert: async (id) => created((await deliveryOrderApi.createFromSalesOrder(id)).data),
   },
@@ -109,8 +109,8 @@ export const deliveryOrderSources: SourceConvertOption[] = [
 export const proformaSources: SourceConvertOption[] = [
   {
     key: 'sales_order',
-    label: 'Dari Sales Order',
-    placeholder: 'Pilih sales order...',
+    label: 'Dari Pesanan Penjualan',
+    placeholder: 'Pilih pesanan penjualan...',
     ...pickerSource('sales.proformas', 'sales_order'),
     convert: async (id) => created((await proformaApi.createFromSalesOrder(id)).data),
   },
@@ -119,22 +119,22 @@ export const proformaSources: SourceConvertOption[] = [
 export const salesInvoiceSources: SourceConvertOption[] = [
   {
     key: 'sales_order',
-    label: 'Dari Sales Order',
-    placeholder: 'Pilih sales order...',
+    label: 'Dari Pesanan Penjualan',
+    placeholder: 'Pilih pesanan penjualan...',
     ...listSource('/sales/orders', 'order_number', SO_FOLLOW_UP, 'invoiced_quantity'),
     convert: async (id) => created((await salesInvoiceApi.createFromSalesOrder(id)).data),
   },
   {
     key: 'delivery_order',
     label: 'Dari Pengiriman',
-    placeholder: 'Pilih delivery order...',
+    placeholder: 'Pilih pengiriman barang...',
     ...pickerSource('sales.invoices', 'delivery_order'),
     convert: async (id) => created((await salesInvoiceApi.createFromDeliveryOrder(id)).data),
   },
   {
     key: 'proforma_invoice',
-    label: 'Dari Proforma',
-    placeholder: 'Pilih proforma...',
+    label: 'Dari Faktur Sementara',
+    placeholder: 'Pilih faktur sementara...',
     ...listSource('/sales/proformas', 'proforma_number', ['issued', 'accepted']),
     convert: async (id) => created((await salesInvoiceApi.createFromProforma(id)).data),
   },
@@ -143,15 +143,15 @@ export const salesInvoiceSources: SourceConvertOption[] = [
 export const salesReturnSources: SourceConvertOption[] = [
   {
     key: 'sales_invoice',
-    label: 'Dari Invoice',
-    placeholder: 'Pilih invoice...',
+    label: 'Dari Faktur Penjualan',
+    placeholder: 'Pilih faktur penjualan...',
     ...listSource('/sales/invoices', 'invoice_number', ['posted', 'partially_paid', 'paid']),
     convert: async (id) => created((await salesReturnApi.createFromInvoice(id)).data),
   },
   {
     key: 'delivery_order',
     label: 'Dari Pengiriman',
-    placeholder: 'Pilih delivery order...',
+    placeholder: 'Pilih pengiriman barang...',
     ...listSource('/sales/delivery-orders', 'delivery_number', ['shipped', 'delivered', 'partially_invoiced', 'invoiced']),
     convert: async (id) => created((await salesReturnApi.createFromDeliveryOrder(id)).data),
   },

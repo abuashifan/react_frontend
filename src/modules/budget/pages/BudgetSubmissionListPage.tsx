@@ -180,16 +180,16 @@ export default function BudgetSubmissionListPage() {
 
   return (
     <WorkspaceLayout
-      title="Daftar Budget"
-      breadcrumb={[{ label: 'Anggaran' }, { label: 'Daftar Budget' }]}
+      title="Daftar Anggaran"
+      breadcrumb={[{ label: 'Anggaran' }, { label: 'Daftar Anggaran' }]}
       sidebar={sidebar}
       action={
         <PermissionGuard permission="budget.submissions.create">
           <Button
             className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]"
-            onClick={() => openRecordTab({ label: 'Budget Baru', path: '/budget/submissions/new' })}
+            onClick={() => openRecordTab({ label: 'Anggaran Baru', path: '/budget/submissions/new' })}
           >
-            <Plus className="w-3.5 h-3.5 mr-1" /> Buat Budget
+            <Plus className="w-3.5 h-3.5 mr-1" /> Buat Anggaran
           </Button>
         </PermissionGuard>
       }

@@ -15,7 +15,7 @@ const TYPE_LABELS: Record<InvoiceLedgerEntry['type'], string> = {
   payment: 'Pembayaran',
   return: 'Retur',
   void: 'Void',
-  deposit_allocation: 'Alokasi Deposit',
+  deposit_allocation: 'Alokasi Uang Muka',
 }
 
 export default function InvoiceLedgerPage() {
@@ -42,17 +42,17 @@ export default function InvoiceLedgerPage() {
 
   return (
     <WorkspaceLayout
-      title="Buku Besar Invoice"
-      breadcrumb={[{ label: 'Sales' }, { label: 'AR' }, { label: 'Buku Besar Invoice' }]}
+      title="Buku Besar Faktur Penjualan"
+      breadcrumb={[{ label: 'Penjualan' }, { label: 'Piutang' }, { label: 'Buku Besar Faktur Penjualan' }]}
     >
       <div className="mb-3 flex flex-wrap items-end gap-3">
         <div className="w-64">
-          <Label className="mb-1 block text-[11px] font-semibold uppercase text-[#64748b]">Invoice</Label>
+          <Label className="mb-1 block text-[11px] font-semibold uppercase text-[#64748b]">Faktur Penjualan</Label>
           <SearchableSelect
             value={invoiceId ?? null}
             onChange={(v) => setInvoiceId(v ?? undefined)}
             onSearch={searchInvoices}
-            placeholder="Pilih invoice..."
+            placeholder="Pilih faktur penjualan..."
           />
         </div>
         <div>
@@ -82,7 +82,7 @@ export default function InvoiceLedgerPage() {
               {isLoading ? (
                 <tr><td colSpan={6} className="px-3 py-8 text-center text-[#94a3b8]">Memuat data...</td></tr>
               ) : !invoiceId ? (
-                <tr><td colSpan={6} className="px-3 py-8 text-center text-[#94a3b8]">Pilih invoice untuk melihat riwayat transaksinya.</td></tr>
+                <tr><td colSpan={6} className="px-3 py-8 text-center text-[#94a3b8]">Pilih faktur penjualan untuk melihat riwayat transaksinya.</td></tr>
               ) : entries.length === 0 ? (
                 <tr><td colSpan={6} className="px-3 py-8 text-center text-[#94a3b8]">Tidak ada transaksi pada periode ini.</td></tr>
               ) : (

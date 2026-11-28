@@ -65,7 +65,7 @@ const STEP_TITLES = [
   { number: 2, title: 'Template COA' },
   { number: 3, title: 'Modul Aktif' },
   { number: 4, title: 'Account Mapping' },
-  { number: 5, title: 'Master Data Dasar' },
+  { number: 5, title: 'Data Utama' },
   { number: 6, title: 'Opening Balance', subtitle: 'Opsional' },
   { number: 7, title: 'Selesai' },
 ]

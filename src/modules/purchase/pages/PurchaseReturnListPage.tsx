@@ -60,7 +60,7 @@ export default function PurchaseReturnListPage() {
       ),
     },
     { id: 'date', header: 'Tanggal', size: 110, cell: ({ original }) => formatDate(original.date) },
-    { id: 'vendor', header: 'Vendor', size: 200, cell: ({ original }) => original.vendor?.name ?? '-' },
+    { id: 'vendor', header: 'Pemasok', size: 200, cell: ({ original }) => original.vendor?.name ?? '-' },
     {
       id: 'source',
       header: 'Sumber',
@@ -83,7 +83,7 @@ export default function PurchaseReturnListPage() {
         <ListSearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Cari nomor retur, vendor..."
+          placeholder="Cari nomor retur, pemasok..."
           className="w-full max-w-none"
         />
       </div>
@@ -95,12 +95,12 @@ export default function PurchaseReturnListPage() {
           </label>
         ))}
       </FilterSection>
-      <FilterSection title="Vendor">
+      <FilterSection title="Pemasok">
         <SearchableSelect cacheKey="contact"
           value={filterVendor}
           onChange={(v) => setFilterVendor(v)}
           onSearch={(q) => kontakApi.search(q, 'supplier')}
-          placeholder="Semua vendor"
+          placeholder="Semua pemasok"
         />
       </FilterSection>
       <DateRangeFilterSection
@@ -134,7 +134,7 @@ export default function PurchaseReturnListPage() {
         pagination={{ pageIndex: page, pageSize: 25 }}
         onPaginationChange={(p) => setPage(p.pageIndex)}
         emptyTitle="Belum ada retur pembelian"
-        emptyDescription="Buat retur dari tagihan atau penerimaan barang."
+        emptyDescription="Buat retur dari faktur pembelian atau penerimaan barang."
       />
     </WorkspaceLayout>
   )

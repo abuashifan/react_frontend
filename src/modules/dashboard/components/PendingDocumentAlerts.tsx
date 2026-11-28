@@ -61,12 +61,12 @@ export function PendingDocumentAlerts({ pending, isLoading, isUnavailable }: Pro
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
         {(pending?.pending_invoices ?? 0) > 0 && (
           <PermissionGuard permission="sales.invoices.view" fallback={null}>
-            <AlertCard icon={FileText} label="Invoice menunggu konfirmasi" count={pending?.pending_invoices} href="/sales/invoices" variant="warning" />
+            <AlertCard icon={FileText} label="Faktur Penjualan menunggu konfirmasi" count={pending?.pending_invoices} href="/sales/invoices" variant="warning" />
           </PermissionGuard>
         )}
         {(pending?.pending_bills ?? 0) > 0 && (
           <PermissionGuard permission="purchase.ap.view" fallback={null}>
-            <AlertCard icon={Receipt} label="Tagihan menunggu pembayaran" count={pending?.pending_bills} href="/purchase/bills" variant="warning" />
+            <AlertCard icon={Receipt} label="Faktur Pembelian menunggu pembayaran" count={pending?.pending_bills} href="/purchase/bills" variant="warning" />
           </PermissionGuard>
         )}
         {(pending?.low_stock_count ?? 0) > 0 && (

@@ -39,7 +39,7 @@ const EXPORT_COLUMNS: ExportColumn<SalesInvoice>[] = [
   { header: 'ID', value: (row) => row.id },
   { header: 'Nomor', value: (row) => row.number },
   { header: 'Tanggal', value: (row) => toExcelDate(row.date), format: 'date' },
-  { header: 'Customer', value: (row) => row.customer?.name },
+  { header: 'Pelanggan', value: (row) => row.customer?.name },
   { header: 'Jatuh Tempo', value: (row) => toExcelDate(row.due_date), format: 'date' },
   { header: 'Total', value: (row) => row.grand_total, format: 'currency' },
   { header: 'Dibayar', value: (row) => row.paid_amount, format: 'currency' },
@@ -119,7 +119,7 @@ export default function SalesInvoiceListPage() {
   const handleBulkVoid = async (reason: string) => {
     const selectedInvoices = rows.filter((invoice) => bulkVoidIds.includes(String(invoice.id)))
     if (selectedInvoices.length === 0) {
-      toast.warning('Tidak ada invoice valid untuk di-void.')
+      toast.warning('Tidak ada faktur penjualan valid untuk di-void.')
       setBulkVoidOpen(false)
       setBulkVoidIds([])
       return
@@ -134,11 +134,11 @@ export default function SalesInvoiceListPage() {
       const failureDetail = getBulkFailureDetail(results)
 
       if (failureCount === 0) {
-        toast.success(`${successCount} invoice berhasil di-void.`)
+        toast.success(`${successCount} faktur penjualan berhasil di-void.`)
       } else if (successCount === 0) {
-        toast.error(`Gagal void ${failureCount} invoice.${failureDetail ? ` ${failureDetail}` : ''}`)
+        toast.error(`Gagal void ${failureCount} faktur penjualan.${failureDetail ? ` ${failureDetail}` : ''}`)
       } else {
-        toast.warning(`${successCount} invoice berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
+        toast.warning(`${successCount} faktur penjualan berhasil di-void, ${failureCount} gagal.${failureDetail ? ` ${failureDetail}` : ''}`)
       }
     } catch (bulkError) {
       toast.error(getApiErrorMessage(bulkError, 'Gagal memproses bulk void.'))
@@ -166,7 +166,7 @@ export default function SalesInvoiceListPage() {
       ),
     },
     { id: 'date', header: 'Tanggal', size: 110, cell: ({ original }) => formatDate(original.date) },
-    { id: 'customer', header: 'Customer', size: 180, cell: ({ original }) => original.customer?.name ?? '-' },
+    { id: 'customer', header: 'Pelanggan', size: 180, cell: ({ original }) => original.customer?.name ?? '-' },
     {
       id: 'due_date',
       header: 'Jatuh Tempo',
@@ -224,7 +224,7 @@ export default function SalesInvoiceListPage() {
         <ListSearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Cari nomor invoice, customer..."
+          placeholder="Cari nomor faktur, pelanggan..."
           className="w-full max-w-none"
         />
       </div>
@@ -245,7 +245,7 @@ export default function SalesInvoiceListPage() {
           resetSelection()
         }}
       />
-      <FilterSection title="Customer">
+      <FilterSection title="Pelanggan">
         <SearchableSelect cacheKey="contact"
           value={filterCustomer}
           onChange={(v) => {
@@ -253,7 +253,7 @@ export default function SalesInvoiceListPage() {
             resetSelection()
           }}
           onSearch={(q) => kontakApi.search(q, 'customer')}
-          placeholder="Semua customer"
+          placeholder="Semua pelanggan"
         />
       </FilterSection>
     </FilterSidebar>
@@ -262,14 +262,14 @@ export default function SalesInvoiceListPage() {
   return (
     <>
       <WorkspaceLayout
-        title="Invoice Penjualan"
-        breadcrumb={[{ label: 'Sales' }, { label: 'Invoice Penjualan' }]}
+        title="Faktur Penjualan"
+        breadcrumb={[{ label: 'Penjualan' }, { label: 'Faktur Penjualan' }]}
         sidebar={sidebar}
         action={
           <>
             <ListExportButton permission="sales.invoices.export"
               filename="invoice-penjualan"
-              sheetName="Invoice Penjualan"
+              sheetName="Faktur Penjualan"
               columns={EXPORT_COLUMNS}
               totalRows={data?.meta.total}
               fetchPage={(exportPage, exportPerPage) => salesInvoiceApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}
@@ -277,9 +277,9 @@ export default function SalesInvoiceListPage() {
             <PermissionGuard permission="sales.invoices.create">
               <Button
                 className="h-8 bg-[#e39774] px-3 text-[13px] hover:bg-[#d4845e]"
-                onClick={() => openRecordTab({ label: 'Invoice Baru', path: '/sales/invoices/create' })}
+                onClick={() => openRecordTab({ label: 'Faktur Penjualan Baru', path: '/sales/invoices/create' })}
               >
-                <Plus className="mr-1 h-3.5 w-3.5" /> Buat Invoice
+                <Plus className="mr-1 h-3.5 w-3.5" /> Buat Faktur Penjualan
               </Button>
             </PermissionGuard>
           </>
@@ -299,8 +299,8 @@ export default function SalesInvoiceListPage() {
           selectedRows={selectedRows}
           onRowSelect={setSelectedRows}
           bulkActions={bulkActions}
-          emptyTitle="Belum ada invoice penjualan"
-          emptyDescription="Buat invoice dari sales order, delivery order, atau manual."
+          emptyTitle="Belum ada faktur penjualan"
+          emptyDescription="Buat faktur penjualan dari pesanan penjualan, pengiriman barang, atau manual."
         />
       </WorkspaceLayout>
 
