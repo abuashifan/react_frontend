@@ -5,7 +5,22 @@ import type { Produk } from '../types/produk.types'
 export interface PickableLine {
   product_id: number | null
   product?: { id: number; code: string; name: string } | null
-  description: string
+  /** Tidak semua dokumen punya deskripsi per baris (mis. mutasi dan penyesuaian stok). */
+  description?: string
+}
+
+/**
+ * Produk pada baris dokumen dari server. Backend mengirim model Product apa adanya
+ * (`product_code`/`product_name`), sedangkan tipe frontend menyebutnya `code`/`name`;
+ * terima keduanya supaya label sel produk tidak kosong untuk dokumen yang sudah tersimpan.
+ */
+export function toLineProduct(
+  product: unknown,
+  productId: number,
+): { id: number; code: string; name: string } | null {
+  if (!product || typeof product !== 'object') return null
+  const p = product as { code?: string; name?: string; product_code?: string; product_name?: string }
+  return { id: productId, code: p.code ?? p.product_code ?? '', name: p.name ?? p.product_name ?? String(productId) }
 }
 
 type PickerTarget = number | 'append' | null
@@ -15,6 +30,8 @@ interface UseProductLinePickerOptions<TLine extends PickableLine> {
   setLines: Dispatch<SetStateAction<TLine[]>>
   /** Isi tambahan per dokumen, mis. harga dari `purchase_price`. */
   applyProduct?: (product: Produk, line: TLine) => TLine
+  /** Isi `description` baris dengan nama produk (bawaan ya); matikan untuk dokumen tanpa deskripsi baris. */
+  fillDescription?: boolean
   /** Harga yang ditampilkan di dialog: harga beli (pembelian, bawaan) atau harga jual (penjualan). */
   priceField?: 'selling_price' | 'purchase_price'
 }
@@ -25,7 +42,7 @@ interface UseProductLinePickerOptions<TLine extends PickableLine> {
  * mengisi baris pemicu (qty dan isian lain dipertahankan), sisanya jadi baris baru di
  * bawahnya; dari tombol tambah, baris kosong terakhir dipakai dulu.
  */
-export function useProductLinePicker<TLine extends PickableLine>({ defaultLine, setLines, applyProduct, priceField = 'purchase_price' }: UseProductLinePickerOptions<TLine>) {
+export function useProductLinePicker<TLine extends PickableLine>({ defaultLine, setLines, applyProduct, priceField = 'purchase_price', fillDescription = true }: UseProductLinePickerOptions<TLine>) {
   const [target, setTarget] = useState<PickerTarget>(null)
 
   const toLine = (product: Produk, base: TLine): TLine => {
@@ -33,7 +50,7 @@ export function useProductLinePicker<TLine extends PickableLine>({ defaultLine, 
       ...base,
       product_id: product.id,
       product: { id: product.id, code: product.product_code ?? '', name: product.product_name },
-      description: product.product_name,
+      ...(fillDescription ? { description: product.product_name } : {}),
     }
     return applyProduct ? applyProduct(product, filled) : filled
   }
@@ -44,7 +61,7 @@ export function useProductLinePicker<TLine extends PickableLine>({ defaultLine, 
       if (target === 'append') {
         const added = products.map((product) => toLine(product, { ...defaultLine }))
         const last = prev[prev.length - 1]
-        const lastIsEmpty = last !== undefined && last.product_id === null && !last.description.trim()
+        const lastIsEmpty = last !== undefined && last.product_id === null && !(last.description ?? '').trim()
         return lastIsEmpty ? [...prev.slice(0, -1), ...added] : [...prev, ...added]
       }
       const [first, ...rest] = products
