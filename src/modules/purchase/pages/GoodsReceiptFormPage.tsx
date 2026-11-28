@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { purchaseReturnApi } from '../services/purchaseReturnApi'
 import { useParams } from 'react-router-dom'
-import { Button } from '@/components/ui/button'
+import { useSourceDocuments } from '@/components/shared/document/useSourceDocuments'
+import { goodsReceiptSources } from '../services/purchaseSourceApi'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FormLayout } from '@/components/shared/layout/FormLayout'
@@ -77,22 +78,9 @@ function GoodsReceiptFormPageContent() {
 
   const { data, isLoading } = useGoodsReceipt(id ? Number(id) : undefined)
   const gr = data?.data
-  const { create, createFromPurchaseOrder, receive, cancel, void: voidGr, remove, update } = useGoodsReceiptMutations()
-  // GR manual tidak membawa harga, jadi nilai persediaannya hanya benar bila
-  // diterima dari PO. Pilihan sumber ini hanya muncul saat membuat GR baru.
-  const [sourceMode, setSourceMode] = useState<'none' | 'purchase_order'>('none')
-  const [sourcePoId, setSourcePoId] = useState<number | null>(null)
-  const isSourceMode = isCreate && sourceMode === 'purchase_order'
-  const handleCreateFromPo = async () => {
-    if (!sourcePoId) return
-    try {
-      const res = await createFromPurchaseOrder.mutateAsync(sourcePoId)
-      toast.success('Penerimaan barang dibuat dari Pesanan Pembelian.')
-      replaceRecordTab('/purchase/goods-receipts/create', { label: res.data.number ?? 'Penerimaan Barang', path: `/purchase/goods-receipts/${res.data.id}` })
-    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat penerimaan barang dari Pesanan Pembelian.')) }
-  }
+  const { create, receive, cancel, void: voidGr, remove, update } = useGoodsReceiptMutations()
   const { canChange } = useTransactionEditMode()
-  const { closeRecordTab, replaceRecordTab, openRecordTab } = useRecordTab()
+  const { closeRecordTab, openRecordTab } = useRecordTab()
   const { createFromGoodsReceipt: createBillFromReceipt } = useVendorBillMutations()
 
   const { register, handleSubmit, control, getValues, setValue, setError, watch, reset, formState: { errors, isSubmitting } } = useForm<GoodsReceiptFormValues>({
@@ -101,6 +89,8 @@ function GoodsReceiptFormPageContent() {
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  // Penerimaan manual tidak membawa harga, jadi nilai persediaannya hanya benar bila diterima dari Pesanan Pembelian.
+  const sourceDocs = useSourceDocuments({ enabled: isCreate, sources: goodsReceiptSources, targetLabel: 'Penerimaan Barang', createPath: '/purchase/goods-receipts/create', targetPath: (newId) => `/purchase/goods-receipts/${newId}`, note: 'Penerimaan tanpa Pesanan Pembelian dinilai dengan harga rata-rata persediaan saat ini.' })
   const productPicker = useProductLinePicker<EditableLine>({ defaultLine: DEFAULT_LINE, setLines })
 
   // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
@@ -213,6 +203,7 @@ function GoodsReceiptFormPageContent() {
     } catch (followUpError) { toast.error(getApiErrorMessage(followUpError, 'Gagal membuat retur pembelian.')) }
   }
   const actions: DocumentActionButton[] = []
+  if (isCreate && sourceDocs.available) actions.push({ id: 'from_source', label: 'Ambil dari Dokumen', variant: 'neutral', onClick: sourceDocs.open })
   if (!isCreate && (gr?.status === 'received' || gr?.status === 'partially_billed') && can('purchase.returns.create')) {
     actions.push({ id: 'create_return', label: 'Buat Retur', variant: 'secondary', onClick: () => void handleCreateReturn() })
   }
@@ -293,38 +284,6 @@ function GoodsReceiptFormPageContent() {
         }
       >
         <div className="space-y-3">
-          {isCreate && (
-            <FormSection title="Sumber Dokumen">
-              <div className="flex flex-col gap-2 md:col-span-2">
-                <div className="flex gap-1">
-                  {([['none', 'Tanpa Sumber'], ['purchase_order', 'Dari Pesanan Pembelian']] as const).map(([mode, label]) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => { setSourceMode(mode); setSourcePoId(null) }}
-                      className={`h-8 rounded px-3 text-[12px] font-medium transition-colors ${sourceMode === mode ? 'bg-[#5c9ead] text-white' : 'bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]'}`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                {isSourceMode ? (
-                  <>
-                    <SearchableSelect value={sourcePoId} onChange={(v) => setSourcePoId(v)} onSearch={goodsReceiptApi.searchReceivableOrders} placeholder="Pilih pesanan pembelian..." />
-                    <p className="text-[11px] text-[#94a3b8]">Item, sisa qty, harga, dan gudang diambil dari Pesanan Pembelian. Periksa lalu klik Terima Barang.</p>
-                    <div>
-                      <Button type="button" className="h-8 bg-[#5c9ead] px-3 text-[13px] hover:bg-[#4a8593]" disabled={!sourcePoId || createFromPurchaseOrder.isPending} onClick={() => void handleCreateFromPo()}>
-                        {createFromPurchaseOrder.isPending ? 'Memproses...' : 'Buat dari Pesanan Pembelian'}
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-[11px] text-[#94a3b8]">Penerimaan tanpa Pesanan Pembelian dinilai dengan harga rata-rata persediaan saat ini.</p>
-                )}
-              </div>
-            </FormSection>
-          )}
-          {!isSourceMode && (
           <>
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
@@ -388,7 +347,6 @@ function GoodsReceiptFormPageContent() {
             />
           </div>
           </>
-          )}
         </div>
       <ProductPickerDialog {...productPicker.dialogProps} />
       </FormLayout>
@@ -401,6 +359,7 @@ function GoodsReceiptFormPageContent() {
         documentNumber={gr?.number ?? ''}
         isLoading={voidGr.isPending}
       />
+      {sourceDocs.element}
       <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={gr ? goodsReceiptPrint(gr) : null} />
     </>
   )

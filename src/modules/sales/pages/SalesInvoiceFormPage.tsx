@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { salesReturnApi } from '../services/salesReturnApi'
-import { SourceConvertPanel } from '@/components/shared/document/SourceConvertPanel'
+import { useSourceDocuments } from '@/components/shared/document/useSourceDocuments'
 import { salesInvoiceSources } from '../services/salesSourceApi'
 import { useParams, useLocation } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
@@ -91,6 +91,7 @@ function SalesInvoiceFormPageContent() {
   const paymentTermId = useWatch({ control, name: 'payment_term_id' })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const sourceDocs = useSourceDocuments({ enabled: isCreate, sources: salesInvoiceSources, targetLabel: 'Faktur Penjualan', createPath: `${location.pathname}${location.search}`, targetPath: (newId) => `/sales/invoices/${newId}` })
 
   // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
 
@@ -244,6 +245,7 @@ function SalesInvoiceFormPageContent() {
     } catch (followUpError) { toast.error(getApiErrorMessage(followUpError, 'Gagal membuat retur penjualan.')) }
   }
   const actions: DocumentActionButton[] = []
+  if (isCreate && sourceDocs.available) actions.push({ id: 'from_source', label: 'Ambil dari Dokumen', variant: 'neutral', onClick: sourceDocs.open })
   if (!isCreate && ['posted', 'partially_paid', 'paid'].includes(invoice?.status ?? '') && can('sales.returns.create')) {
     actions.push({ id: 'create_return', label: 'Buat Retur', variant: 'secondary', onClick: () => void handleCreateReturn() })
   }
@@ -406,7 +408,6 @@ function SalesInvoiceFormPageContent() {
             />
           )}
 
-          {isCreate && <SourceConvertPanel sources={salesInvoiceSources} targetLabel="Faktur Penjualan" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/sales/invoices/${newId}`} />}
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">No. Faktur</Label>
@@ -523,6 +524,7 @@ function SalesInvoiceFormPageContent() {
         onConfirm={handlePickProducts}
         priceField="selling_price"
       />
+      {sourceDocs.element}
       <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={invoice ? salesInvoicePrint(invoice) : null} />
     </>
   )

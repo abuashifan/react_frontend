@@ -23,7 +23,9 @@ import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
-import { produkApi } from '@/modules/master-data/services/produkApi'
+import { ProductPickerDialog } from '@/modules/master-data/components/ProductPickerDialog'
+import { ProductPickCell } from '@/modules/master-data/components/ProductLinePicker'
+import { useProductLinePicker, toLineProduct } from '@/modules/master-data/components/useProductLinePicker'
 import { useStockAdjustment, useStockAdjustmentMutations } from '../hooks/useStockAdjustmentList'
 import { stockAdjustmentSchema, stockAdjustmentLineSchema, type StockAdjustmentFormValues } from '../schemas/stockAdjustmentSchema'
 import { stockAdjustmentApi } from '../services/stockAdjustmentApi'
@@ -38,6 +40,7 @@ import { stockAdjustmentPrint } from '../print/inventoryPrint'
 
 interface EditableLine {
   product_id: number | null
+  product?: { id: number; code: string; name: string } | null
   warehouse_id: number | null
   adjustment_type: StockAdjustmentLineType
   quantity: number
@@ -47,7 +50,7 @@ interface EditableLine {
 
 interface SelectOption { value: number; label: string; sublabel?: string }
 
-const DEFAULT_LINE: EditableLine = { product_id: null, warehouse_id: null, adjustment_type: 'increase', quantity: 1, unit_cost: 0, reason: '' }
+const DEFAULT_LINE: EditableLine = { product_id: null, product: null, warehouse_id: null, adjustment_type: 'increase', quantity: 1, unit_cost: 0, reason: '' }
 
 export default function StockAdjustmentFormPage() {
   const { id } = useParams()
@@ -79,12 +82,12 @@ function StockAdjustmentFormPageContent() {
   const warehouseId = useWatch({ control, name: 'warehouse_id' })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const productPicker = useProductLinePicker<EditableLine>({ defaultLine: DEFAULT_LINE, setLines, fillDescription: false })
   const [lineErrors, setLineErrors] = useState<Record<number, Partial<Record<keyof EditableLine, string>>>>({})
   // Terpisah dari `lineErrors` di atas: yang itu hasil validasi sisi klien dan
   // dirender per-sel, sedangkan ini error baris dari backend (lines.0.quantity)
   // yang ditandai oleh LineItemsTable.
   const [apiLineErrors, setApiLineErrors] = useState<LineItemErrorMap>({})
-  const [preloadedProducts, setPreloadedProducts] = useState<Map<number, SelectOption>>(new Map())
   const [preloadedWarehouses, setPreloadedWarehouses] = useState<Map<number, SelectOption>>(new Map())
   const [isVoidOpen, setVoidOpen] = useState(false)
   const [isDeleteOpen, setDeleteOpen] = useState(false)
@@ -107,6 +110,7 @@ function StockAdjustmentFormPageContent() {
       const timer = window.setTimeout(() => {
         setLines(adj.lines.map((l) => ({
           product_id: l.product_id,
+          product: toLineProduct(l.product, l.product_id),
           warehouse_id: l.warehouse_id,
           adjustment_type: l.adjustment_type,
           quantity: l.quantity,
@@ -114,17 +118,9 @@ function StockAdjustmentFormPageContent() {
           reason: l.reason ?? '',
         })))
 
-        // Build preloaded option lookups so SearchableSelect can show labels
-        const productMap = new Map<number, SelectOption>()
+        // Label gudang untuk SearchableSelect; label produk sudah ada di baris (`product`).
         const warehouseMap = new Map<number, SelectOption>()
         adj.lines.forEach((l) => {
-          if (l.product_id && l.product) {
-            productMap.set(l.product_id, {
-              value: l.product_id,
-              label: (l.product as { product_name?: string }).product_name ?? String(l.product_id),
-              sublabel: (l.product as { product_code?: string }).product_code,
-            })
-          }
           if (l.warehouse_id && l.warehouse) {
             warehouseMap.set(l.warehouse_id, {
               value: l.warehouse_id,
@@ -132,7 +128,6 @@ function StockAdjustmentFormPageContent() {
             })
           }
         })
-        setPreloadedProducts(productMap)
         setPreloadedWarehouses(warehouseMap)
       }, 0)
       return () => window.clearTimeout(timer)
@@ -159,6 +154,7 @@ function StockAdjustmentFormPageContent() {
       })
       setLines(adj.lines.map((l) => ({
         product_id: l.product_id,
+        product: toLineProduct(l.product, l.product_id),
         warehouse_id: l.warehouse_id,
         adjustment_type: l.adjustment_type,
         quantity: l.quantity,
@@ -257,20 +253,13 @@ function StockAdjustmentFormPageContent() {
   const columns: LineItemColumn<EditableLine>[] = [
     {
       id: 'product', header: 'Produk', width: 180,
-      render: ({ item, index, isReadOnly, onUpdate }) => (
-        <div>
-          <SearchableSelect cacheKey="product"
-          flush
-            value={item.product_id}
-            onChange={(v) => { onUpdate('product_id', v); setLineErrors((prev) => { const n = { ...prev }; if (n[index]) { const f = { ...n[index] }; delete f.product_id; n[index] = f } return n }) }}
-            onSearch={produkApi.search}
-            selectedOptions={item.product_id && preloadedProducts.has(item.product_id) ? [preloadedProducts.get(item.product_id)!] : []}
-            placeholder="Pilih produk..."
-            disabled={isReadOnly}
-            size="sm"
-          />
-          {lineErrors[index]?.product_id && <p className="mt-0.5 text-[10px] text-red-500">{lineErrors[index].product_id}</p>}
-        </div>
+      render: ({ item, index, isReadOnly }) => (
+        <ProductPickCell
+          product={item.product}
+          disabled={isReadOnly}
+          onClick={() => productPicker.openAt(index)}
+          error={item.product_id ? undefined : lineErrors[index]?.product_id}
+        />
       ),
     },
     {
@@ -411,10 +400,10 @@ function StockAdjustmentFormPageContent() {
             <LineItemsTable
           errors={apiLineErrors}
               items={lines} columns={columns}
-              onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
+              onAdd={productPicker.openAppend}
               onRemove={(i) => { setLines((prev) => prev.filter((_, idx) => idx !== i)); setLineErrors((prev) => { const n: typeof prev = {}; Object.keys(prev).forEach((k) => { const ki = Number(k); if (ki !== i) n[ki > i ? ki - 1 : ki] = prev[ki] }); return n }) }}
               onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))}
-              isReadOnly={!isEditable} addLabel="Tambah Item"
+              isReadOnly={!isEditable} addLabel="Tambah Item (pilih produk)"
             />
           </div>
         </div>
@@ -442,6 +431,7 @@ function StockAdjustmentFormPageContent() {
 
       <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={adj?.number ?? ''} hasEffects={!['draft', 'approved'].includes(adj?.status ?? 'draft')} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={adj?.number ?? ''} isLoading={voidAdj.isPending} />
+      <ProductPickerDialog {...productPicker.dialogProps} />
       <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={adj ? stockAdjustmentPrint(adj) : null} />
     </>
   )

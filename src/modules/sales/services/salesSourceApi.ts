@@ -126,7 +126,7 @@ export const salesInvoiceSources: SourceConvertOption[] = [
   },
   {
     key: 'delivery_order',
-    label: 'Dari Pengiriman',
+    label: 'Dari Pengiriman Barang',
     placeholder: 'Pilih pengiriman barang...',
     ...pickerSource('sales.invoices', 'delivery_order'),
     convert: async (id) => created((await salesInvoiceApi.createFromDeliveryOrder(id)).data),
@@ -150,7 +150,7 @@ export const salesReturnSources: SourceConvertOption[] = [
   },
   {
     key: 'delivery_order',
-    label: 'Dari Pengiriman',
+    label: 'Dari Pengiriman Barang',
     placeholder: 'Pilih pengiriman barang...',
     ...listSource('/sales/delivery-orders', 'delivery_number', ['shipped', 'delivered', 'partially_invoiced', 'invoiced']),
     convert: async (id) => created((await salesReturnApi.createFromDeliveryOrder(id)).data),

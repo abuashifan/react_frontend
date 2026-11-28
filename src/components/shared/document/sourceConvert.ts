@@ -7,7 +7,7 @@ export interface SourcePreviewLine {
   unitPrice: number | null
 }
 
-/** Satu jenis dokumen sumber yang bisa diambil oleh `SourceConvertPanel`. */
+/** Satu jenis dokumen sumber yang bisa diambil oleh `useSourceDocuments`. */
 export interface SourceConvertOption {
   key: string
   /** Label tombol, mis. "Dari Permintaan". */

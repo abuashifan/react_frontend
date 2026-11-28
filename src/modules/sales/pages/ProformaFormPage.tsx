@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { SourceConvertPanel } from '@/components/shared/document/SourceConvertPanel'
+import { useSourceDocuments } from '@/components/shared/document/useSourceDocuments'
 import { proformaSources } from '../services/salesSourceApi'
 import { useParams, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
@@ -79,6 +79,7 @@ function ProformaFormPageContent() {
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const sourceDocs = useSourceDocuments({ enabled: isCreate, sources: proformaSources, targetLabel: 'Faktur Sementara', createPath: `${location.pathname}${location.search}`, targetPath: (newId) => `/sales/proformas/${newId}` })
   const productPicker = useProductLinePicker<EditableLine>({ defaultLine: DEFAULT_LINE, setLines, applyProduct: (product, line) => ({ ...line, unit_price: product.selling_price ?? 0 }), priceField: 'selling_price' })
 
   // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
@@ -186,6 +187,7 @@ function ProformaFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (isCreate && sourceDocs.available) actions.push({ id: 'from_source', label: 'Ambil dari Dokumen', variant: 'neutral', onClick: sourceDocs.open })
   if (!isCreate && proforma && can('sales.proformas.print')) {
     actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
   }
@@ -278,7 +280,6 @@ function ProformaFormPageContent() {
       }
     >
       <div className="space-y-3">
-        {isCreate && <SourceConvertPanel sources={proformaSources} targetLabel="Faktur Sementara" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/sales/proformas/${newId}`} />}
         <FormSection title="Header">
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
@@ -335,6 +336,7 @@ function ProformaFormPageContent() {
       </div>
     </FormLayout>
       <ProductPickerDialog {...productPicker.dialogProps} />
+      {sourceDocs.element}
       <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={proforma ? proformaPrint(proforma) : null} />
     </>
   )

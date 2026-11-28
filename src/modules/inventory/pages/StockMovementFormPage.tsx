@@ -23,7 +23,9 @@ import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { applyApiValidationErrors, getApiErrorMessage, getApiLineErrors, type LineItemErrorMap } from '@/lib/apiError'
 import { gudangApi } from '@/modules/master-data/services/gudangApi'
-import { produkApi } from '@/modules/master-data/services/produkApi'
+import { ProductPickerDialog } from '@/modules/master-data/components/ProductPickerDialog'
+import { ProductPickCell } from '@/modules/master-data/components/ProductLinePicker'
+import { useProductLinePicker, toLineProduct } from '@/modules/master-data/components/useProductLinePicker'
 import { useStockMovement, useStockMovementMutations } from '../hooks/useStockMovementList'
 import { stockMovementSchema, stockMovementLineSchema, type StockMovementFormValues } from '../schemas/stockMovementSchema'
 import { stockMovementApi } from '../services/stockMovementApi'
@@ -82,6 +84,7 @@ function StockMovementFormPageContent() {
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const productPicker = useProductLinePicker<EditableLine>({ defaultLine: DEFAULT_LINE, setLines, fillDescription: false })
   const [lineErrors, setLineErrors] = useState<Record<number, Partial<Record<keyof EditableLine, string>>>>({})
   // Terpisah dari `lineErrors` di atas: yang itu hasil validasi sisi klien dan
   // dirender per-sel, sedangkan ini error baris dari backend (lines.0.quantity)
@@ -107,7 +110,7 @@ function StockMovementFormPageContent() {
       })
       setLines(movement.lines.map((l) => ({
         product_id: l.product_id,
-        product: l.product,
+        product: toLineProduct(l.product, l.product_id),
         warehouse_id: l.warehouse_id,
         warehouse: l.warehouse,
         quantity: l.quantity,
@@ -207,12 +210,13 @@ function StockMovementFormPageContent() {
       id: 'product',
       header: 'Produk',
       width: 200,
-      render: ({ item, index, isReadOnly, onUpdate }) => (
-        <div>
-          <SearchableSelect cacheKey="product"
-          flush value={item.product_id} onChange={(v, opt) => { onUpdate('product_id', v); onUpdate('product', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null); setLineErrors((prev) => { const n = { ...prev }; delete n[index]; return n }) }} onSearch={produkApi.search} placeholder="Pilih produk..." disabled={isReadOnly} size="sm" selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []} />
-          {lineErrors[index]?.product_id && <p className="mt-0.5 text-[10px] text-red-500">{lineErrors[index].product_id}</p>}
-        </div>
+      render: ({ item, index, isReadOnly }) => (
+        <ProductPickCell
+          product={item.product}
+          disabled={isReadOnly}
+          onClick={() => productPicker.openAt(index)}
+          error={item.product_id ? undefined : lineErrors[index]?.product_id}
+        />
       ),
     },
     {
@@ -341,10 +345,10 @@ function StockMovementFormPageContent() {
             <LineItemsTable
           errors={apiLineErrors}
               items={lines} columns={columns}
-              onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
+              onAdd={productPicker.openAppend}
               onRemove={(i) => { setLines((prev) => prev.filter((_, idx) => idx !== i)); setLineErrors((prev) => { const n: typeof prev = {}; Object.keys(prev).forEach((k) => { const ki = Number(k); if (ki !== i) n[ki > i ? ki - 1 : ki] = prev[ki] }); return n }) }}
               onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))}
-              isReadOnly={!isEditable} addLabel="Tambah Item"
+              isReadOnly={!isEditable} addLabel="Tambah Item (pilih produk)"
             />
           </div>
         </div>
@@ -362,6 +366,7 @@ function StockMovementFormPageContent() {
 
       <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={movement?.number ?? ''} hasEffects={!['draft'].includes(movement?.status ?? 'draft')} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={movement?.number ?? ''} isLoading={voidMovement.isPending} />
+      <ProductPickerDialog {...productPicker.dialogProps} />
       <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={movement ? stockMovementPrint(movement) : null} />
     </>
   )

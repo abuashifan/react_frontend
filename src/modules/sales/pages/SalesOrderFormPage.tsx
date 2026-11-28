@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { proformaApi } from '../services/proformaApi'
-import { SourceConvertPanel } from '@/components/shared/document/SourceConvertPanel'
+import { useSourceDocuments } from '@/components/shared/document/useSourceDocuments'
 import { salesOrderSources } from '../services/salesSourceApi'
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
@@ -100,6 +100,7 @@ function SalesOrderFormPageContent() {
   const paymentTermId = useWatch({ control, name: 'payment_term_id' })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const sourceDocs = useSourceDocuments({ enabled: isCreate, sources: salesOrderSources, targetLabel: 'Pesanan Penjualan', createPath: `${location.pathname}${location.search}`, targetPath: (newId) => `/sales/orders/${newId}` })
   const productPicker = useProductLinePicker<EditableLine>({ defaultLine: DEFAULT_LINE, setLines, applyProduct: (product, line) => ({ ...line, unit_price: product.selling_price ?? 0 }), priceField: 'selling_price' })
 
   // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
@@ -244,6 +245,7 @@ function SalesOrderFormPageContent() {
     } catch (followUpError) { toast.error(getApiErrorMessage(followUpError, 'Gagal membuat faktur sementara.')) }
   }
   const actions: DocumentActionButton[] = []
+  if (isCreate && sourceDocs.available) actions.push({ id: 'from_source', label: 'Ambil dari Dokumen', variant: 'neutral', onClick: sourceDocs.open })
   if (!isCreate && ['approved', 'confirmed', 'partially_delivered', 'delivered'].includes(order?.status ?? '') && can('sales.proformas.create') && can('sales.documents.convert')) {
     actions.push({ id: 'create_proforma', label: 'Buat Faktur Sementara', variant: 'secondary', onClick: () => void handleCreateProforma() })
   }
@@ -364,7 +366,6 @@ function SalesOrderFormPageContent() {
       }
     >
       <div className="space-y-3">
-        {isCreate && <SourceConvertPanel sources={salesOrderSources} targetLabel="Pesanan Penjualan" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/sales/orders/${newId}`} />}
         <FormSection title="Header">
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
@@ -440,6 +441,7 @@ function SalesOrderFormPageContent() {
       </div>
     </FormLayout>
       <ProductPickerDialog {...productPicker.dialogProps} />
+      {sourceDocs.element}
       <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={order ? salesOrderPrint(order) : null} />
     </>
   )
