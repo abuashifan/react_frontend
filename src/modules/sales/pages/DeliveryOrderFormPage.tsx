@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { salesReturnApi } from '../services/salesReturnApi'
 import { salesInvoiceApi } from '../services/salesInvoiceApi'
-import { SourceConvertPanel } from '@/components/shared/document/SourceConvertPanel'
+import { useSourceDocuments } from '@/components/shared/document/useSourceDocuments'
 import { deliveryOrderSources } from '../services/salesSourceApi'
 import { useParams, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
@@ -79,6 +79,7 @@ function DeliveryOrderFormPageContent() {
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const sourceDocs = useSourceDocuments({ enabled: isCreate, sources: deliveryOrderSources, targetLabel: 'Pengiriman Barang', createPath: `${location.pathname}${location.search}`, targetPath: (newId) => `/sales/delivery-orders/${newId}` })
   const productPicker = useProductLinePicker<EditableLine>({ defaultLine: DEFAULT_LINE, setLines, priceField: 'selling_price' })
 
   // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
@@ -223,6 +224,7 @@ function DeliveryOrderFormPageContent() {
     } catch (followUpError) { toast.error(getApiErrorMessage(followUpError, 'Gagal membuat retur penjualan.')) }
   }
   const actions: DocumentActionButton[] = []
+  if (isCreate && sourceDocs.available) actions.push({ id: 'from_source', label: 'Ambil dari Dokumen', variant: 'neutral', onClick: sourceDocs.open })
   if (!isCreate && ['delivered', 'partially_invoiced'].includes(order?.status ?? '') && can('sales.invoices.create')) {
     actions.push({ id: 'create_invoice', label: 'Buat Faktur Penjualan', variant: 'primary', onClick: () => void handleCreateInvoice() })
   }
@@ -316,7 +318,6 @@ function DeliveryOrderFormPageContent() {
         }
       >
         <div className="space-y-3">
-          {isCreate && <SourceConvertPanel sources={deliveryOrderSources} targetLabel="Pengiriman Barang" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/sales/delivery-orders/${newId}`} />}
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
@@ -399,6 +400,7 @@ function DeliveryOrderFormPageContent() {
         isLoading={voidDo.isPending}
       />
       <ProductPickerDialog {...productPicker.dialogProps} />
+      {sourceDocs.element}
       <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={order ? deliveryOrderPrint(order) : null} />
     </>
   )

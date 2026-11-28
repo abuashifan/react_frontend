@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { SourceConvertPanel } from '@/components/shared/document/SourceConvertPanel'
+import { useSourceDocuments } from '@/components/shared/document/useSourceDocuments'
 import { purchaseReturnSources } from '../services/purchaseSourceApi'
 import { useParams, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
@@ -87,6 +87,7 @@ function PurchaseReturnFormPageContent() {
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const sourceDocs = useSourceDocuments({ enabled: isCreate, sources: purchaseReturnSources, targetLabel: 'Retur Pembelian', createPath: `${location.pathname}${location.search}`, targetPath: (newId) => `/purchase/returns/${newId}` })
   const productPicker = useProductLinePicker<EditableLine>({ defaultLine: DEFAULT_LINE, setLines, applyProduct: (product, line) => ({ ...line, unit_price: product.purchase_price ?? 0 }) })
 
   // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
@@ -166,6 +167,7 @@ function PurchaseReturnFormPageContent() {
   }
 
   const actions: DocumentActionButton[] = []
+  if (isCreate && sourceDocs.available) actions.push({ id: 'from_source', label: 'Ambil dari Dokumen', variant: 'neutral', onClick: sourceDocs.open })
   if (!isCreate && ret && can('purchase.returns.print')) {
     actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
   }
@@ -224,7 +226,6 @@ function PurchaseReturnFormPageContent() {
         }
       >
         <div className="space-y-3">
-          {isCreate && <SourceConvertPanel sources={purchaseReturnSources} targetLabel="Retur Pembelian" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/purchase/returns/${newId}`} />}
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pemasok <span className="text-red-500">*</span></Label>
@@ -259,6 +260,7 @@ function PurchaseReturnFormPageContent() {
       </FormLayout>
       <DeleteDocumentDialog isOpen={isDeleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={(reason) => void handleDelete(reason)} documentNumber={ret?.number ?? ''} hasEffects={!['draft', 'approved'].includes(ret?.status ?? 'draft')} isLoading={remove.isPending} />
       <VoidConfirmDialog isOpen={isVoidOpen} onClose={() => setVoidOpen(false)} onConfirm={(reason) => void handleVoid(reason)} documentNumber={ret?.number ?? ''} isLoading={voidRet.isPending} />
+      {sourceDocs.element}
       <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={ret ? purchaseReturnPrint(ret) : null} />
     </>
   )

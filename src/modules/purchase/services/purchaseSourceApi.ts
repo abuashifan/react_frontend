@@ -7,8 +7,11 @@ import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type { SelectOption } from '@/types/common.types'
 import { documentNumber, toNumber, type SourceConvertOption, type SourcePreviewLine } from '@/components/shared/document/sourceConvert'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
+import { goodsReceiptApi } from './goodsReceiptApi'
 import { purchaseOrderApi } from './purchaseOrderApi'
 import { purchaseReturnApi } from './purchaseReturnApi'
+import { vendorBillApi } from './vendorBillApi'
+import { vendorBillSourceApi, type BillSourceType } from './vendorBillSourceApi'
 
 interface RawLine {
   id: number
@@ -95,7 +98,7 @@ const created = (data: unknown) => ({ id: Number((data as { id: number }).id), n
 export const purchaseOrderSources: SourceConvertOption[] = [
   {
     key: 'purchase_request',
-    label: 'Dari Permintaan',
+    label: 'Dari Permintaan Pembelian',
     placeholder: 'Pilih permintaan pembelian...',
     ...pickerSource('purchase.orders', 'purchase_request'),
     partner: vendorPartner(true, false),
@@ -117,5 +120,41 @@ export const purchaseReturnSources: SourceConvertOption[] = [
     placeholder: 'Pilih penerimaan barang...',
     ...listSource('/purchase/goods-receipts', 'receipt_number', ['received', 'partially_billed']),
     convert: async (id) => created((await purchaseReturnApi.createFromGoodsReceipt(id)).data),
+  },
+]
+
+/** Pratinjau sisa qty yang belum ditagih dari PO/Penerimaan Barang. */
+const billSource = (type: BillSourceType) => ({
+  search: (query: string) => vendorBillSourceApi.search(type, query),
+  preview: async (id: number): Promise<SourcePreviewLine[]> =>
+    (await vendorBillSourceApi.preview(type, id)).lines.map((line) => ({ id: line.id, label: line.label, quantity: line.remaining, unitPrice: line.unitPrice })),
+})
+
+/** Faktur Pembelian dibuat dari PO atau Penerimaan Barang yang masih punya sisa untuk ditagih. */
+export const vendorBillSources: SourceConvertOption[] = [
+  {
+    key: 'purchase_order',
+    label: 'Dari Pesanan Pembelian',
+    placeholder: 'Pilih pesanan pembelian...',
+    ...billSource('purchase_order'),
+    convert: async (id) => created((await vendorBillApi.createFromPurchaseOrder(id)).data),
+  },
+  {
+    key: 'goods_receipt',
+    label: 'Dari Penerimaan Barang',
+    placeholder: 'Pilih penerimaan barang...',
+    ...billSource('goods_receipt'),
+    convert: async (id) => created((await vendorBillApi.createFromGoodsReceipt(id)).data),
+  },
+]
+
+/** Penerimaan Barang dibuat dari PO; sisa qty, harga, dan gudang dihitung backend. */
+export const goodsReceiptSources: SourceConvertOption[] = [
+  {
+    key: 'purchase_order',
+    label: 'Dari Pesanan Pembelian',
+    placeholder: 'Pilih pesanan pembelian...',
+    search: (query: string) => goodsReceiptApi.searchReceivableOrders(query),
+    convert: async (id) => created((await goodsReceiptApi.createFromPurchaseOrder(id)).data),
   },
 ]

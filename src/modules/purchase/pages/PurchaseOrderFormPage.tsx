@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { SourceConvertPanel } from '@/components/shared/document/SourceConvertPanel'
+import { useSourceDocuments } from '@/components/shared/document/useSourceDocuments'
 import { purchaseOrderSources } from '../services/purchaseSourceApi'
 import { useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
@@ -99,6 +99,7 @@ function PurchaseOrderFormPageContent() {
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const sourceDocs = useSourceDocuments({ enabled: isCreate, sources: purchaseOrderSources, targetLabel: 'Pesanan Pembelian', createPath: `${location.pathname}${location.search}`, targetPath: (newId) => `/purchase/orders/${newId}`, initial: fromRequestId ? { key: 'purchase_request', id: Number(fromRequestId) } : null })
   const productPicker = useProductLinePicker<EditableLine>({ defaultLine: DEFAULT_LINE, setLines, applyProduct: (product, line) => ({ ...line, unit_price: product.purchase_price ?? 0 }) })
 
   // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
@@ -196,6 +197,7 @@ function PurchaseOrderFormPageContent() {
   const hasReceived = !!po?.lines.some((l) => (l.received_quantity ?? 0) > 0)
 
   const actions: DocumentActionButton[] = []
+  if (isCreate && sourceDocs.available) actions.push({ id: 'from_source', label: 'Ambil dari Dokumen', variant: 'neutral', onClick: sourceDocs.open })
   if (!isCreate && po && can('purchase.orders.print')) {
     actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
   }
@@ -285,7 +287,6 @@ function PurchaseOrderFormPageContent() {
       }
     >
       <div className="space-y-3">
-        {isCreate && <SourceConvertPanel sources={purchaseOrderSources} targetLabel="Pesanan Pembelian" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/purchase/orders/${newId}`} initial={fromRequestId ? { key: 'purchase_request', id: Number(fromRequestId) } : null} />}
         <FormSection title="Header">
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pemasok <span className="text-red-500">*</span></Label>
@@ -357,6 +358,7 @@ function PurchaseOrderFormPageContent() {
       </div>
     <ProductPickerDialog {...productPicker.dialogProps} />
       </FormLayout>
+      {sourceDocs.element}
       <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={po ? purchaseOrderPrint(po) : null} />
     </>
   )

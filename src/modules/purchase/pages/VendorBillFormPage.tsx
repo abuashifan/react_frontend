@@ -23,9 +23,9 @@ import { usePermission } from '@/hooks/usePermission'
 import { usePersistentFormDraft } from '@/hooks/usePersistentFormDraft'
 import { useVendorBill, useVendorBillMutations } from '../hooks/useVendorBillList'
 import { toVendorBillPayload } from '../services/vendorBillAdapter'
-import { vendorBillSourceApi, type BillSourceType } from '../services/vendorBillSourceApi'
+import { useSourceDocuments } from '@/components/shared/document/useSourceDocuments'
+import { vendorBillSources } from '../services/purchaseSourceApi'
 import { vendorDepositApi } from '../services/vendorDepositApi'
-import { Button } from '@/components/ui/button'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import { ProductPickerDialog } from '@/modules/master-data/components/ProductPickerDialog'
 import { ProductPickCell } from '@/modules/master-data/components/ProductLinePicker'
@@ -88,33 +88,8 @@ function VendorBillFormPageContent() {
 
   const { data, isLoading, isError, error } = useVendorBill(id ? Number(id) : undefined)
   const bill = data?.data
-  const { create, createFromPurchaseOrder, createFromGoodsReceipt, update, approve, post, void: voidBill, remove } = useVendorBillMutations()
+  const { create, update, approve, post, void: voidBill, remove } = useVendorBillMutations()
   const { canChange } = useTransactionEditMode()
-
-  // Source picker (A13-165) — hanya saat create.
-  const [sourceMode, setSourceMode] = useState<'none' | BillSourceType>('none')
-  const [sourceId, setSourceId] = useState<number | null>(null)
-  const isSourceMode = isCreate && sourceMode !== 'none'
-
-  const { data: sourcePreview, isFetching: isPreviewLoading } = useQuery({
-    queryKey: ['vendor-bill-source', sourceMode, sourceId],
-    queryFn: () => vendorBillSourceApi.preview(sourceMode as BillSourceType, sourceId as number),
-    enabled: isSourceMode && !!sourceId,
-  })
-
-  const handleConvertFromSource = async () => {
-    if (!sourceId) return
-    try {
-      if (sourceMode === 'purchase_order') await createFromPurchaseOrder.mutateAsync(sourceId)
-      else await createFromGoodsReceipt.mutateAsync(sourceId)
-      formDraft.clearDraft()
-      toast.success('Faktur Pembelian dibuat dari dokumen sumber.')
-      closeRecordTab('/purchase/bills/create', '/purchase/bills')
-    } catch (convertError) {
-      toast.error(getApiErrorMessage(convertError, 'Gagal membuat faktur pembelian dari dokumen sumber.'))
-    }
-  }
-  const isConverting = createFromPurchaseOrder.isPending || createFromGoodsReceipt.isPending
 
   const { control, getValues, register, handleSubmit, setValue, reset, setError, formState: { errors, isSubmitting } } = useForm<VendorBillFormValues>({
     resolver: zodResolver(vendorBillSchema),
@@ -125,6 +100,7 @@ function VendorBillFormPageContent() {
   const appliedVendorDepositAmount = useWatch({ control, name: 'applied_vendor_deposit_amount' })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const sourceDocs = useSourceDocuments({ enabled: isCreate, sources: vendorBillSources, targetLabel: 'Faktur Pembelian', createPath: '/purchase/bills/create', targetPath: (newId) => `/purchase/bills/${newId}` })
   const productPicker = useProductLinePicker<EditableLine>({ defaultLine: DEFAULT_LINE, setLines, applyProduct: (product, line) => ({ ...line, unit_price: product.purchase_price ?? 0 }) })
   const [lineErrors, setLineErrors] = useState<VendorBillLineErrors>({})
   // Terpisah dari `lineErrors` di atas: yang itu hasil validasi sisi klien dan
@@ -296,6 +272,7 @@ function VendorBillFormPageContent() {
     } catch (followUpError) { toast.error(getApiErrorMessage(followUpError, 'Gagal membuat retur pembelian.')) }
   }
   const actions: DocumentActionButton[] = []
+  if (isCreate && sourceDocs.available) actions.push({ id: 'from_source', label: 'Ambil dari Dokumen', variant: 'neutral', onClick: sourceDocs.open })
   if (!isCreate && (bill?.status === 'posted' || bill?.status === 'partially_paid') && can('purchase.returns.create')) {
     actions.push({ id: 'create_return', label: 'Buat Retur', variant: 'secondary', onClick: () => void handleCreateReturn() })
   }
@@ -432,73 +409,6 @@ function VendorBillFormPageContent() {
               dependences={[{ type: 'Pembayaran', number: 'Lihat pembayaran terkait', status: 'posted', path: `/purchase/payments?bill_id=${id}` }]}
             />
           )}
-          {isCreate && (
-            <FormSection title="Sumber Dokumen">
-              <div className="flex flex-col gap-2 md:col-span-2">
-                <div className="flex gap-1">
-                  {([['none', 'Tanpa Sumber'], ['purchase_order', 'Dari Pesanan Pembelian'], ['goods_receipt', 'Dari Penerimaan Barang']] as const).map(([mode, label]) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => { setSourceMode(mode); setSourceId(null) }}
-                      className={`h-8 rounded px-3 text-[12px] font-medium transition-colors ${sourceMode === mode ? 'bg-[#5c9ead] text-white' : 'bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]'}`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                {isSourceMode && (
-                  <>
-                    <SearchableSelect
-                      value={sourceId}
-                      onChange={(v) => setSourceId(v)}
-                      onSearch={(q) => vendorBillSourceApi.search(sourceMode as BillSourceType, q)}
-                      placeholder={sourceMode === 'purchase_order' ? 'Pilih pesanan pembelian...' : 'Pilih penerimaan barang...'}
-                    />
-                    {sourceId && (
-                      <div className="rounded-md border border-[#e2e8f0] bg-[#f8fafc] p-3 text-[12px]">
-                        {isPreviewLoading ? (
-                          <p className="text-[#64748b]">Memuat sisa qty...</p>
-                        ) : !sourcePreview ? null : sourcePreview.hasRemaining ? (
-                          <table className="w-full">
-                            <thead>
-                              <tr className="text-[11px] uppercase tracking-wide text-[#94a3b8]">
-                                <th className="pb-1 text-left font-semibold">Item</th>
-                                <th className="pb-1 text-right font-semibold">Sisa Qty</th>
-                                <th className="pb-1 text-right font-semibold">Harga</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {sourcePreview.lines.map((line) => (
-                                <tr key={line.id} className="border-t border-[#e2e8f0]">
-                                  <td className="py-1 text-[#24323a]">{line.label}</td>
-                                  <td className="py-1 text-right tabular-nums">{line.remaining}</td>
-                                  <td className="py-1 text-right tabular-nums">{line.unitPrice != null ? formatCurrency(line.unitPrice) : '-'}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        ) : (
-                          <p className="text-[#b45309]">Tidak ada qty tersisa untuk ditagih dari dokumen ini.</p>
-                        )}
-                      </div>
-                    )}
-                    <div>
-                      <Button
-                        type="button"
-                        className="h-8 bg-[#5c9ead] px-3 text-[13px] hover:bg-[#4a8593]"
-                        disabled={!sourcePreview?.hasRemaining || isConverting}
-                        onClick={() => void handleConvertFromSource()}
-                      >
-                        {isConverting ? 'Memproses...' : 'Buat Faktur Pembelian dari Sumber'}
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </FormSection>
-          )}
-          {!isSourceMode && (
           <>
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
@@ -593,7 +503,6 @@ function VendorBillFormPageContent() {
             <FormSummary subtotal={subtotal} taxAmount={taxAmount} grandTotal={grandTotal} paidAmount={bill?.paid_amount} settlementDiscountAmount={Number(bill?.settlement_discount_amount ?? 0)} balanceDue={bill?.balance_due} />
           </div>
           </>
-          )}
         </div>
       <ProductPickerDialog {...productPicker.dialogProps} />
       </FormLayout>
@@ -619,6 +528,7 @@ function VendorBillFormPageContent() {
         loadingLabel="Memposting..."
         isLoading={post.isPending}
       />
+      {sourceDocs.element}
       <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={bill ? vendorBillPrint(bill) : null} />
     </>
   )
