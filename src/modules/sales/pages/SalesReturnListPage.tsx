@@ -125,7 +125,7 @@ export default function SalesReturnListPage() {
       ),
     },
     { id: 'date', header: 'Tanggal', size: 110, cell: ({ original }) => formatDate(original.date) },
-    { id: 'customer', header: 'Customer', size: 180, cell: ({ original }) => original.customer?.name ?? '-' },
+    { id: 'customer', header: 'Pelanggan', size: 180, cell: ({ original }) => original.customer?.name ?? '-' },
     {
       id: 'source',
       header: 'Sumber',
@@ -161,7 +161,7 @@ export default function SalesReturnListPage() {
         <ListSearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Cari nomor retur, customer..."
+          placeholder="Cari nomor retur, pelanggan..."
           className="w-full max-w-none"
         />
       </div>
@@ -182,7 +182,7 @@ export default function SalesReturnListPage() {
           resetSelection()
         }}
       />
-      <FilterSection title="Customer">
+      <FilterSection title="Pelanggan">
         <SearchableSelect cacheKey="contact"
           value={filterCustomer}
           onChange={(v) => {
@@ -190,7 +190,7 @@ export default function SalesReturnListPage() {
             resetSelection()
           }}
           onSearch={(q) => kontakApi.search(q, 'customer')}
-          placeholder="Semua customer"
+          placeholder="Semua pelanggan"
         />
       </FilterSection>
     </FilterSidebar>
@@ -200,7 +200,7 @@ export default function SalesReturnListPage() {
     <>
       <WorkspaceLayout
         title="Retur Penjualan"
-        breadcrumb={[{ label: 'Sales' }, { label: 'Retur Penjualan' }]}
+        breadcrumb={[{ label: 'Penjualan' }, { label: 'Retur Penjualan' }]}
         sidebar={sidebar}
         action={
           <PermissionGuard permission="sales.returns.create">
@@ -225,7 +225,7 @@ export default function SalesReturnListPage() {
           onRowSelect={setSelectedRows}
           bulkActions={bulkActions}
           emptyTitle="Belum ada retur penjualan"
-          emptyDescription="Catat pengembalian barang dari customer."
+          emptyDescription="Catat pengembalian barang dari pelanggan."
         />
       </WorkspaceLayout>
 

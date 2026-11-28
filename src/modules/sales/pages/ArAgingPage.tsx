@@ -35,17 +35,17 @@ export default function ArAgingPage() {
 
   return (
     <WorkspaceLayout
-      title="AR Aging"
-      breadcrumb={[{ label: 'Sales' }, { label: 'AR' }, { label: 'Aging' }]}
+      title="Umur Piutang"
+      breadcrumb={[{ label: 'Penjualan' }, { label: 'Piutang' }, { label: 'Aging' }]}
     >
       <div className="mb-3 flex flex-wrap items-end gap-3">
         <div className="w-60">
-          <Label className="mb-1 block text-[11px] font-semibold uppercase text-[#64748b]">Customer</Label>
+          <Label className="mb-1 block text-[11px] font-semibold uppercase text-[#64748b]">Pelanggan</Label>
           <SearchableSelect cacheKey="contact"
             value={filterCustomer ?? null}
             onChange={(v) => setFilterCustomer(v ?? undefined)}
             onSearch={(q) => kontakApi.search(q, 'customer')}
-            placeholder="Semua customer"
+            placeholder="Semua pelanggan"
           />
         </div>
         <div>
@@ -59,7 +59,7 @@ export default function ArAgingPage() {
           <table className="min-w-full border-collapse text-[13px]">
             <thead>
               <tr className="bg-[#eeeeee]">
-                <th className="px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b]">Customer</th>
+                <th className="px-3 py-2 text-left text-[11px] font-bold uppercase text-[#64748b]">Pelanggan</th>
                 <th className={thClass}>Current</th>
                 <th className={thClass}>1-30 Hari</th>
                 <th className={thClass}>31-60 Hari</th>

@@ -204,7 +204,7 @@ export default function ProdukListPage() {
   return (
     <WorkspaceLayout
       title="Produk"
-      breadcrumb={[{ label: 'Master Data' }, { label: 'Produk' }]}
+      breadcrumb={[{ label: 'Data Utama' }, { label: 'Produk' }]}
       sidebar={sidebar}
       action={
         <>

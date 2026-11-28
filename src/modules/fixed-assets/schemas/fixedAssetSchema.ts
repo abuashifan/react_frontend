@@ -17,7 +17,7 @@ const usefulLife = z.preprocess(
 )
 
 export const fixedAssetSchema = z.object({
-  name: z.string().min(1, 'Nama aktiva wajib diisi'),
+  name: z.string().min(1, 'Nama aset wajib diisi'),
   description: z.string().nullable().optional(),
   fixed_asset_category_id: requiredNumber('Kategori wajib dipilih'),
   acquisition_date: z.string().min(1, 'Tanggal perolehan wajib diisi'),
@@ -84,9 +84,9 @@ export const capitalizeFixedAssetSchema = z.object({
 })
 
 export const disposeFixedAssetSchema = z.object({
-  disposal_date: z.string().min(1, 'Tanggal disposal wajib diisi'),
+  disposal_date: z.string().min(1, 'Tanggal pelepasan wajib diisi'),
   disposal_type: z.enum(['sale', 'write_off', 'scrap', 'lost']),
-  disposed_quantity: z.coerce.number().positive('Qty disposal harus lebih besar dari 0'),
+  disposed_quantity: z.coerce.number().positive('Qty pelepasan harus lebih besar dari 0'),
   proceeds_amount: optionalNumber,
   cash_bank_account_id: optionalNumber,
   receivable_account_id: optionalNumber,

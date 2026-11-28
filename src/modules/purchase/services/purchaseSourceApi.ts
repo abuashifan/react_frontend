@@ -82,7 +82,7 @@ function listSource(endpoint: string, numberField: string, statuses: string[], c
 }
 
 const vendorPartner = (required: boolean, filterBy: boolean) => ({
-  label: 'Vendor',
+  label: 'Pemasok',
   cacheKey: 'contact',
   required,
   filterBy,
@@ -106,8 +106,8 @@ export const purchaseOrderSources: SourceConvertOption[] = [
 export const purchaseReturnSources: SourceConvertOption[] = [
   {
     key: 'vendor_bill',
-    label: 'Dari Tagihan',
-    placeholder: 'Pilih tagihan vendor...',
+    label: 'Dari Faktur Pembelian',
+    placeholder: 'Pilih faktur pembelian...',
     ...listSource('/purchase/bills', 'bill_number', ['posted', 'partially_paid']),
     convert: async (id) => created((await purchaseReturnApi.createFromBill(id)).data),
   },

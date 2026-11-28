@@ -25,8 +25,8 @@ const STATUS_OPTIONS: { value: boolean | undefined; label: string }[] = [
 ]
 
 const KONTAK_TYPE_LABELS: Record<KontakType, string> = {
-  customer: 'Customer',
-  supplier: 'Supplier',
+  customer: 'Pelanggan',
+  supplier: 'Pemasok',
   both: 'Keduanya',
 }
 
@@ -216,7 +216,7 @@ export default function KontakListPage() {
   return (
     <WorkspaceLayout
       title="Kontak"
-      breadcrumb={[{ label: 'Master Data' }, { label: 'Kontak' }]}
+      breadcrumb={[{ label: 'Data Utama' }, { label: 'Kontak' }]}
       sidebar={sidebar}
       action={
         <>
@@ -251,7 +251,7 @@ export default function KontakListPage() {
         bulkActions={bulkActions}
         onRowClick={(row) => openRecordTab({ label: row.name, path: `/master-data/contacts/${row.id}` })}
         emptyTitle="Belum ada kontak"
-        emptyDescription="Tambahkan customer atau supplier pertama untuk memulai."
+        emptyDescription="Tambahkan pelanggan atau pemasok pertama untuk memulai."
       />
     </WorkspaceLayout>
   )

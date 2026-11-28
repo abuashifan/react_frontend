@@ -17,8 +17,8 @@ export default function FixedAssetRegisterReportPage() {
 
   return (
     <WorkspaceLayout
-      title="Laporan Register Aktiva"
-      breadcrumb={[{ label: 'Aktiva Tetap' }, { label: 'Laporan Register' }]}
+      title="Laporan Daftar Aset Aset"
+      breadcrumb={[{ label: 'Aset Tetap' }, { label: 'Laporan Daftar Aset' }]}
       action={
         <div className="flex items-center gap-2">
           <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Periode</Label>

@@ -127,7 +127,7 @@ function DeliveryOrderFormPageContent() {
   const { saveAndClose, navProps } = useRecordFormNavigation<DeliveryOrderFormValues>({
     id,
     basePath: '/sales/delivery-orders',
-    createLabel: 'Delivery Order Baru',
+    createLabel: 'Pengiriman Barang Baru',
     sequenceQueryKey: ['sales', 'delivery-orders', 'adjacent'],
     fetchAdjacent: async (recordId) => (await deliveryOrderApi.adjacent(recordId)).data,
     handleSubmit,
@@ -140,14 +140,14 @@ function DeliveryOrderFormPageContent() {
       formDraft.clearDraft()
       setLineErrors({})
     },
-    successMessage: (creating) => (creating ? 'Delivery Order berhasil dibuat.' : 'Delivery Order berhasil diperbarui.'),
+    successMessage: (creating) => (creating ? 'Pengiriman Barang berhasil dibuat.' : 'Pengiriman Barang berhasil diperbarui.'),
     onError: (saveError) => {
       // Backend memakai `delivery_date`/`shipping_address`, form memakai
       // `date`/`delivery_address` — dipetakan supaya pesan error mendarat di
       // input yang benar.
       setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { delivery_date: 'date', shipping_address: 'delivery_address' })
-      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Delivery Order.'))
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Pengiriman Barang.'))
     },
     canSave: isEditable,
   })
@@ -156,16 +156,16 @@ function DeliveryOrderFormPageContent() {
     try {
       await ready.mutateAsync(Number(id))
       formDraft.clearDraft()
-      toast.success('DO siap dikirim.')
-    } catch (readyError) { toast.error(getApiErrorMessage(readyError, 'Gagal mengubah status DO.')) }
+      toast.success('Pengiriman Barang siap dikirim.')
+    } catch (readyError) { toast.error(getApiErrorMessage(readyError, 'Gagal mengubah status Pengiriman Barang.')) }
   }
 
   const handleShip = async () => {
     try {
       await ship.mutateAsync(Number(id))
       formDraft.clearDraft()
-      toast.success('DO dalam pengiriman.')
-    } catch (shipError) { toast.error(getApiErrorMessage(shipError, 'Gagal mengubah status DO.')) }
+      toast.success('Pengiriman Barang dalam pengiriman.')
+    } catch (shipError) { toast.error(getApiErrorMessage(shipError, 'Gagal mengubah status Pengiriman Barang.')) }
   }
 
   const handleDeliver = async () => {
@@ -182,14 +182,14 @@ function DeliveryOrderFormPageContent() {
     try {
       await cancel.mutateAsync(Number(id))
       formDraft.clearDraft()
-      toast.success('DO dibatalkan.')
-    } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan DO.')) }
+      toast.success('Pengiriman Barang dibatalkan.')
+    } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan Pengiriman Barang.')) }
   }
 
   const handleVoid = async (reason: string) => {
     await voidDo.mutateAsync({ id: Number(id), reason })
     formDraft.clearDraft()
-    toast.success('DO berhasil di-void.')
+    toast.success('Pengiriman Barang berhasil di-void.')
     setVoidOpen(false)
   }
 
@@ -199,7 +199,7 @@ function DeliveryOrderFormPageContent() {
       toast.success('Delivery order berhasil dihapus.')
       setDeleteOpen(false)
       closeRecordTab(window.location.pathname, '/sales/delivery-orders')
-    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus delivery order.')) }
+    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus pengiriman barang.')) }
   }
 
   const { openRecordTab: openFollowUpTab } = useRecordTab()
@@ -207,9 +207,9 @@ function DeliveryOrderFormPageContent() {
     try {
       const res = await salesInvoiceApi.createFromDeliveryOrder(Number(id))
       const created = res.data as unknown as { id: number; number?: string; return_number?: string; invoice_number?: string }
-      toast.success('Invoice dibuat sebagai draft.')
-      openFollowUpTab({ label: created.number ?? created.return_number ?? created.invoice_number ?? 'Invoice', path: `/sales/invoices/${created.id}` })
-    } catch (followUpError) { toast.error(getApiErrorMessage(followUpError, 'Gagal membuat invoice.')) }
+      toast.success('Faktur Penjualan dibuat sebagai draft.')
+      openFollowUpTab({ label: created.number ?? created.return_number ?? created.invoice_number ?? 'Faktur Penjualan', path: `/sales/invoices/${created.id}` })
+    } catch (followUpError) { toast.error(getApiErrorMessage(followUpError, 'Gagal membuat faktur penjualan.')) }
   }
   const handleCreateReturn = async () => {
     try {
@@ -221,7 +221,7 @@ function DeliveryOrderFormPageContent() {
   }
   const actions: DocumentActionButton[] = []
   if (!isCreate && ['delivered', 'partially_invoiced'].includes(order?.status ?? '') && can('sales.invoices.create')) {
-    actions.push({ id: 'create_invoice', label: 'Buat Invoice', variant: 'primary', onClick: () => void handleCreateInvoice() })
+    actions.push({ id: 'create_invoice', label: 'Buat Faktur Penjualan', variant: 'primary', onClick: () => void handleCreateInvoice() })
   }
   if (!isCreate && ['shipped', 'delivered', 'partially_invoiced', 'invoiced'].includes(order?.status ?? '') && can('sales.returns.create')) {
     actions.push({ id: 'create_return', label: 'Buat Retur', variant: 'secondary', onClick: () => void handleCreateReturn() })
@@ -303,7 +303,7 @@ function DeliveryOrderFormPageContent() {
 
   if (!isCreate && isLoading) {
     return (
-      <FormLayout title="Delivery Order" breadcrumb={[{ label: 'Sales' }, { label: 'Delivery Order', path: '/sales/delivery-orders' }, { label: 'Memuat...' }]}>
+      <FormLayout title="Pengiriman Barang" breadcrumb={[{ label: 'Penjualan' }, { label: 'Pengiriman Barang', path: '/sales/delivery-orders' }, { label: 'Memuat...' }]}>
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
       </FormLayout>
     )
@@ -312,13 +312,13 @@ function DeliveryOrderFormPageContent() {
   return (
     <>
       <FormLayout
-        title={isCreate ? 'Buat Delivery Order' : 'Delivery Order'}
+        title={isCreate ? 'Buat Pengiriman Barang' : 'Pengiriman Barang'}
         documentNumber={order?.number}
         status={status}
         breadcrumb={[
-          { label: 'Sales' },
-          { label: 'Delivery Order', path: '/sales/delivery-orders' },
-          { label: isCreate ? 'Buat DO' : (order?.number ?? '') },
+          { label: 'Penjualan' },
+          { label: 'Pengiriman Barang', path: '/sales/delivery-orders' },
+          { label: isCreate ? 'Buat Pengiriman Barang' : (order?.number ?? '') },
         ]}
         headerActions={
           <>
@@ -329,17 +329,17 @@ function DeliveryOrderFormPageContent() {
         }
       >
         <div className="space-y-3">
-          {isCreate && <SourceConvertPanel sources={deliveryOrderSources} targetLabel="Delivery Order" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/sales/delivery-orders/${newId}`} />}
+          {isCreate && <SourceConvertPanel sources={deliveryOrderSources} targetLabel="Pengiriman Barang" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/sales/delivery-orders/${newId}`} />}
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
-                Customer <span className="text-red-500">*</span>
+                Pelanggan <span className="text-red-500">*</span>
               </Label>
               <SearchableSelect cacheKey="contact"
                 value={watch('customer_id') ?? null}
                 onChange={(v) => setValue('customer_id', v as number)}
                 onSearch={(q) => kontakApi.search(q, 'customer')}
-                placeholder="Pilih customer..."
+                placeholder="Pilih pelanggan..."
                 disabled={!isEditable}
                 error={errors.customer_id?.message}
                 selectedOptions={order?.customer ? [{ value: order.customer.id, label: order.customer.name }] : []}
@@ -369,7 +369,7 @@ function DeliveryOrderFormPageContent() {
 
             {order?.sales_order_number && (
               <div className="flex flex-col gap-1">
-                <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Dari Sales Order</Label>
+                <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Dari Pesanan Penjualan</Label>
                 <p className="text-[13px] font-medium text-[#5c9ead]">{order.sales_order_number}</p>
               </div>
             )}

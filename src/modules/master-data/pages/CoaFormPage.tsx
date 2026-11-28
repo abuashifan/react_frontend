@@ -136,7 +136,7 @@ function CoaFormPageContent() {
 
   if (!isCreate && isLoading) {
     return (
-      <FormLayout title="Chart of Account" breadcrumb={[{ label: 'Master Data' }, { label: 'COA', path: '/master-data/coa' }, { label: 'Loading...' }]}>
+      <FormLayout title="Akun" breadcrumb={[{ label: 'Data Utama' }, { label: 'Daftar Akun', path: '/master-data/coa' }, { label: 'Memuat...' }]}>
         <div className="h-32 flex items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
       </FormLayout>
     )
@@ -147,8 +147,8 @@ function CoaFormPageContent() {
       title={isCreate ? 'Tambah Akun' : 'Edit Akun'}
       documentNumber={isCreate ? undefined : coa?.account_name}
       breadcrumb={[
-        { label: 'Master Data' },
-        { label: 'COA', path: '/master-data/coa' },
+        { label: 'Data Utama' },
+        { label: 'Daftar Akun', path: '/master-data/coa' },
         { label: isCreate ? 'Tambah Akun' : (coa?.account_code ?? '') },
       ]}
       headerActions={

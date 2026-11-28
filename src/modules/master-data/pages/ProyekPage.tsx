@@ -205,7 +205,7 @@ export default function ProyekPage() {
   return (
     <WorkspaceLayout
       title="Proyek"
-      breadcrumb={[{ label: 'Master Data' }, { label: 'Proyek' }]}
+      breadcrumb={[{ label: 'Data Utama' }, { label: 'Proyek' }]}
       sidebar={sidebar}
       action={
         <PermissionGuard permission="master_data.projects.create">

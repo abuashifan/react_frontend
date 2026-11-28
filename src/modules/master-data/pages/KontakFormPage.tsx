@@ -146,7 +146,7 @@ function KontakFormPageContent() {
 
   if (!isCreate && isLoading) {
     return (
-      <FormLayout title="Kontak" breadcrumb={[{ label: 'Master Data' }, { label: 'Kontak', path: '/master-data/contacts' }, { label: 'Loading...' }]}>
+      <FormLayout title="Kontak" breadcrumb={[{ label: 'Data Utama' }, { label: 'Kontak', path: '/master-data/contacts' }, { label: 'Memuat...' }]}>
         <div className="h-32 flex items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
       </FormLayout>
     )
@@ -157,7 +157,7 @@ function KontakFormPageContent() {
       title={isCreate ? 'Tambah Kontak' : 'Edit Kontak'}
       documentNumber={isCreate ? undefined : (kontak?.contact_code ?? undefined)}
       breadcrumb={[
-        { label: 'Master Data' },
+        { label: 'Data Utama' },
         { label: 'Kontak', path: '/master-data/contacts' },
         { label: isCreate ? 'Tambah Kontak' : (kontak?.name ?? '') },
       ]}
@@ -220,8 +220,8 @@ function KontakFormPageContent() {
                 <SelectValue placeholder="Pilih tipe..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="customer">Customer</SelectItem>
-                <SelectItem value="supplier">Supplier</SelectItem>
+                <SelectItem value="customer">Pelanggan</SelectItem>
+                <SelectItem value="supplier">Pemasok</SelectItem>
                 <SelectItem value="both">Keduanya</SelectItem>
               </SelectContent>
             </Select>

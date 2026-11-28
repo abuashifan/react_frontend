@@ -84,7 +84,7 @@ const MAX_PRIMARY_TABS = 10
 export const DASHBOARD_TAB: PrimaryTab = {
   id: 'dashboard',
   menuKey: 'dashboard',
-  label: 'Dashboard',
+  label: 'Beranda',
   module: 'dashboard',
   path: '/',
 }

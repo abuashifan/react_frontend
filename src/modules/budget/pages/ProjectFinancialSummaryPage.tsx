@@ -94,7 +94,7 @@ function ProjectFinancialSummaryPageContent() {
         <ReportExportButton
           variant="outline"
           filename={`arus-kas-project-${slug}`}
-          sheetName="Arus Kas Project"
+          sheetName="Arus Kas Proyek"
           headers={['Bagian', 'Keterangan', 'Anggaran', 'Realisasi']}
           rows={() => [
             ['Ringkasan', 'Saldo Awal Kas', toExcelNumber(cash.beginning_cash), toExcelNumber(cash.beginning_cash)],
@@ -118,7 +118,7 @@ function ProjectFinancialSummaryPageContent() {
         <ReportExportButton
           variant="outline"
           filename={`profitabilitas-project-${slug}`}
-          sheetName="Profitabilitas Project"
+          sheetName="Laba Proyek"
           headers={['Keterangan', 'Anggaran', 'Realisasi', 'Selisih']}
           rows={() => [
             ['Pendapatan', toExcelNumber(summary.budget.revenue), toExcelNumber(summary.actual.revenue), toExcelNumber(summary.variance.revenue)],
@@ -140,7 +140,7 @@ function ProjectFinancialSummaryPageContent() {
       <ReportExportButton
         variant="outline"
         filename={`${isBudgetTab ? 'anggaran' : 'realisasi'}-project-${slug}`}
-        sheetName={isBudgetTab ? 'Anggaran Project' : 'Realisasi Project'}
+        sheetName={isBudgetTab ? 'Anggaran Proyek' : 'Realisasi Proyek'}
         headers={['Kelompok', 'Kode Akun', 'Akun', 'Anggaran', 'Realisasi', 'Selisih']}
         rows={() => [
           ...summary.revenue_rows.map((row) => [

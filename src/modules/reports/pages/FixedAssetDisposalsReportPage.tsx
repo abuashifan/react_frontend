@@ -41,7 +41,7 @@ export default function FixedAssetDisposalsReportPage() {
   const exportButton = activeQuery && !isLoading && !isError && rows.length > 0 ? (
     <ReportExportButton
       filename={`pelepasan-aktiva-tetap-${params.start_date ?? ''}-${params.end_date ?? ''}`}
-      sheetName="Pelepasan Aktiva Tetap"
+      sheetName="Pelepasan Aset Tetap"
       headers={['Tgl. Pelepasan', 'No. Aset', 'Nama Aset', 'Tipe', 'Harga Jual', 'Nilai Buku', 'Laba/Rugi', 'Status']}
       rows={() => rows.map((row) => [
         toExcelDate(row.disposal_date),

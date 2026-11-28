@@ -22,8 +22,8 @@ export default function ApAgingReportPage() {
   const tools = !isLoading && !isError && report && report.lines.length > 0 ? (
     <ReportExportButton
       filename={`ap-aging-${activeParams?.as_of_date ?? today}`}
-      sheetName="AP Aging"
-      headers={['Supplier', 'Belum Jatuh Tempo', '1-30 Hari', '31-60 Hari', '61-90 Hari', '>90 Hari', 'Total']}
+      sheetName="Umur Utang"
+      headers={['Pemasok', 'Belum Jatuh Tempo', '1-30 Hari', '31-60 Hari', '61-90 Hari', '>90 Hari', 'Total']}
       rows={() => [
         ...report.lines.map((line) => [
           line.contact_name,
@@ -62,7 +62,7 @@ export default function ApAgingReportPage() {
             <table className="w-full text-[12px]">
               <thead className="bg-[#f8fafc]">
                 <tr>
-                  <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Supplier</th>
+                  <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pemasok</th>
                   <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Belum Jatuh Tempo</th>
                   <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">1-30 Hari</th>
                   <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">31-60 Hari</th>

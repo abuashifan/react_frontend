@@ -204,7 +204,7 @@ export default function GudangPage() {
   return (
     <WorkspaceLayout
       title="Gudang"
-      breadcrumb={[{ label: 'Master Data' }, { label: 'Gudang' }]}
+      breadcrumb={[{ label: 'Data Utama' }, { label: 'Gudang' }]}
       sidebar={sidebar}
       action={
         <PermissionGuard permission="master_data.warehouses.create">

@@ -10,11 +10,11 @@ import { kontakApi } from '@/modules/master-data/services/kontakApi'
 import type { CustomerLedgerEntry } from '../types/ar.types'
 
 const TYPE_LABELS: Record<CustomerLedgerEntry['type'], string> = {
-  invoice: 'Invoice',
-  receipt: 'Penerimaan',
+  invoice: 'Faktur Penjualan',
+  receipt: 'Penerimaan Penjualan',
   return: 'Retur',
-  deposit: 'Deposit',
-  deposit_allocation: 'Alokasi Deposit',
+  deposit: 'Uang Muka',
+  deposit_allocation: 'Alokasi Uang Muka',
 }
 
 export default function CustomerLedgerPage() {
@@ -33,17 +33,17 @@ export default function CustomerLedgerPage() {
 
   return (
     <WorkspaceLayout
-      title="Buku Besar Customer"
-      breadcrumb={[{ label: 'Sales' }, { label: 'AR' }, { label: 'Buku Besar Customer' }]}
+      title="Buku Besar Pelanggan"
+      breadcrumb={[{ label: 'Penjualan' }, { label: 'Piutang' }, { label: 'Buku Besar Pelanggan' }]}
     >
       <div className="mb-3 flex flex-wrap items-end gap-3">
         <div className="w-64">
-          <Label className="mb-1 block text-[11px] font-semibold uppercase text-[#64748b]">Customer</Label>
+          <Label className="mb-1 block text-[11px] font-semibold uppercase text-[#64748b]">Pelanggan</Label>
           <SearchableSelect cacheKey="contact"
             value={customerId ?? null}
             onChange={(v) => setCustomerId(v ?? undefined)}
             onSearch={(q) => kontakApi.search(q, 'customer')}
-            placeholder="Pilih customer..."
+            placeholder="Pilih pelanggan..."
           />
         </div>
         <div>
@@ -74,7 +74,7 @@ export default function CustomerLedgerPage() {
               {isLoading ? (
                 <tr><td colSpan={7} className="px-3 py-8 text-center text-[#94a3b8]">Memuat data...</td></tr>
               ) : !customerId ? (
-                <tr><td colSpan={7} className="px-3 py-8 text-center text-[#94a3b8]">Pilih customer untuk melihat buku besarnya.</td></tr>
+                <tr><td colSpan={7} className="px-3 py-8 text-center text-[#94a3b8]">Pilih pelanggan untuk melihat buku besarnya.</td></tr>
               ) : entries.length === 0 ? (
                 <tr><td colSpan={7} className="px-3 py-8 text-center text-[#94a3b8]">Tidak ada transaksi pada periode ini.</td></tr>
               ) : (

@@ -102,7 +102,7 @@ export default function FixedAssetDepreciationReportPage() {
               <ReportExportButton
                 variant="outline"
                 filename={`penyusutan-aktiva-tetap-${activeQuery?.period_from ?? ''}-${activeQuery?.period_to ?? ''}`}
-                sheetName="Penyusutan Aktiva Tetap"
+                sheetName="Penyusutan Aset Tetap"
                 headers={['Periode', 'No. Aset', 'Nama Aset', 'Kategori', 'Penyusutan', 'Akum. s.d. Periode', 'Nilai Buku', 'Status']}
                 rows={() => report.lines.map((line) => [
                   line.period,

@@ -178,7 +178,7 @@ function SalesInvoiceFormPageContent() {
   const { saveAndClose, navProps } = useRecordFormNavigation<SalesInvoiceFormValues>({
     id,
     basePath: '/sales/invoices',
-    createLabel: 'Invoice Baru',
+    createLabel: 'Faktur Penjualan Baru',
     sequenceQueryKey: ['sales', 'invoices', 'adjacent'],
     fetchAdjacent: async (recordId) => (await salesInvoiceApi.adjacent(recordId)).data,
     handleSubmit,
@@ -191,12 +191,12 @@ function SalesInvoiceFormPageContent() {
       setLineErrors({})
       setEditing(false)
     },
-    successMessage: (creating) => (creating ? 'Invoice berhasil dibuat.' : 'Invoice berhasil diperbarui.'),
+    successMessage: (creating) => (creating ? 'Faktur Penjualan berhasil dibuat.' : 'Faktur Penjualan berhasil diperbarui.'),
     onError: (saveError) => {
       // Backend memvalidasi tanggal sebagai `invoice_date`, form memakai `date`.
       setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { invoice_date: 'date' })
-      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Invoice.'))
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Faktur Penjualan.'))
     },
     canSave: isEditable,
   })
@@ -205,22 +205,22 @@ function SalesInvoiceFormPageContent() {
     try {
       await approve.mutateAsync(Number(id))
       formDraft.clearDraft()
-      toast.success('Invoice berhasil di-approve.')
-    } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve invoice.')) }
+      toast.success('Faktur Penjualan berhasil di-approve.')
+    } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve faktur penjualan.')) }
   }
 
   const handlePost = async () => {
     try {
       await post.mutateAsync(Number(id))
       formDraft.clearDraft()
-      toast.success('Invoice berhasil diposting.')
-    } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal memposting invoice.')) }
+      toast.success('Faktur Penjualan berhasil diposting.')
+    } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal memposting faktur penjualan.')) }
   }
 
   const handleVoid = async (reason: string) => {
     await voidInv.mutateAsync({ id: Number(id), reason })
     formDraft.clearDraft()
-    toast.success('Invoice berhasil di-void.')
+    toast.success('Faktur Penjualan berhasil di-void.')
     setVoidOpen(false)
   }
 
@@ -228,10 +228,10 @@ function SalesInvoiceFormPageContent() {
     try {
       await remove.mutateAsync({ id: Number(id), reason })
       formDraft.clearDraft()
-      toast.success('Invoice berhasil dihapus.')
+      toast.success('Faktur Penjualan berhasil dihapus.')
       setDeleteOpen(false)
       closeRecordTab(window.location.pathname, '/sales/invoices')
-    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus invoice.')) }
+    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus faktur penjualan.')) }
   }
 
   const { openRecordTab: openFollowUpTab } = useRecordTab()
@@ -373,7 +373,7 @@ function SalesInvoiceFormPageContent() {
 
   if (!isCreate && isLoading) {
     return (
-      <FormLayout title="Invoice Penjualan" breadcrumb={[{ label: 'Sales' }, { label: 'Invoice', path: '/sales/invoices' }, { label: 'Memuat...' }]}>
+      <FormLayout title="Faktur Penjualan" breadcrumb={[{ label: 'Penjualan' }, { label: 'Faktur Penjualan', path: '/sales/invoices' }, { label: 'Memuat...' }]}>
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
       </FormLayout>
     )
@@ -382,14 +382,14 @@ function SalesInvoiceFormPageContent() {
   return (
     <>
       <FormLayout
-        title={isCreate ? 'Buat Invoice' : 'Invoice Penjualan'}
+        title={isCreate ? 'Buat Faktur Penjualan' : 'Faktur Penjualan'}
         documentNumber={invoice?.number}
         status={status}
         readOnly={!isEditable}
         breadcrumb={[
-          { label: 'Sales' },
-          { label: 'Invoice', path: '/sales/invoices' },
-          { label: isCreate ? 'Buat Invoice' : (invoice?.number ?? '') },
+          { label: 'Penjualan' },
+          { label: 'Faktur Penjualan', path: '/sales/invoices' },
+          { label: isCreate ? 'Buat Faktur Penjualan' : (invoice?.number ?? '') },
         ]}
         headerActions={
           <>
@@ -406,10 +406,10 @@ function SalesInvoiceFormPageContent() {
             />
           )}
 
-          {isCreate && <SourceConvertPanel sources={salesInvoiceSources} targetLabel="Invoice" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/sales/invoices/${newId}`} />}
+          {isCreate && <SourceConvertPanel sources={salesInvoiceSources} targetLabel="Faktur Penjualan" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/sales/invoices/${newId}`} />}
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">No. Invoice</Label>
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">No. Faktur</Label>
               <Input
                 {...register('invoice_number')}
                 disabled={!isEditable}
@@ -421,13 +421,13 @@ function SalesInvoiceFormPageContent() {
 
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
-                Customer <span className="text-red-500">*</span>
+                Pelanggan <span className="text-red-500">*</span>
               </Label>
               <SearchableSelect cacheKey="contact"
                 value={customerId ?? null}
                 onChange={(v) => setValue('customer_id', v as number)}
                 onSearch={(q) => kontakApi.search(q, 'customer')}
-                placeholder="Pilih customer..."
+                placeholder="Pilih pelanggan..."
                 disabled={!isEditable}
                 error={errors.customer_id?.message}
                 selectedOptions={invoice?.customer ? [{ value: invoice.customer.id, label: invoice.customer.name }] : []}

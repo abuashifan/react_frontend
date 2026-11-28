@@ -77,7 +77,7 @@ export function Step4MasterData({ onComplete, onBack }: Props) {
     // (CANNOT_DEACTIVATE_DEFAULT_WAREHOUSE), jadi tombolnya dimatikan di sini
     // lengkap dengan jalan keluarnya.
     deleteBlockedReason: g.is_default
-      ? 'Gudang default tidak bisa dihapus. Tetapkan gudang lain sebagai default lewat Master Data → Gudang terlebih dahulu.'
+      ? 'Gudang default tidak bisa dihapus. Tetapkan gudang lain sebagai default lewat Data Utama → Gudang terlebih dahulu.'
       : undefined,
   }))
   const units: QuickAddItem[] = (satuanQuery.data?.data ?? []).map((u) => ({
@@ -184,7 +184,7 @@ export function Step4MasterData({ onComplete, onBack }: Props) {
         onAdd={handleAddWarehouse}
         onEdit={can('master_data.warehouses.edit') ? handleEditWarehouse : undefined}
         onDelete={can('master_data.warehouses.delete') ? handleDeleteWarehouse : undefined}
-        deleteNote="dan tidak lagi muncul sebagai pilihan gudang di transaksi. Gudang dinonaktifkan, bukan dihapus permanen — data yang sudah memakainya tetap utuh dan gudang bisa diaktifkan lagi lewat Master Data → Gudang."
+        deleteNote="dan tidak lagi muncul sebagai pilihan gudang di transaksi. Gudang dinonaktifkan, bukan dihapus permanen — data yang sudah memakainya tetap utuh dan gudang bisa diaktifkan lagi lewat Data Utama → Gudang."
       />
 
       <MasterDataQuickAdd
@@ -199,7 +199,7 @@ export function Step4MasterData({ onComplete, onBack }: Props) {
         onAdd={handleAddUnit}
         onEdit={can('master_data.units.edit') ? handleEditUnit : undefined}
         onDelete={can('master_data.units.delete') ? handleDeleteUnit : undefined}
-        deleteNote="dan tidak lagi muncul sebagai pilihan satuan di form produk. Satuan dinonaktifkan, bukan dihapus permanen — produk yang sudah memakainya tetap utuh dan satuan bisa diaktifkan lagi lewat Master Data → Satuan."
+        deleteNote="dan tidak lagi muncul sebagai pilihan satuan di form produk. Satuan dinonaktifkan, bukan dihapus permanen — produk yang sudah memakainya tetap utuh dan satuan bisa diaktifkan lagi lewat Data Utama → Satuan."
       />
 
       <MasterDataQuickAdd
@@ -214,7 +214,7 @@ export function Step4MasterData({ onComplete, onBack }: Props) {
         onAdd={handleAddPaymentTerm}
         onEdit={can('master_data.payment_terms.edit') ? handleEditPaymentTerm : undefined}
         onDelete={can('master_data.payment_terms.delete') ? handleDeletePaymentTerm : undefined}
-        deleteNote="dan tidak lagi muncul sebagai pilihan di faktur maupun tagihan. Syarat pembayaran dinonaktifkan, bukan dihapus permanen — dokumen yang sudah memakainya tetap utuh dan bisa diaktifkan lagi lewat Master Data → Syarat Pembayaran."
+        deleteNote="dan tidak lagi muncul sebagai pilihan di faktur penjualan maupun faktur pembelian. Syarat pembayaran dinonaktifkan, bukan dihapus permanen — dokumen yang sudah memakainya tetap utuh dan bisa diaktifkan lagi lewat Data Utama → Syarat Pembayaran."
       />
 
       {!canContinue && (

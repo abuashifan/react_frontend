@@ -54,7 +54,7 @@ const STATUS_LABEL: Record<FixedAssetStatus, string> = {
   capitalized: 'Dikapitalisasi',
   active: 'Aktif',
   fully_depreciated: 'Terdepresiasi Penuh',
-  partially_disposed: 'Sebagian Disposal',
+  partially_disposed: 'Pelepasan Sebagian',
   disposed: 'Disposed',
 }
 
@@ -356,7 +356,7 @@ function FixedAssetFormPageContent() {
   const { saveAndClose, navProps } = useRecordFormNavigation<FixedAssetFormValues>({
     id,
     basePath: '/fixed-assets',
-    createLabel: 'Aktiva Baru',
+    createLabel: 'Aset Baru',
     sequenceQueryKey: ['fixed-assets', 'adjacent'],
     fetchAdjacent: async (recordId) => (await fixedAssetApi.adjacent(recordId)).data,
     handleSubmit,
@@ -374,12 +374,12 @@ function FixedAssetFormPageContent() {
       if (creating) await mutations.create.mutateAsync(payload)
       else if (assetId) await mutations.update.mutateAsync({ id: assetId, payload })
     },
-    successMessage: (creating) => (creating ? 'Aktiva tetap berhasil dibuat.' : 'Aktiva tetap berhasil diperbarui.'),
+    successMessage: (creating) => (creating ? 'Aset tetap berhasil dibuat.' : 'Aset tetap berhasil diperbarui.'),
     onError: (error) => {
       // Tandai field penyebab dari backend supaya user tahu isian mana yang salah,
       // bukan hanya toast generik "Gagal menyimpan".
       applyApiValidationErrors(error, setError)
-      toast.error(getApiErrorMessage(error, 'Gagal menyimpan aktiva tetap.'))
+      toast.error(getApiErrorMessage(error, 'Gagal menyimpan aset tetap.'))
     },
     canSave: isEditable,
   })
@@ -388,11 +388,11 @@ function FixedAssetFormPageContent() {
     if (!assetId) return
     try {
       await mutations.capitalize.mutateAsync({ id: assetId, payload: values })
-      toast.success('Aktiva tetap berhasil dikapitalisasi.')
+      toast.success('Aset tetap berhasil dikapitalisasi.')
       setCapitalizeOpen(false)
     } catch (error) {
       applyApiValidationErrors(error, capitalizeForm.setError)
-      toast.error(getApiErrorMessage(error, 'Gagal kapitalisasi aktiva tetap.'))
+      toast.error(getApiErrorMessage(error, 'Gagal kapitalisasi aset tetap.'))
     }
   }
 
@@ -400,17 +400,17 @@ function FixedAssetFormPageContent() {
     if (!assetId) return
     try {
       await mutations.dispose.mutateAsync({ id: assetId, payload: values })
-      toast.success('Aktiva tetap berhasil didisposal.')
+      toast.success('Aset tetap berhasil dilepas.')
       setDisposeOpen(false)
     } catch (error) {
       applyApiValidationErrors(error, disposeForm.setError)
-      toast.error(getApiErrorMessage(error, 'Gagal disposal aktiva tetap.'))
+      toast.error(getApiErrorMessage(error, 'Gagal melepas aset tetap.'))
     }
   }
 
   if (!isCreate && isLoading) {
     return (
-      <FormLayout title="Aktiva Tetap" breadcrumb={[{ label: 'Aktiva Tetap', path: '/fixed-assets' }, { label: 'Memuat...' }]}>
+      <FormLayout title="Aset Tetap" breadcrumb={[{ label: 'Aset Tetap', path: '/fixed-assets' }, { label: 'Memuat...' }]}>
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
       </FormLayout>
     )
@@ -435,7 +435,7 @@ function FixedAssetFormPageContent() {
       {canDispose && (
         <PermissionGuard permission="fixed_assets.disposal.approve">
           <Button type="button" variant="outline" className="h-8 border-red-200 px-4 text-[13px] text-red-700 hover:bg-red-50" onClick={() => setDisposeOpen(true)}>
-            Disposal
+            Pelepasan
           </Button>
         </PermissionGuard>
       )}
@@ -445,13 +445,13 @@ function FixedAssetFormPageContent() {
   return (
     <>
       <FormLayout
-        title={isCreate ? 'Buat Aktiva Tetap' : 'Aktiva Tetap'}
+        title={isCreate ? 'Buat Aset Tetap' : 'Aset Tetap'}
         documentNumber={asset?.asset_number ?? asset?.number}
         readOnly={!isEditable}
         readOnlyReason={hasPostedDepreciation
-          ? 'Aktiva dengan depresiasi yang sudah diposting hanya dapat dilihat.'
-          : 'Aktiva sudah dilepas/terdepresiasi penuh sehingga hanya dapat dilihat.'}
-        breadcrumb={[{ label: 'Aktiva Tetap', path: '/fixed-assets' }, { label: isCreate ? 'Buat Aktiva' : (asset?.asset_number ?? '') }]}
+          ? 'Aset dengan penyusutan yang sudah diposting hanya dapat dilihat.'
+          : 'Aset sudah dilepas/habis disusutkan sehingga hanya dapat dilihat.'}
+        breadcrumb={[{ label: 'Aset Tetap', path: '/fixed-assets' }, { label: isCreate ? 'Buat Aset' : (asset?.asset_number ?? '') }]}
         headerActions={headerActions}
       >
         <div className="space-y-3">
@@ -471,7 +471,7 @@ function FixedAssetFormPageContent() {
                     value={field.value || null}
                     onChange={field.onChange}
                     onSearch={fixedAssetCategoryApi.search}
-                    placeholder="Pilih kategori aktiva..."
+                    placeholder="Pilih kategori aset..."
                     disabled={!isEditable || isFinancialLocked}
                     error={errors.fixed_asset_category_id?.message}
                     selectedOptions={asset?.category ? [{ value: asset.category.id, label: asset.category.name, sublabel: asset.category.code }] : []}
@@ -529,7 +529,7 @@ function FixedAssetFormPageContent() {
             />
           </FormSection>
 
-          <FormSection title="Depresiasi">
+          <FormSection title="Penyusutan">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal Mulai Pakai</Label>
               <Input {...register('service_start_date')} type="date" disabled={!isEditable || isFinancialLocked} className={cn('h-9 text-[13px] tabular-nums', fieldErrorClass(errors.service_start_date))} />
@@ -654,7 +654,7 @@ function FixedAssetFormPageContent() {
               <span className="text-[13px] tabular-nums text-[#24323a]">{asset?.capitalized_at ? formatDate(asset.capitalized_at) : '-'}</span>
             </div>
             <div className="flex flex-col gap-0.5">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Disposal</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pelepasan</span>
               <span className="text-[13px] tabular-nums text-[#24323a]">{asset?.disposed_at ? formatDate(asset.disposed_at) : '-'}</span>
             </div>
             <div className="flex flex-col gap-0.5">
@@ -701,9 +701,9 @@ function FixedAssetFormPageContent() {
                 </div>
 
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jadwal Depresiasi</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jadwal Penyusutan</p>
                   {(asset.schedules?.length ?? 0) === 0 ? (
-                    <HistoryEmpty message="Belum ada jadwal depresiasi/amortisasi." />
+                    <HistoryEmpty message="Belum ada jadwal penyusutan/amortisasi." />
                   ) : (
                     <div className="mt-2 overflow-x-auto rounded-lg border border-[#d9e2e5]">
                       <table className="w-full text-[12px]">
@@ -711,7 +711,7 @@ function FixedAssetFormPageContent() {
                           <tr className="bg-[#f8fbfc] text-left text-[#64748b]">
                             <th className="px-3 py-2 font-semibold">Periode</th>
                             <th className="px-3 py-2 font-semibold">Status</th>
-                            <th className="px-3 py-2 text-right font-semibold">Depresiasi</th>
+                            <th className="px-3 py-2 text-right font-semibold">Penyusutan</th>
                             <th className="px-3 py-2 text-right font-semibold">Akumulasi</th>
                             <th className="px-3 py-2 text-right font-semibold">NBV</th>
                             <th className="px-3 py-2 font-semibold">Jurnal</th>
@@ -735,9 +735,9 @@ function FixedAssetFormPageContent() {
                 </div>
 
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Disposal</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pelepasan</p>
                   {(asset.disposals?.length ?? 0) === 0 ? (
-                    <HistoryEmpty message="Belum ada riwayat disposal." />
+                    <HistoryEmpty message="Belum ada riwayat pelepasan." />
                   ) : (
                     <div className="mt-2 overflow-x-auto rounded-lg border border-[#d9e2e5]">
                       <table className="w-full text-[12px]">
@@ -814,8 +814,8 @@ function FixedAssetFormPageContent() {
       <Dialog open={capitalizeOpen} onOpenChange={setCapitalizeOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-[15px]">Kapitalisasi Aktiva</DialogTitle>
-            <DialogDescription className="text-[13px] text-[#64748b]">Tetapkan nilai dan tanggal kapitalisasi sebelum aktiva dicatat ke buku besar.</DialogDescription>
+            <DialogTitle className="text-[15px]">Kapitalisasi Aset</DialogTitle>
+            <DialogDescription className="text-[13px] text-[#64748b]">Tetapkan nilai dan tanggal kapitalisasi sebelum aset dicatat ke buku besar.</DialogDescription>
           </DialogHeader>
           <form onSubmit={capitalizeForm.handleSubmit(handleCapitalize)} className="space-y-3">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -844,8 +844,8 @@ function FixedAssetFormPageContent() {
                 name="vendor_id"
                 render={({ field }) => (
                   <div className="flex flex-col gap-1 md:col-span-2">
-                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Vendor</Label>
-                    <SearchableSelect cacheKey="contact" value={field.value ?? null} onChange={field.onChange} onSearch={(query) => kontakApi.search(query, 'supplier')} placeholder="Pilih vendor..." error={capitalizeForm.formState.errors.vendor_id?.message} />
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pemasok</Label>
+                    <SearchableSelect cacheKey="contact" value={field.value ?? null} onChange={field.onChange} onSearch={(query) => kontakApi.search(query, 'supplier')} placeholder="Pilih pemasok..." error={capitalizeForm.formState.errors.vendor_id?.message} />
                   </div>
                 )}
               />
@@ -863,17 +863,17 @@ function FixedAssetFormPageContent() {
       <Dialog open={disposeOpen} onOpenChange={setDisposeOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-[15px]">Disposal Aktiva</DialogTitle>
+            <DialogTitle className="text-[15px]">Pelepasan Aset</DialogTitle>
           </DialogHeader>
           <form onSubmit={disposeForm.handleSubmit(handleDispose)} className="space-y-3">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="flex flex-col gap-1">
-                <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal Disposal <span className="text-red-500">*</span></Label>
+                <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal Pelepasan <span className="text-red-500">*</span></Label>
                 <Input {...disposeForm.register('disposal_date')} type="date" className={cn('h-9 text-[13px] tabular-nums', fieldErrorClass(disposeForm.formState.errors.disposal_date))} />
                 <FieldError message={disposeForm.formState.errors.disposal_date?.message} />
               </div>
               <div className="flex flex-col gap-1">
-                <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tipe Disposal</Label>
+                <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jenis Pelepasan</Label>
                 <select {...disposeForm.register('disposal_type')} className={cn('h-9 rounded-md border border-[#d9e2e5] bg-white px-2 text-[13px]', fieldErrorClass(disposeForm.formState.errors.disposal_type))}>
                   <option value="sale">Sale</option>
                   <option value="write_off">Write Off</option>
@@ -883,7 +883,7 @@ function FixedAssetFormPageContent() {
                 <FieldError message={disposeForm.formState.errors.disposal_type?.message} />
               </div>
               <div className="flex flex-col gap-1">
-                <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Qty Disposal <span className="text-red-500">*</span></Label>
+                <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Qty Pelepasan <span className="text-red-500">*</span></Label>
                 <Input {...disposeForm.register('disposed_quantity')} type="number" min="0.0001" step="0.0001" className={cn('h-9 text-[13px] tabular-nums', fieldErrorClass(disposeForm.formState.errors.disposed_quantity))} />
                 <FieldError message={disposeForm.formState.errors.disposed_quantity?.message} />
               </div>
@@ -943,7 +943,7 @@ function FixedAssetFormPageContent() {
             <DialogFooter>
               <Button type="button" variant="outline" className="h-8 text-[13px]" onClick={() => setDisposeOpen(false)}>Batal</Button>
               <Button type="submit" className="h-8 bg-red-600 text-[13px] hover:bg-red-700" disabled={mutations.dispose.isPending}>
-                {mutations.dispose.isPending ? 'Memproses...' : 'Disposal'}
+                {mutations.dispose.isPending ? 'Memproses...' : 'Pelepasan'}
               </Button>
             </DialogFooter>
           </form>

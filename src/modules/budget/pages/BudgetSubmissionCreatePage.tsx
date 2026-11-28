@@ -79,10 +79,10 @@ export default function BudgetSubmissionCreatePage() {
 
   return (
     <FormLayout
-      title="Buat Budget"
+      title="Buat Anggaran"
       breadcrumb={[
         { label: 'Anggaran' },
-        { label: 'Daftar Budget', path: '/budget/submissions' },
+        { label: 'Daftar Anggaran', path: '/budget/submissions' },
         { label: 'Buat' },
       ]}
       headerActions={

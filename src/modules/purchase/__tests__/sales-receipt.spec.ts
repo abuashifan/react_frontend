@@ -40,9 +40,9 @@ test('receipt form shows invoice numbers from the backend and only offers cash/b
 
   await page.goto('/')
   await page.getByRole('navigation', { name: 'Modul' }).getByRole('button', { name: 'Penjualan' }).click()
-  await page.getByRole('button', { name: 'Penerimaan', exact: true }).click()
+  await page.getByRole('button', { name: 'Penerimaan Penjualan', exact: true }).click()
   await page.getByRole('button', { name: /Catat Penerimaan/ }).click()
-  await page.getByRole('button', { name: /Pilih customer/ }).click()
+  await page.getByRole('button', { name: /Pilih pelanggan/ }).click()
   await page.getByRole('option', { name: /Customer Alpha/ }).click()
   const chip = page.getByRole('button', { name: /INV-301/ })
   await expect(chip).toBeVisible()

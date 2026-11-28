@@ -116,7 +116,7 @@ function SalesOrderFormPageContent() {
       const timer = window.setTimeout(() => setCreatingFromQuotation(true), 0)
       createFromQuotation.mutateAsync(Number(quotationId))
         .then((res) => navigate(`/sales/orders/${res.data.id}`, { replace: true }))
-        .catch((convertError: unknown) => toast.error(getApiErrorMessage(convertError, 'Gagal membuat SO dari quotation.')))
+        .catch((convertError: unknown) => toast.error(getApiErrorMessage(convertError, 'Gagal membuat Pesanan Penjualan dari penawaran.')))
         .finally(() => setCreatingFromQuotation(false))
       return () => window.clearTimeout(timer)
     }
@@ -164,7 +164,7 @@ function SalesOrderFormPageContent() {
   const { saveAndClose, navProps } = useRecordFormNavigation<SalesOrderFormValues>({
     id,
     basePath: '/sales/orders',
-    createLabel: 'Sales Order Baru',
+    createLabel: 'Pesanan Penjualan Baru',
     sequenceQueryKey: ['sales', 'orders', 'adjacent'],
     fetchAdjacent: async (recordId) => (await salesOrderApi.adjacent(recordId)).data,
     handleSubmit,
@@ -176,14 +176,14 @@ function SalesOrderFormPageContent() {
       formDraft.clearDraft()
       setLineErrors({})
     },
-    successMessage: (creating) => (creating ? 'Sales Order berhasil dibuat.' : 'Sales Order berhasil diperbarui.'),
+    successMessage: (creating) => (creating ? 'Pesanan Penjualan berhasil dibuat.' : 'Pesanan Penjualan berhasil diperbarui.'),
     onError: (saveError) => {
       // Backend memakai `order_date`/`shipping_address`, form memakai
       // `date`/`delivery_address` — dipetakan supaya pesan error mendarat di
       // input yang benar.
       setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { order_date: 'date', shipping_address: 'delivery_address' })
-      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Sales Order.'))
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Pesanan Penjualan.'))
     },
     canSave: isEditable,
   })
@@ -192,24 +192,24 @@ function SalesOrderFormPageContent() {
     try {
       await approve.mutateAsync(Number(id))
       formDraft.clearDraft()
-      toast.success('Sales Order berhasil di-approve.')
-    } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve Sales Order.')) }
+      toast.success('Pesanan Penjualan berhasil di-approve.')
+    } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve Pesanan Penjualan.')) }
   }
 
   const handleConfirm = async () => {
     try {
       await confirm.mutateAsync(Number(id))
       formDraft.clearDraft()
-      toast.success('Sales Order berhasil dikonfirmasi.')
-    } catch (confirmError) { toast.error(getApiErrorMessage(confirmError, 'Gagal konfirmasi Sales Order.')) }
+      toast.success('Pesanan Penjualan berhasil dikonfirmasi.')
+    } catch (confirmError) { toast.error(getApiErrorMessage(confirmError, 'Gagal konfirmasi Pesanan Penjualan.')) }
   }
 
   const handleCancel = async () => {
     try {
       await cancel.mutateAsync(Number(id))
       formDraft.clearDraft()
-      toast.success('Sales Order dibatalkan.')
-    } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan Sales Order.')) }
+      toast.success('Pesanan Penjualan dibatalkan.')
+    } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan Pesanan Penjualan.')) }
   }
 
   // Langkah lanjutan SO yang sudah dikonfirmasi: dokumen dibuat dari sisa qty SO
@@ -217,16 +217,16 @@ function SalesOrderFormPageContent() {
   const handleCreateDelivery = async () => {
     try {
       const res = await createDelivery.mutateAsync(Number(id))
-      toast.success('Delivery Order dibuat dari Sales Order.')
-      openRecordTab({ label: res.data.number ?? 'Delivery Order', path: `/sales/delivery-orders/${res.data.id}` })
-    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat Delivery Order dari Sales Order.')) }
+      toast.success('Pengiriman Barang dibuat dari Pesanan Penjualan.')
+      openRecordTab({ label: res.data.number ?? 'Pengiriman Barang', path: `/sales/delivery-orders/${res.data.id}` })
+    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat Pengiriman Barang dari Pesanan Penjualan.')) }
   }
   const handleCreateInvoice = async () => {
     try {
       const res = await createInvoice.mutateAsync(Number(id))
-      toast.success('Invoice dibuat dari Sales Order.')
-      openRecordTab({ label: res.data.number ?? 'Invoice', path: `/sales/invoices/${res.data.id}` })
-    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat invoice dari Sales Order.')) }
+      toast.success('Faktur Penjualan dibuat dari Pesanan Penjualan.')
+      openRecordTab({ label: res.data.number ?? 'Faktur Penjualan', path: `/sales/invoices/${res.data.id}` })
+    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat faktur penjualan dari Pesanan Penjualan.')) }
   }
   const isFollowUpStatus = !!order && !['draft', 'approved', 'cancelled', 'closed', 'void'].includes(order.status as string)
   const hasUndelivered = !!order?.lines.some((l) => (l.delivered_quantity ?? 0) < l.quantity)
@@ -236,13 +236,13 @@ function SalesOrderFormPageContent() {
     try {
       const res = await proformaApi.createFromSalesOrder(Number(id))
       const created = res.data as unknown as { id: number; number?: string; return_number?: string; invoice_number?: string }
-      toast.success('Proforma dibuat sebagai draft.')
-      openRecordTab({ label: created.number ?? created.return_number ?? created.invoice_number ?? 'Proforma', path: `/sales/proformas/${created.id}` })
-    } catch (followUpError) { toast.error(getApiErrorMessage(followUpError, 'Gagal membuat proforma.')) }
+      toast.success('Faktur Sementara dibuat sebagai draft.')
+      openRecordTab({ label: created.number ?? created.return_number ?? created.invoice_number ?? 'Faktur Sementara', path: `/sales/proformas/${created.id}` })
+    } catch (followUpError) { toast.error(getApiErrorMessage(followUpError, 'Gagal membuat faktur sementara.')) }
   }
   const actions: DocumentActionButton[] = []
   if (!isCreate && ['approved', 'confirmed', 'partially_delivered', 'delivered'].includes(order?.status ?? '') && can('sales.proformas.create') && can('sales.documents.convert')) {
-    actions.push({ id: 'create_proforma', label: 'Buat Proforma', variant: 'secondary', onClick: () => void handleCreateProforma() })
+    actions.push({ id: 'create_proforma', label: 'Buat Faktur Sementara', variant: 'secondary', onClick: () => void handleCreateProforma() })
   }
   if (!isCreate && order && can('sales.orders.print')) {
     actions.push({ id: 'print', label: 'Cetak', variant: 'neutral', onClick: () => setPrintOpen(true) })
@@ -258,10 +258,10 @@ function SalesOrderFormPageContent() {
       actions.push({ id: 'confirm', label: 'Konfirmasi', variant: 'primary', onClick: () => void handleConfirm(), isLoading: confirm.isPending })
     }
     if (isFollowUpStatus && hasUndelivered && can('sales.delivery_orders.create')) {
-      actions.push({ id: 'create_delivery', label: 'Buat Delivery Order', variant: 'primary', onClick: () => void handleCreateDelivery(), isLoading: createDelivery.isPending })
+      actions.push({ id: 'create_delivery', label: 'Buat Pengiriman Barang', variant: 'primary', onClick: () => void handleCreateDelivery(), isLoading: createDelivery.isPending })
     }
     if (isFollowUpStatus && hasUninvoiced && can('sales.invoices.create')) {
-      actions.push({ id: 'create_invoice', label: 'Buat Invoice', variant: 'secondary', onClick: () => void handleCreateInvoice(), isLoading: createInvoice.isPending })
+      actions.push({ id: 'create_invoice', label: 'Buat Faktur Penjualan', variant: 'secondary', onClick: () => void handleCreateInvoice(), isLoading: createInvoice.isPending })
     }
     if (['draft', 'approved'].includes(order?.status ?? '') && can('sales.orders.edit')) {
       actions.push({ id: 'cancel', label: 'Batalkan', variant: 'destructive', onClick: () => void handleCancel(), isLoading: cancel.isPending })
@@ -352,7 +352,7 @@ function SalesOrderFormPageContent() {
 
   if (isCreatingFromQuotation || (!isCreate && isLoading)) {
     return (
-      <FormLayout title="Sales Order" breadcrumb={[{ label: 'Sales' }, { label: 'Sales Order', path: '/sales/orders' }, { label: 'Memuat...' }]}>
+      <FormLayout title="Pesanan Penjualan" breadcrumb={[{ label: 'Penjualan' }, { label: 'Pesanan Penjualan', path: '/sales/orders' }, { label: 'Memuat...' }]}>
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
       </FormLayout>
     )
@@ -361,13 +361,13 @@ function SalesOrderFormPageContent() {
   return (
     <>
     <FormLayout
-      title={isCreate ? 'Buat Sales Order' : 'Sales Order'}
+      title={isCreate ? 'Buat Pesanan Penjualan' : 'Pesanan Penjualan'}
       documentNumber={order?.number}
       status={status}
       breadcrumb={[
-        { label: 'Sales' },
-        { label: 'Sales Order', path: '/sales/orders' },
-        { label: isCreate ? 'Buat SO' : (order?.number ?? '') },
+        { label: 'Penjualan' },
+        { label: 'Pesanan Penjualan', path: '/sales/orders' },
+        { label: isCreate ? 'Buat Pesanan Penjualan' : (order?.number ?? '') },
       ]}
       headerActions={
         <>
@@ -377,17 +377,17 @@ function SalesOrderFormPageContent() {
       }
     >
       <div className="space-y-3">
-        {isCreate && <SourceConvertPanel sources={salesOrderSources} targetLabel="Sales Order" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/sales/orders/${newId}`} />}
+        {isCreate && <SourceConvertPanel sources={salesOrderSources} targetLabel="Pesanan Penjualan" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/sales/orders/${newId}`} />}
         <FormSection title="Header">
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
-              Customer <span className="text-red-500">*</span>
+              Pelanggan <span className="text-red-500">*</span>
             </Label>
             <SearchableSelect cacheKey="contact"
               value={customerId ?? null}
               onChange={(v) => setValue('customer_id', v as number)}
               onSearch={(q) => kontakApi.search(q, 'customer')}
-              placeholder="Pilih customer..."
+              placeholder="Pilih pelanggan..."
               disabled={!isEditable}
               error={errors.customer_id?.message}
               selectedOptions={order?.customer ? [{ value: order.customer.id, label: order.customer.name }] : []}
@@ -423,7 +423,7 @@ function SalesOrderFormPageContent() {
 
           {order?.quotation_number && (
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Dari Quotation</Label>
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Dari Penawaran</Label>
               <p className="text-[13px] font-medium text-[#5c9ead]">{order.quotation_number}</p>
             </div>
           )}

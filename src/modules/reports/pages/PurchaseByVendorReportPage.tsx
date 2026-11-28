@@ -65,8 +65,8 @@ export default function PurchaseByVendorReportPage() {
                 <ReportExportButton
                   variant="outline"
                   filename={`pembelian-per-supplier-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}`}
-                  sheetName="Pembelian per Supplier"
-                  headers={['Supplier', 'Jumlah Tagihan', 'Subtotal', 'Pajak', 'Total']}
+                  sheetName="Pembelian per Pemasok"
+                  headers={['Pemasok', 'Jumlah Faktur', 'Subtotal', 'Pajak', 'Total']}
                   rows={() => allRows.map((r) => [r.vendor_name, toExcelNumber(r.bill_count), toExcelNumber(r.subtotal), toExcelNumber(r.tax), toExcelNumber(r.total)])}
                   formats={['text', 'number', 'currency', 'currency', 'currency']}
                 />
@@ -77,7 +77,7 @@ export default function PurchaseByVendorReportPage() {
               <table className="w-full text-[12px]">
                 <thead className="bg-[#f8fafc]">
                   <tr>
-                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Supplier</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pemasok</th>
                     <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jml Tagihan</th>
                     <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Subtotal</th>
                     <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pajak</th>
@@ -103,7 +103,7 @@ export default function PurchaseByVendorReportPage() {
                 {allRows.length > 0 && (
                   <tfoot className="border-t-2 border-[#cbd5e1] bg-[#f1f5f9]">
                     <tr>
-                      <td className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-[#334155]">Total ({allRows.length} supplier)</td>
+                      <td className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-[#334155]">Total ({allRows.length} pemasok)</td>
                       <td className="px-3 py-2 text-right tabular-nums font-bold text-[#1e293b]">{report.totals.bill_count}</td>
                       <td className="px-3 py-2 text-right tabular-nums font-bold text-[#1e293b]">{formatCurrency(report.totals.subtotal)}</td>
                       <td className="px-3 py-2 text-right tabular-nums font-bold text-[#1e293b]">{formatCurrency(report.totals.tax)}</td>

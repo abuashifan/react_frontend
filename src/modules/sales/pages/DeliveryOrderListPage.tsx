@@ -50,7 +50,7 @@ export default function DeliveryOrderListPage() {
   const columns: ColumnDef<DeliveryOrder>[] = [
     {
       id: 'number',
-      header: 'Nomor DO',
+      header: 'Nomor Pengiriman',
       size: 140,
       meta: { sticky: true, stickyLeft: 0 },
       cell: ({ original }) => (
@@ -60,8 +60,8 @@ export default function DeliveryOrderListPage() {
       ),
     },
     { id: 'date', header: 'Tanggal', size: 110, cell: ({ original }) => formatDate(original.date) },
-    { id: 'customer', header: 'Customer', size: 180, cell: ({ original }) => original.customer?.name ?? '-' },
-    { id: 'sales_order', header: 'Sales Order', size: 130, cell: ({ original }) => original.sales_order_number ?? '-' },
+    { id: 'customer', header: 'Pelanggan', size: 180, cell: ({ original }) => original.customer?.name ?? '-' },
+    { id: 'sales_order', header: 'Pesanan Penjualan', size: 130, cell: ({ original }) => original.sales_order_number ?? '-' },
     { id: 'warehouse', header: 'Gudang', size: 130, cell: ({ original }) => original.warehouse?.name ?? '-' },
     {
       id: 'status',
@@ -77,7 +77,7 @@ export default function DeliveryOrderListPage() {
         <ListSearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Cari nomor DO, customer..."
+          placeholder="Cari nomor pengiriman, pelanggan..."
           className="w-full max-w-none"
         />
       </div>
@@ -89,12 +89,12 @@ export default function DeliveryOrderListPage() {
           </label>
         ))}
       </FilterSection>
-      <FilterSection title="Customer">
+      <FilterSection title="Pelanggan">
         <SearchableSelect cacheKey="contact"
           value={filterCustomer}
           onChange={(v) => setFilterCustomer(v)}
           onSearch={(q) => kontakApi.search(q, 'customer')}
-          placeholder="Semua customer"
+          placeholder="Semua pelanggan"
         />
       </FilterSection>
       <DateRangeFilterSection
@@ -108,13 +108,13 @@ export default function DeliveryOrderListPage() {
 
   return (
     <WorkspaceLayout
-      title="Delivery Order"
-      breadcrumb={[{ label: 'Sales' }, { label: 'Delivery Order' }]}
+      title="Pengiriman Barang"
+      breadcrumb={[{ label: 'Penjualan' }, { label: 'Pengiriman Barang' }]}
       sidebar={sidebar}
       action={
         <PermissionGuard permission="sales.delivery_orders.create">
-          <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => openRecordTab({ label: 'Delivery Order Baru', path: '/sales/delivery-orders/create' })}>
-            <Plus className="w-3.5 h-3.5 mr-1" /> Buat DO
+          <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => openRecordTab({ label: 'Pengiriman Barang Baru', path: '/sales/delivery-orders/create' })}>
+            <Plus className="w-3.5 h-3.5 mr-1" /> Buat Pengiriman Barang
           </Button>
         </PermissionGuard>
       }
@@ -127,8 +127,8 @@ export default function DeliveryOrderListPage() {
         isFetching={isFetching}
         pagination={{ pageIndex: page, pageSize: 25 }}
         onPaginationChange={(p) => setPage(p.pageIndex)}
-        emptyTitle="Belum ada delivery order"
-        emptyDescription="Buat delivery order dari sales order."
+        emptyTitle="Belum ada pengiriman barang"
+        emptyDescription="Buat pengiriman barang dari pesanan penjualan."
       />
     </WorkspaceLayout>
   )

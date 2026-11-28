@@ -62,8 +62,8 @@ export default function ApOutstandingReportPage() {
                 <ReportExportButton
                   variant="outline"
                   filename={`hutang-belum-lunas-${activeParams?.as_of_date ?? today}`}
-                  sheetName="Hutang Belum Lunas"
-                  headers={['No. Tagihan', 'Tgl. Tagihan', 'Jatuh Tempo', 'Supplier', 'Total', 'Terbayar', 'Sisa', 'Hari Lewat Jatuh Tempo']}
+                  sheetName="Utang Belum Lunas"
+                  headers={['No. Faktur', 'Tgl. Faktur', 'Jatuh Tempo', 'Pemasok', 'Total', 'Terbayar', 'Sisa', 'Hari Lewat Jatuh Tempo']}
                   rows={() => allRows.map((r) => [r.bill_number, toExcelDate(r.bill_date ?? ''), toExcelDate(r.due_date ?? ''), r.vendor_name, toExcelNumber(r.grand_total), toExcelNumber(r.paid_amount), toExcelNumber(r.balance_due), toExcelNumber(daysOverdue(r.due_date))])}
                   formats={['text', 'date', 'date', 'text', 'currency', 'currency', 'currency', 'number']}
                 />
@@ -74,10 +74,10 @@ export default function ApOutstandingReportPage() {
               <table className="w-full text-[12px]">
                 <thead className="bg-[#f8fafc]">
                   <tr>
-                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">No. Tagihan</th>
-                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tgl. Tagihan</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">No. Faktur</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tgl. Faktur</th>
                     <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jatuh Tempo</th>
-                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Supplier</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pemasok</th>
                     <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Total</th>
                     <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Terbayar</th>
                     <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Sisa</th>
@@ -101,14 +101,14 @@ export default function ApOutstandingReportPage() {
                     )
                   })}
                   {allRows.length === 0 && (
-                    <tr><td colSpan={8} className="py-8 text-center text-[#94a3b8]">Tidak ada hutang belum lunas.</td></tr>
+                    <tr><td colSpan={8} className="py-8 text-center text-[#94a3b8]">Tidak ada utang belum lunas.</td></tr>
                   )}
                 </tbody>
                 {allRows.length > 0 && (
                   <tfoot className="border-t-2 border-[#cbd5e1] bg-[#f1f5f9]">
                     <tr>
                       <td colSpan={4} className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-[#334155]">
-                        Total ({allRows.length} tagihan)
+                        Total ({allRows.length} faktur pembelian)
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums font-bold text-[#334155]">{formatCurrency(report.totals.grand_total)}</td>
                       <td className="px-3 py-2 text-right tabular-nums font-bold text-green-700">{formatCurrency(report.totals.paid_amount)}</td>

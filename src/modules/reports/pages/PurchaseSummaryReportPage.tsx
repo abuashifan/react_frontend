@@ -81,7 +81,7 @@ export default function PurchaseSummaryReportPage() {
                   variant="outline"
                   filename={`ringkasan-pembelian-${activeParams?.start_date ?? ''}-${activeParams?.end_date ?? ''}`}
                   sheetName="Ringkasan Pembelian"
-                  headers={['Periode', 'Jumlah Tagihan', 'Subtotal', 'Pajak', 'Total']}
+                  headers={['Periode', 'Jumlah Faktur', 'Subtotal', 'Pajak', 'Total']}
                   rows={() => allRows.map((r) => [r.period, toExcelNumber(r.bill_count), toExcelNumber(r.subtotal), toExcelNumber(r.tax), toExcelNumber(r.total)])}
                   formats={['text', 'number', 'currency', 'currency', 'currency']}
                 />

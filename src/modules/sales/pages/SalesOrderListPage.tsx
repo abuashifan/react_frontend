@@ -29,10 +29,10 @@ const STATUSES: SalesOrderStatus[] = ['draft', 'approved', 'confirmed', 'cancell
  */
 const EXPORT_COLUMNS: ExportColumn<SalesOrder>[] = [
   { header: 'ID', value: (row) => row.id },
-  { header: 'Nomor SO', value: (row) => row.number },
+  { header: 'Nomor Pesanan', value: (row) => row.number },
   { header: 'Tanggal', value: (row) => toExcelDate(row.date), format: 'date' },
-  { header: 'Customer', value: (row) => row.customer?.name },
-  { header: 'Quotation', value: (row) => row.quotation_number },
+  { header: 'Pelanggan', value: (row) => row.customer?.name },
+  { header: 'Penawaran Penjualan', value: (row) => row.quotation_number },
   { header: 'Total', value: (row) => row.grand_total, format: 'currency' },
   { header: 'Status', value: (row) => row.status },
 ]
@@ -74,7 +74,7 @@ export default function SalesOrderListPage() {
   const columns: ColumnDef<SalesOrder>[] = [
     {
       id: 'number',
-      header: 'Nomor SO',
+      header: 'Nomor Pesanan',
       size: 140,
       meta: { sticky: true, stickyLeft: 0 },
       cell: ({ original }) => (
@@ -84,8 +84,8 @@ export default function SalesOrderListPage() {
       ),
     },
     { id: 'date', header: 'Tanggal', size: 110, cell: ({ original }) => formatDate(original.date) },
-    { id: 'customer', header: 'Customer', size: 200, cell: ({ original }) => original.customer?.name ?? '-' },
-    { id: 'quotation', header: 'Quotation', size: 130, cell: ({ original }) => original.quotation_number ?? '-' },
+    { id: 'customer', header: 'Pelanggan', size: 200, cell: ({ original }) => original.customer?.name ?? '-' },
+    { id: 'quotation', header: 'Penawaran Penjualan', size: 130, cell: ({ original }) => original.quotation_number ?? '-' },
     {
       id: 'grand_total',
       header: 'Total',
@@ -107,7 +107,7 @@ export default function SalesOrderListPage() {
         <ListSearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Cari nomor SO, customer..."
+          placeholder="Cari nomor pesanan, pelanggan..."
           className="w-full max-w-none"
         />
       </div>
@@ -119,12 +119,12 @@ export default function SalesOrderListPage() {
           </label>
         ))}
       </FilterSection>
-      <FilterSection title="Customer">
+      <FilterSection title="Pelanggan">
         <SearchableSelect cacheKey="contact"
           value={filterCustomer}
           onChange={(v) => setFilterCustomer(v)}
           onSearch={(q) => kontakApi.search(q, 'customer')}
-          placeholder="Semua customer"
+          placeholder="Semua pelanggan"
         />
       </FilterSection>
       <DateRangeFilterSection
@@ -138,21 +138,21 @@ export default function SalesOrderListPage() {
 
   return (
     <WorkspaceLayout
-      title="Sales Order"
-      breadcrumb={[{ label: 'Sales' }, { label: 'Sales Order' }]}
+      title="Pesanan Penjualan"
+      breadcrumb={[{ label: 'Penjualan' }, { label: 'Pesanan Penjualan' }]}
       sidebar={sidebar}
       action={
         <>
           <ListExportButton permission="sales.orders.export"
             filename="sales-order"
-            sheetName="Sales Order"
+            sheetName="Pesanan Penjualan"
             columns={EXPORT_COLUMNS}
             totalRows={data?.meta.total}
             fetchPage={(exportPage, exportPerPage) => salesOrderApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}
           />
           <PermissionGuard permission="sales.orders.create">
-            <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => openRecordTab({ label: 'Sales Order Baru', path: '/sales/orders/create' })}>
-              <Plus className="w-3.5 h-3.5 mr-1" /> Buat SO
+            <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => openRecordTab({ label: 'Pesanan Penjualan Baru', path: '/sales/orders/create' })}>
+              <Plus className="w-3.5 h-3.5 mr-1" /> Buat Pesanan Penjualan
             </Button>
           </PermissionGuard>
         </>
@@ -166,8 +166,8 @@ export default function SalesOrderListPage() {
         isFetching={isFetching}
         pagination={{ pageIndex: page, pageSize: 25 }}
         onPaginationChange={(p) => setPage(p.pageIndex)}
-        emptyTitle="Belum ada sales order"
-        emptyDescription="Buat sales order dari quotation atau langsung."
+        emptyTitle="Belum ada pesanan penjualan"
+        emptyDescription="Buat pesanan penjualan dari penawaran atau langsung."
       />
     </WorkspaceLayout>
   )

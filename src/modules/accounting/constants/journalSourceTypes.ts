@@ -68,8 +68,8 @@ export const JOURNAL_SOURCE_TYPE_GROUPS: MultiSelectModalGroup<JournalSourceType
   {
     label: 'Pembelian',
     options: [
-      { value: 'vendor_bill', label: 'Tagihan Pemasok' },
-      { value: 'vendor_payment', label: 'Pembayaran Pemasok' },
+      { value: 'vendor_bill', label: 'Faktur Pembelian' },
+      { value: 'vendor_payment', label: 'Pembayaran Pembelian' },
       { value: 'purchase_return', label: 'Retur Pembelian' },
       { value: 'vendor_deposit', label: 'Uang Muka Pemasok' },
       { value: 'vendor_deposit_allocation', label: 'Alokasi Uang Muka Pemasok' },
@@ -91,7 +91,7 @@ export const JOURNAL_SOURCE_TYPE_GROUPS: MultiSelectModalGroup<JournalSourceType
     label: 'Aset Tetap',
     options: [
       { value: 'fixed_asset_capitalization', label: 'Kapitalisasi Aset Tetap' },
-      { value: 'fixed_asset_depreciation', label: 'Depresiasi Aset Tetap' },
+      { value: 'fixed_asset_depreciation', label: 'Penyusutan Aset Tetap' },
       { value: 'fixed_asset_disposal', label: 'Pelepasan Aset Tetap' },
     ],
   },
@@ -103,7 +103,7 @@ export const JOURNAL_SOURCE_TYPE_GROUPS: MultiSelectModalGroup<JournalSourceType
     options: [
       { value: 'pos_shift', label: 'Rekap Kasir' },
       { value: 'pos_purchase', label: 'Stok Masuk Kasir' },
-      { value: 'pos_supplier_payment', label: 'Bayar Hutang Kasir' },
+      { value: 'pos_supplier_payment', label: 'Bayar Utang Kasir' },
       { value: 'pos_stock_count', label: 'Selisih Stok Kasir' },
     ],
   },

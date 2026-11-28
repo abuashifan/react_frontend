@@ -32,7 +32,7 @@ import type {
  */
 
 const GROUP_OPTIONS: { value: BudgetGroupBy; label: string }[] = [
-  { value: 'department', label: 'Cost Center' },
+  { value: 'department', label: 'Departemen' },
   { value: 'project', label: 'Proyek' },
   { value: 'account', label: 'Akun' },
   { value: 'period', label: 'Bulan' },
@@ -166,7 +166,7 @@ function BudgetAnalysisPageContent() {
 
   const rowLabel = (row: BudgetAnalysisRow): string => {
     const parts: string[] = []
-    if (row.department_id !== undefined) parts.push(row.department_name ?? 'Tanpa Cost Center')
+    if (row.department_id !== undefined) parts.push(row.department_name ?? 'Tanpa Departemen')
     if (row.project_id !== undefined) parts.push(row.project_name ?? 'Tanpa Proyek')
     if (row.account_id !== undefined) {
       parts.push(
@@ -229,7 +229,7 @@ function BudgetAnalysisPageContent() {
           emptyHint="Belum ada pagu anggaran."
         />
 
-        <FormField label="Cost Center" className="w-40">
+        <FormField label="Departemen" className="w-40">
           <SearchableSelect cacheKey="department" value={deptId} onSearch={searchDept} onChange={setDeptId} placeholder="Semua" size="sm" />
         </FormField>
 
@@ -253,7 +253,7 @@ function BudgetAnalysisPageContent() {
             <SelectTrigger id="analysis-mode" className="h-8 text-[12px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="summary">Ringkas</SelectItem>
-              <SelectItem value="variance">Variance</SelectItem>
+              <SelectItem value="variance">Selisih</SelectItem>
               <SelectItem value="detail">Rinci</SelectItem>
             </SelectContent>
           </Select>

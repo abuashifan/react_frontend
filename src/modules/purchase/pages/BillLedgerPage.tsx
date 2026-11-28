@@ -16,11 +16,11 @@ export default function BillLedgerPage() {
 
   return (
     <WorkspaceLayout
-      title="Ledger Bill"
-      breadcrumb={[{ label: 'Pembelian' }, { label: 'AP' }, { label: 'Ledger Bill' }]}
+      title="Buku Besar Faktur Pembelian"
+      breadcrumb={[{ label: 'Pembelian' }, { label: 'Utang' }, { label: 'Buku Besar Faktur Pembelian' }]}
     >
       <div className="mb-4 w-72">
-        <Label className="mb-1 block text-[11px] font-semibold uppercase text-[#64748b]">Bill</Label>
+        <Label className="mb-1 block text-[11px] font-semibold uppercase text-[#64748b]">Faktur Pembelian</Label>
         <SearchableSelect
           value={selectedBill}
           onChange={(v) => setSelectedBill(v)}
@@ -28,7 +28,7 @@ export default function BillLedgerPage() {
             const res = await vendorBillApi.list({ page: 1, per_page: 10, search: q })
             return res.data.map((b) => ({ value: b.id, label: b.bill_number, sublabel: b.vendor?.name }))
           }}
-          placeholder="Cari nomor bill..."
+          placeholder="Cari nomor faktur..."
         />
       </div>
 
@@ -53,7 +53,7 @@ export default function BillLedgerPage() {
               {isLoading ? (
                 <tr><td colSpan={6} className="px-3 py-8 text-center text-[#94a3b8]">Memuat data...</td></tr>
               ) : !selectedBill ? (
-                <tr><td colSpan={6} className="px-3 py-8 text-center text-[#94a3b8]">Pilih bill untuk melihat ledger</td></tr>
+                <tr><td colSpan={6} className="px-3 py-8 text-center text-[#94a3b8]">Pilih faktur pembelian untuk melihat buku besar</td></tr>
               ) : !ledger?.entries.length ? (
                 <tr><td colSpan={6} className="px-3 py-8 text-center text-[#94a3b8]">Tidak ada transaksi</td></tr>
               ) : ledger.entries.map((entry, i) => (

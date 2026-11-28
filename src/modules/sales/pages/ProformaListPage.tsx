@@ -31,8 +31,8 @@ const EXPORT_COLUMNS: ExportColumn<ProformaInvoice>[] = [
   { header: 'ID', value: (row) => row.id },
   { header: 'Nomor', value: (row) => row.number },
   { header: 'Tanggal', value: (row) => toExcelDate(row.date), format: 'date' },
-  { header: 'Customer', value: (row) => row.customer?.name },
-  { header: 'Sales Order', value: (row) => row.sales_order_number },
+  { header: 'Pelanggan', value: (row) => row.customer?.name },
+  { header: 'Pesanan Penjualan', value: (row) => row.sales_order_number },
   { header: 'Total', value: (row) => row.grand_total, format: 'currency' },
   { header: 'Status', value: (row) => row.status },
 ]
@@ -84,7 +84,7 @@ export default function ProformaListPage() {
       ),
     },
     { id: 'date', header: 'Tanggal', size: 110, cell: ({ original }) => formatDate(original.date) },
-    { id: 'customer', header: 'Customer', size: 200, cell: ({ original }) => original.customer?.name ?? '-' },
+    { id: 'customer', header: 'Pelanggan', size: 200, cell: ({ original }) => original.customer?.name ?? '-' },
     {
       id: 'grand_total',
       header: 'Total',
@@ -106,7 +106,7 @@ export default function ProformaListPage() {
         <ListSearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Cari nomor proforma, customer..."
+          placeholder="Cari nomor faktur sementara, pelanggan..."
           className="w-full max-w-none"
         />
       </div>
@@ -118,12 +118,12 @@ export default function ProformaListPage() {
           </label>
         ))}
       </FilterSection>
-      <FilterSection title="Customer">
+      <FilterSection title="Pelanggan">
         <SearchableSelect cacheKey="contact"
           value={filterCustomer}
           onChange={(v) => setFilterCustomer(v)}
           onSearch={(q) => kontakApi.search(q, 'customer')}
-          placeholder="Semua customer"
+          placeholder="Semua pelanggan"
         />
       </FilterSection>
       <DateRangeFilterSection
@@ -137,21 +137,21 @@ export default function ProformaListPage() {
 
   return (
     <WorkspaceLayout
-      title="Proforma Invoice"
-      breadcrumb={[{ label: 'Sales' }, { label: 'Proforma Invoice' }]}
+      title="Faktur Sementara"
+      breadcrumb={[{ label: 'Penjualan' }, { label: 'Faktur Sementara' }]}
       sidebar={sidebar}
       action={
         <>
           <ListExportButton permission="sales.proformas.export"
             filename="proforma"
-            sheetName="Proforma"
+            sheetName="Faktur Sementara"
             columns={EXPORT_COLUMNS}
             totalRows={data?.meta.total}
             fetchPage={(exportPage, exportPerPage) => proformaApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}
           />
           <PermissionGuard permission="sales.proformas.create">
-            <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => openRecordTab({ label: 'Proforma Baru', path: '/sales/proformas/create' })}>
-              <Plus className="w-3.5 h-3.5 mr-1" /> Buat Proforma
+            <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => openRecordTab({ label: 'Faktur Sementara Baru', path: '/sales/proformas/create' })}>
+              <Plus className="w-3.5 h-3.5 mr-1" /> Buat Faktur Sementara
             </Button>
           </PermissionGuard>
         </>
@@ -165,8 +165,8 @@ export default function ProformaListPage() {
         isFetching={isFetching}
         pagination={{ pageIndex: page, pageSize: 25 }}
         onPaginationChange={(p) => setPage(p.pageIndex)}
-        emptyTitle="Belum ada proforma invoice"
-        emptyDescription="Buat proforma invoice dari sales order."
+        emptyTitle="Belum ada faktur sementara"
+        emptyDescription="Buat faktur sementara dari pesanan penjualan."
       />
     </WorkspaceLayout>
   )

@@ -265,7 +265,7 @@ function SalesReturnFormPageContent() {
 
   if (!isCreate && isLoading) {
     return (
-      <FormLayout title="Retur Penjualan" breadcrumb={[{ label: 'Sales' }, { label: 'Retur', path: '/sales/returns' }, { label: 'Memuat...' }]}>
+      <FormLayout title="Retur Penjualan" breadcrumb={[{ label: 'Penjualan' }, { label: 'Retur', path: '/sales/returns' }, { label: 'Memuat...' }]}>
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
       </FormLayout>
     )
@@ -278,7 +278,7 @@ function SalesReturnFormPageContent() {
         documentNumber={ret?.number}
         status={status}
         breadcrumb={[
-          { label: 'Sales' },
+          { label: 'Penjualan' },
           { label: 'Retur', path: '/sales/returns' },
           { label: isCreate ? 'Buat Retur' : (ret?.number ?? '') },
         ]}
@@ -295,13 +295,13 @@ function SalesReturnFormPageContent() {
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">
-                Customer <span className="text-red-500">*</span>
+                Pelanggan <span className="text-red-500">*</span>
               </Label>
               <SearchableSelect cacheKey="contact"
                 value={watch('customer_id') ?? null}
                 onChange={(v) => setValue('customer_id', v as number)}
                 onSearch={(q) => kontakApi.search(q, 'customer')}
-                placeholder="Pilih customer..."
+                placeholder="Pilih pelanggan..."
                 disabled={!isEditable}
                 error={errors.customer_id?.message}
                 selectedOptions={ret?.customer ? [{ value: ret.customer.id, label: ret.customer.name }] : []}

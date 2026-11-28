@@ -60,7 +60,7 @@ export function KpiCards({ summary, isLoading, isUnavailable }: Props) {
         <KpiCard title="Total Piutang" value={summary?.total_receivable ?? 0} trend={summary?.receivable_trend} icon={TrendingUp} iconBg="bg-teal-50" iconColor="text-teal-600" isLoading={isLoading} />
       </PermissionGuard>
       <PermissionGuard permission="purchase.ap.view" fallback={null}>
-        <KpiCard title="Total Hutang" value={summary?.total_payable ?? 0} trend={summary?.payable_trend} icon={TrendingDown} iconBg="bg-[#fff7ed]" iconColor="text-[#e39774]" isLoading={isLoading} />
+        <KpiCard title="Total Utang" value={summary?.total_payable ?? 0} trend={summary?.payable_trend} icon={TrendingDown} iconBg="bg-[#fff7ed]" iconColor="text-[#e39774]" isLoading={isLoading} />
       </PermissionGuard>
       <PermissionGuard permission="dashboard.financial.view" fallback={null}>
         <KpiCard title="Kas & Bank" value={summary?.cash_balance ?? 0} icon={Wallet} iconBg="bg-teal-50" iconColor="text-teal-600" isLoading={isLoading} />

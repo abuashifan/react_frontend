@@ -9,12 +9,12 @@ import type { CompanyModuleSettings } from '@/modules/settings/types/settings.ty
 import { setupApi } from '../../services/onboardingApi'
 
 const MODULE_LABELS: { key: keyof CompanyModuleSettings; label: string; hint: string }[] = [
-  { key: 'sales_enabled', label: 'Penjualan', hint: 'Penawaran, sales order, invoice, penerimaan' },
-  { key: 'purchase_enabled', label: 'Pembelian', hint: 'Purchase order, tagihan vendor, pembayaran' },
+  { key: 'sales_enabled', label: 'Penjualan', hint: 'Penawaran, pesanan penjualan, faktur penjualan, penerimaan' },
+  { key: 'purchase_enabled', label: 'Pembelian', hint: 'Pesanan pembelian, faktur pembelian, pembayaran' },
   { key: 'cash_bank_enabled', label: 'Kas & Bank', hint: 'Kas masuk/keluar, transfer, rekonsiliasi' },
   { key: 'inventory_enabled', label: 'Persediaan', hint: 'Saldo stok, mutasi, penyesuaian, opname' },
   { key: 'warehouse_enabled', label: 'Gudang', hint: 'Pisahkan stok per gudang' },
-  { key: 'fixed_asset_enabled', label: 'Aktiva Tetap', hint: 'Register aset, depresiasi, disposal' },
+  { key: 'fixed_asset_enabled', label: 'Aset Tetap', hint: 'Daftar aset, penyusutan, pelepasan' },
   { key: 'approval_enabled', label: 'Approval', hint: 'Dokumen perlu disetujui sebelum diposting' },
   { key: 'tax_enabled', label: 'Pajak', hint: 'Perhitungan pajak pada transaksi' },
   { key: 'reports_enabled', label: 'Laporan', hint: 'Laporan keuangan dan operasional' },

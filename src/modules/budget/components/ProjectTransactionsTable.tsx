@@ -73,7 +73,7 @@ export function ProjectTransactionsTable({
               <ReportExportButton
                 variant="outline"
                 filename={`transaksi-project-${projectId ?? ''}`}
-                sheetName="Transaksi Project"
+                sheetName="Transaksi Proyek"
                 headers={['Tanggal', 'No Jurnal', 'Kode Akun', 'Akun', 'Keterangan', 'Sumber', 'Arah', 'Jumlah']}
                 rows={() => result.lines.map((line) => [
                   toExcelDate(line.journal_date),

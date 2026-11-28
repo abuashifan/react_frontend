@@ -56,8 +56,8 @@ export default function ApVendorSummaryPage() {
                 <ReportExportButton
                   variant="outline"
                   filename={`ringkasan-hutang-${activeParams?.as_of_date ?? today}`}
-                  sheetName="Ringkasan Supplier"
-                  headers={['Supplier', 'Debit', 'Kredit', 'Saldo Hutang', 'Deposit Belum Dialokasikan', 'Net Exposure']}
+                  sheetName="Ringkasan Pemasok"
+                  headers={['Pemasok', 'Debit', 'Kredit', 'Saldo Utang', 'Uang Muka Belum Dipakai', 'Net Exposure']}
                   rows={() => allRows.map((r) => [r.vendor_name, toExcelNumber(r.debit), toExcelNumber(r.credit), toExcelNumber(r.balance), toExcelNumber(r.unapplied_deposit_total), toExcelNumber(r.net_vendor_exposure)])}
                   formats={['text', 'currency', 'currency', 'currency', 'currency', 'currency']}
                 />
@@ -68,11 +68,11 @@ export default function ApVendorSummaryPage() {
               <table className="w-full text-[12px]">
                 <thead className="bg-[#f8fafc]">
                   <tr>
-                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Supplier</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pemasok</th>
                     <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Debit</th>
                     <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Kredit</th>
-                    <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Saldo Hutang</th>
-                    <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Deposit Belum Dialokasi</th>
+                    <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Saldo Utang</th>
+                    <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Uang Muka Belum Dialokasi</th>
                     <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Net Exposure</th>
                   </tr>
                 </thead>
@@ -88,13 +88,13 @@ export default function ApVendorSummaryPage() {
                     </tr>
                   ))}
                   {allRows.length === 0 && (
-                    <tr><td colSpan={6} className="py-8 text-center text-[#94a3b8]">Tidak ada data hutang supplier.</td></tr>
+                    <tr><td colSpan={6} className="py-8 text-center text-[#94a3b8]">Tidak ada data utang pemasok.</td></tr>
                   )}
                 </tbody>
                 {allRows.length > 0 && (
                   <tfoot className="border-t-2 border-[#cbd5e1] bg-[#f1f5f9]">
                     <tr>
-                      <td className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-[#334155]">Total ({allRows.length} supplier)</td>
+                      <td className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-[#334155]">Total ({allRows.length} pemasok)</td>
                       <td colSpan={2} />
                       <td className="px-3 py-2 text-right tabular-nums font-bold text-[#1e293b]">{formatCurrency(report.totals.balance)}</td>
                       <td />

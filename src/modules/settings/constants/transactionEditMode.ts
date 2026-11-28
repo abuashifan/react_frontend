@@ -5,7 +5,7 @@ export const EDIT_MODE_OPTIONS: { value: TransactionEditMode; label: string; hin
   {
     value: 'lock',
     label: 'Lock — hanya draft',
-    hint: 'Hanya transaksi draft yang bisa diedit/dihapus, termasuk jurnal manual. Yang sudah diposting harus di-void dulu. Sales Order & Delivery Order tetap mengikuti aturannya sendiri.',
+    hint: 'Hanya transaksi draft yang bisa diedit/dihapus, termasuk jurnal manual. Yang sudah diposting harus di-void dulu. Pesanan Penjualan & Pengiriman Barang tetap mengikuti aturannya sendiri.',
   },
   {
     value: 'open',

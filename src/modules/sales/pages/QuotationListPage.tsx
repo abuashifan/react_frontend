@@ -31,7 +31,7 @@ const EXPORT_COLUMNS: ExportColumn<SalesQuotation>[] = [
   { header: 'ID', value: (row) => row.id },
   { header: 'Nomor', value: (row) => row.number },
   { header: 'Tanggal', value: (row) => toExcelDate(row.date), format: 'date' },
-  { header: 'Customer', value: (row) => row.customer?.name },
+  { header: 'Pelanggan', value: (row) => row.customer?.name },
   { header: 'Exp. Date', value: (row) => toExcelDate(row.expiry_date), format: 'date' },
   { header: 'Total', value: (row) => row.grand_total, format: 'currency' },
   { header: 'Status', value: (row) => row.status },
@@ -87,7 +87,7 @@ export default function QuotationListPage() {
       ),
     },
     { id: 'date', header: 'Tanggal', size: 110, cell: ({ original }) => formatDate(original.date) },
-    { id: 'customer', header: 'Customer', size: 200, cell: ({ original }) => original.customer?.name ?? '-' },
+    { id: 'customer', header: 'Pelanggan', size: 200, cell: ({ original }) => original.customer?.name ?? '-' },
     {
       id: 'expiry_date',
       header: 'Exp. Date',
@@ -115,7 +115,7 @@ export default function QuotationListPage() {
         <ListSearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Cari nomor quotation, customer..."
+          placeholder="Cari nomor penawaran, pelanggan..."
           className="w-full max-w-none"
         />
       </div>
@@ -127,12 +127,12 @@ export default function QuotationListPage() {
           </label>
         ))}
       </FilterSection>
-      <FilterSection title="Customer">
+      <FilterSection title="Pelanggan">
         <SearchableSelect cacheKey="contact"
           value={filterCustomer}
           onChange={(v) => setFilterCustomer(v)}
           onSearch={(q) => kontakApi.search(q, 'customer')}
-          placeholder="Semua customer"
+          placeholder="Semua pelanggan"
         />
       </FilterSection>
       <DateRangeFilterSection
@@ -146,21 +146,21 @@ export default function QuotationListPage() {
 
   return (
     <WorkspaceLayout
-      title="Quotation"
-      breadcrumb={[{ label: 'Sales' }, { label: 'Quotation' }]}
+      title="Penawaran Penjualan"
+      breadcrumb={[{ label: 'Penjualan' }, { label: 'Penawaran Penjualan' }]}
       sidebar={sidebar}
       action={
         <>
           <ListExportButton permission="sales.quotations.export"
             filename="penawaran"
-            sheetName="Penawaran"
+            sheetName="Penawaran Penjualan"
             columns={EXPORT_COLUMNS}
             totalRows={data?.meta.total}
             fetchPage={(exportPage, exportPerPage) => quotationApi.list({ ...listParams, page: exportPage, per_page: exportPerPage })}
           />
           <PermissionGuard permission="sales.quotations.create">
-            <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => openRecordTab({ label: 'Quotation Baru', path: '/sales/quotations/create' })}>
-              <Plus className="w-3.5 h-3.5 mr-1" /> Buat Quotation
+            <Button className="bg-[#e39774] hover:bg-[#d4845e] h-8 px-3 text-[13px]" onClick={() => openRecordTab({ label: 'Penawaran Penjualan Baru', path: '/sales/quotations/create' })}>
+              <Plus className="w-3.5 h-3.5 mr-1" /> Buat Penawaran Penjualan
             </Button>
           </PermissionGuard>
         </>
@@ -174,8 +174,8 @@ export default function QuotationListPage() {
         isFetching={isFetching}
         pagination={{ pageIndex: page, pageSize: 25 }}
         onPaginationChange={(p) => setPage(p.pageIndex)}
-        emptyTitle="Belum ada quotation"
-        emptyDescription="Buat quotation pertama untuk memulai proses penjualan."
+        emptyTitle="Belum ada penawaran"
+        emptyDescription="Buat penawaran pertama untuk memulai proses penjualan."
       />
     </WorkspaceLayout>
   )

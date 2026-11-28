@@ -19,8 +19,8 @@ export default function FixedAssetDepreciationReportPage() {
 
   return (
     <WorkspaceLayout
-      title="Laporan Depresiasi"
-      breadcrumb={[{ label: 'Aktiva Tetap' }, { label: 'Laporan Depresiasi' }]}
+      title="Laporan Penyusutan"
+      breadcrumb={[{ label: 'Aset Tetap' }, { label: 'Laporan Penyusutan' }]}
       action={
         <div className="flex flex-wrap items-center gap-2">
           <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Dari</Label>

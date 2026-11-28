@@ -137,7 +137,7 @@ function CashReceiptFormPageContent() {
   const { saveAndClose, navProps } = useRecordFormNavigation<CashReceiptFormValues>({
     id,
     basePath: '/cash-bank/cash-receipts',
-    createLabel: 'Penerimaan Kas Baru',
+    createLabel: 'Penerimaan Lainnya Baru',
     sequenceQueryKey: ['cash-bank', 'receipts', 'adjacent'],
     fetchAdjacent: async (recordId) => (await cashReceiptApi.adjacent(recordId)).data,
     handleSubmit,
@@ -246,12 +246,12 @@ function CashReceiptFormPageContent() {
   if (!isCreate && receipt?.status === 'draft' && can('cash_bank.receipts.approve')) actions.push({ id: 'post', label: 'Post', variant: 'primary', onClick: () => void handlePost(), isLoading: post.isPending })
   if (!isCreate && receipt?.status === 'posted' && can('cash_bank.receipts.delete')) actions.push({ id: 'void', label: 'Void', variant: 'destructive', onClick: () => setVoidOpen(true) })
 
-  if (!isCreate && isLoading) return <FormLayout title="Penerimaan Kas" breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Penerimaan Kas', path: '/cash-bank/cash-receipts' }, { label: 'Memuat...' }]}><div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat...</div></FormLayout>
+  if (!isCreate && isLoading) return <FormLayout title="Penerimaan Lainnya" breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Penerimaan Lainnya', path: '/cash-bank/cash-receipts' }, { label: 'Memuat...' }]}><div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat...</div></FormLayout>
 
   return (
     <>
-      <FormLayout title={isCreate ? 'Buat Penerimaan Kas' : 'Penerimaan Kas'} documentNumber={receipt?.number} status={status} readOnly={!isEditable}
-        breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Penerimaan Kas', path: '/cash-bank/cash-receipts' }, { label: isCreate ? 'Buat' : (receipt?.number ?? '') }]}
+      <FormLayout title={isCreate ? 'Buat Penerimaan Lainnya' : 'Penerimaan Lainnya'} documentNumber={receipt?.number} status={status} readOnly={!isEditable}
+        breadcrumb={[{ label: 'Kas & Bank' }, { label: 'Penerimaan Lainnya', path: '/cash-bank/cash-receipts' }, { label: isCreate ? 'Buat' : (receipt?.number ?? '') }]}
         headerActions={
           <>
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />

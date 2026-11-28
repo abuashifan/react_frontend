@@ -9,10 +9,10 @@ export default function ArReconciliationPage() {
   return (
     <WorkspaceLayout
       title="AR Rekonsiliasi"
-      breadcrumb={[{ label: 'Sales' }, { label: 'AR' }, { label: 'Rekonsiliasi' }]}
+      breadcrumb={[{ label: 'Penjualan' }, { label: 'Piutang' }, { label: 'Rekonsiliasi' }]}
     >
       <p className="mb-3 text-[13px] text-[#64748b]">
-        Rekonsiliasi antara saldo AR di buku besar vs saldo per invoice.
+        Rekonsiliasi antara saldo AR di buku besar vs saldo per faktur penjualan.
       </p>
 
       <div className="overflow-hidden rounded-lg border border-[#d9e2e5] bg-white">

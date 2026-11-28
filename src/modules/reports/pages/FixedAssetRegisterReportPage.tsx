@@ -55,7 +55,7 @@ export default function FixedAssetRegisterReportPage() {
               <ReportExportButton
                 variant="outline"
                 filename={`daftar-aktiva-tetap-${activeQuery.as_of_period}`}
-                sheetName="Daftar Aktiva Tetap"
+                sheetName="Daftar Aset Tetap"
                 headers={['No. Aset', 'Nama Aset', 'Kategori', 'Departemen', 'Tgl. Perolehan', 'Harga Perolehan', 'Akum. Penyusutan', 'Nilai Buku', 'Status']}
                 rows={() => rows.map((row) => [
                   row.asset_number,
@@ -97,7 +97,7 @@ export default function FixedAssetRegisterReportPage() {
                   {rows.length === 0 && (
                     <tr>
                       <td colSpan={9} className="px-3 py-6 text-center text-[12px] text-[#94a3b8]">
-                        Tidak ada data aktiva tetap pada periode ini.
+                        Tidak ada data aset tetap pada periode ini.
                       </td>
                     </tr>
                   )}

@@ -89,7 +89,7 @@ function VendorDepositFormPageContent() {
   const { saveAndClose, navProps } = useRecordFormNavigation<VendorDepositFormValues>({
     id,
     basePath: '/purchase/vendor-deposits',
-    createLabel: 'Deposit Vendor Baru',
+    createLabel: 'Uang Muka Pemasok Baru',
     sequenceQueryKey: ['purchase', 'vendor-deposits', 'adjacent'],
     fetchAdjacent: async (recordId) => (await vendorDepositApi.adjacent(recordId)).data,
     handleSubmit,
@@ -102,31 +102,31 @@ function VendorDepositFormPageContent() {
       formDraft.clearDraft()
       setEditing(false)
     },
-    successMessage: () => 'Deposit vendor berhasil dibuat.',
+    successMessage: () => 'Uang muka pemasok berhasil dibuat.',
     onError: (saveError) => {
       // Backend memakai nama kolom DB (`deposit_date`), form memakai `date`.
       applyApiValidationErrors(saveError, setError, { deposit_date: 'date' })
-      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan deposit vendor.'))
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan uang muka pemasok.'))
     },
     // Deposit tersimpan langsung terposting: hanya form create yang bisa disimpan.
     canSave: isEditable,
   })
 
-  const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Deposit berhasil diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting deposit.')) } }
+  const handlePost = async () => { try { await post.mutateAsync(Number(id)); toast.success('Uang Muka berhasil diposting.') } catch (postError) { toast.error(getApiErrorMessage(postError, 'Gagal posting uang muka.')) } }
   const handleVoid = async (reason: string) => {
     await voidDep.mutateAsync({ id: Number(id), reason })
     formDraft.clearDraft()
-    toast.success('Deposit berhasil di-void.')
+    toast.success('Uang Muka berhasil di-void.')
     setVoidOpen(false)
   }
 
   const handleDelete = async (reason?: string) => {
     try {
       await remove.mutateAsync({ id: Number(id), reason })
-      toast.success('Deposit vendor berhasil dihapus.')
+      toast.success('Uang muka pemasok berhasil dihapus.')
       setDeleteOpen(false)
       closeRecordTab(window.location.pathname, '/purchase/vendor-deposits')
-    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus deposit vendor.')) }
+    } catch (deleteError) { toast.error(getApiErrorMessage(deleteError, 'Gagal menghapus uang muka pemasok.')) }
   }
 
   const actions: DocumentActionButton[] = []
@@ -156,7 +156,7 @@ function VendorDepositFormPageContent() {
 
   if (!isCreate && isLoading) {
     return (
-      <FormLayout title="Deposit Vendor" breadcrumb={[{ label: 'Pembelian' }, { label: 'Deposit Vendor', path: '/purchase/vendor-deposits' }, { label: 'Memuat...' }]}>
+      <FormLayout title="Uang Muka Pemasok" breadcrumb={[{ label: 'Pembelian' }, { label: 'Uang Muka Pemasok', path: '/purchase/vendor-deposits' }, { label: 'Memuat...' }]}>
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
       </FormLayout>
     )
@@ -165,10 +165,10 @@ function VendorDepositFormPageContent() {
   return (
     <>
       <FormLayout
-        title={isCreate ? 'Buat Deposit Vendor' : 'Deposit Vendor'}
+        title={isCreate ? 'Buat Uang Muka Pemasok' : 'Uang Muka Pemasok'}
         documentNumber={deposit?.number}
         status={status}
-        breadcrumb={[{ label: 'Pembelian' }, { label: 'Deposit Vendor', path: '/purchase/vendor-deposits' }, { label: isCreate ? 'Buat Deposit' : (deposit?.number ?? '') }]}
+        breadcrumb={[{ label: 'Pembelian' }, { label: 'Uang Muka Pemasok', path: '/purchase/vendor-deposits' }, { label: isCreate ? 'Buat Uang Muka' : (deposit?.number ?? '') }]}
         headerActions={
           <>
             <RecordNavButtons {...navProps} isBusy={isSubmitting} />
@@ -180,8 +180,8 @@ function VendorDepositFormPageContent() {
         <div className="space-y-3">
           <FormSection title="Header">
             <div className="flex flex-col gap-1">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Vendor <span className="text-red-500">*</span></Label>
-              <SearchableSelect cacheKey="contact" value={watch('vendor_id') ?? null} onChange={(v) => setValue('vendor_id', v as number)} onSearch={(q) => kontakApi.search(q, 'supplier')} placeholder="Pilih vendor..." disabled={!isEditable} error={errors.vendor_id?.message} selectedOptions={deposit?.vendor ? [{ value: deposit.vendor.id, label: deposit.vendor.name }] : []} />
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pemasok <span className="text-red-500">*</span></Label>
+              <SearchableSelect cacheKey="contact" value={watch('vendor_id') ?? null} onChange={(v) => setValue('vendor_id', v as number)} onSearch={(q) => kontakApi.search(q, 'supplier')} placeholder="Pilih pemasok..." disabled={!isEditable} error={errors.vendor_id?.message} selectedOptions={deposit?.vendor ? [{ value: deposit.vendor.id, label: deposit.vendor.name }] : []} />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Tanggal <span className="text-red-500">*</span></Label>
@@ -207,7 +207,7 @@ function VendorDepositFormPageContent() {
           {!isCreate && deposit && (
             <FormSection title="Alokasi">
               <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jumlah Deposit</span>
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Jumlah Uang Muka</span>
                 <span className="tabular-nums text-[13px]">{formatCurrency(deposit.amount)}</span>
               </div>
               <div className="flex flex-col gap-0.5">

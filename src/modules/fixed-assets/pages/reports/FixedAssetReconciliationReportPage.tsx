@@ -17,8 +17,8 @@ export default function FixedAssetReconciliationReportPage() {
 
   return (
     <WorkspaceLayout
-      title="Rekonsiliasi Aktiva Tetap"
-      breadcrumb={[{ label: 'Aktiva Tetap' }, { label: 'Rekonsiliasi' }]}
+      title="Rekonsiliasi Aset Tetap"
+      breadcrumb={[{ label: 'Aset Tetap' }, { label: 'Rekonsiliasi' }]}
       action={
         <div className="flex items-center gap-2">
           <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Periode</Label>

@@ -192,7 +192,7 @@ export default function DepartemenPage() {
   return (
     <WorkspaceLayout
       title="Departemen"
-      breadcrumb={[{ label: 'Master Data' }, { label: 'Departemen' }]}
+      breadcrumb={[{ label: 'Data Utama' }, { label: 'Departemen' }]}
       sidebar={sidebar}
       action={
         <PermissionGuard permission="master_data.departments.create">

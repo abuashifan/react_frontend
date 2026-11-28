@@ -146,7 +146,7 @@ function PurchaseOrderFormPageContent() {
   const { saveAndClose, navProps } = useRecordFormNavigation<PurchaseOrderFormValues>({
     id,
     basePath: '/purchase/orders',
-    createLabel: 'Purchase Order Baru',
+    createLabel: 'Pesanan Pembelian Baru',
     sequenceQueryKey: ['purchase', 'orders', 'adjacent'],
     fetchAdjacent: async (recordId) => (await purchaseOrderApi.adjacent(recordId)).data,
     handleSubmit,
@@ -159,36 +159,36 @@ function PurchaseOrderFormPageContent() {
       formDraft.clearDraft()
       setLineErrors({})
     },
-    successMessage: (creating) => (creating ? 'Purchase Order berhasil dibuat.' : 'Purchase Order berhasil diperbarui.'),
+    successMessage: (creating) => (creating ? 'Pesanan Pembelian berhasil dibuat.' : 'Pesanan Pembelian berhasil diperbarui.'),
     onError: (saveError) => {
       // Backend memakai nama kolom DB (`order_date`, `expected_date`), form memakai
       // `date` dan `expected_delivery_date` — lihat `toPurchaseOrderPayload`.
       setLineErrors(getApiLineErrors(saveError))
       applyApiValidationErrors(saveError, setError, { order_date: 'date', expected_date: 'expected_delivery_date' })
-      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Purchase Order.'))
+      toast.error(getApiErrorMessage(saveError, 'Gagal menyimpan Pesanan Pembelian.'))
     },
     canSave: isEditable,
   })
 
-  const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); toast.success('PO di-approve.') } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve PO.')) } }
-  const handleConfirm = async () => { try { await confirm.mutateAsync(Number(id)); toast.success('PO dikonfirmasi.') } catch (confirmError) { toast.error(getApiErrorMessage(confirmError, 'Gagal konfirmasi PO.')) } }
-  const handleCancel = async () => { try { await cancel.mutateAsync(Number(id)); toast.success('PO dibatalkan.') } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan PO.')) } }
+  const handleApprove = async () => { try { await approve.mutateAsync(Number(id)); toast.success('Pesanan Pembelian di-approve.') } catch (approveError) { toast.error(getApiErrorMessage(approveError, 'Gagal approve Pesanan Pembelian.')) } }
+  const handleConfirm = async () => { try { await confirm.mutateAsync(Number(id)); toast.success('Pesanan Pembelian dikonfirmasi.') } catch (confirmError) { toast.error(getApiErrorMessage(confirmError, 'Gagal konfirmasi Pesanan Pembelian.')) } }
+  const handleCancel = async () => { try { await cancel.mutateAsync(Number(id)); toast.success('Pesanan Pembelian dibatalkan.') } catch (cancelError) { toast.error(getApiErrorMessage(cancelError, 'Gagal membatalkan Pesanan Pembelian.')) } }
 
   // Langkah lanjutan PO yang sudah dikonfirmasi: dokumen dibuat dari sisa qty PO
   // lalu dibuka untuk diperiksa (Terima Barang / Posting tetap langkah terpisah).
   const handleCreateReceipt = async () => {
     try {
       const res = await createReceipt.mutateAsync(Number(id))
-      toast.success('Penerimaan barang dibuat dari PO.')
+      toast.success('Penerimaan barang dibuat dari Pesanan Pembelian.')
       openRecordTab({ label: res.data.number ?? 'Penerimaan Barang', path: `/purchase/goods-receipts/${res.data.id}` })
-    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat penerimaan barang dari PO.')) }
+    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat penerimaan barang dari Pesanan Pembelian.')) }
   }
   const handleCreateBill = async () => {
     try {
       const res = await createBill.mutateAsync(Number(id))
-      toast.success('Tagihan dibuat dari PO.')
-      openRecordTab({ label: res.data.bill_number ?? 'Tagihan', path: `/purchase/bills/${res.data.id}` })
-    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat tagihan dari PO.')) }
+      toast.success('Faktur Pembelian dibuat dari Pesanan Pembelian.')
+      openRecordTab({ label: res.data.bill_number ?? 'Faktur Pembelian', path: `/purchase/bills/${res.data.id}` })
+    } catch (convertError) { toast.error(getApiErrorMessage(convertError, 'Gagal membuat faktur pembelian dari Pesanan Pembelian.')) }
   }
   const isFollowUpStatus = !!po && !['draft', 'approved', 'cancelled', 'closed', 'void'].includes(po.status as string)
   const hasUnreceived = !!po?.lines.some((l) => (l.received_quantity ?? 0) < l.quantity)
@@ -216,9 +216,9 @@ function PurchaseOrderFormPageContent() {
       // Tagihan dari PO menagih SELURUH sisa jumlah pesanan, bukan jumlah yang diterima. Bila barang
       // sudah diterima, tagihan harus dibuat dari Penerimaan Barang supaya jumlahnya cocok.
       actions.push({
-        id: 'create_bill', label: 'Buat Tagihan', variant: 'secondary', onClick: () => void handleCreateBill(), isLoading: createBill.isPending,
+        id: 'create_bill', label: 'Buat Faktur Pembelian', variant: 'secondary', onClick: () => void handleCreateBill(), isLoading: createBill.isPending,
         disabled: hasReceived,
-        tooltip: hasReceived ? 'Barang sudah diterima. Buat tagihan dari halaman Penerimaan Barang supaya jumlah tagihan cocok dengan yang diterima.' : undefined,
+        tooltip: hasReceived ? 'Barang sudah diterima. Buat faktur pembelian dari halaman Penerimaan Barang supaya jumlah tagihan cocok dengan yang diterima.' : undefined,
       })
     }
     if (['draft', 'approved'].includes(po?.status ?? '') && can('purchase.orders.delete')) {
@@ -263,7 +263,7 @@ function PurchaseOrderFormPageContent() {
 
   if (!isCreate && isLoading) {
     return (
-      <FormLayout title="Purchase Order" breadcrumb={[{ label: 'Pembelian' }, { label: 'Purchase Order', path: '/purchase/orders' }, { label: 'Memuat...' }]}>
+      <FormLayout title="Pesanan Pembelian" breadcrumb={[{ label: 'Pembelian' }, { label: 'Pesanan Pembelian', path: '/purchase/orders' }, { label: 'Memuat...' }]}>
         <div className="flex h-32 items-center justify-center text-[13px] text-[#64748b]">Memuat data...</div>
       </FormLayout>
     )
@@ -272,11 +272,11 @@ function PurchaseOrderFormPageContent() {
   return (
     <>
     <FormLayout
-      title={isCreate ? 'Buat Purchase Order' : 'Purchase Order'}
+      title={isCreate ? 'Buat Pesanan Pembelian' : 'Pesanan Pembelian'}
       documentNumber={po?.number}
       status={status}
       readOnly={!isEditable}
-      breadcrumb={[{ label: 'Pembelian' }, { label: 'Purchase Order', path: '/purchase/orders' }, { label: isCreate ? 'Buat PO' : (po?.number ?? '') }]}
+      breadcrumb={[{ label: 'Pembelian' }, { label: 'Pesanan Pembelian', path: '/purchase/orders' }, { label: isCreate ? 'Buat Pesanan Pembelian' : (po?.number ?? '') }]}
       headerActions={
         <>
           <RecordNavButtons {...navProps} isBusy={isSubmitting} />
@@ -285,15 +285,15 @@ function PurchaseOrderFormPageContent() {
       }
     >
       <div className="space-y-3">
-        {isCreate && <SourceConvertPanel sources={purchaseOrderSources} targetLabel="Purchase Order" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/purchase/orders/${newId}`} initial={fromRequestId ? { key: 'purchase_request', id: Number(fromRequestId) } : null} />}
+        {isCreate && <SourceConvertPanel sources={purchaseOrderSources} targetLabel="Pesanan Pembelian" createPath={`${location.pathname}${location.search}`} targetPath={(newId) => `/purchase/orders/${newId}`} initial={fromRequestId ? { key: 'purchase_request', id: Number(fromRequestId) } : null} />}
         <FormSection title="Header">
           <div className="flex flex-col gap-1">
-            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Vendor <span className="text-red-500">*</span></Label>
+            <Label className="text-[11px] font-semibold uppercase tracking-wide text-[#64748b]">Pemasok <span className="text-red-500">*</span></Label>
             <SearchableSelect cacheKey="contact"
               value={watch('vendor_id') ?? null}
               onChange={(v) => setValue('vendor_id', v as number)}
               onSearch={(q) => kontakApi.search(q, 'supplier')}
-              placeholder="Pilih vendor..."
+              placeholder="Pilih pemasok..."
               disabled={!isEditable}
               error={errors.vendor_id?.message}
               selectedOptions={po?.vendor ? [{ value: po.vendor.id, label: po.vendor.name }] : []}

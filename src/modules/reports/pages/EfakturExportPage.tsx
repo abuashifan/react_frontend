@@ -71,7 +71,7 @@ export default function EfakturExportPage() {
             <div className="flex items-center gap-2 text-[13px] font-semibold text-[#1e293b]">
               <FileSpreadsheet className="h-4 w-4 text-[#5c9ead]" /> E-Faktur Masukan (Pembelian)
             </div>
-            <p className="text-[12px] text-[#64748b]">Tagihan pembelian taxable yang sudah diposting, memakai nomor Faktur Pajak vendor.</p>
+            <p className="text-[12px] text-[#64748b]">Faktur pembelian taxable yang sudah diposting, memakai nomor Faktur Pajak pemasok.</p>
             <PermissionGuard permission="reports.tax.export"><Button onClick={() => handleDownload('purchase')} disabled={downloading !== null} className="h-8 w-fit bg-[#5c9ead] px-4 text-[13px] hover:bg-[#4a8a9b]">
               <Download className="mr-1.5 h-3.5 w-3.5" />
               {downloading === 'purchase' ? 'Menyiapkan...' : 'Unduh CSV Pembelian'}
