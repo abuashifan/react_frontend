@@ -1,7 +1,7 @@
 import { useState, type Dispatch, type SetStateAction } from 'react'
 import type { Produk } from '../types/produk.types'
 
-/** Baris dokumen yang punya produk; dipakai form pembelian untuk pemilih produk via dialog. */
+/** Baris dokumen yang punya produk; dipakai form pembelian dan penjualan untuk pemilih produk via dialog. */
 export interface PickableLine {
   product_id: number | null
   product?: { id: number; code: string; name: string } | null
@@ -15,15 +15,17 @@ interface UseProductLinePickerOptions<TLine extends PickableLine> {
   setLines: Dispatch<SetStateAction<TLine[]>>
   /** Isi tambahan per dokumen, mis. harga dari `purchase_price`. */
   applyProduct?: (product: Produk, line: TLine) => TLine
+  /** Harga yang ditampilkan di dialog: harga beli (pembelian, bawaan) atau harga jual (penjualan). */
+  priceField?: 'selling_price' | 'purchase_price'
 }
 
 /**
- * Pola pemilih produk yang sama dengan Faktur Penjualan: sel produk membuka dialog
+ * Pola pemilih produk yang sama dengan Faktur Penjualan (dipakai pembelian dan penjualan): sel produk membuka dialog
  * multi-pilih (`ProductPickerDialog`) dan N produk terpilih mengisi N baris. Produk pertama
  * mengisi baris pemicu (qty dan isian lain dipertahankan), sisanya jadi baris baru di
  * bawahnya; dari tombol tambah, baris kosong terakhir dipakai dulu.
  */
-export function useProductLinePicker<TLine extends PickableLine>({ defaultLine, setLines, applyProduct }: UseProductLinePickerOptions<TLine>) {
+export function useProductLinePicker<TLine extends PickableLine>({ defaultLine, setLines, applyProduct, priceField = 'purchase_price' }: UseProductLinePickerOptions<TLine>) {
   const [target, setTarget] = useState<PickerTarget>(null)
 
   const toLine = (product: Produk, base: TLine): TLine => {
@@ -60,7 +62,7 @@ export function useProductLinePicker<TLine extends PickableLine>({ defaultLine, 
       open: target !== null,
       onClose: () => setTarget(null),
       onConfirm,
-      priceField: 'purchase_price' as const,
+      priceField,
     },
   }
 }

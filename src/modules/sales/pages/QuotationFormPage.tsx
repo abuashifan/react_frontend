@@ -20,7 +20,9 @@ import { usePermission } from '@/hooks/usePermission'
 import { useRecordTab } from '@/hooks/useRecordTab'
 import { useQuotation, useQuotationMutations } from '../hooks/useQuotationList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
-import { produkApi } from '@/modules/master-data/services/produkApi'
+import { ProductPickerDialog } from '@/modules/master-data/components/ProductPickerDialog'
+import { ProductPickCell } from '@/modules/master-data/components/ProductLinePicker'
+import { useProductLinePicker } from '@/modules/master-data/components/useProductLinePicker'
 import { salesOrderApi } from '../services/salesOrderApi'
 import { quotationApi } from '../services/quotationApi'
 import { quotationSchema, type QuotationFormValues } from '../schemas/quotationSchema'
@@ -74,6 +76,7 @@ function QuotationFormPageContent() {
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const productPicker = useProductLinePicker<EditableLine>({ defaultLine: DEFAULT_LINE, setLines, applyProduct: (product, line) => ({ ...line, unit_price: product.selling_price ?? 0 }), priceField: 'selling_price' })
 
   // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
 
@@ -238,23 +241,7 @@ function QuotationFormPageContent() {
       id: 'product',
       header: 'Produk',
       width: 200,
-      render: ({ item, isReadOnly, onUpdate }) => (
-        <SearchableSelect cacheKey="product"
-          flush
-          value={item.product_id}
-          onChange={(v, opt) => {
-            onUpdate('product_id', v)
-            onUpdate('product', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null)
-            // Deskripsi wajib di backend: isi dari nama produk bila masih kosong (tetap bisa diedit).
-            if (opt && !item.description?.trim()) onUpdate('description', opt.label)
-          }}
-          onSearch={produkApi.search}
-          placeholder="Pilih produk..."
-          disabled={isReadOnly}
-          size="sm"
-          selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []}
-        />
-      ),
+      render: ({ item, index, isReadOnly }) => <ProductPickCell product={item.product} disabled={isReadOnly} onClick={() => productPicker.openAt(index)} />,
     },
     {
       id: 'description',
@@ -370,18 +357,19 @@ function QuotationFormPageContent() {
           errors={lineErrors}
             items={lines}
             columns={columns}
-            onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
+            onAdd={productPicker.openAppend}
             onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}
             onUpdate={(i, field, value) => updateLine(i, field, value)}
             getSubtotal={lineSubtotal}
             isReadOnly={!isEditable}
-            addLabel="Tambah Item"
+            addLabel="Tambah Item (pilih produk)"
             emptyLabel="Belum ada item"
           />
           <FormSummary subtotal={subtotal} grandTotal={subtotal} />
         </div>
       </div>
     </FormLayout>
+      <ProductPickerDialog {...productPicker.dialogProps} />
       <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={quotation ? quotationPrint(quotation) : null} />
     </>
   )
