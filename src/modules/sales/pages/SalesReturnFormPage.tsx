@@ -25,7 +25,9 @@ import { useToast } from '@/hooks/useToast'
 import { usePermission } from '@/hooks/usePermission'
 import { useSalesReturn, useSalesReturnMutations } from '../hooks/useSalesReturnList'
 import { kontakApi } from '@/modules/master-data/services/kontakApi'
-import { produkApi } from '@/modules/master-data/services/produkApi'
+import { ProductPickerDialog } from '@/modules/master-data/components/ProductPickerDialog'
+import { ProductPickCell } from '@/modules/master-data/components/ProductLinePicker'
+import { useProductLinePicker } from '@/modules/master-data/components/useProductLinePicker'
 import { salesReturnSchema, type SalesReturnFormValues } from '../schemas/salesReturnSchema'
 import { salesReturnApi } from '../services/salesReturnApi'
 import { RecordNavButtons } from '@/components/shared/form/RecordNavButtons'
@@ -80,6 +82,7 @@ function SalesReturnFormPageContent() {
   })
 
   const [lines, setLines] = useState<EditableLine[]>([DEFAULT_LINE])
+  const productPicker = useProductLinePicker<EditableLine>({ defaultLine: DEFAULT_LINE, setLines, applyProduct: (product, line) => ({ ...line, unit_price: product.selling_price ?? 0 }), priceField: 'selling_price' })
 
   // Error per baris dari backend (mis. lines.0.quantity) supaya baris yang
 
@@ -217,23 +220,7 @@ function SalesReturnFormPageContent() {
       id: 'product',
       header: 'Produk',
       width: 200,
-      render: ({ item, isReadOnly, onUpdate }) => (
-        <SearchableSelect cacheKey="product"
-          flush
-          value={item.product_id}
-          onChange={(v, opt) => {
-            onUpdate('product_id', v)
-            onUpdate('product', opt ? { id: opt.value, code: opt.sublabel ?? '', name: opt.label } : null)
-            // Deskripsi wajib di backend: isi dari nama produk bila masih kosong (tetap bisa diedit).
-            if (opt && !item.description?.trim()) onUpdate('description', opt.label)
-          }}
-          onSearch={produkApi.search}
-          placeholder="Pilih produk..."
-          selectedOptions={item.product ? [{ value: item.product.id, label: item.product.name, sublabel: item.product.code }] : []}
-          disabled={isReadOnly}
-          size="sm"
-        />
-      ),
+      render: ({ item, index, isReadOnly }) => <ProductPickCell product={item.product} disabled={isReadOnly} onClick={() => productPicker.openAt(index)} />,
     },
     {
       id: 'description',
@@ -338,12 +325,12 @@ function SalesReturnFormPageContent() {
           errors={lineErrors}
               items={lines}
               columns={columns}
-              onAdd={() => setLines((prev) => [...prev, { ...DEFAULT_LINE }])}
+              onAdd={productPicker.openAppend}
               onRemove={(i) => setLines((prev) => prev.filter((_, idx) => idx !== i))}
               onUpdate={(i, field, value) => setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l))}
               getSubtotal={lineSubtotal}
               isReadOnly={!isEditable}
-              addLabel="Tambah Item"
+              addLabel="Tambah Item (pilih produk)"
             />
             <FormSummary subtotal={subtotal} grandTotal={subtotal} />
           </div>
@@ -358,6 +345,7 @@ function SalesReturnFormPageContent() {
         documentNumber={ret?.number ?? ''}
         isLoading={voidRet.isPending}
       />
+      <ProductPickerDialog {...productPicker.dialogProps} />
       <DocumentPrintDialog open={printOpen} onClose={() => setPrintOpen(false)} data={ret ? salesReturnPrint(ret) : null} />
     </>
   )
